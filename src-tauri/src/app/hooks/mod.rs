@@ -212,10 +212,12 @@ pub unsafe extern "system" fn keyboard_proc(n_code: i32, w_param: WPARAM, l_para
 
              let is_navigation_key = vk == 0x26 || vk == 0x28 || vk == 0x0D || vk == 0x1B;
              let is_enter = vk == 0x0D;
-             let is_escape = vk == 0x1B;
+             let _is_escape = vk == 0x1B;
              
               if is_navigation_key && is_down {
-                   if (is_enter || is_escape) && !NAVIGATION_MODE_ACTIVE.load(Ordering::Relaxed) {
+                   // Only Enter requires navigation mode to be active
+                   // Escape can always close the window when it's visible
+                   if is_enter && !NAVIGATION_MODE_ACTIVE.load(Ordering::Relaxed) {
                        return CallNextHookEx(None, n_code, w_param, l_param);
                    }
                    let ctrl_down = (GetAsyncKeyState(VK_CONTROL.0 as i32) as u16 & 0x8000) != 0;
