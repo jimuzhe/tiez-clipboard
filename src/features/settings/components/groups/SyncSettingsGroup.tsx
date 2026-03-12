@@ -31,6 +31,8 @@ interface SyncSettingsGroupProps {
     setMqttPass: (val: string) => void;
     mqttTopic: string;
     setMqttTopic: (val: string) => void;
+    mqttNotificationEnabled: boolean;
+    setMqttNotificationEnabled: (val: boolean) => void;
 }
 
 const SyncSettingsGroup = ({
@@ -55,7 +57,9 @@ const SyncSettingsGroup = ({
     mqttPass,
     setMqttPass,
     mqttTopic,
-    setMqttTopic
+    setMqttTopic,
+    mqttNotificationEnabled,
+    setMqttNotificationEnabled
 }: SyncSettingsGroupProps) => (
     <div className={`settings-group ${collapsed ? 'collapsed' : ''}`}>
         <div className="group-header" onClick={onToggle}>
@@ -224,6 +228,26 @@ const SyncSettingsGroup = ({
                                     placeholder="tiez/my_device"
                                 />
                             </>
+                        </div>
+                        <div className="setting-item">
+                            <LabelWithHint
+                                label={t('mqtt_notification_enabled')}
+                                hint={t('mqtt_notification_enabled_hint')}
+                                hintKey="mqtt_notification_enabled"
+                            />
+                            <label className="switch">
+                                <input
+                                    className="cb"
+                                    type="checkbox"
+                                    checked={mqttNotificationEnabled}
+                                    onChange={(e) => {
+                                        const val = e.target.checked;
+                                        setMqttNotificationEnabled(val);
+                                        saveMqtt('mqtt_notification_enabled', String(val));
+                                    }}
+                                />
+                                <div className="toggle"><div className="left" /><div className="right" /></div>
+                            </label>
                         </div>
                         <div style={{ padding: '0 8px 8px', fontSize: '11px', color: 'var(--text-secondary)', opacity: 0.8 }}>
                             {t('mqtt_restart_hint')}

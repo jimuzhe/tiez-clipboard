@@ -19,6 +19,7 @@ fn main() {
     let _ = dotenvy::dotenv();
 
     let app = tauri::Builder::default()
+        .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
@@ -116,6 +117,7 @@ fn main() {
 
             app::commands::set_theme,
             app::commands::get_platform_info,
+            app::commands::send_system_notification,
             app::commands::register_hotkey,
             app::commands::test_hotkey_available,
             app::commands::download_and_install_update,

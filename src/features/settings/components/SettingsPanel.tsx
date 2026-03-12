@@ -112,6 +112,7 @@ interface SettingsPanelProps {
     mqttTopic: string;
     mqttProtocol: string;
     mqttWsPath: string;
+    mqttNotificationEnabled: boolean;
     cloudSyncEnabled: boolean;
     cloudSyncAuto: boolean;
     cloudSyncProvider: "http" | "webdav";
@@ -191,6 +192,7 @@ interface SettingsPanelProps {
     setMqttTopic: (val: string) => void;
     setMqttProtocol: (val: string) => void;
     setMqttWsPath: (val: string) => void;
+    setMqttNotificationEnabled: (val: boolean) => void;
     setCloudSyncEnabled: (val: boolean) => void;
     setCloudSyncAuto: (val: boolean) => void;
     setCloudSyncProvider: (val: "http" | "webdav") => void;
@@ -250,7 +252,7 @@ const SettingsPanel = (props: SettingsPanelProps) => {
         customBackground, setCustomBackground,
         customBackgroundOpacity, setCustomBackgroundOpacity,
         surfaceOpacity, setSurfaceOpacity,
-        mqttEnabled, mqttServer, mqttPort, mqttUser, mqttPass, mqttTopic, mqttProtocol, mqttWsPath,
+        mqttEnabled, mqttServer, mqttPort, mqttUser, mqttPass, mqttTopic, mqttProtocol, mqttWsPath, mqttNotificationEnabled,
         cloudSyncEnabled, cloudSyncAuto, cloudSyncIntervalSec, cloudSyncSnapshotIntervalMin, cloudSyncWebdavUrl, cloudSyncWebdavUsername, cloudSyncWebdavPassword, cloudSyncWebdavBasePath,
         fileServerEnabled, fileServerPort, localIp, availableIps, setLocalIp, actualPort, fileTransferAutoOpen, showAutoCloseHint, fileServerAutoClose, fileTransferAutoCopy, fileTransferPath,
         installedApps, appSettings, defaultApps, showAppSelector, dataPath,
@@ -264,7 +266,7 @@ const SettingsPanel = (props: SettingsPanelProps) => {
         setTheme, setColorMode, setLanguage, showAppBorder, setShowAppBorder, compactMode, setCompactMode, checkHotkeyConflict,
         clipboardItemFontSize, setClipboardItemFontSize, clipboardTagFontSize, setClipboardTagFontSize,
         emojiPanelEnabled, setEmojiPanelEnabled, tagManagerEnabled, setTagManagerEnabled,
-        setMqttEnabled, saveMqtt, setMqttServer, setMqttPort, setMqttUser, setMqttPass, setMqttTopic, setMqttProtocol, setMqttWsPath,
+        setMqttEnabled, saveMqtt, setMqttServer, setMqttPort, setMqttUser, setMqttPass, setMqttTopic, setMqttProtocol, setMqttWsPath, setMqttNotificationEnabled,
         setCloudSyncEnabled, setCloudSyncAuto, setCloudSyncIntervalSec, setCloudSyncSnapshotIntervalMin, setCloudSyncWebdavUrl, setCloudSyncWebdavUsername, setCloudSyncWebdavPassword, setCloudSyncWebdavBasePath, saveCloudSync,
         setFileServerEnabled, setFileServerPort, setFileTransferAutoOpen, setShowAutoCloseHint, setFileServerAutoClose, setFileTransferAutoCopy, fetchEffectiveTransferPath,
         setShowAppSelector, handleResetSettings,
@@ -602,6 +604,8 @@ const SettingsPanel = (props: SettingsPanelProps) => {
                 setMqttPass={setMqttPass}
                 mqttTopic={mqttTopic}
                 setMqttTopic={setMqttTopic}
+                mqttNotificationEnabled={mqttNotificationEnabled}
+                setMqttNotificationEnabled={setMqttNotificationEnabled}
             />
 
             {CLOUD_SYNC_ENABLED && (
