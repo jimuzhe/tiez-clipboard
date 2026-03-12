@@ -592,6 +592,9 @@ const ClipboardItem = ({
     theme,
     language,
     t,
+    showSourceApp = true,
+    showTimestamp = true,
+    showContentTypeInfo = true,
     isAIProcessing,
     onSelect,
     onCopy,
@@ -716,6 +719,9 @@ const ClipboardItem = ({
                 preview: item.preview,
                 htmlContent: item.html_content,
                 sourceApp: item.source_app,
+                showSourceApp,
+                showTimestamp,
+                showContentTypeInfo,
                 timestamp: item.timestamp,
                 language,
                 theme,
@@ -760,6 +766,9 @@ const ClipboardItem = ({
                         preview: item.preview,
                         htmlContent: item.html_content,
                         sourceApp: item.source_app,
+                        showSourceApp,
+                        showTimestamp,
+                        showContentTypeInfo,
                         timestamp: item.timestamp,
                         language,
                         theme,
@@ -1021,8 +1030,8 @@ const ClipboardItem = ({
                     )}
                     <div className="app-info">
                         {item.is_pinned && !dragControls && <Pin size={10} style={{ color: 'var(--accent-color)', marginRight: '-2px' }} />}
-                        {getIcon(item.content_type)}
-                        <span>{item.source_app}</span>
+                        {showContentTypeInfo && getIcon(item.content_type)}
+                        {showSourceApp && <span>{item.source_app}</span>}
                     </div>
                 </div>
 
@@ -1081,9 +1090,11 @@ const ClipboardItem = ({
                             <X size={12} />
                         </button>
                     </div>
-                    <div className="app-info" style={{ opacity: 0.6, fontSize: '10px', display: 'flex', gap: '6px', alignItems: 'center' }}>
-                        <span>{getConciseTime(item.timestamp, language)}</span>
-                    </div>
+                    {showTimestamp && (
+                        <div className="app-info" style={{ opacity: 0.6, fontSize: '10px', display: 'flex', gap: '6px', alignItems: 'center' }}>
+                            <span>{getConciseTime(item.timestamp, language)}</span>
+                        </div>
+                    )}
                 </div>
             </div>
 

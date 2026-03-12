@@ -128,6 +128,12 @@ export interface AppState {
   setRegistryWinVEnabled: StateSetter<boolean>;
   showSearchBox: boolean;
   setShowSearchBox: StateSetter<boolean>;
+  showSourceApp: boolean;
+  setShowSourceApp: StateSetter<boolean>;
+  showTimestamp: boolean;
+  setShowTimestamp: StateSetter<boolean>;
+  showContentTypeInfo: boolean;
+  setShowContentTypeInfo: StateSetter<boolean>;
   scrollTopButtonEnabled: boolean;
   setScrollTopButtonEnabled: StateSetter<boolean>;
   arrowKeySelection: boolean;

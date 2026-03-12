@@ -31,6 +31,12 @@ interface GeneralSettingsGroupProps {
     setPasteSoundEnabled: (val: boolean) => void;
     showSearchBox: boolean;
     setShowSearchBox: (val: boolean) => void;
+    showSourceApp: boolean;
+    setShowSourceApp: (val: boolean) => void;
+    showTimestamp: boolean;
+    setShowTimestamp: (val: boolean) => void;
+    showContentTypeInfo: boolean;
+    setShowContentTypeInfo: (val: boolean) => void;
     scrollTopButtonEnabled: boolean;
     setScrollTopButtonEnabled: (val: boolean) => void;
     emojiPanelEnabled: boolean;
@@ -65,6 +71,12 @@ const GeneralSettingsGroup = ({
     setPasteSoundEnabled,
     showSearchBox,
     setShowSearchBox,
+    showSourceApp,
+    setShowSourceApp,
+    showTimestamp,
+    setShowTimestamp,
+    showContentTypeInfo,
+    setShowContentTypeInfo,
     scrollTopButtonEnabled,
     setScrollTopButtonEnabled,
     emojiPanelEnabled,
@@ -255,6 +267,66 @@ const GeneralSettingsGroup = ({
                                 const enabled = e.target.checked;
                                 setShowSearchBox(enabled);
                                 saveAppSetting('show_search_box', String(enabled));
+                            }}
+                        />
+                        <div className="toggle"><div className="left" /><div className="right" /></div>
+                    </label>
+                </div>
+                <div className="setting-item">
+                    <LabelWithHint
+                        label={t('show_source_app')}
+                        hint={t('show_source_app_hint')}
+                        hintKey="show_source_app"
+                    />
+                    <label className="switch">
+                        <input
+                            className="cb"
+                            type="checkbox"
+                            checked={showSourceApp}
+                            onChange={(e) => {
+                                const enabled = e.target.checked;
+                                setShowSourceApp(enabled);
+                                saveAppSetting('show_source_app', String(enabled));
+                            }}
+                        />
+                        <div className="toggle"><div className="left" /><div className="right" /></div>
+                    </label>
+                </div>
+                <div className="setting-item">
+                    <LabelWithHint
+                        label={t('show_timestamp')}
+                        hint={t('show_timestamp_hint')}
+                        hintKey="show_timestamp"
+                    />
+                    <label className="switch">
+                        <input
+                            className="cb"
+                            type="checkbox"
+                            checked={showTimestamp}
+                            onChange={(e) => {
+                                const enabled = e.target.checked;
+                                setShowTimestamp(enabled);
+                                saveAppSetting('show_timestamp', String(enabled));
+                            }}
+                        />
+                        <div className="toggle"><div className="left" /><div className="right" /></div>
+                    </label>
+                </div>
+                <div className="setting-item">
+                    <LabelWithHint
+                        label={t('show_content_type_info')}
+                        hint={t('show_content_type_info_hint')}
+                        hintKey="show_content_type_info"
+                    />
+                    <label className="switch">
+                        <input
+                            className="cb"
+                            type="checkbox"
+                            checked={showContentTypeInfo}
+                            onChange={(e) => {
+                                const enabled = e.target.checked;
+                                setShowContentTypeInfo(enabled);
+                                saveAppSetting('show_content_type_info', String(enabled));
                             }}
                         />
                         <div className="toggle"><div className="left" /><div className="right" /></div>

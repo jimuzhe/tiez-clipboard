@@ -72,6 +72,12 @@ interface SettingsPanelProps {
     setRegistryWinVEnabled: (val: boolean) => void;
     showSearchBox: boolean;
     setShowSearchBox: (val: boolean) => void;
+    showSourceApp: boolean;
+    setShowSourceApp: (val: boolean) => void;
+    showTimestamp: boolean;
+    setShowTimestamp: (val: boolean) => void;
+    showContentTypeInfo: boolean;
+    setShowContentTypeInfo: (val: boolean) => void;
     scrollTopButtonEnabled: boolean;
     setScrollTopButtonEnabled: (val: boolean) => void;
     emojiPanelEnabled: boolean;
@@ -240,7 +246,7 @@ const SettingsPanel = (props: SettingsPanelProps) => {
         collapsedGroups, autoStart, silentStart, persistent, persistentLimitEnabled, persistentLimit, deduplicate, captureFiles, captureRichText, richTextSnapshotPreview, deleteAfterPaste, moveToTopAfterPaste,
         sequentialMode, sequentialHotkey, isRecordingSequential,
         richPasteHotkey, isRecordingRich, searchHotkey, isRecordingSearch,
-        privacyProtection, privacyProtectionKinds, setPrivacyProtectionKinds, privacyProtectionCustomRules, setPrivacyProtectionCustomRules, registryWinVEnabled, setRegistryWinVEnabled, showSearchBox, setShowSearchBox, scrollTopButtonEnabled, setScrollTopButtonEnabled, arrowKeySelection, setArrowKeySelection,
+        privacyProtection, privacyProtectionKinds, setPrivacyProtectionKinds, privacyProtectionCustomRules, setPrivacyProtectionCustomRules, registryWinVEnabled, setRegistryWinVEnabled, showSearchBox, setShowSearchBox, showSourceApp, setShowSourceApp, showTimestamp, setShowTimestamp, showContentTypeInfo, setShowContentTypeInfo, scrollTopButtonEnabled, setScrollTopButtonEnabled, arrowKeySelection, setArrowKeySelection,
         soundEnabled, setSoundEnabled, pasteSoundEnabled, setPasteSoundEnabled,
         soundVolume, setSoundVolume,
         pasteMethod, setPasteMethod,
@@ -474,6 +480,12 @@ const SettingsPanel = (props: SettingsPanelProps) => {
                     setPasteSoundEnabled={setPasteSoundEnabled}
                 showSearchBox={showSearchBox}
                 setShowSearchBox={setShowSearchBox}
+                showSourceApp={showSourceApp}
+                setShowSourceApp={setShowSourceApp}
+                showTimestamp={showTimestamp}
+                setShowTimestamp={setShowTimestamp}
+                showContentTypeInfo={showContentTypeInfo}
+                setShowContentTypeInfo={setShowContentTypeInfo}
                 scrollTopButtonEnabled={scrollTopButtonEnabled}
                 setScrollTopButtonEnabled={setScrollTopButtonEnabled}
                 emojiPanelEnabled={emojiPanelEnabled}
