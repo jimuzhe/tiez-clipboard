@@ -23,6 +23,9 @@ type PreviewPayload = {
     preview?: string;
     htmlContent?: string;
     sourceApp?: string;
+    showSourceApp?: boolean;
+    showTimestamp?: boolean;
+    showContentTypeInfo?: boolean;
     timestamp?: number;
     language?: Locale;
     theme?: string;
@@ -524,24 +527,34 @@ const CompactPreviewWindow = () => {
                 }}
             >
                 <div ref={metaRef} className="popover-meta">
-                    <div className="meta-row">
-                        {getIcon(payload?.contentType || "text")}
-                        <span>{payload?.contentType || "text"}</span>
-                    </div>
-                    <div className="meta-dot">•</div>
-                    <div className="meta-row">
-                        <AppWindow size={14} />
-                        <span>{payload?.sourceApp || "Unknown"}</span>
-                    </div>
-                    <div className="meta-dot">•</div>
-                    <div className="meta-row">
-                        <Clock size={14} />
-                        <span>
-                            {payload?.timestamp && payload?.language
-                                ? getConciseTime(payload.timestamp, payload.language)
-                                : "-"}
-                        </span>
-                    </div>
+                    {payload?.showContentTypeInfo !== false && (
+                        <div className="meta-row">
+                            {getIcon(payload?.contentType || "text")}
+                            <span>{payload?.contentType || "text"}</span>
+                        </div>
+                    )}
+                    {payload?.showSourceApp !== false && (
+                        <>
+                            {payload?.showContentTypeInfo !== false && <div className="meta-dot">•</div>}
+                            <div className="meta-row">
+                                <AppWindow size={14} />
+                                <span>{payload?.sourceApp || "Unknown"}</span>
+                            </div>
+                        </>
+                    )}
+                    {payload?.showTimestamp !== false && (
+                        <>
+                            {(payload?.showContentTypeInfo !== false || payload?.showSourceApp !== false) && <div className="meta-dot">•</div>}
+                            <div className="meta-row">
+                                <Clock size={14} />
+                                <span>
+                                    {payload?.timestamp && payload?.language
+                                        ? getConciseTime(payload.timestamp, payload.language)
+                                        : "-"}
+                                </span>
+                            </div>
+                        </>
+                    )}
                 </div>
                 <div ref={dividerRef} className="popover-divider" />
                 <div ref={contentRef} className="popover-content">{content}</div>

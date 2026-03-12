@@ -29,6 +29,9 @@ interface UseSettingsPostInitOptions {
   setHideTrayIcon: (val: boolean) => void;
   setEdgeDocking: (val: boolean) => void;
   setShowSearchBox: (val: boolean) => void;
+  setShowSourceApp: (val: boolean) => void;
+  setShowTimestamp: (val: boolean) => void;
+  setShowContentTypeInfo: (val: boolean) => void;
   setScrollTopButtonEnabled: (val: boolean) => void;
   setArrowKeySelection: (val: boolean) => void;
   setMqttEnabled: (val: boolean) => void;
@@ -104,6 +107,9 @@ export const useSettingsPostInit = ({
   setHideTrayIcon,
   setEdgeDocking,
   setShowSearchBox,
+  setShowSourceApp,
+  setShowTimestamp,
+  setShowContentTypeInfo,
   setScrollTopButtonEnabled,
   setArrowKeySelection,
   setMqttEnabled,
@@ -240,6 +246,9 @@ export const useSettingsPostInit = ({
     setEdgeDocking(edgeDockingEnabled);
 
     if (settings["app.show_search_box"] === "false") setShowSearchBox(false);
+    setShowSourceApp(settings["app.show_source_app"] !== "false");
+    setShowTimestamp(settings["app.show_timestamp"] !== "false");
+    setShowContentTypeInfo(settings["app.show_content_type_info"] !== "false");
     setScrollTopButtonEnabled(settings["app.show_scroll_top_button"] !== "false");
     if (settings["app.arrow_key_selection"] === "false") setArrowKeySelection(false);
 
@@ -383,6 +392,7 @@ export const useSettingsPostInit = ({
     setHideTrayIcon,
     setEdgeDocking,
     setShowSearchBox,
+    setShowSourceApp,
     setScrollTopButtonEnabled,
     setArrowKeySelection,
     setMqttEnabled,

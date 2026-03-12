@@ -81,6 +81,9 @@ export const useAppState = (): AppState => {
   const [winClipboardDisabled, setWinClipboardDisabled] = useState(false);
   const [registryWinVEnabled, setRegistryWinVEnabled] = useState(false);
   const [showSearchBox, setShowSearchBox] = useState(true);
+  const [showSourceApp, setShowSourceApp] = useState(true);
+  const [showTimestamp, setShowTimestamp] = useState(true);
+  const [showContentTypeInfo, setShowContentTypeInfo] = useState(true);
   const [scrollTopButtonEnabled, setScrollTopButtonEnabled] = useState(true);
   const [arrowKeySelection, setArrowKeySelection] = useState(true);
   const [hideTrayIcon, setHideTrayIcon] = useState(false);
@@ -279,6 +282,12 @@ export const useAppState = (): AppState => {
     setRegistryWinVEnabled,
     showSearchBox,
     setShowSearchBox,
+    showSourceApp,
+    setShowSourceApp,
+    showTimestamp,
+    setShowTimestamp,
+    showContentTypeInfo,
+    setShowContentTypeInfo,
     scrollTopButtonEnabled,
     setScrollTopButtonEnabled,
     arrowKeySelection,
