@@ -8,6 +8,12 @@ type PlatformInfo = {
   is_windows_11: boolean;
 };
 
+const clearThemeClasses = (element: HTMLElement) => {
+  Array.from(element.classList)
+    .filter(className => className.startsWith("theme-"))
+    .forEach(className => element.classList.remove(className));
+};
+
 interface UseSettingsApplyOptions {
   theme: string;
   colorMode: string;
@@ -63,8 +69,8 @@ export const useSettingsApply = ({
       }
     };
 
-    root.classList.remove("theme-retro", "theme-mica", "theme-acrylic");
-    body.classList.remove("theme-retro", "theme-mica", "theme-acrylic");
+    clearThemeClasses(root);
+    clearThemeClasses(body);
     root.classList.add(`theme-${theme}`);
     body.classList.add(`theme-${theme}`);
     invoke<PlatformInfo>("get_platform_info")
