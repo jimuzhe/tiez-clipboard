@@ -63,6 +63,11 @@ const resolveRichImageSrc = (payload: string): string | null => {
 
 const COMPACT_PREVIEW_DEBUG = false;
 const RICH_PREVIEW_DEBUG = import.meta.env.DEV;
+const clearThemeClasses = (element: HTMLElement) => {
+    Array.from(element.classList)
+        .filter(className => className.startsWith("theme-"))
+        .forEach(className => element.classList.remove(className));
+};
 const compactPreviewLog = (...args: unknown[]) => {
     if (!COMPACT_PREVIEW_DEBUG) return;
     const ts = new Date().toISOString();
@@ -108,8 +113,8 @@ const applyTheme = (payload: PreviewPayload) => {
     const root = document.documentElement;
     const body = document.body;
 
-    root.classList.remove("theme-retro", "theme-mica", "theme-acrylic");
-    body.classList.remove("theme-retro", "theme-mica", "theme-acrylic");
+    clearThemeClasses(root);
+    clearThemeClasses(body);
     root.classList.add(`theme-${theme}`);
     body.classList.add(`theme-${theme}`);
 

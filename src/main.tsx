@@ -4,7 +4,7 @@ import App from "./App";
 import CompactPreviewWindow from "./features/clipboard/components/CompactPreviewWindow";
 import "./index.css";
 import "./styles/components/index.css";
-import "./styles/themes/index.css";
+import.meta.glob("./styles/themes/*.css", { eager: true });
 
 const params = new URLSearchParams(window.location.search);
 const isCompactPreview = params.get("window") === "compact-preview";

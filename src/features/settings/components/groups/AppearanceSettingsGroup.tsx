@@ -52,6 +52,32 @@ const buildRangeStyle = (value: number, min: number, max: number) =>
         "--range-progress": clampProgress(value, min, max)
     }) as CSSProperties;
 
+const themeCssModules = import.meta.glob("../../../../styles/themes/*.css", { eager: true });
+const hiddenThemeIds = new Set(["dark", "index"]);
+const preferredThemeOrder = ["retro", "mica", "acrylic"];
+const themeIdAliases: Record<string, string[]> = {
+    "mica-acrylic": ["mica", "acrylic"]
+};
+const discoveredThemeIds = Object.keys(themeCssModules)
+    .map(path => path.split("/").pop()?.replace(".css", "") ?? "")
+    .filter(id => id && !hiddenThemeIds.has(id));
+const normalizedThemeIds = discoveredThemeIds.flatMap(id => themeIdAliases[id] ?? [id]);
+const availableThemeIds = Array.from(new Set([...preferredThemeOrder, ...normalizedThemeIds]))
+    .filter(id => preferredThemeOrder.includes(id) || normalizedThemeIds.includes(id))
+    .sort((a, b) => {
+        const ai = preferredThemeOrder.indexOf(a);
+        const bi = preferredThemeOrder.indexOf(b);
+        if (ai !== -1 || bi !== -1) return (ai === -1 ? Number.MAX_SAFE_INTEGER : ai) - (bi === -1 ? Number.MAX_SAFE_INTEGER : bi);
+        return a.localeCompare(b);
+    });
+
+const formatThemeFallbackName = (id: string) =>
+    id
+        .split(/[-_]/g)
+        .filter(Boolean)
+        .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(' ');
+
 const AppearanceSettingsGroup = ({
     t,
     collapsed,
@@ -90,24 +116,25 @@ const AppearanceSettingsGroup = ({
                     <div className="item-label-group" style={{ marginBottom: '8px' }}>
                         <span className="item-label">{t('visual_theme')}</span>
                     </div>
-                    <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
-                        {[
-                            { id: 'retro', name: t('theme_retro') },
-                            { id: 'mica', name: t('theme_mica') },
-                            { id: 'acrylic', name: t('theme_acrylic') }
-                        ].map(themeItem => (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', width: '100%' }}>
+                        {availableThemeIds.map(themeId => {
+                            const localeKey = `theme_${themeId}`;
+                            const translated = t(localeKey);
+                            const themeName = translated && translated !== localeKey ? translated : formatThemeFallbackName(themeId);
+                            return (
                             <button
-                                key={themeItem.id}
+                                key={themeId}
                                 onClick={() => {
-                                    setTheme(themeItem.id);
-                                    saveAppSetting('theme', themeItem.id);
+                                    setTheme(themeId);
+                                    saveAppSetting('theme', themeId);
                                 }}
-                                className={`btn-icon ${theme === themeItem.id ? 'active' : ''}`}
-                                style={{ flex: 1, height: '36px', fontSize: '12px', fontWeight: 'bold' }}
+                                className={`btn-icon ${theme === themeId ? 'active' : ''}`}
+                                style={{ flex: '1 0 calc(50% - 4px)', height: '36px', fontSize: '12px', fontWeight: 'bold' }}
                             >
-                                {themeItem.name}
+                                {themeName}
                             </button>
-                        ))}
+                        );
+                        })}
                     </div>
                 </div>
 

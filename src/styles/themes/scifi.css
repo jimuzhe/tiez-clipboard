@@ -1,0 +1,92 @@
+:root.theme-scifi,
+body.theme-scifi {
+  --font-main: "Orbitron", "Rajdhani", "Segoe UI", "Microsoft YaHei", sans-serif;
+  --font-mono: "JetBrains Mono", "Cascadia Code", "Consolas", monospace;
+  --bg-body: #05070d;
+  --bg-window: #090d1a;
+  --bg-content: #090d1a;
+  --bg-toolbar: #0d1326;
+  --bg-panel: rgba(15, 23, 46, 0.82);
+  --bg-input: rgba(10, 16, 34, 0.88);
+  --bg-element: rgba(17, 27, 54, 0.8);
+  --bg-button: rgba(20, 33, 68, 0.76);
+  --text-primary: #dffbff;
+  --text-secondary: #85d4e8;
+  --accent-color: #2ee6ff;
+  --accent-hover: #6ef0ff;
+  --border-dark: rgba(46, 230, 255, 0.34);
+  --border-light: rgba(130, 246, 255, 0.22);
+  --shadow-color: rgba(10, 198, 240, 0.35);
+}
+
+.theme-scifi #root {
+  border: 1px solid var(--border-dark) !important;
+  border-radius: 10px !important;
+  background: radial-gradient(circle at 15% -10%, rgba(46, 230, 255, 0.18), transparent 40%), radial-gradient(circle at 100% 0%, rgba(133, 65, 255, 0.16), transparent 42%), linear-gradient(165deg, #0a1022 0%, #070b18 100%) !important;
+  box-shadow: 0 0 0 1px rgba(130, 246, 255, 0.2) inset, 0 18px 38px rgba(0, 8, 18, 0.75), 0 0 28px rgba(46, 230, 255, 0.16) !important;
+}
+
+.theme-scifi header {
+  background: rgba(8, 14, 32, 0.86) !important;
+  border-bottom: 1px solid rgba(46, 230, 255, 0.3) !important;
+}
+
+.theme-scifi .settings-group,
+.theme-scifi .file-transfer-panel,
+.theme-scifi .data-panel {
+  background: rgba(10, 18, 40, 0.8) !important;
+  border: 1px solid rgba(46, 230, 255, 0.24) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 10px 26px rgba(0, 10, 30, 0.45), 0 0 0 1px rgba(127, 255, 240, 0.08) inset !important;
+}
+
+.theme-scifi .search-input,
+.theme-scifi .setting-input {
+  border: 1px solid rgba(46, 230, 255, 0.35) !important;
+  border-radius: 8px !important;
+  background: rgba(8, 15, 34, 0.85) !important;
+  color: #dffbff !important;
+}
+
+.theme-scifi .search-input:focus,
+.theme-scifi .setting-input:focus {
+  border-color: rgba(128, 255, 245, 0.72) !important;
+  box-shadow: 0 0 0 2px rgba(46, 230, 255, 0.24), 0 0 18px rgba(46, 230, 255, 0.18) !important;
+}
+
+.theme-scifi .btn-icon {
+  border-radius: 8px !important;
+}
+
+.theme-scifi .btn-icon.active {
+  background: linear-gradient(135deg, #2ee6ff, #7a6bff) !important;
+  border-color: rgba(159, 238, 255, 0.65) !important;
+  color: #03101f !important;
+  box-shadow: 0 8px 18px rgba(46, 230, 255, 0.3) !important;
+}
+
+.theme-scifi .history-item.selected {
+  background: rgba(46, 230, 255, 0.12) !important;
+  border-color: rgba(46, 230, 255, 0.24) !important;
+}
+
+.theme-scifi .tag-chip {
+  border-radius: 999px !important;
+  border: 1px solid rgba(46, 230, 255, 0.38) !important;
+  box-shadow: none !important;
+}
+
+.theme-scifi .modal-content,
+.theme-scifi .confirm-dialog {
+  border-radius: 12px !important;
+  border: 1px solid rgba(46, 230, 255, 0.28) !important;
+  background: rgba(8, 14, 30, 0.9) !important;
+  box-shadow: 0 18px 36px rgba(0, 10, 24, 0.7), 0 0 26px rgba(46, 230, 255, 0.12) !important;
+}
+
+@media (prefers-color-scheme: light) {
+  body.light-mode.theme-scifi {
+    --text-primary: #d9f9ff;
+    --text-secondary: #7ac4d7;
+  }
+}
