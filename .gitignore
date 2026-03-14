@@ -10,6 +10,11 @@ dist/
 # Tauri / Rust build outputs
 src-tauri/target/
 
+# Arch packaging build outputs
+packaging/archlinux/pkg/
+packaging/archlinux/src/
+packaging/archlinux/tiez-clipboard/
+
 # Runtime files
 *.db
 *.log
