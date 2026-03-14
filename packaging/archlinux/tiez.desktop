@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=TieZ
+Comment=Clipboard manager built with Tauri
+Exec=tiez
+Icon=tiez
+Terminal=false
+Categories=Utility;
+StartupNotify=true

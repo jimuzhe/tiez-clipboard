@@ -35,7 +35,16 @@ pub fn get_platform_info() -> PlatformInfo {
         }
     }
 
-    #[cfg(all(not(target_os = "windows"), not(target_os = "macos")))]
+    #[cfg(target_os = "linux")]
+    {
+        PlatformInfo {
+            platform: "linux".to_string(),
+            is_windows_10: false,
+            is_windows_11: false,
+        }
+    }
+
+    #[cfg(all(not(target_os = "windows"), not(target_os = "macos"), not(target_os = "linux")))]
     {
         PlatformInfo {
             platform: "other".to_string(),
@@ -136,7 +145,7 @@ pub fn set_theme(
         }
     }
     
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(target_os = "macos")]
     {
         let is_dark = match effective_color_mode.as_deref() {
             Some("light") => false,
@@ -148,6 +157,11 @@ pub fn set_theme(
         if theme == "mica" || theme == "acrylic" {
             let _ = window_vibrancy::apply_vibrancy(&window, window_vibrancy::NSVisualEffectMaterial::HudWindow, None, None);
         }
+    }
+
+    #[cfg(all(not(target_os = "windows"), not(target_os = "macos")))]
+    {
+        let _ = window.set_shadow(show_border);
     }
     
     let _ = window.emit("theme-changed", theme);

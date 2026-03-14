@@ -11,6 +11,34 @@ use std::process::Command;
 use std::os::windows::process::CommandExt;
 use tauri::{Emitter, Manager, State};
 
+fn spawn_platform_open(target: &str) -> Result<(), AppError> {
+    #[cfg(target_os = "windows")]
+    {
+        let _ = target;
+        return Err(AppError::Internal(
+            "spawn_platform_open should not be called on Windows".to_string(),
+        ));
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        Command::new("open")
+            .arg(target)
+            .spawn()
+            .map_err(|e| AppError::Internal(format!("启动默认处理程序失败: {}", e)))?;
+        return Ok(());
+    }
+
+    #[cfg(all(not(target_os = "windows"), not(target_os = "macos")))]
+    {
+        Command::new("xdg-open")
+            .arg(target)
+            .spawn()
+            .map_err(|e| AppError::Internal(format!("启动默认处理程序失败: {}", e)))?;
+        return Ok(());
+    }
+}
+
 #[tauri::command]
 pub async fn open_content(
     app_handle: tauri::AppHandle,
@@ -155,7 +183,7 @@ async fn launch_default_handler(content: &str) -> Result<(), AppError> {
     
     #[cfg(not(target_os = "windows"))]
     {
-        Command::new("open").arg(content).spawn().map_err(|e| AppError::Internal(format!("启动默认浏览器失败: {}", e)))?;
+        spawn_platform_open(content)?;
     }
     Ok(())
 }
@@ -259,7 +287,7 @@ async fn launch_file_with_app(
                 }
                 
                 #[cfg(not(target_os = "windows"))]
-                Command::new("open").arg(safe_path).spawn().map_err(|e| AppError::Internal(format!("启动 UWP 程序失败 (Fallback): {}", e)))?;
+                spawn_platform_open(&safe_path)?;
             }
         }
     } else {
@@ -304,7 +332,7 @@ fn launch_with_default_app(
 
     #[cfg(not(target_os = "windows"))]
     {
-        Command::new("open").arg(path_str).spawn().map_err(|e| AppError::Internal(format!("Failed to open file: {}", e)))?;
+        spawn_platform_open(path_str)?;
     }
 
     Ok(())

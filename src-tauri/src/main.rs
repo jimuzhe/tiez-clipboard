@@ -22,7 +22,6 @@ fn main() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_sql::Builder::default().build())
         .plugin(tauri_plugin_global_shortcut::Builder::new().with_handler(|app, shortcut, event| {
             if event.state() == tauri_plugin_global_shortcut::ShortcutState::Pressed {
                 setup::handle_global_shortcut(app, shortcut);
@@ -172,15 +171,19 @@ fn main() {
         }
     }
 
-    // Cleanup Hooks on exit
+    #[cfg(target_os = "windows")]
     unsafe {
         let h_hook = HOOK_HANDLE.swap(std::ptr::null_mut(), Ordering::SeqCst);
         if !h_hook.is_null() {
-            let _ = windows::Win32::UI::WindowsAndMessaging::UnhookWindowsHookEx(windows::Win32::UI::WindowsAndMessaging::HHOOK(h_hook as _));
+            let _ = windows::Win32::UI::WindowsAndMessaging::UnhookWindowsHookEx(
+                windows::Win32::UI::WindowsAndMessaging::HHOOK(h_hook as _),
+            );
         }
         let h_mouse = HOOK_MOUSE_HANDLE.swap(std::ptr::null_mut(), Ordering::SeqCst);
         if !h_mouse.is_null() {
-            let _ = windows::Win32::UI::WindowsAndMessaging::UnhookWindowsHookEx(windows::Win32::UI::WindowsAndMessaging::HHOOK(h_mouse as _));
+            let _ = windows::Win32::UI::WindowsAndMessaging::UnhookWindowsHookEx(
+                windows::Win32::UI::WindowsAndMessaging::HHOOK(h_mouse as _),
+            );
         }
     }
 }

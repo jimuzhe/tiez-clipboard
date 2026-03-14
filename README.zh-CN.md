@@ -8,7 +8,7 @@
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Version](https://img.shields.io/badge/version-0.3.1-green.svg)](https://github.com/jimuzhe/tiez-clipboard/releases)
-[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS-lightgrey.svg)](https://github.com/jimuzhe/tiez-clipboard/releases)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)](https://github.com/jimuzhe/tiez-clipboard/releases)
 [![Built with Tauri](https://img.shields.io/badge/built%20with-Tauri%202-4a90d9.svg)](https://tauri.app/)
 
 [English](./README.md) | [简体中文](./README.zh-CN.md)
@@ -27,7 +27,7 @@
 
 ## 简介
 
-**TieZ** 是一款基于 [Tauri 2](https://tauri.app/) 构建的跨平台桌面剪贴板管理工具，支持 **Windows** 和 **macOS**。它常驻系统托盘，可通过全局快捷键快速呼出，帮助你更高效地管理文字、图片、富文本、局域网传输和多设备同步。
+**TieZ** 是一款基于 [Tauri 2](https://tauri.app/) 构建的跨平台桌面剪贴板管理工具，支持 **Windows**、**macOS**，并新增了 **Linux（已按 Arch Linux 适配）**。它常驻系统托盘，可通过全局快捷键快速呼出，帮助你更高效地管理文字、图片、富文本、局域网传输和多设备同步。
 
 ## 亮点
 
@@ -119,6 +119,7 @@
 | --- | --- |
 | Windows | Windows 10/11（x64）；Windows 10 需安装 [Microsoft Edge WebView2](https://developer.microsoft.com/zh-cn/microsoft-edge/webview2/) |
 | macOS | macOS 10.15 Catalina 及以上（Apple Silicon / Intel） |
+| Linux（Arch） | 先安装 [Tauri Linux 依赖](https://v2.tauri.app/start/prerequisites/)：`sudo pacman -S --needed webkit2gtk-4.1 base-devel curl wget file openssl appmenu-gtk-module libappindicator-gtk3 librsvg xdotool`，并补充安装 [`xdg-utils`](https://archlinux.org/packages/extra/any/xdg-utils/) 以支持文件/目录打开 |
 
 ## 快速开始
 
@@ -128,6 +129,19 @@
 | --- | --- |
 | Windows | `.exe` 安装包 / `.zip` 便携包 |
 | macOS | `.dmg` 安装镜像 |
+| Linux（Arch） | 可本地执行 `npm install` 后使用 `npm run tauri:build:linux` 打包，或通过 `npm run tauri:dev` 直接开发运行 |
+
+## Arch Linux 说明
+
+1. 先安装 Node.js、Rust，以及上表中的 Arch 依赖包。
+2. 执行 `npm install`。
+3. 用 `npm run tauri:dev` 启动桌面程序。
+4. 用 `npm run tauri:build:linux` 构建 AppImage。
+5. 如果你要按 Arch 包的方式安装，可直接使用 `packaging/archlinux/` 里的文件。
+
+Linux 版本保留了主流程能力：剪贴板历史、托盘、文件打开、默认应用扫描、开机自启等。像 Win+V 注册表接管、Explorer 专属行为这类 Windows 特性，在 Linux 下会自动降级为空操作。
+
+Wayland 说明：Linux 下的粘贴按键发送会优先尝试 `xdotool`，若系统安装了 `wtype` 也会自动尝试。`wtype` 是基于 Wayland 常见用法给出的推断性建议，不属于 Tauri 官方硬性依赖。
 
 ## 赞助与交流
 

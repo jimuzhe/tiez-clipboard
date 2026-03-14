@@ -8,7 +8,7 @@ A lightweight cross-platform clipboard manager focused on speed, practical daily
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Version](https://img.shields.io/badge/version-0.3.1-green.svg)](https://github.com/jimuzhe/tiez-clipboard/releases)
-[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS-lightgrey.svg)](https://github.com/jimuzhe/tiez-clipboard/releases)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)](https://github.com/jimuzhe/tiez-clipboard/releases)
 [![Built with Tauri](https://img.shields.io/badge/built%20with-Tauri%202-4a90d9.svg)](https://tauri.app/)
 
 [English](./README.md) | [简体中文](./README.zh-CN.md)
@@ -27,7 +27,7 @@ A lightweight cross-platform clipboard manager focused on speed, practical daily
 
 ## Overview
 
-**TieZ** is a cross-platform clipboard manager built with [Tauri 2](https://tauri.app/), available on **Windows** and **macOS**. It stays in the system tray, opens instantly with a global shortcut, and helps you manage clipboard history, rich text, tags, device sync, LAN transfer, and AI-assisted actions in one place.
+**TieZ** is a cross-platform clipboard manager built with [Tauri 2](https://tauri.app/), available on **Windows**, **macOS**, and now **Linux (tested on Arch Linux)**. It stays in the system tray, opens instantly with a global shortcut, and helps you manage clipboard history, rich text, tags, device sync, LAN transfer, and AI-assisted actions in one place.
 
 ## Highlights
 
@@ -119,6 +119,7 @@ A lightweight cross-platform clipboard manager focused on speed, practical daily
 | --- | --- |
 | Windows | Windows 10/11 (x64); Windows 10 requires [Microsoft Edge WebView2](https://developer.microsoft.com/en-us/microsoft-edge/webview2/) |
 | macOS | macOS 10.15 Catalina or later (Apple Silicon / Intel) |
+| Linux (Arch) | Install the [Tauri Linux prerequisites](https://v2.tauri.app/start/prerequisites/) with `sudo pacman -S --needed webkit2gtk-4.1 base-devel curl wget file openssl appmenu-gtk-module libappindicator-gtk3 librsvg xdotool`, and add [`xdg-utils`](https://archlinux.org/packages/extra/any/xdg-utils/) for file opening integration |
 
 ## Quick Start
 
@@ -128,6 +129,19 @@ Download the latest installer from [Releases](https://github.com/jimuzhe/tiez-cl
 | --- | --- |
 | Windows | `.exe` installer / `.zip` portable build |
 | macOS | `.dmg` disk image |
+| Linux (Arch) | Build locally with `npm install` + `npm run tauri:build:linux`, or run in dev mode with `npm run tauri:dev` |
+
+## Arch Linux Notes
+
+1. Install Node.js, Rust, and the Arch packages listed in the requirements table above.
+2. Run `npm install`.
+3. Start the desktop app with `npm run tauri:dev`.
+4. Build an AppImage with `npm run tauri:build:linux`.
+5. If you want an Arch package layout, use the files in `packaging/archlinux/`.
+
+Linux support keeps the main clipboard/history workflow, tray, file opening, app association scanning, and autostart. Some Windows-only features such as Win+V registry takeover and Explorer-specific behavior are intentionally no-ops on Linux.
+
+Wayland note: the Linux paste keystroke path prefers `xdotool` and also tries `wtype` if present. `wtype` is an inference-based recommendation for Wayland sessions rather than a Tauri requirement.
 
 ## Support and Community
 

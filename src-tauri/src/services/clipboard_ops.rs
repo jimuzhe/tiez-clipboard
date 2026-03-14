@@ -190,34 +190,38 @@ async fn restore_focus_before_paste(_app_handle: &tauri::AppHandle) -> AppResult
         return Err(AppError::Internal("No last active window captured".to_string()));
     }
 
-    {
+    #[cfg(target_os = "windows")]
+    unsafe {
         let target_hwnd = HWND(last_hwnd_val as _);
-        #[cfg(target_os = "windows")]
-        unsafe {
-            if !IsWindowVisible(target_hwnd).as_bool() {
-                 return Err(AppError::Internal("Target window is no longer visible".to_string()));
-            }
+        if !IsWindowVisible(target_hwnd).as_bool() {
+            return Err(AppError::Internal("Target window is no longer visible".to_string()));
+        }
 
-            let fg_hwnd = GetForegroundWindow();
-            if fg_hwnd.0 != target_hwnd.0 {
-                let fg_thread_id = GetWindowThreadProcessId(fg_hwnd, None);
-                let target_thread_id = GetWindowThreadProcessId(target_hwnd, None);
+        let fg_hwnd = GetForegroundWindow();
+        if fg_hwnd.0 != target_hwnd.0 {
+            let fg_thread_id = GetWindowThreadProcessId(fg_hwnd, None);
+            let target_thread_id = GetWindowThreadProcessId(target_hwnd, None);
 
-                if fg_thread_id != 0 && target_thread_id != 0 && fg_thread_id != target_thread_id {
-                    let _ = AttachThreadInput(fg_thread_id, target_thread_id, true);
-                    let _ = SetForegroundWindow(target_hwnd);
-                    if IsIconic(target_hwnd).as_bool() {
-                        let _ = windows::Win32::UI::WindowsAndMessaging::ShowWindow(target_hwnd, windows::Win32::UI::WindowsAndMessaging::SW_RESTORE);
-                    }
-                    let _ = windows::Win32::UI::WindowsAndMessaging::BringWindowToTop(target_hwnd);
-                    let _ = AttachThreadInput(fg_thread_id, target_thread_id, false);
-                } else {
-                    let _ = SetForegroundWindow(target_hwnd);
-                    if IsIconic(target_hwnd).as_bool() {
-                        let _ = windows::Win32::UI::WindowsAndMessaging::ShowWindow(target_hwnd, windows::Win32::UI::WindowsAndMessaging::SW_RESTORE);
-                    }
-                    let _ = windows::Win32::UI::WindowsAndMessaging::BringWindowToTop(target_hwnd);
+            if fg_thread_id != 0 && target_thread_id != 0 && fg_thread_id != target_thread_id {
+                let _ = AttachThreadInput(fg_thread_id, target_thread_id, true);
+                let _ = SetForegroundWindow(target_hwnd);
+                if IsIconic(target_hwnd).as_bool() {
+                    let _ = windows::Win32::UI::WindowsAndMessaging::ShowWindow(
+                        target_hwnd,
+                        windows::Win32::UI::WindowsAndMessaging::SW_RESTORE,
+                    );
                 }
+                let _ = windows::Win32::UI::WindowsAndMessaging::BringWindowToTop(target_hwnd);
+                let _ = AttachThreadInput(fg_thread_id, target_thread_id, false);
+            } else {
+                let _ = SetForegroundWindow(target_hwnd);
+                if IsIconic(target_hwnd).as_bool() {
+                    let _ = windows::Win32::UI::WindowsAndMessaging::ShowWindow(
+                        target_hwnd,
+                        windows::Win32::UI::WindowsAndMessaging::SW_RESTORE,
+                    );
+                }
+                let _ = windows::Win32::UI::WindowsAndMessaging::BringWindowToTop(target_hwnd);
             }
         }
     }
@@ -876,11 +880,62 @@ pub fn send_paste_keystroke(method: &str, content: Option<&str>, content_type: O
 
     #[cfg(not(target_os = "windows"))]
     {
-        std::process::Command::new("osascript")
-            .args(["-e", "tell application \"System Events\" to keystroke \"v\" using command down"])
-            .spawn()
-            .ok();
+        #[cfg(target_os = "macos")]
+        {
+            std::process::Command::new("osascript")
+                .args(["-e", "tell application \"System Events\" to keystroke \"v\" using command down"])
+                .spawn()
+                .ok();
+        }
+
+        #[cfg(target_os = "linux")]
+        {
+            if !send_linux_paste_keystroke(method) {
+                eprintln!(
+                    "[WARN] No supported Linux key sender found. Install xdotool on X11, or wtype on Wayland."
+                );
+            }
+        }
     }
+}
+
+#[cfg(target_os = "linux")]
+fn send_linux_paste_keystroke(method: &str) -> bool {
+    use std::process::Command;
+
+    let primary_combo = if method == "ctrl_v" || method == "game_mode" {
+        "ctrl+v"
+    } else {
+        "shift+Insert"
+    };
+
+    let fallback_combo = "ctrl+v";
+
+    let run_xdotool = |combo: &str| -> bool {
+        Command::new("xdotool")
+            .args(["key", "--clearmodifiers", combo])
+            .status()
+            .map(|status| status.success())
+            .unwrap_or(false)
+    };
+
+    let run_wtype = |combo: &str| -> bool {
+        let args: &[&str] = if combo == "ctrl+v" {
+            &["-M", "ctrl", "-P", "v", "-m", "ctrl"]
+        } else {
+            &["-M", "shift", "-P", "Insert", "-m", "shift"]
+        };
+
+        Command::new("wtype")
+            .args(args)
+            .status()
+            .map(|status| status.success())
+            .unwrap_or(false)
+    };
+
+    run_xdotool(primary_combo)
+        || run_wtype(primary_combo)
+        || (primary_combo != fallback_combo && (run_xdotool(fallback_combo) || run_wtype(fallback_combo)))
 }
 
 fn handle_post_paste_actions(

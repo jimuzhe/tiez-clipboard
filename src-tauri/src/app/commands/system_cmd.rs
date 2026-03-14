@@ -1,9 +1,61 @@
-use tauri::{AppHandle, Manager, State};
+use crate::app_state::AppDataDir;
+use crate::database::ENCRYPT_PREFIX;
+use crate::error::{AppError, AppResult};
 use rusqlite::{params, Connection, OptionalExtension};
 use serde_json;
-use crate::app_state::AppDataDir;
-use crate::error::{AppResult, AppError};
-use crate::database::ENCRYPT_PREFIX;
+use tauri::{AppHandle, Manager, State};
+
+fn open_with_default_handler(target: &str) -> AppResult<()> {
+    use std::process::Command;
+
+    #[cfg(target_os = "windows")]
+    let mut command = {
+        let mut cmd = Command::new("explorer");
+        cmd.arg(target);
+        cmd
+    };
+
+    #[cfg(target_os = "macos")]
+    let mut command = {
+        let mut cmd = Command::new("open");
+        cmd.arg(target);
+        cmd
+    };
+
+    #[cfg(all(not(target_os = "windows"), not(target_os = "macos")))]
+    let mut command = {
+        let mut cmd = Command::new("xdg-open");
+        cmd.arg(target);
+        cmd
+    };
+
+    command
+        .spawn()
+        .map_err(|e| AppError::Internal(format!("Failed to open target: {}", e)))?;
+    Ok(())
+}
+
+#[cfg(not(target_os = "windows"))]
+fn autostart_entry_path() -> AppResult<std::path::PathBuf> {
+    let config_root = if let Some(path) = std::env::var_os("XDG_CONFIG_HOME") {
+        std::path::PathBuf::from(path)
+    } else {
+        let home = std::env::var_os("HOME")
+            .ok_or_else(|| AppError::Internal("HOME is not set".to_string()))?;
+        std::path::PathBuf::from(home).join(".config")
+    };
+
+    Ok(config_root.join("autostart").join("TieZ.desktop"))
+}
+
+#[cfg(not(target_os = "windows"))]
+fn autostart_entry_contents(exe_path: &std::path::Path) -> String {
+    let escaped = exe_path.to_string_lossy().replace('"', "\\\"");
+    format!(
+        "[Desktop Entry]\nType=Application\nVersion=1.0\nName=TieZ\nExec=\"{}\" --minimized\nTerminal=false\nX-GNOME-Autostart-enabled=true\n",
+        escaped
+    )
+}
 
 #[tauri::command]
 pub fn get_data_path(state: State<'_, AppDataDir>) -> AppResult<String> {
@@ -13,183 +65,160 @@ pub fn get_data_path(state: State<'_, AppDataDir>) -> AppResult<String> {
 
 #[tauri::command]
 pub fn open_folder(path: String) -> AppResult<()> {
-    use std::process::Command;
-    Command::new("explorer")
-        .arg(path)
-        .spawn()
-        .map_err(|e| AppError::Internal(format!("Failed to open folder: {}", e)))?;
-    Ok(())
+    open_with_default_handler(&path)
 }
 
 #[tauri::command]
 pub fn open_data_folder(state: State<'_, AppDataDir>) -> AppResult<()> {
     let path = state.0.lock().unwrap();
     let path_str = path.to_string_lossy().to_string();
-    
-    use std::process::Command;
-    Command::new("explorer")
-        .arg(path_str)
-        .spawn()
-        .map_err(|e| AppError::Internal(format!("Failed to open data folder: {}", e)))?;
-    Ok(())
+    open_with_default_handler(&path_str)
 }
 
 #[tauri::command]
 pub fn open_file_with_default_app(file_path: String) -> AppResult<()> {
-    use std::process::Command;
-    Command::new("explorer")
-        .arg(&file_path)
-        .spawn()
-        .map_err(|e| AppError::Internal(format!("Failed to open file: {}", e)))?;
-    Ok(())
+    open_with_default_handler(&file_path)
 }
 
 #[tauri::command]
 pub fn open_file_location(file_path: String) -> AppResult<()> {
-    use std::process::Command;
-    Command::new("explorer")
-        .arg("/select,")
-        .arg(&file_path)
-        .spawn()
-        .map_err(|e| AppError::Internal(format!("Failed to open file location: {}", e)))?;
-    Ok(())
+    #[cfg(target_os = "windows")]
+    {
+        use std::process::Command;
+
+        Command::new("explorer")
+            .arg("/select,")
+            .arg(&file_path)
+            .spawn()
+            .map_err(|e| AppError::Internal(format!("Failed to open file location: {}", e)))?;
+        return Ok(());
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        use std::process::Command;
+
+        Command::new("open")
+            .args(["-R", &file_path])
+            .spawn()
+            .map_err(|e| AppError::Internal(format!("Failed to reveal file location: {}", e)))?;
+        return Ok(());
+    }
+
+    #[cfg(all(not(target_os = "windows"), not(target_os = "macos")))]
+    {
+        let path = std::path::Path::new(&file_path);
+        let target = if path.is_dir() {
+            path.to_path_buf()
+        } else {
+            path.parent()
+                .map(std::path::Path::to_path_buf)
+                .unwrap_or_else(|| path.to_path_buf())
+        };
+        return open_with_default_handler(&target.to_string_lossy());
+    }
 }
 
 #[tauri::command]
 pub fn toggle_autostart(enabled: bool) -> AppResult<()> {
-    use winreg::enums::*;
-    use winreg::RegKey;
-    
-    let hkcu = RegKey::predef(HKEY_CURRENT_USER);
-    let key = hkcu.open_subkey_with_flags("Software\\Microsoft\\Windows\\CurrentVersion\\Run", KEY_WRITE | KEY_READ)
-        .map_err(|e| AppError::Internal(e.to_string()))?;
-    let app_path = std::env::current_exe().map_err(|e| AppError::Internal(e.to_string()))?.to_string_lossy().to_string();
-    let cmd = format!("\"{}\" --minimized", app_path);
+    #[cfg(target_os = "windows")]
+    {
+        use winreg::enums::*;
+        use winreg::RegKey;
 
-    if enabled {
-        key.set_value("TieZ", &cmd).map_err(|e| AppError::Internal(e.to_string()))?;
-    } else {
-        let _ = key.delete_value("TieZ");
-        let _ = key.delete_value("tie-z");
+        let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+        let key = hkcu
+            .open_subkey_with_flags(
+                "Software\\Microsoft\\Windows\\CurrentVersion\\Run",
+                KEY_WRITE | KEY_READ,
+            )
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+        let app_path = std::env::current_exe()
+            .map_err(|e| AppError::Internal(e.to_string()))?
+            .to_string_lossy()
+            .to_string();
+        let cmd = format!("\"{}\" --minimized", app_path);
+
+        if enabled {
+            key.set_value("TieZ", &cmd)
+                .map_err(|e| AppError::Internal(e.to_string()))?;
+        } else {
+            let _ = key.delete_value("TieZ");
+            let _ = key.delete_value("tie-z");
+        }
+        return Ok(());
     }
-    Ok(())
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        let entry_path = autostart_entry_path()?;
+        if enabled {
+            let exe_path = std::env::current_exe().map_err(AppError::from)?;
+            if let Some(parent) = entry_path.parent() {
+                std::fs::create_dir_all(parent).map_err(AppError::from)?;
+            }
+            std::fs::write(&entry_path, autostart_entry_contents(&exe_path)).map_err(AppError::from)?;
+        } else if entry_path.exists() {
+            std::fs::remove_file(entry_path).map_err(AppError::from)?;
+        }
+        return Ok(());
+    }
 }
 
 #[tauri::command]
 pub fn is_autostart_enabled() -> AppResult<bool> {
-    use winreg::enums::*;
-    use winreg::RegKey;
-    let hkcu = RegKey::predef(HKEY_CURRENT_USER);
-    let key = hkcu.open_subkey("Software\\Microsoft\\Windows\\CurrentVersion\\Run")
-        .map_err(|e| AppError::Internal(e.to_string()))?;
-    Ok(key.get_value::<String, _>("TieZ").is_ok() || key.get_value::<String, _>("tie-z").is_ok())
+    #[cfg(target_os = "windows")]
+    {
+        use winreg::enums::*;
+        use winreg::RegKey;
+
+        let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+        let key = hkcu
+            .open_subkey("Software\\Microsoft\\Windows\\CurrentVersion\\Run")
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+        return Ok(
+            key.get_value::<String, _>("TieZ").is_ok()
+                || key.get_value::<String, _>("tie-z").is_ok(),
+        );
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        Ok(autostart_entry_path()?.exists())
+    }
 }
 
 #[tauri::command]
 pub fn set_windows_clipboard_history(enabled: bool) -> AppResult<()> {
-    use winreg::enums::*;
-    use winreg::RegKey;
-    let hkcu = RegKey::predef(HKEY_CURRENT_USER);
-    let mut needs_restart = false;
+    #[cfg(target_os = "windows")]
+    {
+        use winreg::enums::*;
+        use winreg::RegKey;
 
-    if let Ok((key, _)) = hkcu.create_subkey("Software\\Microsoft\\Clipboard") {
-        let value: u32 = if enabled { 1 } else { 0 };
-        let _ = key.set_value("EnableClipboardHistory", &value);
-        let _ = key.set_value("EnableCloudClipboard", &value);
-    }
-    
-    if let Ok((adv_key, _)) = hkcu.create_subkey("Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced") {
-        let current_disabled: String = adv_key.get_value("DisabledHotkeys").unwrap_or_default();
-        if current_disabled.to_uppercase().contains('V') {
-            let new_val = current_disabled.to_uppercase().replace('V', "");
-            if new_val.is_empty() { let _ = adv_key.delete_value("DisabledHotkeys"); }
-            else { let _ = adv_key.set_value("DisabledHotkeys", &new_val); }
-            needs_restart = true;
+        let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+        let mut needs_restart = false;
+
+        if let Ok((key, _)) = hkcu.create_subkey("Software\\Microsoft\\Clipboard") {
+            let value: u32 = if enabled { 1 } else { 0 };
+            let _ = key.set_value("EnableClipboardHistory", &value);
+            let _ = key.set_value("EnableCloudClipboard", &value);
         }
-    }
 
-    if let Ok((policy_key, _)) = hkcu.create_subkey("Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer") {
-        if policy_key.get_value::<u32, _>("DisallowClipboardHistory").unwrap_or(0) != 0 {
-            let _ = policy_key.delete_value("DisallowClipboardHistory");
-            needs_restart = true;
-        }
-    }
-
-    // Policy-based clipboard lock can also exist under Software\Policies\Microsoft\Windows\System.
-    // Clear blocking values when restoring system Win+V behavior.
-    if enabled {
-        if let Ok((sys_policy, _)) = hkcu.create_subkey("Software\\Policies\\Microsoft\\Windows\\System") {
-            if sys_policy.get_value::<u32, _>("AllowClipboardHistory").unwrap_or(1) == 0 {
-                let _ = sys_policy.delete_value("AllowClipboardHistory");
-                needs_restart = true;
-            }
-            if sys_policy.get_value::<u32, _>("AllowCrossDeviceClipboard").unwrap_or(1) == 0 {
-                let _ = sys_policy.delete_value("AllowCrossDeviceClipboard");
+        if let Ok((adv_key, _)) =
+            hkcu.create_subkey("Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced")
+        {
+            let current_disabled: String = adv_key.get_value("DisabledHotkeys").unwrap_or_default();
+            if current_disabled.to_uppercase().contains('V') {
+                let new_val = current_disabled.to_uppercase().replace('V', "");
+                if new_val.is_empty() {
+                    let _ = adv_key.delete_value("DisabledHotkeys");
+                } else {
+                    let _ = adv_key.set_value("DisabledHotkeys", &new_val);
+                }
                 needs_restart = true;
             }
         }
-    }
-    
-    if needs_restart { restart_explorer().ok(); }
-    Ok(())
-}
 
-#[tauri::command]
-pub fn get_windows_clipboard_history() -> AppResult<bool> {
-    use winreg::enums::*;
-    use winreg::RegKey;
-    let hkcu = RegKey::predef(HKEY_CURRENT_USER);
-    
-    let v_disabled = match hkcu.open_subkey("Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced") {
-        Ok(key) => key.get_value::<String, _>("DisabledHotkeys").unwrap_or_default().to_uppercase().contains('V'),
-        Err(_) => false,
-    };
-    let history_enabled = match hkcu.open_subkey("Software\\Microsoft\\Clipboard") {
-        Ok(key) => key.get_value::<u32, _>("EnableClipboardHistory").unwrap_or(1) != 0,
-        Err(_) => true,
-    };
-    Ok(history_enabled && !v_disabled)
-}
-
-#[tauri::command]
-pub fn set_win_clipboard_disabled(_disabled: bool) -> AppResult<()> {
-    set_windows_clipboard_history(!_disabled)
-}
-
-#[tauri::command]
-pub fn trigger_registry_win_v_optimization(enable: bool) -> AppResult<bool> {
-    use winreg::enums::*;
-    use winreg::RegKey;
-    let hkcu = RegKey::predef(HKEY_CURRENT_USER);
-    let mut changed = false;
-
-    if let Ok((adv_key, _)) = hkcu.create_subkey("Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced") {
-        let current: String = adv_key.get_value("DisabledHotkeys").unwrap_or_default();
-        if enable && !current.to_uppercase().contains('V') {
-            let _ = adv_key.set_value("DisabledHotkeys", &format!("{}V", current));
-            changed = true;
-        } else if !enable && current.to_uppercase().contains('V') {
-            let clean = current.to_uppercase().replace('V', "");
-            if clean.is_empty() { let _ = adv_key.delete_value("DisabledHotkeys"); }
-            else { let _ = adv_key.set_value("DisabledHotkeys", &clean); }
-            changed = true;
-        }
-    }
-
-    if let Ok((cb_key, _)) = hkcu.create_subkey("Software\\Microsoft\\Clipboard") {
-        let val: u32 = if enable { 0 } else { 1 };
-        let prev_history = cb_key.get_value::<u32, _>("EnableClipboardHistory").ok();
-        let prev_cloud = cb_key.get_value::<u32, _>("EnableCloudClipboard").ok();
-        let _ = cb_key.set_value("EnableClipboardHistory", &val);
-        let _ = cb_key.set_value("EnableCloudClipboard", &val);
-        if prev_history != Some(val) || prev_cloud != Some(val) {
-            changed = true;
-        }
-    }
-
-    // When disabling Win+V takeover, also clear policy-level lock that can keep Win+V unavailable
-    // until a full reboot on some systems.
-    if !enable {
         if let Ok((policy_key, _)) =
             hkcu.create_subkey("Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer")
         {
@@ -199,31 +228,164 @@ pub fn trigger_registry_win_v_optimization(enable: bool) -> AppResult<bool> {
                 != 0
             {
                 let _ = policy_key.delete_value("DisallowClipboardHistory");
+                needs_restart = true;
+            }
+        }
+
+        if enabled {
+            if let Ok((sys_policy, _)) =
+                hkcu.create_subkey("Software\\Policies\\Microsoft\\Windows\\System")
+            {
+                if sys_policy
+                    .get_value::<u32, _>("AllowClipboardHistory")
+                    .unwrap_or(1)
+                    == 0
+                {
+                    let _ = sys_policy.delete_value("AllowClipboardHistory");
+                    needs_restart = true;
+                }
+                if sys_policy
+                    .get_value::<u32, _>("AllowCrossDeviceClipboard")
+                    .unwrap_or(1)
+                    == 0
+                {
+                    let _ = sys_policy.delete_value("AllowCrossDeviceClipboard");
+                    needs_restart = true;
+                }
+            }
+        }
+
+        if needs_restart {
+            restart_explorer().ok();
+        }
+        return Ok(());
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = enabled;
+        Ok(())
+    }
+}
+
+#[tauri::command]
+pub fn get_windows_clipboard_history() -> AppResult<bool> {
+    #[cfg(target_os = "windows")]
+    {
+        use winreg::enums::*;
+        use winreg::RegKey;
+
+        let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+        let v_disabled = match hkcu
+            .open_subkey("Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced")
+        {
+            Ok(key) => key
+                .get_value::<String, _>("DisabledHotkeys")
+                .unwrap_or_default()
+                .to_uppercase()
+                .contains('V'),
+            Err(_) => false,
+        };
+        let history_enabled = match hkcu.open_subkey("Software\\Microsoft\\Clipboard") {
+            Ok(key) => key.get_value::<u32, _>("EnableClipboardHistory").unwrap_or(1) != 0,
+            Err(_) => true,
+        };
+        return Ok(history_enabled && !v_disabled);
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        Ok(true)
+    }
+}
+
+#[tauri::command]
+pub fn set_win_clipboard_disabled(disabled: bool) -> AppResult<()> {
+    set_windows_clipboard_history(!disabled)
+}
+
+#[tauri::command]
+pub fn trigger_registry_win_v_optimization(enable: bool) -> AppResult<bool> {
+    #[cfg(target_os = "windows")]
+    {
+        use winreg::enums::*;
+        use winreg::RegKey;
+
+        let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+        let mut changed = false;
+
+        if let Ok((adv_key, _)) =
+            hkcu.create_subkey("Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced")
+        {
+            let current: String = adv_key.get_value("DisabledHotkeys").unwrap_or_default();
+            if enable && !current.to_uppercase().contains('V') {
+                let _ = adv_key.set_value("DisabledHotkeys", &format!("{}V", current));
+                changed = true;
+            } else if !enable && current.to_uppercase().contains('V') {
+                let clean = current.to_uppercase().replace('V', "");
+                if clean.is_empty() {
+                    let _ = adv_key.delete_value("DisabledHotkeys");
+                } else {
+                    let _ = adv_key.set_value("DisabledHotkeys", &clean);
+                }
                 changed = true;
             }
         }
 
-        if let Ok((sys_policy, _)) = hkcu.create_subkey("Software\\Policies\\Microsoft\\Windows\\System")
-        {
-            if sys_policy
-                .get_value::<u32, _>("AllowClipboardHistory")
-                .unwrap_or(1)
-                == 0
-            {
-                let _ = sys_policy.delete_value("AllowClipboardHistory");
-                changed = true;
-            }
-            if sys_policy
-                .get_value::<u32, _>("AllowCrossDeviceClipboard")
-                .unwrap_or(1)
-                == 0
-            {
-                let _ = sys_policy.delete_value("AllowCrossDeviceClipboard");
+        if let Ok((cb_key, _)) = hkcu.create_subkey("Software\\Microsoft\\Clipboard") {
+            let val: u32 = if enable { 0 } else { 1 };
+            let prev_history = cb_key.get_value::<u32, _>("EnableClipboardHistory").ok();
+            let prev_cloud = cb_key.get_value::<u32, _>("EnableCloudClipboard").ok();
+            let _ = cb_key.set_value("EnableClipboardHistory", &val);
+            let _ = cb_key.set_value("EnableCloudClipboard", &val);
+            if prev_history != Some(val) || prev_cloud != Some(val) {
                 changed = true;
             }
         }
+
+        if !enable {
+            if let Ok((policy_key, _)) = hkcu
+                .create_subkey("Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer")
+            {
+                if policy_key
+                    .get_value::<u32, _>("DisallowClipboardHistory")
+                    .unwrap_or(0)
+                    != 0
+                {
+                    let _ = policy_key.delete_value("DisallowClipboardHistory");
+                    changed = true;
+                }
+            }
+
+            if let Ok((sys_policy, _)) =
+                hkcu.create_subkey("Software\\Policies\\Microsoft\\Windows\\System")
+            {
+                if sys_policy
+                    .get_value::<u32, _>("AllowClipboardHistory")
+                    .unwrap_or(1)
+                    == 0
+                {
+                    let _ = sys_policy.delete_value("AllowClipboardHistory");
+                    changed = true;
+                }
+                if sys_policy
+                    .get_value::<u32, _>("AllowCrossDeviceClipboard")
+                    .unwrap_or(1)
+                    == 0
+                {
+                    let _ = sys_policy.delete_value("AllowCrossDeviceClipboard");
+                    changed = true;
+                }
+            }
+        }
+        return Ok(changed);
     }
-    Ok(changed)
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = enable;
+        Ok(false)
+    }
 }
 
 #[tauri::command]
@@ -232,21 +394,48 @@ pub fn is_registry_win_v_optimized() -> AppResult<bool> {
 }
 
 pub fn get_registry_win_v_optimized_status() -> bool {
-    use winreg::enums::*;
-    use winreg::RegKey;
-    let hkcu = RegKey::predef(HKEY_CURRENT_USER);
-    if let Ok(key) = hkcu.open_subkey("Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced") {
-        return key.get_value::<String, _>("DisabledHotkeys").unwrap_or_default().to_uppercase().contains('V');
+    #[cfg(target_os = "windows")]
+    {
+        use winreg::enums::*;
+        use winreg::RegKey;
+
+        let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+        if let Ok(key) =
+            hkcu.open_subkey("Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced")
+        {
+            return key
+                .get_value::<String, _>("DisabledHotkeys")
+                .unwrap_or_default()
+                .to_uppercase()
+                .contains('V');
+        }
+        false
     }
-    false
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        false
+    }
 }
 
 #[tauri::command]
 pub fn restart_explorer() -> AppResult<()> {
-    use std::process::Command;
-    use std::os::windows::process::CommandExt;
-    let _ = Command::new("cmd").args(["/C", "taskkill /F /IM explorer.exe & start explorer.exe"]).creation_flags(0x08000000).spawn();
-    Ok(())
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        use std::process::Command;
+
+        let _ = Command::new("cmd")
+            .args(["/C", "taskkill /F /IM explorer.exe & start explorer.exe"])
+            .creation_flags(0x08000000)
+            .spawn();
+        return Ok(());
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        Ok(())
+    }
 }
 
 #[tauri::command]
@@ -257,87 +446,111 @@ pub fn quit(app: AppHandle) {
 #[tauri::command]
 pub fn relaunch(app: AppHandle) {
     use std::process::Command;
-    if let Ok(exe) = std::env::current_exe() { let _ = Command::new(exe).spawn(); }
+
+    if let Ok(exe) = std::env::current_exe() {
+        let _ = Command::new(exe).spawn();
+    }
     app.exit(0);
 }
 
 #[tauri::command]
 pub fn restart_as_admin(app_handle: AppHandle) -> AppResult<()> {
-    use std::env;
-    use std::ffi::OsStr;
-    use std::os::windows::ffi::OsStrExt;
-    use windows::core::PCWSTR;
-    use windows::Win32::UI::Shell::ShellExecuteW;
-    use windows::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL;
+    #[cfg(target_os = "windows")]
+    {
+        use std::env;
+        use std::ffi::OsStr;
+        use std::os::windows::ffi::OsStrExt;
+        use windows::core::PCWSTR;
+        use windows::Win32::UI::Shell::ShellExecuteW;
+        use windows::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL;
 
-    // Get current executable path
-    let exe_path = env::current_exe().map_err(AppError::from)?;
+        let exe_path = env::current_exe().map_err(AppError::from)?;
+        let exe_wide: Vec<u16> = OsStr::new(&exe_path)
+            .encode_wide()
+            .chain(std::iter::once(0))
+            .collect();
+        let runas: Vec<u16> = OsStr::new("runas")
+            .encode_wide()
+            .chain(std::iter::once(0))
+            .collect();
 
-    // Convert to wide string
-    let exe_wide: Vec<u16> = OsStr::new(&exe_path)
-        .encode_wide()
-        .chain(std::iter::once(0))
-        .collect();
+        unsafe {
+            let result = ShellExecuteW(
+                None,
+                PCWSTR::from_raw(runas.as_ptr()),
+                PCWSTR::from_raw(exe_wide.as_ptr()),
+                PCWSTR::null(),
+                PCWSTR::null(),
+                SW_SHOWNORMAL,
+            );
 
-    // "runas" verb for elevation
-    let runas: Vec<u16> = OsStr::new("runas")
-        .encode_wide()
-        .chain(std::iter::once(0))
-        .collect();
-
-    unsafe {
-        let result = ShellExecuteW(
-            None,
-            PCWSTR::from_raw(runas.as_ptr()),
-            PCWSTR::from_raw(exe_wide.as_ptr()),
-            PCWSTR::null(),
-            PCWSTR::null(),
-            SW_SHOWNORMAL,
-        );
-
-        // ShellExecuteW returns > 32 on success
-        if result.0 as usize <= 32 {
-            return Err(AppError::Internal(
-                "Failed to restart as administrator. User may have cancelled UAC prompt."
-                    .to_string(),
-            ));
+            if result.0 as usize <= 32 {
+                return Err(AppError::Internal(
+                    "Failed to restart as administrator. User may have cancelled UAC prompt."
+                        .to_string(),
+                ));
+            }
         }
+
+        app_handle.exit(0);
+        return Ok(());
     }
 
-    // Close current instance
-    app_handle.exit(0);
-
-    Ok(())
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = app_handle;
+        Err(AppError::Internal(
+            "Restart-as-admin is currently only supported on Windows. Please relaunch TieZ with sudo or pkexec on Linux.".to_string(),
+        ))
+    }
 }
 
 #[tauri::command]
 pub fn check_is_admin() -> bool {
-    use windows::Win32::Security::{GetTokenInformation, TokenElevation, TOKEN_ELEVATION, TOKEN_QUERY};
-    use windows::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
-    use windows::Win32::Foundation::HANDLE;
-    use std::ffi::c_void;
+    #[cfg(target_os = "windows")]
+    {
+        use std::ffi::c_void;
+        use windows::Win32::Foundation::HANDLE;
+        use windows::Win32::Security::{
+            GetTokenInformation, TokenElevation, TOKEN_ELEVATION, TOKEN_QUERY,
+        };
+        use windows::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
 
-    unsafe {
-        let mut token_handle = HANDLE::default();
-        if OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &mut token_handle).is_ok() {
-            let mut elevation = TOKEN_ELEVATION::default();
-            let mut return_length = 0;
-            let success = GetTokenInformation(
-                token_handle,
-                TokenElevation,
-                Some(&mut elevation as *mut _ as *mut c_void),
-                std::mem::size_of::<TOKEN_ELEVATION>() as u32,
-                &mut return_length,
-            );
-            
-            let _ = windows::Win32::Foundation::CloseHandle(token_handle);
-            
-            if success.is_ok() {
-                return elevation.TokenIsElevated != 0;
+        unsafe {
+            let mut token_handle = HANDLE::default();
+            if OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &mut token_handle).is_ok() {
+                let mut elevation = TOKEN_ELEVATION::default();
+                let mut return_length = 0;
+                let success = GetTokenInformation(
+                    token_handle,
+                    TokenElevation,
+                    Some(&mut elevation as *mut _ as *mut c_void),
+                    std::mem::size_of::<TOKEN_ELEVATION>() as u32,
+                    &mut return_length,
+                );
+
+                let _ = windows::Win32::Foundation::CloseHandle(token_handle);
+
+                if success.is_ok() {
+                    return elevation.TokenIsElevated != 0;
+                }
             }
         }
+        false
     }
-    false
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        use std::process::Command;
+
+        Command::new("id")
+            .arg("-u")
+            .output()
+            .ok()
+            .and_then(|output| String::from_utf8(output.stdout).ok())
+            .map(|uid| uid.trim() == "0")
+            .unwrap_or(false)
+    }
 }
 
 #[tauri::command]
@@ -350,7 +563,6 @@ pub fn set_data_path(app_handle: AppHandle, new_path: String) -> AppResult<()> {
 
     let old_path_buf = app_handle.state::<AppDataDir>().0.lock().unwrap().clone();
 
-    // 1. Migrate data folders if they exist in the OLD path
     {
         for folder in ["attachments", "emoji_favorites"] {
             let old_folder = old_path_buf.join(folder);
@@ -367,7 +579,6 @@ pub fn set_data_path(app_handle: AppHandle, new_path: String) -> AppResult<()> {
             }
         }
 
-        // 1.2 Migrate database files (main + WAL/SHM)
         let db_files = ["clipboard.db", "clipboard.db-wal", "clipboard.db-shm"];
         for name in db_files {
             let old_db = old_path_buf.join(name);
@@ -376,7 +587,6 @@ pub fn set_data_path(app_handle: AppHandle, new_path: String) -> AppResult<()> {
             }
             let new_db = new_data_path.join(name);
             if new_db.exists() {
-                // Avoid overwriting any existing DB in new path
                 let backup = new_data_path.join(format!("{}.backup", name));
                 if backup.exists() {
                     let _ = std::fs::remove_file(&backup);
@@ -393,14 +603,12 @@ pub fn set_data_path(app_handle: AppHandle, new_path: String) -> AppResult<()> {
         }
     }
 
-    // 1.3 Rewrite internal attachment paths inside DB (if DB exists in new path)
     let new_db_path = new_data_path.join("clipboard.db");
     if new_db_path.exists() {
         rewrite_attachment_paths_in_db(&new_db_path, &old_path_buf, new_data_path)?;
         rewrite_emoji_favorites_in_db(&new_db_path, &old_path_buf, new_data_path)?;
     }
 
-    // 2. Save new path to a persistent config file
     let config_dir = app_handle.path().app_data_dir().map_err(AppError::from)?;
     if !config_dir.exists() {
         std::fs::create_dir_all(&config_dir).map_err(AppError::from)?;
@@ -524,7 +732,9 @@ fn rewrite_emoji_favorites_in_db(
         } else if next.starts_with(&old_prefix_slash) {
             next = format!("{}{}", new_prefix_slash, &next[old_prefix_slash.len()..]);
         }
-        if next != path { changed = true; }
+        if next != path {
+            changed = true;
+        }
         updated.push(next);
     }
 
@@ -584,7 +794,11 @@ fn rewrite_html_paths(
     let replace_any = |v: &str| -> Option<String> {
         let mut updated = v.replace(old_prefix, new_prefix);
         updated = updated.replace(old_prefix_slash, new_prefix_slash);
-        if updated == v { None } else { Some(updated) }
+        if updated == v {
+            None
+        } else {
+            Some(updated)
+        }
     };
 
     if value.starts_with(ENCRYPT_PREFIX) {

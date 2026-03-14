@@ -1,0 +1,74 @@
+pkgname=tiez-clipboard-git
+_pkgname=tiez-clipboard
+pkgver=0.3.1.r7.ge6d70b9
+pkgrel=1
+pkgdesc="Fast cross-platform clipboard manager built with Tauri 2"
+arch=('x86_64')
+url="https://github.com/SinclairLin/tiez-clipboard"
+license=('GPL-3.0-or-later')
+depends=(
+  'appmenu-gtk-module'
+  'gdk-pixbuf2'
+  'glib2'
+  'gtk3'
+  'libayatana-appindicator'
+  'openssl'
+  'webkit2gtk-4.1'
+  'xdg-utils'
+)
+makedepends=(
+  'cargo-tauri'
+  'git'
+  'nodejs'
+  'npm'
+  'pkgconf'
+  'rust'
+)
+optdepends=(
+  'xdotool: simulate paste hotkeys on X11 sessions'
+  'wtype: simulate paste hotkeys on Wayland sessions'
+)
+provides=('tiez-clipboard')
+conflicts=('tiez-clipboard')
+source=(
+  "${_pkgname}::git+https://github.com/SinclairLin/tiez-clipboard.git"
+  'tiez.desktop'
+)
+sha256sums=(
+  'SKIP'
+  'f5afaaadc2358dbbec8c8d3c87a2c8008aff6162cfbcd4acc1db41f5a8fee7cf'
+)
+
+pkgver() {
+  cd "${srcdir}/${_pkgname}"
+
+  local basever rev short
+  basever="$(sed -n 's/^[[:space:]]*"version":[[:space:]]*"\([^"]*\)".*/\1/p' package.json | head -n1)"
+  rev="$(git rev-list --count HEAD)"
+  short="$(git rev-parse --short HEAD)"
+
+  printf '%s.r%s.g%s\n' "${basever:-0.0.0}" "${rev}" "${short}"
+}
+
+prepare() {
+  cd "${srcdir}/${_pkgname}"
+  perl -0pi -e 's/"dragDropEnabled": true,\s*"focusable": false/"dragDropEnabled": true/g' src-tauri/tauri.conf.json
+  perl -0pi -e 's/\n?tauri-plugin-sql = \{ version = "2", features = \["sqlite"\] \}//g' src-tauri/Cargo.toml
+  perl -0pi -e 's/\n?[[:space:]]*\.plugin\(tauri_plugin_sql::Builder::default\(\)\.build\(\)\)//g' src-tauri/src/main.rs
+  perl -0pi -e 's/\n?[[:space:]]*"sql:default",//g' src-tauri/capabilities/default.json
+  npm ci --cache "${srcdir}/npm-cache" --prefer-offline
+}
+
+build() {
+  cd "${srcdir}/${_pkgname}"
+  cargo tauri build --no-bundle
+}
+
+package() {
+  cd "${srcdir}/${_pkgname}"
+
+  install -Dm755 "src-tauri/target/release/tiez-app" "${pkgdir}/usr/bin/tiez"
+  install -Dm644 "${srcdir}/tiez.desktop" "${pkgdir}/usr/share/applications/tiez.desktop"
+  install -Dm644 "src-tauri/icons/128x128.png" "${pkgdir}/usr/share/icons/hicolor/128x128/apps/tiez.png"
+  install -Dm644 "LICENSE" "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}
