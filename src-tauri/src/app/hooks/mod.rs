@@ -17,6 +17,7 @@ use windows::Win32::UI::Input::KeyboardAndMouse::{
 use crate::global_state::*;
 use crate::app_state::SettingsState;
 use crate::app::window_manager::{toggle_window, hide_window_cmd};
+#[cfg(target_os = "windows")]
 use crate::infrastructure::windows_ext::WindowExt;
 
 // Store registered hotkey IDs for cleanup

@@ -11,6 +11,7 @@ use crate::infrastructure::repository::settings_repo::{SqliteSettingsRepository,
 use crate::infrastructure::repository::tag_repo::SqliteTagRepository;
 use crate::services::encryption_queue::init_encryption_queue;
 use crate::services::sensitive_align::spawn_sensitive_alignment;
+#[cfg(target_os = "windows")]
 use crate::infrastructure::windows_ext::WindowExt;
 use crate::app::window_manager::{toggle_window, release_win_keys, restore_last_focus};
 #[cfg(target_os = "windows")]
@@ -34,6 +35,31 @@ static WINDOW_SIZE_SAVE_PENDING: AtomicBool = AtomicBool::new(false);
 static LAST_WINDOW_SIZE_EVENT_MS: AtomicU64 = AtomicU64::new(0);
 static LAST_WINDOW_SIZE: OnceLock<Mutex<(u32, u32)>> = OnceLock::new();
 
+fn show_startup_error(title: &str, msg: &str) {
+    #[cfg(target_os = "windows")]
+    {
+        WindowExt::show_error_box(title, msg);
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        eprintln!("{}: {}", title, msg);
+    }
+}
+
+fn are_mouse_buttons_pressed() -> bool {
+    #[cfg(target_os = "windows")]
+    unsafe {
+        return (windows::Win32::UI::Input::KeyboardAndMouse::GetAsyncKeyState(0x01) as u16 & 0x8000) != 0
+            || (windows::Win32::UI::Input::KeyboardAndMouse::GetAsyncKeyState(0x02) as u16 & 0x8000) != 0;
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        false
+    }
+}
+
 pub fn init(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     let app_handle = app.handle().clone();
     
@@ -52,7 +78,7 @@ pub fn init(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     let db_path_str = db_path.to_string_lossy();
     let conn = database::init_db(&db_path_str).map_err(|e| {
         let err_msg = format!("数据库初始化失败: {}", e);
-        WindowExt::show_error_box("TieZ 启动错误", &err_msg);
+        show_startup_error("TieZ 启动错误", &err_msg);
         e
     })?;
     let conn_arc = std::sync::Arc::new(std::sync::Mutex::new(conn));
@@ -908,20 +934,14 @@ fn handle_blur(window: &tauri::Window) {
     if now.saturating_sub(LAST_SHOW_TIMESTAMP.load(Ordering::Relaxed)) < 500 { return; }
 
     if IS_MOUSE_BUTTON_DOWN.load(Ordering::SeqCst) { return; }
-    unsafe {
-        if (windows::Win32::UI::Input::KeyboardAndMouse::GetAsyncKeyState(0x01) as u16 & 0x8000) != 0 ||
-           (windows::Win32::UI::Input::KeyboardAndMouse::GetAsyncKeyState(0x02) as u16 & 0x8000) != 0 {
-               return;
-           }
+    if are_mouse_buttons_pressed() {
+        return;
     }
 
     let w = window.clone();
     std::thread::spawn(move || {
         std::thread::sleep(std::time::Duration::from_millis(200));
-        let down = IS_MOUSE_BUTTON_DOWN.load(Ordering::SeqCst) || unsafe {
-            (windows::Win32::UI::Input::KeyboardAndMouse::GetAsyncKeyState(0x01) as u16 & 0x8000) != 0 ||
-            (windows::Win32::UI::Input::KeyboardAndMouse::GetAsyncKeyState(0x02) as u16 & 0x8000) != 0
-        };
+        let down = IS_MOUSE_BUTTON_DOWN.load(Ordering::SeqCst) || are_mouse_buttons_pressed();
         if !down && matches!(w.is_focused(), Ok(false)) {
             if !IGNORE_BLUR.load(Ordering::Relaxed) && !WINDOW_PINNED.load(Ordering::Relaxed) {
                 let _ = w.hide();
