@@ -116,7 +116,7 @@ const AppearanceSettingsGroup = ({
                     <div className="item-label-group" style={{ marginBottom: '8px' }}>
                         <span className="item-label">{t('visual_theme')}</span>
                     </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', width: '100%' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '8px', width: '100%' }}>
                         {availableThemeIds.map(themeId => {
                             const localeKey = `theme_${themeId}`;
                             const translated = t(localeKey);
@@ -129,7 +129,7 @@ const AppearanceSettingsGroup = ({
                                     saveAppSetting('theme', themeId);
                                 }}
                                 className={`btn-icon ${theme === themeId ? 'active' : ''}`}
-                                style={{ flex: '1 0 calc(50% - 4px)', height: '36px', fontSize: '12px', fontWeight: 'bold' }}
+                                style={{ width: '100%', height: '36px', fontSize: '12px', fontWeight: 'bold' }}
                             >
                                 {themeName}
                             </button>
