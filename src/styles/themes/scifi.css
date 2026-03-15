@@ -31,6 +31,12 @@ body.theme-scifi {
   border-bottom: 1px solid rgba(46, 230, 255, 0.3) !important;
 }
 
+.theme-scifi .header-title {
+  background: transparent !important;
+  color: var(--text-primary) !important;
+  padding: 0 !important;
+}
+
 .theme-scifi .settings-group,
 .theme-scifi .file-transfer-panel,
 .theme-scifi .data-panel {
