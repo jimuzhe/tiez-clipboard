@@ -60,8 +60,13 @@ body.theme-macos {
 }
 
 .theme-macos .settings-group:not(.collapsed) .group-header {
-  border-radius: 12px 12px 0 0 !important;
-  border-bottom-color: rgba(60, 60, 67, 0.12) !important;
+  border-radius: 0 !important;
+  border-top: none !important;
+  border-left: none !important;
+  border-right: none !important;
+  border-bottom: 1px solid rgba(60, 60, 67, 0.12) !important;
+  background: rgba(255, 255, 255, 0.56) !important;
+  padding: 12px 14px !important;
 }
 
 .theme-macos .settings-group.collapsed .group-header {
@@ -70,6 +75,9 @@ body.theme-macos {
 
 .theme-macos .settings-group .group-content {
   border-radius: 0 0 12px 12px !important;
+  padding: 8px 14px 12px 14px !important;
+  background: transparent !important;
+  border-top: none !important;
 }
 
 .theme-macos .settings-group h3 {
@@ -305,6 +313,10 @@ body.theme-macos {
 
   body:not(.light-mode).theme-macos .settings-group:not(.collapsed) .group-header {
     border-bottom-color: rgba(255, 255, 255, 0.1) !important;
+    border-top: none !important;
+    border-left: none !important;
+    border-right: none !important;
+    background: rgba(62, 64, 74, 0.5) !important;
   }
 
   body:not(.light-mode).theme-macos .search-input,
@@ -409,6 +421,10 @@ body.dark-mode.theme-macos .settings-group .group-header {
 
 body.dark-mode.theme-macos .settings-group:not(.collapsed) .group-header {
   border-bottom-color: rgba(255, 255, 255, 0.1) !important;
+  border-top: none !important;
+  border-left: none !important;
+  border-right: none !important;
+  background: rgba(62, 64, 74, 0.5) !important;
 }
 
 body.dark-mode.theme-macos .search-input,
