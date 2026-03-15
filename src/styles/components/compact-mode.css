@@ -267,8 +267,8 @@ html.dark-mode.theme-acrylic .history-item.compact .item-actions .btn-icon {
 
 /* Retro/Non-Modern Theme Overrides for Buttons */
 /* Apply mechanical style to all non-modern themes (retro, default, etc.) */
-body:not(.theme-mica):not(.theme-acrylic) .history-item.compact .item-actions .btn-icon,
-body:not(.theme-mica):not(.theme-acrylic) .history-item.compact:hover .item-actions .btn-icon {
+body:not(.theme-mica):not(.theme-acrylic):not(.theme-macos) .history-item.compact .item-actions .btn-icon,
+body:not(.theme-mica):not(.theme-acrylic):not(.theme-macos) .history-item.compact:hover .item-actions .btn-icon {
     border-radius: 0 !important;
     border: 2px solid var(--border-dark) !important;
     box-shadow: 2px 2px 0 0 var(--shadow-color) !important;
@@ -278,15 +278,15 @@ body:not(.theme-mica):not(.theme-acrylic) .history-item.compact:hover .item-acti
     -webkit-backdrop-filter: none !important;
 }
 
-body:not(.theme-mica):not(.theme-acrylic) .history-item.compact .item-actions .btn-icon:hover,
-body:not(.theme-mica):not(.theme-acrylic) .history-item.compact:hover .item-actions .btn-icon:hover {
+body:not(.theme-mica):not(.theme-acrylic):not(.theme-macos) .history-item.compact .item-actions .btn-icon:hover,
+body:not(.theme-mica):not(.theme-acrylic):not(.theme-macos) .history-item.compact:hover .item-actions .btn-icon:hover {
     transform: translate(-1px, -1px) !important;
     box-shadow: 3px 3px 0 0 var(--shadow-color) !important;
     background: var(--bg-input) !important;
     border-color: var(--border-dark) !important;
 }
 
-body:not(.theme-mica):not(.theme-acrylic) .history-item.compact .item-actions .btn-icon:active {
+body:not(.theme-mica):not(.theme-acrylic):not(.theme-macos) .history-item.compact .item-actions .btn-icon:active {
     transform: translate(1px, 1px) !important;
     box-shadow: 1px 1px 0 0 var(--shadow-color) !important;
 }
@@ -355,7 +355,7 @@ html.dark-mode.theme-acrylic .history-item.compact .item-actions .btn-icon.activ
 }
 
 /* Non-Modern Theme Active State - Mechanical style */
-body:not(.theme-mica):not(.theme-acrylic) .history-item.compact .item-actions .btn-icon.active {
+body:not(.theme-mica):not(.theme-acrylic):not(.theme-macos) .history-item.compact .item-actions .btn-icon.active {
     background: var(--accent-color) !important;
     color: #fff !important;
     border-color: var(--accent-color) !important;
@@ -363,7 +363,7 @@ body:not(.theme-mica):not(.theme-acrylic) .history-item.compact .item-actions .b
     border-radius: 0 !important;
 }
 
-body:not(.theme-mica):not(.theme-acrylic) .history-item.compact .item-actions .btn-icon.active:hover {
+body:not(.theme-mica):not(.theme-acrylic):not(.theme-macos) .history-item.compact .item-actions .btn-icon.active:hover {
     background: var(--accent-color) !important;
     color: #fff !important;
     transform: translate(-1px, -1px) !important;
