@@ -124,7 +124,8 @@ select.search-input option {
   padding: 6px 10px 4px 10px;
   /* Reduced from 8px 12px 6px 12px for higher density */
   background: var(--bg-element);
-  border: 3px solid var(--border-dark);
+  border: 1px solid var(--border-dark);
+  border-radius: 4px; /* Slight rounding for general themes by default */
   color: var(--text-primary);
   cursor: pointer;
   box-shadow: none;
@@ -139,6 +140,11 @@ select.search-input option {
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
+}
+
+body.theme-retro .history-item {
+  border-radius: 0; /* Keep brutalist square edges for retro */
+  border: 2px solid rgba(128, 128, 128, 0.4);
 }
 
 
