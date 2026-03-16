@@ -220,27 +220,45 @@
 }
 
 /* Button Icons - Default/Modern Style */
+.history-item.compact {
+    --compact-btn-size: 20px;
+    --compact-btn-radius: 6px;
+    --compact-btn-bg: var(--bg-button);
+    --compact-btn-color: var(--text-primary);
+    --compact-btn-border: 1px solid color-mix(in srgb, var(--border-dark) 28%, transparent);
+    --compact-btn-shadow: 0 2px 8px color-mix(in srgb, var(--shadow-color) 28%, transparent);
+    --compact-btn-backdrop: blur(10px);
+    --compact-btn-hover-bg: var(--bg-input);
+    --compact-btn-hover-color: var(--accent-color);
+    --compact-btn-hover-shadow: 0 4px 12px color-mix(in srgb, var(--shadow-color) 34%, transparent);
+    --compact-btn-hover-transform: translateY(-1px);
+    --compact-btn-active-bg: color-mix(in srgb, var(--accent-color) 20%, transparent);
+    --compact-btn-active-color: var(--accent-color);
+    --compact-btn-active-border: 1px solid color-mix(in srgb, var(--accent-color) 50%, transparent);
+    --compact-btn-active-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-color) 30%, transparent), 0 2px 8px color-mix(in srgb, var(--accent-color) 22%, transparent);
+    --compact-btn-active-hover-transform: translateY(-1px);
+}
+
 .history-item.compact .item-actions .btn-icon {
-    width: 20px !important;
-    height: 20px !important;
+    width: var(--compact-btn-size) !important;
+    height: var(--compact-btn-size) !important;
     padding: 3px !important;
-    border-radius: 6px;
-    background: rgba(255, 255, 255, 0.7);
-    /* Semi-transparent for glass effect */
-    color: #444;
-    border: 1px solid rgba(255, 255, 255, 0.4);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    border-radius: var(--compact-btn-radius);
+    background: var(--compact-btn-bg);
+    color: var(--compact-btn-color);
+    border: var(--compact-btn-border);
+    box-shadow: var(--compact-btn-shadow) !important;
+    backdrop-filter: var(--compact-btn-backdrop);
+    -webkit-backdrop-filter: var(--compact-btn-backdrop);
     transition: all 0.2s ease;
 }
 
 /* Dark Mode - Glass effect */
 .dark-mode .history-item.compact .item-actions .btn-icon {
-    background: rgba(60, 60, 60, 0.6);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    color: #fff;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
+    --compact-btn-bg: color-mix(in srgb, var(--bg-button) 84%, transparent);
+    --compact-btn-border: 1px solid color-mix(in srgb, var(--border-dark) 52%, transparent);
+    --compact-btn-color: var(--text-primary);
+    --compact-btn-shadow: 0 2px 8px color-mix(in srgb, var(--shadow-color) 56%, transparent);
 }
 
 /* Modern/Mica Theme - Enhanced glass effect */
@@ -248,60 +266,49 @@ body.theme-mica .history-item.compact .item-actions .btn-icon,
 body.theme-acrylic .history-item.compact .item-actions .btn-icon,
 html.theme-mica .history-item.compact .item-actions .btn-icon,
 html.theme-acrylic .history-item.compact .item-actions .btn-icon {
-    background: rgba(255, 255, 255, 0.85) !important;
-    border: 1px solid rgba(255, 255, 255, 0.5) !important;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1) !important;
-    backdrop-filter: blur(12px) saturate(180%) !important;
-    -webkit-backdrop-filter: blur(12px) saturate(180%) !important;
-    border-radius: 8px !important;
+    --compact-btn-bg: color-mix(in srgb, var(--bg-button) 92%, transparent);
+    --compact-btn-border: 1px solid color-mix(in srgb, var(--border-light) 72%, transparent);
+    --compact-btn-shadow: 0 2px 12px color-mix(in srgb, var(--shadow-color) 22%, transparent);
+    --compact-btn-backdrop: blur(12px) saturate(180%);
+    --compact-btn-radius: 8px;
 }
 
 body.dark-mode.theme-mica .history-item.compact .item-actions .btn-icon,
 body.dark-mode.theme-acrylic .history-item.compact .item-actions .btn-icon,
 html.dark-mode.theme-mica .history-item.compact .item-actions .btn-icon,
 html.dark-mode.theme-acrylic .history-item.compact .item-actions .btn-icon {
-    background: rgba(45, 45, 45, 0.7) !important;
-    border: 1px solid rgba(255, 255, 255, 0.2) !important;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3) !important;
+    --compact-btn-bg: color-mix(in srgb, var(--bg-button) 86%, transparent);
+    --compact-btn-border: 1px solid color-mix(in srgb, var(--border-dark) 58%, transparent);
+    --compact-btn-shadow: 0 2px 12px color-mix(in srgb, var(--shadow-color) 64%, transparent);
 }
 
 /* Retro/Non-Modern Theme Overrides for Buttons */
-/* Apply mechanical style to all non-modern themes (retro, default, etc.) */
+/* Apply mechanical style via tokens to all non-modern themes (retro, default, etc.) */
 body:not(.theme-mica):not(.theme-acrylic):not(.theme-macos) .history-item.compact .item-actions .btn-icon,
 body:not(.theme-mica):not(.theme-acrylic):not(.theme-macos) .history-item.compact:hover .item-actions .btn-icon {
-    border-radius: 0 !important;
-    border: 2px solid var(--border-dark) !important;
-    box-shadow: 2px 2px 0 0 var(--shadow-color) !important;
-    background: var(--bg-button) !important;
-    color: var(--text-primary) !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-}
-
-body:not(.theme-mica):not(.theme-acrylic):not(.theme-macos) .history-item.compact .item-actions .btn-icon:hover,
-body:not(.theme-mica):not(.theme-acrylic):not(.theme-macos) .history-item.compact:hover .item-actions .btn-icon:hover {
-    transform: translate(-1px, -1px) !important;
-    box-shadow: 3px 3px 0 0 var(--shadow-color) !important;
-    background: var(--bg-input) !important;
-    border-color: var(--border-dark) !important;
-}
-
-body:not(.theme-mica):not(.theme-acrylic):not(.theme-macos) .history-item.compact .item-actions .btn-icon:active {
-    transform: translate(1px, 1px) !important;
-    box-shadow: 1px 1px 0 0 var(--shadow-color) !important;
+    --compact-btn-radius: 0;
+    --compact-btn-border: 2px solid var(--border-dark);
+    --compact-btn-shadow: 2px 2px 0 0 var(--shadow-color);
+    --compact-btn-bg: var(--bg-button);
+    --compact-btn-color: var(--text-primary);
+    --compact-btn-backdrop: none;
+    --compact-btn-hover-transform: translate(-1px, -1px);
+    --compact-btn-hover-shadow: 3px 3px 0 0 var(--shadow-color);
+    --compact-btn-hover-bg: var(--bg-input);
+    --compact-btn-active-hover-transform: translate(1px, 1px);
 }
 
 /* Hover effects - Glass style */
 .history-item.compact .item-actions .btn-icon:hover {
-    background: rgba(255, 255, 255, 0.95);
-    color: var(--accent-color);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12) !important;
+    background: var(--compact-btn-hover-bg);
+    color: var(--compact-btn-hover-color);
+    transform: var(--compact-btn-hover-transform);
+    box-shadow: var(--compact-btn-hover-shadow) !important;
 }
 
 .dark-mode .history-item.compact .item-actions .btn-icon:hover {
-    background: rgba(80, 80, 80, 0.8);
-    color: var(--accent-color);
+    --compact-btn-hover-bg: color-mix(in srgb, var(--bg-input) 86%, transparent);
+    --compact-btn-hover-color: var(--accent-color);
 }
 
 /* Modern/Mica hover - Enhanced */
@@ -309,31 +316,31 @@ body.theme-mica .history-item.compact .item-actions .btn-icon:hover,
 body.theme-acrylic .history-item.compact .item-actions .btn-icon:hover,
 html.theme-mica .history-item.compact .item-actions .btn-icon:hover,
 html.theme-acrylic .history-item.compact .item-actions .btn-icon:hover {
-    background: rgba(255, 255, 255, 0.95) !important;
-    transform: translateY(-2px) !important;
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15) !important;
+    --compact-btn-hover-bg: color-mix(in srgb, var(--bg-input) 94%, transparent);
+    --compact-btn-hover-transform: translateY(-2px);
+    --compact-btn-hover-shadow: 0 6px 16px color-mix(in srgb, var(--shadow-color) 28%, transparent);
 }
 
 body.dark-mode.theme-mica .history-item.compact .item-actions .btn-icon:hover,
 body.dark-mode.theme-acrylic .history-item.compact .item-actions .btn-icon:hover,
 html.dark-mode.theme-mica .history-item.compact .item-actions .btn-icon:hover,
 html.dark-mode.theme-acrylic .history-item.compact .item-actions .btn-icon:hover {
-    background: rgba(60, 60, 60, 0.85) !important;
+    --compact-btn-hover-bg: color-mix(in srgb, var(--bg-input) 88%, transparent);
 }
 
 /* Active/Selected State - Glass style */
 .history-item.compact .item-actions .btn-icon.active {
-    color: var(--accent-color);
-    background: rgba(var(--accent-color-rgb), 0.2);
-    border-color: rgba(var(--accent-color-rgb), 0.5);
-    box-shadow: 0 0 0 1px rgba(var(--accent-color-rgb), 0.3), 0 2px 8px rgba(var(--accent-color-rgb), 0.2) !important;
-    backdrop-filter: blur(10px);
+    color: var(--compact-btn-active-color);
+    background: var(--compact-btn-active-bg);
+    border: var(--compact-btn-active-border);
+    box-shadow: var(--compact-btn-active-shadow) !important;
+    backdrop-filter: var(--compact-btn-backdrop);
 }
 
 .dark-mode .history-item.compact .item-actions .btn-icon.active {
-    background: rgba(var(--accent-color-rgb), 0.3);
-    border-color: rgba(var(--accent-color-rgb), 0.6);
-    box-shadow: 0 0 0 1px rgba(var(--accent-color-rgb), 0.4), 0 2px 12px rgba(var(--accent-color-rgb), 0.25) !important;
+    --compact-btn-active-bg: color-mix(in srgb, var(--accent-color) 30%, transparent);
+    --compact-btn-active-border: 1px solid color-mix(in srgb, var(--accent-color) 62%, transparent);
+    --compact-btn-active-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-color) 40%, transparent), 0 2px 12px color-mix(in srgb, var(--accent-color) 25%, transparent);
 }
 
 /* Modern/Mica active - Enhanced glass */
@@ -341,33 +348,33 @@ body.theme-mica .history-item.compact .item-actions .btn-icon.active,
 body.theme-acrylic .history-item.compact .item-actions .btn-icon.active,
 html.theme-mica .history-item.compact .item-actions .btn-icon.active,
 html.theme-acrylic .history-item.compact .item-actions .btn-icon.active {
-    background: rgba(var(--accent-color-rgb), 0.25) !important;
-    border-color: rgba(var(--accent-color-rgb), 0.6) !important;
-    box-shadow: 0 0 0 2px rgba(var(--accent-color-rgb), 0.3), 0 4px 12px rgba(var(--accent-color-rgb), 0.25) !important;
+    --compact-btn-active-bg: color-mix(in srgb, var(--accent-color) 25%, transparent);
+    --compact-btn-active-border: 1px solid color-mix(in srgb, var(--accent-color) 62%, transparent);
+    --compact-btn-active-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-color) 30%, transparent), 0 4px 12px color-mix(in srgb, var(--accent-color) 25%, transparent);
 }
 
 body.dark-mode.theme-mica .history-item.compact .item-actions .btn-icon.active,
 body.dark-mode.theme-acrylic .history-item.compact .item-actions .btn-icon.active,
 html.dark-mode.theme-mica .history-item.compact .item-actions .btn-icon.active,
 html.dark-mode.theme-acrylic .history-item.compact .item-actions .btn-icon.active {
-    background: rgba(var(--accent-color-rgb), 0.35) !important;
-    border-color: rgba(var(--accent-color-rgb), 0.7) !important;
+    --compact-btn-active-bg: color-mix(in srgb, var(--accent-color) 35%, transparent);
+    --compact-btn-active-border: 1px solid color-mix(in srgb, var(--accent-color) 72%, transparent);
 }
 
 /* Non-Modern Theme Active State - Mechanical style */
 body:not(.theme-mica):not(.theme-acrylic):not(.theme-macos) .history-item.compact .item-actions .btn-icon.active {
-    background: var(--accent-color) !important;
-    color: #fff !important;
-    border-color: var(--accent-color) !important;
-    box-shadow: 2px 2px 0 0 rgba(0, 0, 0, 0.3) !important;
-    border-radius: 0 !important;
+    --compact-btn-active-bg: var(--accent-color);
+    --compact-btn-active-color: #fff;
+    --compact-btn-active-border: 2px solid var(--accent-color);
+    --compact-btn-active-shadow: 2px 2px 0 0 color-mix(in srgb, var(--shadow-color) 65%, transparent);
+    --compact-btn-radius: 0;
 }
 
 body:not(.theme-mica):not(.theme-acrylic):not(.theme-macos) .history-item.compact .item-actions .btn-icon.active:hover {
-    background: var(--accent-color) !important;
-    color: #fff !important;
-    transform: translate(-1px, -1px) !important;
-    box-shadow: 3px 3px 0 0 rgba(0, 0, 0, 0.3) !important;
+    --compact-btn-hover-bg: var(--accent-color);
+    --compact-btn-hover-color: #fff;
+    --compact-btn-hover-transform: translate(-1px, -1px);
+    --compact-btn-hover-shadow: 3px 3px 0 0 color-mix(in srgb, var(--shadow-color) 65%, transparent);
 }
 
 .history-item.compact .item-actions .btn-icon svg {
