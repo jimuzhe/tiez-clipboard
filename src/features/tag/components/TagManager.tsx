@@ -821,7 +821,8 @@ export default function TagManager({ t, theme }: TagManagerProps) {
 
                 /* Modern Theme Polishes for Confirm Dialog */
                 .theme-mica .confirm-dialog,
-                .theme-acrylic .confirm-dialog {
+                .theme-acrylic .confirm-dialog,
+                .theme-macos .confirm-dialog {
                     background: rgba(255, 255, 255, 0.8) !important;
                     backdrop-filter: blur(20px);
                     padding: 24px !important;
@@ -837,7 +838,8 @@ export default function TagManager({ t, theme }: TagManagerProps) {
                 }
 
                 .theme-mica .confirm-dialog h3,
-                .theme-acrylic .confirm-dialog h3 {
+                .theme-acrylic .confirm-dialog h3,
+                .theme-macos .confirm-dialog h3 {
                     background: transparent !important;
                     color: var(--text-primary) !important;
                     font-size: 18px !important;
@@ -847,7 +849,8 @@ export default function TagManager({ t, theme }: TagManagerProps) {
                 }
 
                 .theme-mica .confirm-dialog-button,
-                .theme-acrylic .confirm-dialog-button {
+                .theme-acrylic .confirm-dialog-button,
+                .theme-macos .confirm-dialog-button {
                     border-radius: 10px !important;
                     border: none !important;
                     box-shadow: none !important;
@@ -855,12 +858,14 @@ export default function TagManager({ t, theme }: TagManagerProps) {
                     background: rgba(0,0,0,0.05) !important;
                 }
                 .theme-mica .confirm-dialog-button:active,
-                .theme-acrylic .confirm-dialog-button:active {
+                .theme-acrylic .confirm-dialog-button:active,
+                .theme-macos .confirm-dialog-button:active {
                     transform: scale(0.95);
                 }
 
                 .theme-mica .confirm-dialog-button.primary,
-                .theme-acrylic .confirm-dialog-button.primary {
+                .theme-acrylic .confirm-dialog-button.primary,
+                .theme-macos .confirm-dialog-button.primary {
                     background: var(--accent-color) !important;
                 }
 
@@ -876,7 +881,8 @@ export default function TagManager({ t, theme }: TagManagerProps) {
                     color: #d1d1d1 !important;
                 }
                 .dark-mode .theme-mica .confirm-dialog,
-                .dark-mode .theme-acrylic .confirm-dialog {
+                .dark-mode .theme-acrylic .confirm-dialog,
+                .dark-mode .theme-macos .confirm-dialog {
                     background: rgba(30,30,30,0.8) !important;
                     border-color: rgba(255,255,255,0.1) !important;
                 }
@@ -902,34 +908,40 @@ export default function TagManager({ t, theme }: TagManagerProps) {
                 .btn-save { background: var(--accent-color); color: white; }
                 
                 /* Modern Theme Polishes */
-                .theme-mica, .theme-acrylic { background: transparent !important; }
-                .theme-mica .tag-sidebar, .theme-acrylic .tag-sidebar { border-right: 1px solid rgba(128,128,128,0.1); background: transparent; }
-                .theme-mica .sidebar-header, .theme-acrylic .sidebar-header { background: transparent; color: var(--text-primary); border-bottom: 1px solid rgba(128,128,128,0.1); margin: 0; padding: 8px 12px; }
+                .theme-mica, .theme-acrylic, .theme-macos { background: transparent !important; }
+                .theme-mica .tag-sidebar, .theme-acrylic .tag-sidebar, .theme-macos .tag-sidebar { border-right: 1px solid rgba(128,128,128,0.1); background: transparent; }
+                .theme-mica .sidebar-header, .theme-acrylic .sidebar-header, .theme-macos .sidebar-header { background: transparent; color: var(--text-primary); border-bottom: 1px solid rgba(128,128,128,0.1); margin: 0; padding: 8px 12px; }
                 
-                .theme-mica .tag-item.active, .theme-acrylic .tag-item.active { background: var(--accent-color); color: white; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-radius: 6px; }
+                .theme-mica .tag-item.active, .theme-acrylic .tag-item.active, .theme-macos .tag-item.active { background: var(--accent-color); color: white; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-radius: 6px; }
 
                 /* Modern theme rounded inputs & buttons */
-                .theme-mica .tag-search-box, .theme-acrylic .tag-search-box {
+                .theme-mica .tag-search-box, .theme-acrylic .tag-search-box, .theme-macos .tag-search-box {
                     border-radius: 10px;
                     margin: 6px;
                     border: 1px solid rgba(128,128,128,0.2);
                     background: rgba(255,255,255,0.35);
                 }
-                .theme-mica .tag-search-box input, .theme-acrylic .tag-search-box input {
+                .theme-mica .tag-search-box input, .theme-acrylic .tag-search-box input, .theme-macos .tag-search-box input {
                     border-radius: 8px;
                     padding: 6px 8px;
                 }
                 .theme-mica .collapse-toggle, .theme-acrylic .collapse-toggle,
+                .theme-macos .collapse-toggle,
                 .theme-mica .sort-btn, .theme-acrylic .sort-btn,
+                .theme-macos .sort-btn,
                 .theme-mica .toggle-btn, .theme-acrylic .toggle-btn,
+                .theme-macos .toggle-btn,
                 .theme-mica .add-item-btn, .theme-acrylic .add-item-btn,
+                .theme-macos .add-item-btn,
                 .theme-mica .card-action-btn, .theme-acrylic .card-action-btn,
-                .theme-mica .del-btn, .theme-acrylic .del-btn {
+                .theme-macos .card-action-btn,
+                .theme-mica .del-btn, .theme-acrylic .del-btn,
+                .theme-macos .del-btn {
                     border-radius: 8px;
                 }
                 
-                .theme-mica .themed-card, .theme-acrylic .themed-card { border-radius: 12px; border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.45); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-                .dark-mode .theme-mica .themed-card, .dark-mode .theme-acrylic .themed-card { background: rgba(45,45,45,0.6); border-color: rgba(255,255,255,0.1); }
+                .theme-mica .themed-card, .theme-acrylic .themed-card, .theme-macos .themed-card { border-radius: 12px; border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.45); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+                .dark-mode .theme-mica .themed-card, .dark-mode .theme-acrylic .themed-card, .dark-mode .theme-macos .themed-card { background: rgba(45,45,45,0.6); border-color: rgba(255,255,255,0.1); }
                 
                 .custom-scrollbar::-webkit-scrollbar { width: 3px; }
                 .custom-scrollbar::-webkit-scrollbar-thumb { background: var(--border-dark); border-radius: 10px; }
