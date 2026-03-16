@@ -271,6 +271,66 @@ body.theme-macos {
   -webkit-backdrop-filter: blur(20px) saturate(126%);
 }
 
+.confirm-dialog.theme-macos {
+  border-radius: 12px !important;
+  border: 1px solid rgba(60, 60, 67, 0.2) !important;
+  background: rgba(255, 255, 255, 0.84) !important;
+  box-shadow: 0 14px 32px rgba(16, 21, 34, 0.2) !important;
+  backdrop-filter: blur(20px) saturate(126%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(126%) !important;
+}
+
+.theme-macos .confirm-dialog-title,
+.confirm-dialog.theme-macos .confirm-dialog-title {
+  background: transparent !important;
+  color: var(--text-primary) !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  padding: 0 !important;
+}
+
+.theme-macos .confirm-dialog-message,
+.confirm-dialog.theme-macos .confirm-dialog-message {
+  color: var(--text-secondary) !important;
+  opacity: 1 !important;
+}
+
+.theme-macos .confirm-dialog-button,
+.confirm-dialog.theme-macos .confirm-dialog-button {
+  border-radius: 10px !important;
+  border: 1px solid rgba(60, 60, 67, 0.22) !important;
+  box-shadow: none !important;
+  font-weight: 600 !important;
+  text-transform: none !important;
+  background: rgba(255, 255, 255, 0.78) !important;
+  color: var(--text-primary) !important;
+}
+
+.theme-macos .confirm-dialog-button:hover,
+.confirm-dialog.theme-macos .confirm-dialog-button:hover {
+  transform: none !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+  border-color: rgba(10, 132, 255, 0.32) !important;
+}
+
+.theme-macos .confirm-dialog-button:active,
+.confirm-dialog.theme-macos .confirm-dialog-button:active {
+  transform: scale(0.97) !important;
+  box-shadow: none !important;
+}
+
+.theme-macos .confirm-dialog-button.primary,
+.confirm-dialog.theme-macos .confirm-dialog-button.primary {
+  background: var(--accent-color) !important;
+  border-color: rgba(8, 111, 229, 0.92) !important;
+  color: #ffffff !important;
+}
+
+.theme-macos .confirm-dialog-button.primary:hover,
+.confirm-dialog.theme-macos .confirm-dialog-button.primary:hover {
+  background: var(--accent-hover) !important;
+}
+
 .themed-tag-manager.theme-macos {
   background: transparent !important;
 }
@@ -467,6 +527,32 @@ body.theme-macos {
     box-shadow: 0 18px 34px rgba(0, 0, 0, 0.4) !important;
   }
 
+  body:not(.light-mode) .confirm-dialog.theme-macos {
+    background: rgba(44, 46, 54, 0.8) !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+    box-shadow: 0 18px 34px rgba(0, 0, 0, 0.4) !important;
+  }
+
+  body:not(.light-mode).theme-macos .confirm-dialog-button,
+  body:not(.light-mode) .confirm-dialog.theme-macos .confirm-dialog-button {
+    background: rgba(74, 76, 86, 0.82) !important;
+    border-color: rgba(255, 255, 255, 0.18) !important;
+    color: #f5f5f7 !important;
+  }
+
+  body:not(.light-mode).theme-macos .confirm-dialog-button:hover,
+  body:not(.light-mode) .confirm-dialog.theme-macos .confirm-dialog-button:hover {
+    background: rgba(86, 89, 99, 0.9) !important;
+    border-color: rgba(112, 191, 255, 0.5) !important;
+  }
+
+  body:not(.light-mode).theme-macos .confirm-dialog-button.primary,
+  body:not(.light-mode) .confirm-dialog.theme-macos .confirm-dialog-button.primary {
+    background: rgba(10, 132, 255, 0.85) !important;
+    border-color: rgba(112, 191, 255, 0.62) !important;
+    color: #ffffff !important;
+  }
+
   body:not(.light-mode) .themed-tag-manager.theme-macos .themed-card {
     background: rgba(45, 45, 45, 0.6);
     border-color: rgba(255, 255, 255, 0.1);
@@ -583,6 +669,32 @@ body.dark-mode.theme-macos .confirm-dialog {
   background: rgba(44, 46, 54, 0.8) !important;
   border-color: rgba(255, 255, 255, 0.12) !important;
   box-shadow: 0 18px 34px rgba(0, 0, 0, 0.4) !important;
+}
+
+body.dark-mode .confirm-dialog.theme-macos {
+  background: rgba(44, 46, 54, 0.8) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 18px 34px rgba(0, 0, 0, 0.4) !important;
+}
+
+body.dark-mode.theme-macos .confirm-dialog-button,
+body.dark-mode .confirm-dialog.theme-macos .confirm-dialog-button {
+  background: rgba(74, 76, 86, 0.82) !important;
+  border-color: rgba(255, 255, 255, 0.18) !important;
+  color: #f5f5f7 !important;
+}
+
+body.dark-mode.theme-macos .confirm-dialog-button:hover,
+body.dark-mode .confirm-dialog.theme-macos .confirm-dialog-button:hover {
+  background: rgba(86, 89, 99, 0.9) !important;
+  border-color: rgba(112, 191, 255, 0.5) !important;
+}
+
+body.dark-mode.theme-macos .confirm-dialog-button.primary,
+body.dark-mode .confirm-dialog.theme-macos .confirm-dialog-button.primary {
+  background: rgba(10, 132, 255, 0.85) !important;
+  border-color: rgba(112, 191, 255, 0.62) !important;
+  color: #ffffff !important;
 }
 
 body.dark-mode .themed-tag-manager.theme-macos .themed-card {
