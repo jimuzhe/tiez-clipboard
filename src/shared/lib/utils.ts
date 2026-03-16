@@ -1,5 +1,19 @@
 import type { Locale } from "../types";
 
+const SENSITIVE_MASK = "...";
+const URL_PROTOCOL_RE = /^(https?:\/\/)/i;
+
+const maskMiddleChars = (value: string, prefixVisibleCount: number, suffixVisibleCount: number) => {
+  const chars = Array.from(value);
+  if (chars.length <= prefixVisibleCount + suffixVisibleCount) {
+    return value;
+  }
+
+  const prefix = chars.slice(0, prefixVisibleCount).join("");
+  const suffix = chars.slice(chars.length - suffixVisibleCount).join("");
+  return `${prefix}${SENSITIVE_MASK}${suffix}`;
+};
+
 // Helper function to generate a consistent color from a string based on theme
 export const getTagColor = (tag: string, theme: string) => {
   let hash = 0;
@@ -35,4 +49,22 @@ export const getConciseTime = (timestamp: number, language: Locale) => {
     if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
     return `${Math.floor(seconds / 86400)}d ago`;
   }
+};
+
+export const formatSensitivePreview = (content: string, contentType: string) => {
+  if (!content) return "";
+
+  if (contentType === "url") {
+    const protocolMatch = content.match(URL_PROTOCOL_RE);
+    if (!protocolMatch) {
+      return maskMiddleChars(content, 6, 4);
+    }
+
+    const protocol = protocolMatch[0];
+    const rest = content.slice(protocol.length);
+    const maskedRest = maskMiddleChars(rest, 6, 4);
+    return maskedRest === rest ? content : `${protocol}${maskedRest}`;
+  }
+
+  return maskMiddleChars(content, 3, 3);
 };
