@@ -2,6 +2,19 @@ import type { Locale } from "../types";
 
 const SENSITIVE_MASK = "...";
 const URL_PROTOCOL_RE = /^(https?:\/\/)/i;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+interface MaskOptions {
+  prefixVisible: number;
+  suffixVisible: number;
+  maskEmailDomain: boolean;
+}
+
+const DEFAULT_MASK_OPTIONS: MaskOptions = {
+  prefixVisible: 3,
+  suffixVisible: 3,
+  maskEmailDomain: false,
+};
 
 const maskMiddleChars = (value: string, prefixVisibleCount: number, suffixVisibleCount: number) => {
   const chars = Array.from(value);
@@ -51,20 +64,40 @@ export const getConciseTime = (timestamp: number, language: Locale) => {
   }
 };
 
-export const formatSensitivePreview = (content: string, contentType: string) => {
+export const formatSensitivePreview = (
+  content: string,
+  contentType: string,
+  options?: Partial<MaskOptions>
+) => {
   if (!content) return "";
+
+  const opts = { ...DEFAULT_MASK_OPTIONS, ...options };
 
   if (contentType === "url") {
     const protocolMatch = content.match(URL_PROTOCOL_RE);
     if (!protocolMatch) {
-      return maskMiddleChars(content, 6, 4);
+      return maskMiddleChars(content, opts.prefixVisible, opts.suffixVisible);
     }
 
     const protocol = protocolMatch[0];
     const rest = content.slice(protocol.length);
-    const maskedRest = maskMiddleChars(rest, 6, 4);
+    const maskedRest = maskMiddleChars(rest, opts.prefixVisible, opts.suffixVisible);
     return maskedRest === rest ? content : `${protocol}${maskedRest}`;
   }
 
-  return maskMiddleChars(content, 3, 3);
+  if (EMAIL_RE.test(content.trim())) {
+    const email = content.trim();
+    const atIndex = email.indexOf("@");
+    const localPart = email.slice(0, atIndex);
+    const domainPart = email.slice(atIndex + 1);
+
+    const maskedLocal = maskMiddleChars(localPart, opts.prefixVisible, opts.suffixVisible);
+    if (opts.maskEmailDomain) {
+      const maskedDomain = maskMiddleChars(domainPart, opts.prefixVisible, opts.suffixVisible);
+      return `${maskedLocal}@${maskedDomain}`;
+    }
+    return `${maskedLocal}@${domainPart}`;
+  }
+
+  return maskMiddleChars(content, opts.prefixVisible, opts.suffixVisible);
 };

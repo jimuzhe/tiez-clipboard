@@ -57,6 +57,12 @@ interface ClipboardSettingsGroupProps {
     setPrivacyProtectionKinds: (val: string[]) => void;
     privacyProtectionCustomRules: string;
     setPrivacyProtectionCustomRules: (val: string) => void;
+    sensitiveMaskPrefixVisible: number;
+    setSensitiveMaskPrefixVisible: (val: number) => void;
+    sensitiveMaskSuffixVisible: number;
+    setSensitiveMaskSuffixVisible: (val: number) => void;
+    sensitiveMaskEmailDomain: boolean;
+    setSensitiveMaskEmailDomain: (val: boolean) => void;
     privacyKindsOpen: boolean;
     setPrivacyKindsOpen: (val: boolean) => void;
     privacyRulesOpen: boolean;
@@ -79,6 +85,7 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
     const [persistentLimitDraft, setPersistentLimitDraft] = useState(
         props.persistentLimit.toString()
     );
+    const [maskSettingsOpen, setMaskSettingsOpen] = useState(false);
 
     useEffect(() => {
         setPersistentLimitDraft(props.persistentLimit.toString());
@@ -636,6 +643,74 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
                                     invoke('set_privacy_protection_custom_rules', { rules: val }).catch(console.error);
                                 }}
                             />
+                        )}
+                    </div>
+
+                    <div className="setting-item" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '6px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <button
+                                type="button"
+                                className="btn-icon"
+                                onClick={() => setMaskSettingsOpen(!maskSettingsOpen)}
+                                style={{ width: '24px', height: '24px' }}
+                            >
+                                {maskSettingsOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                            </button>
+                            <span className="item-label">{props.t('sensitive_mask_settings')}</span>
+                        </div>
+                        {maskSettingsOpen && (
+                            <div style={{ width: 'calc(100% - 30px)', marginLeft: '30px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                <div className="setting-item" style={{ padding: 0, borderBottom: 'none' }}>
+                                    <span className="item-label">{props.t('sensitive_mask_prefix_visible')}</span>
+                                    <input
+                                        type="number"
+                                        className="search-input"
+                                        style={{ width: '60px', padding: '4px 8px', textAlign: 'center' }}
+                                        min={0}
+                                        max={20}
+                                        value={props.sensitiveMaskPrefixVisible}
+                                        onChange={(e) => {
+                                            const val = Math.min(20, Math.max(0, parseInt(e.target.value) || 0));
+                                            props.setSensitiveMaskPrefixVisible(val);
+                                            invoke('save_setting', { key: 'app.sensitive_mask_prefix_visible', value: val.toString() }).catch(console.error);
+                                        }}
+                                    />
+                                </div>
+                                <div className="setting-item" style={{ padding: 0, borderBottom: 'none' }}>
+                                    <span className="item-label">{props.t('sensitive_mask_suffix_visible')}</span>
+                                    <input
+                                        type="number"
+                                        className="search-input"
+                                        style={{ width: '60px', padding: '4px 8px', textAlign: 'center' }}
+                                        min={0}
+                                        max={20}
+                                        value={props.sensitiveMaskSuffixVisible}
+                                        onChange={(e) => {
+                                            const val = Math.min(20, Math.max(0, parseInt(e.target.value) || 0));
+                                            props.setSensitiveMaskSuffixVisible(val);
+                                            invoke('save_setting', { key: 'app.sensitive_mask_suffix_visible', value: val.toString() }).catch(console.error);
+                                        }}
+                                    />
+                                </div>
+                                <div className="setting-item" style={{ padding: 0, borderBottom: 'none' }}>
+                                    <props.LabelWithHint
+                                        label={props.t('sensitive_mask_email_domain')}
+                                        hint={props.t('sensitive_mask_email_domain_hint')}
+                                        hintKey="sensitive_mask_email_domain"
+                                    />
+                                    <label className="switch">
+                                        <input
+                                            type="checkbox"
+                                            checked={props.sensitiveMaskEmailDomain}
+                                            onChange={(e) => {
+                                                props.setSensitiveMaskEmailDomain(e.target.checked);
+                                                invoke('save_setting', { key: 'app.sensitive_mask_email_domain', value: e.target.checked.toString() }).catch(console.error);
+                                            }}
+                                        />
+                                        <span className="slider" />
+                                    </label>
+                                </div>
+                            </div>
                         )}
                     </div>
 

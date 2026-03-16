@@ -21,6 +21,9 @@ interface UseSettingsPostInitOptions {
   setPrivacyProtection: (val: boolean) => void;
   setPrivacyProtectionKinds: (val: string[]) => void;
   setPrivacyProtectionCustomRules: (val: string) => void;
+  setSensitiveMaskPrefixVisible: (val: number) => void;
+  setSensitiveMaskSuffixVisible: (val: number) => void;
+  setSensitiveMaskEmailDomain: (val: boolean) => void;
   setSilentStart: (val: boolean) => void;
   setFollowMouse: (val: boolean) => void;
   setShowAppBorder: (val: boolean) => void;
@@ -97,6 +100,9 @@ export const useSettingsPostInit = ({
   setPrivacyProtection,
   setPrivacyProtectionKinds,
   setPrivacyProtectionCustomRules,
+  setSensitiveMaskPrefixVisible,
+  setSensitiveMaskSuffixVisible,
+  setSensitiveMaskEmailDomain,
   setSilentStart,
   setFollowMouse,
   setShowAppBorder,
@@ -229,6 +235,17 @@ export const useSettingsPostInit = ({
     }
     if (settings["app.privacy_protection_custom_rules"] !== undefined) {
       setPrivacyProtectionCustomRules(settings["app.privacy_protection_custom_rules"] || "");
+    }
+    if (settings["app.sensitive_mask_prefix_visible"]) {
+      const next = parseInt(settings["app.sensitive_mask_prefix_visible"]);
+      if (Number.isFinite(next)) setSensitiveMaskPrefixVisible(Math.min(20, Math.max(0, next)));
+    }
+    if (settings["app.sensitive_mask_suffix_visible"]) {
+      const next = parseInt(settings["app.sensitive_mask_suffix_visible"]);
+      if (Number.isFinite(next)) setSensitiveMaskSuffixVisible(Math.min(20, Math.max(0, next)));
+    }
+    if (settings["app.sensitive_mask_email_domain"] !== undefined) {
+      setSensitiveMaskEmailDomain(settings["app.sensitive_mask_email_domain"] === "true");
     }
     setSilentStart(settings["app.silent_start"] !== "false");
     setFollowMouse(settings["app.follow_mouse"] !== "false");
@@ -378,6 +395,9 @@ export const useSettingsPostInit = ({
     setPrivacyProtection,
     setPrivacyProtectionKinds,
     setPrivacyProtectionCustomRules,
+    setSensitiveMaskPrefixVisible,
+    setSensitiveMaskSuffixVisible,
+    setSensitiveMaskEmailDomain,
     setSilentStart,
     setFollowMouse,
     setShowAppBorder,
