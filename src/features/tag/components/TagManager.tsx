@@ -504,23 +504,11 @@ export default function TagManager({ t, theme }: TagManagerProps) {
                         <h3>{t('add_item')}</h3>
                         <div className="modal-input-field">
                             <textarea
+                                className="modal-textarea modal-textarea-create"
                                 value={newItemContent}
                                 onChange={e => setNewItemContent(e.target.value)}
                                 placeholder={t('input_content_placeholder')}
                                 autoFocus
-                                style={{
-                                    width: '100%',
-                                    minHeight: '120px',
-                                    background: 'var(--bg-input)',
-                                    border: '2px solid var(--border-dark)',
-                                    padding: '12px',
-                                    color: 'var(--text-primary)',
-                                    fontFamily: 'inherit',
-                                    fontSize: '14px',
-                                    outline: 'none',
-                                    resize: 'vertical',
-                                    marginBottom: '20px'
-                                }}
                             />
                         </div>
                         <div className="confirm-dialog-buttons">
@@ -542,22 +530,10 @@ export default function TagManager({ t, theme }: TagManagerProps) {
                         <h3>{t('edit_item')}</h3>
                         <div className="modal-input-field">
                             <textarea
+                                className="modal-textarea modal-textarea-edit"
                                 value={editingItem.content}
                                 onChange={e => setEditingItem({ ...editingItem, content: e.target.value })}
                                 autoFocus
-                                style={{
-                                    width: '100%',
-                                    minHeight: '150px',
-                                    background: 'var(--bg-input)',
-                                    border: '2px solid var(--border-dark)',
-                                    padding: '12px',
-                                    color: 'var(--text-primary)',
-                                    fontFamily: 'inherit',
-                                    fontSize: '14px',
-                                    outline: 'none',
-                                    resize: 'vertical',
-                                    marginBottom: '20px'
-                                }}
                             />
                         </div>
                         <div className="confirm-dialog-buttons">
@@ -887,6 +863,25 @@ export default function TagManager({ t, theme }: TagManagerProps) {
                     padding: 8px; color: var(--text-primary);
                     font-family: inherit; font-size: 12px; font-weight: 700;
                     outline: none; margin-bottom: 20px;
+                }
+                .modal-input-field .modal-textarea {
+                    width: 100%;
+                    background: var(--bg-input);
+                    border: 2px solid var(--border-dark);
+                    padding: 12px;
+                    color: var(--text-primary);
+                    font-family: inherit;
+                    font-size: 14px;
+                    line-height: 1.45;
+                    outline: none;
+                    resize: vertical;
+                    margin-bottom: 20px;
+                }
+                .modal-input-field .modal-textarea-create {
+                    min-height: 120px;
+                }
+                .modal-input-field .modal-textarea-edit {
+                    min-height: 150px;
                 }
                 .modal-buttons { display: flex; gap: 12px; justify-content: flex-end; }
                 .modal-buttons button {
