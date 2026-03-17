@@ -170,6 +170,8 @@ export interface AppState {
   setMqttProtocol: StateSetter<string>;
   mqttWsPath: string;
   setMqttWsPath: StateSetter<string>;
+  mqttNotificationEnabled: boolean;
+  setMqttNotificationEnabled: StateSetter<boolean>;
   cloudSyncEnabled: boolean;
   setCloudSyncEnabled: StateSetter<boolean>;
   cloudSyncAuto: boolean;

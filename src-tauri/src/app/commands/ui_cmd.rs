@@ -1,5 +1,6 @@
 use serde::Serialize;
-use tauri::{Emitter, State, WebviewWindow, Theme};
+use tauri::{AppHandle, Emitter, State, WebviewWindow, Theme};
+use tauri_plugin_notification::NotificationExt;
 use crate::app_state::SettingsState;
 use crate::database::DbState;
 use crate::error::{AppResult, AppError};
@@ -43,6 +44,18 @@ pub fn get_platform_info() -> PlatformInfo {
             is_windows_11: false,
         }
     }
+}
+
+#[tauri::command]
+pub fn send_system_notification(app: AppHandle, title: String, body: String) -> AppResult<()> {
+    app.notification()
+        .builder()
+        .title(title)
+        .body(body)
+        .show()
+        .map_err(|err| AppError::Internal(format!("发送系统通知失败: {}", err)))?;
+
+    Ok(())
 }
 
 #[tauri::command]

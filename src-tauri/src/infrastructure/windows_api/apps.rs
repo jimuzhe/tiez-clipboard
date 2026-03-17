@@ -1,10 +1,23 @@
+use base64::Engine;
+use image::{ImageBuffer, Rgba};
 use serde::{Serialize, Deserialize};
+use std::collections::HashMap;
+use std::ffi::OsStr;
 use std::process::Command;
-
 use std::os::windows::process::CommandExt;
 use std::path::Path;
+use std::sync::{Mutex, OnceLock};
 use crate::error::{AppResult, AppError};
-use windows::Win32::UI::Shell::{AssocQueryStringW, ASSOCSTR_FRIENDLYAPPNAME, ASSOCSTR_EXECUTABLE, ASSOCF_VERIFY};
+use windows::Win32::Graphics::Gdi::{
+    BITMAPINFO, BITMAPINFOHEADER, BI_RGB, CreateCompatibleDC, CreateDIBSection, DIB_RGB_COLORS,
+    DeleteDC, DeleteObject, HGDIOBJ, RGBQUAD, SelectObject,
+};
+use windows::Win32::UI::Shell::{
+    AssocQueryStringW, ExtractIconExW, ASSOCSTR_FRIENDLYAPPNAME, ASSOCSTR_EXECUTABLE, ASSOCF_VERIFY,
+};
+use windows::Win32::UI::WindowsAndMessaging::{
+    DestroyIcon, DrawIconEx, GetSystemMetrics, HICON, DI_NORMAL, SM_CXSMICON, SM_CYSMICON,
+};
 use windows::core::{PCWSTR, PWSTR};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -12,6 +25,8 @@ pub struct AppInfo {
     pub name: String,
     pub path: String,
 }
+
+static EXECUTABLE_ICON_CACHE: OnceLock<Mutex<HashMap<String, Option<String>>>> = OnceLock::new();
 
 #[tauri::command]
 pub async fn scan_installed_apps() -> AppResult<Vec<AppInfo>> {
@@ -224,6 +239,182 @@ pub fn get_system_default_app(content_type: String) -> AppResult<String> {
 }
 
 use std::os::windows::ffi::OsStrExt;
+
+#[tauri::command]
+pub fn get_executable_icon(executable_path: String) -> AppResult<Option<String>> {
+    let cache_key = normalize_icon_cache_key(&executable_path);
+    if cache_key.is_empty() {
+        return Ok(None);
+    }
+
+    let cache = EXECUTABLE_ICON_CACHE.get_or_init(|| Mutex::new(HashMap::new()));
+    if let Some(cached) = cache
+        .lock()
+        .map_err(|e| AppError::Internal(e.to_string()))?
+        .get(&cache_key)
+        .cloned()
+    {
+        return Ok(cached);
+    }
+
+    let icon = extract_executable_icon_data_url(&executable_path)?;
+    cache
+        .lock()
+        .map_err(|e| AppError::Internal(e.to_string()))?
+        .insert(cache_key, icon.clone());
+    Ok(icon)
+}
+
+fn normalize_icon_cache_key(path: &str) -> String {
+    let trimmed = path.trim();
+    if trimmed.is_empty() {
+        return String::new();
+    }
+
+    std::fs::canonicalize(trimmed)
+        .map(|resolved| resolved.to_string_lossy().to_string())
+        .unwrap_or_else(|_| trimmed.to_string())
+        .replace('/', "\\")
+        .to_ascii_lowercase()
+}
+
+fn extract_executable_icon_data_url(executable_path: &str) -> AppResult<Option<String>> {
+    let trimmed = executable_path.trim();
+    if trimmed.is_empty() {
+        return Ok(None);
+    }
+
+    let path = Path::new(trimmed);
+    if !path.exists() || !path.is_file() {
+        return Ok(None);
+    }
+
+    let icon = unsafe { extract_executable_icon_handle(trimmed)? };
+    let Some(icon) = icon else {
+        return Ok(None);
+    };
+
+    let png_result = unsafe { render_icon_to_png_bytes(icon) };
+    let _ = unsafe { DestroyIcon(icon) };
+
+    match png_result {
+        Ok(bytes) => Ok(Some(format!(
+            "data:image/png;base64,{}",
+            base64::engine::general_purpose::STANDARD.encode(bytes)
+        ))),
+        Err(err) => Err(err),
+    }
+}
+
+unsafe fn extract_executable_icon_handle(executable_path: &str) -> AppResult<Option<HICON>> {
+    let wide_path: Vec<u16> = OsStr::new(executable_path)
+        .encode_wide()
+        .chain(std::iter::once(0))
+        .collect();
+    let mut large_icon = HICON::default();
+    let mut small_icon = HICON::default();
+
+    if ExtractIconExW(
+        PCWSTR(wide_path.as_ptr()),
+        0,
+        Some(&mut large_icon),
+        Some(&mut small_icon),
+        1,
+    ) == 0
+    {
+        return Ok(None);
+    }
+
+    let selected = if !small_icon.0.is_null() {
+        small_icon
+    } else {
+        large_icon
+    };
+
+    if selected.0.is_null() {
+        if !small_icon.0.is_null() {
+            let _ = DestroyIcon(small_icon);
+        }
+        if !large_icon.0.is_null() {
+            let _ = DestroyIcon(large_icon);
+        }
+        return Ok(None);
+    }
+
+    if selected.0 != small_icon.0 && !small_icon.0.is_null() {
+        let _ = DestroyIcon(small_icon);
+    }
+    if selected.0 != large_icon.0 && !large_icon.0.is_null() {
+        let _ = DestroyIcon(large_icon);
+    }
+
+    Ok(Some(selected))
+}
+
+unsafe fn render_icon_to_png_bytes(icon: HICON) -> AppResult<Vec<u8>> {
+    let width = GetSystemMetrics(SM_CXSMICON).max(16);
+    let height = GetSystemMetrics(SM_CYSMICON).max(16);
+    let bitmap_info = BITMAPINFO {
+        bmiHeader: BITMAPINFOHEADER {
+            biSize: std::mem::size_of::<BITMAPINFOHEADER>() as u32,
+            biWidth: width,
+            biHeight: -height,
+            biPlanes: 1,
+            biBitCount: 32,
+            biCompression: BI_RGB.0,
+            ..Default::default()
+        },
+        bmiColors: [RGBQUAD::default()],
+    };
+    let mut bits = std::ptr::null_mut();
+    let mem_dc = CreateCompatibleDC(None);
+    if mem_dc.0.is_null() {
+        return Err(AppError::Internal("Failed to create icon memory DC".to_string()));
+    }
+
+    let bitmap = match CreateDIBSection(None, &bitmap_info, DIB_RGB_COLORS, &mut bits, None, 0) {
+        Ok(bitmap) => bitmap,
+        Err(err) => {
+            let _ = DeleteDC(mem_dc);
+            return Err(AppError::Internal(format!("Failed to create icon bitmap: {}", err)));
+        }
+    };
+
+    let old_bitmap = SelectObject(mem_dc, HGDIOBJ(bitmap.0));
+    let result = (|| -> AppResult<Vec<u8>> {
+        if bits.is_null() {
+            return Err(AppError::Internal("Icon bitmap has no backing buffer".to_string()));
+        }
+
+        let pixel_len = (width as usize) * (height as usize) * 4;
+        std::slice::from_raw_parts_mut(bits as *mut u8, pixel_len).fill(0);
+        DrawIconEx(mem_dc, 0, 0, icon, width, height, 0, None, DI_NORMAL)
+            .map_err(|e| AppError::Internal(format!("Failed to draw executable icon: {}", e)))?;
+
+        let bgra = std::slice::from_raw_parts(bits as *const u8, pixel_len);
+        let mut rgba = vec![0u8; pixel_len];
+        for (src, dst) in bgra.chunks_exact(4).zip(rgba.chunks_exact_mut(4)) {
+            dst[0] = src[2];
+            dst[1] = src[1];
+            dst[2] = src[0];
+            dst[3] = src[3];
+        }
+
+        let image = ImageBuffer::<Rgba<u8>, Vec<u8>>::from_raw(width as u32, height as u32, rgba)
+            .ok_or_else(|| AppError::Internal("Failed to build icon image buffer".to_string()))?;
+        let mut png_bytes = Vec::new();
+        let mut cursor = std::io::Cursor::new(&mut png_bytes);
+        image
+            .write_to(&mut cursor, image::ImageFormat::Png)
+            .map_err(|e| AppError::Internal(format!("Failed to encode icon PNG: {}", e)))?;
+        Ok(png_bytes)
+    })();
+
+    let _ = SelectObject(mem_dc, old_bitmap);
+    let _ = DeleteObject(HGDIOBJ(bitmap.0));
+    let _ = DeleteDC(mem_dc);
+    result
+}
 
 // Moved from main.rs
 pub async fn launch_uwp_with_file(app_id: &str, file_path: &str) -> AppResult<()> {

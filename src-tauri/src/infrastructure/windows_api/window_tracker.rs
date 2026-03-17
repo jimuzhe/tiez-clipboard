@@ -1,34 +1,41 @@
 use std::path::Path;
 use std::sync::atomic::Ordering;
+use windows::Win32::Foundation::CloseHandle;
+use windows::Win32::Foundation::HWND;
+use windows::Win32::System::DataExchange::GetClipboardOwner;
 use windows::Win32::System::ProcessStatus::GetModuleFileNameExW;
 use windows::Win32::System::Threading::{GetCurrentProcessId, OpenProcess, PROCESS_QUERY_INFORMATION, PROCESS_VM_READ};
 use windows::Win32::UI::Accessibility::{SetWinEventHook, HWINEVENTHOOK};
 use windows::Win32::UI::WindowsAndMessaging::{
-    GetClassNameW, GetForegroundWindow, GetWindowTextW, GetWindowThreadProcessId,
+    GetClassNameW, GetForegroundWindow, GetWindowThreadProcessId,
     IsWindowVisible, EVENT_SYSTEM_FOREGROUND, WINEVENT_OUTOFCONTEXT,
 };
-use windows::Win32::Foundation::HWND;
 use crate::global_state::LAST_ACTIVE_HWND;
 
-pub fn get_active_app_info() -> (String, String) {
+#[derive(Debug, Clone, Default)]
+pub struct ActiveAppInfo {
+    pub app_name: String,
+    pub process_path: Option<String>,
+}
+
+fn unknown_app_info() -> ActiveAppInfo {
+    ActiveAppInfo {
+        app_name: "Unknown".to_string(),
+        process_path: None,
+    }
+}
+
+fn resolve_app_info_from_hwnd(hwnd: HWND) -> Option<ActiveAppInfo> {
+    if hwnd.0.is_null() {
+        return None;
+    }
+
     unsafe {
-        let hwnd = GetForegroundWindow();
-        if hwnd.0.is_null() {
-            return ("Unknown".to_string(), "Unknown".to_string());
-        }
-
-        // Get Window Title
-        let mut title_buf = [0u16; 512];
-        let len = GetWindowTextW(hwnd, &mut title_buf);
-        let title = if len > 0 {
-            String::from_utf16_lossy(&title_buf[..len as usize])
-        } else {
-            "Unknown".to_string()
-        };
-
-        // Get Process Name
         let mut process_id = 0u32;
         GetWindowThreadProcessId(hwnd, Some(&mut process_id));
+        if process_id == 0 {
+            return None;
+        }
 
         let process_handle = OpenProcess(
             PROCESS_QUERY_INFORMATION | PROCESS_VM_READ,
@@ -36,25 +43,77 @@ pub fn get_active_app_info() -> (String, String) {
             process_id,
         );
 
-        let app_name = if let Ok(handle) = process_handle {
+        if let Ok(handle) = process_handle {
             let mut path_buf = [0u16; 1024];
             let path_len = GetModuleFileNameExW(Some(handle), None, &mut path_buf);
-            if path_len > 0 {
+            let info = if path_len > 0 {
                 let path_str = String::from_utf16_lossy(&path_buf[..path_len as usize]);
-                Path::new(&path_str)
-                    .file_name()
-                    .and_then(|n| n.to_str())
-                    .unwrap_or("Unknown")
-                    .to_string()
+                ActiveAppInfo {
+                    app_name: Path::new(&path_str)
+                        .file_name()
+                        .and_then(|n| n.to_str())
+                        .unwrap_or("Unknown")
+                        .to_string(),
+                    process_path: Some(path_str),
+                }
             } else {
-                "Unknown".to_string()
+                ActiveAppInfo {
+                    app_name: "Unknown".to_string(),
+                    process_path: None,
+                }
+            };
+            let _ = CloseHandle(handle);
+            if info.process_path.is_some() {
+                Some(info)
+            } else {
+                None
             }
         } else {
-            "Unknown".to_string()
-        };
-
-        (app_name, title)
+            None
+        }
     }
+}
+
+pub fn get_active_app_info() -> ActiveAppInfo {
+    unsafe {
+        let hwnd = GetForegroundWindow();
+        if is_own_process_window(hwnd) || is_system_focus_window(hwnd) {
+            return unknown_app_info();
+        }
+        resolve_app_info_from_hwnd(hwnd).unwrap_or_else(unknown_app_info)
+    }
+}
+
+pub fn get_clipboard_source_app_info() -> ActiveAppInfo {
+    unsafe {
+        if let Ok(owner_hwnd) = GetClipboardOwner() {
+            if !owner_hwnd.0.is_null() && !is_own_process_window(owner_hwnd) {
+                if let Some(info) = resolve_app_info_from_hwnd(owner_hwnd) {
+                    return info;
+                }
+            }
+        }
+
+        let foreground_hwnd = GetForegroundWindow();
+        if !foreground_hwnd.0.is_null()
+            && !is_own_process_window(foreground_hwnd)
+            && !is_system_focus_window(foreground_hwnd)
+        {
+            if let Some(info) = resolve_app_info_from_hwnd(foreground_hwnd) {
+                return info;
+            }
+        }
+
+        let last_active = LAST_ACTIVE_HWND.load(Ordering::SeqCst);
+        if last_active != 0 {
+            let hwnd = HWND(last_active as *mut core::ffi::c_void);
+            if let Some(info) = resolve_app_info_from_hwnd(hwnd) {
+                return info;
+            }
+        }
+    }
+
+    unknown_app_info()
 }
 
 pub fn start_window_tracking(_app_handle: tauri::AppHandle) {

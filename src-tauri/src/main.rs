@@ -16,9 +16,13 @@ use crate::global_state::*;
 use crate::app::setup;
 
 fn main() {
+    // 显式安装 rustls 的 crypto provider，防止 rumqttc 因缺少 provider 而 panic
+    let _ = rustls::crypto::ring::default_provider().install_default();
+
     let _ = dotenvy::dotenv();
 
     let app = tauri::Builder::default()
+        .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
@@ -116,6 +120,7 @@ fn main() {
 
             app::commands::set_theme,
             app::commands::get_platform_info,
+            app::commands::send_system_notification,
             app::commands::register_hotkey,
             app::commands::test_hotkey_available,
             app::commands::download_and_install_update,
@@ -154,6 +159,7 @@ fn main() {
             app::commands::check_ai_connectivity,
             
             infrastructure::windows_api::apps::get_system_default_app,
+            infrastructure::windows_api::apps::get_executable_icon,
             infrastructure::windows_api::apps::scan_installed_apps,
             infrastructure::windows_api::apps::get_associated_apps
         ])

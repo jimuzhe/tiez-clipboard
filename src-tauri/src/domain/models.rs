@@ -8,6 +8,8 @@ pub struct ClipboardEntry {
     #[serde(default)]
     pub html_content: Option<String>,
     pub source_app: String,
+    #[serde(default)]
+    pub source_app_path: Option<String>,
     pub timestamp: i64,
     pub preview: String,
     pub is_pinned: bool,

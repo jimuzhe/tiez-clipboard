@@ -102,6 +102,7 @@ export const useAppState = (): AppState => {
   const [mqttTopic, setMqttTopic] = useState("");
   const [mqttProtocol, setMqttProtocol] = useState("mqtt://");
   const [mqttWsPath, setMqttWsPath] = useState("/mqtt");
+  const [mqttNotificationEnabled, setMqttNotificationEnabled] = useState(true);
   const [cloudSyncEnabled, setCloudSyncEnabled] = useState(false);
   const [cloudSyncAuto, setCloudSyncAuto] = useState(true);
   const [cloudSyncProvider, setCloudSyncProvider] = useState<"http" | "webdav">("webdav");
@@ -321,6 +322,8 @@ export const useAppState = (): AppState => {
     setMqttProtocol,
     mqttWsPath,
     setMqttWsPath,
+    mqttNotificationEnabled,
+    setMqttNotificationEnabled,
     cloudSyncEnabled,
     setCloudSyncEnabled,
     cloudSyncAuto,
