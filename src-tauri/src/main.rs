@@ -16,6 +16,9 @@ use crate::global_state::*;
 use crate::app::setup;
 
 fn main() {
+    // 显式安装 rustls 的 crypto provider，防止 rumqttc 因缺少 provider 而 panic
+    let _ = rustls::crypto::ring::default_provider().install_default();
+
     let _ = dotenvy::dotenv();
 
     let app = tauri::Builder::default()
