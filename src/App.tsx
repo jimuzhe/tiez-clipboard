@@ -217,6 +217,8 @@ const App = () => {
     setMqttTopic,
     setMqttProtocol,
     setMqttWsPath,
+    mqttNotificationEnabled,
+    setMqttNotificationEnabled,
     cloudSyncEnabled,
     setCloudSyncEnabled,
     setCloudSyncAuto,
@@ -437,6 +439,7 @@ const App = () => {
     setMqttTopic,
     setMqttProtocol,
     setMqttWsPath,
+    setMqttNotificationEnabled,
     setCloudSyncEnabled,
     setCloudSyncAuto,
     setCloudSyncProvider,
@@ -556,7 +559,7 @@ const App = () => {
     }
   });
 
-  useMqttListener();
+  useMqttListener({ enabled: mqttNotificationEnabled, t });
 
   useEffect(() => {
     fetchHistory();

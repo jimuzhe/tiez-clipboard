@@ -110,6 +110,7 @@ pub fn start_clipboard_monitor(app_handle: AppHandle) {
             return;
         }
         monitor_state.last_seq = current_seq;
+        let source_snapshot = crate::infrastructure::windows_api::window_tracker::get_clipboard_source_app_info();
 
         // Give source app (especially Excel) time to release lock/finish writing
         // fixes "Another application is using the clipboard" error
@@ -202,7 +203,7 @@ pub fn start_clipboard_monitor(app_handle: AppHandle) {
                             
                             let settings = app.state::<SettingsState>();
                             if settings.capture_files.load(Ordering::Relaxed) || files.len() == 1 {
-                                process_new_entry(&app, ClipboardData::Files(files), None);
+                                process_new_entry(&app, ClipboardData::Files(files), None, Some(source_snapshot.clone()));
                             }
                         }
                     }
@@ -259,7 +260,7 @@ pub fn start_clipboard_monitor(app_handle: AppHandle) {
                                 crate::LAST_APP_SET_HASH_ALT.store(0, Ordering::SeqCst);
                             } else {
                                 let b64 = base64::engine::general_purpose::STANDARD.encode(gif_data);
-                                process_new_entry(&app, ClipboardData::Image { data_url: format!("data:image/gif;base64,{}", b64) }, None);
+                                process_new_entry(&app, ClipboardData::Image { data_url: format!("data:image/gif;base64,{}", b64) }, None, Some(source_snapshot.clone()));
                                 monitor_state.last_text = String::new();
                             }
                             monitor_state.last_image_hash = hash;
@@ -288,7 +289,7 @@ pub fn start_clipboard_monitor(app_handle: AppHandle) {
                                         let mut cursor = std::io::Cursor::new(&mut bytes);
                                         if img_buf.write_to(&mut cursor, image::ImageFormat::Png).is_ok() {
                                             let b64 = base64::engine::general_purpose::STANDARD.encode(bytes);
-                                            process_new_entry(&app, ClipboardData::Image { data_url: format!("data:image/png;base64,{}", b64) }, None);
+                                            process_new_entry(&app, ClipboardData::Image { data_url: format!("data:image/png;base64,{}", b64) }, None, Some(source_snapshot.clone()));
                                             handled = true;
                                         }
                                     }
@@ -343,6 +344,7 @@ pub fn start_clipboard_monitor(app_handle: AppHandle) {
                                             html: html_to_store,
                                         },
                                         None,
+                                        Some(source_snapshot.clone()),
                                     );
                                     handled = true;
                                 }
@@ -353,7 +355,7 @@ pub fn start_clipboard_monitor(app_handle: AppHandle) {
                     if !handled {
                         if last_app_hash != 0 { crate::LAST_APP_SET_HASH.store(0, Ordering::SeqCst); }
                         monitor_state.last_text = text.clone();
-                        process_new_entry(&app, ClipboardData::Text(text), None);
+                        process_new_entry(&app, ClipboardData::Text(text), None, Some(source_snapshot.clone()));
                     }
                 }
             }
@@ -368,10 +370,12 @@ pub fn process_new_entry(
     app_handle: &AppHandle,
     data: ClipboardData,
     source_override: Option<String>,
+    source_snapshot: Option<crate::infrastructure::windows_api::window_tracker::ActiveAppInfo>,
 ) {
-    let mut ctx = PipelineContext::new(app_handle.clone(), data);
+    let mut ctx = PipelineContext::new(app_handle.clone(), data, source_snapshot);
     if let Some(source) = source_override {
         ctx.source_app = source;
+        ctx.source_app_path = None;
     }
 
     let pipeline = ClipboardPipeline::new();

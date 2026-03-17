@@ -40,6 +40,7 @@ interface UseSettingsPostInitOptions {
   setMqttTopic: (val: string) => void;
   setMqttProtocol: (val: string) => void;
   setMqttWsPath: (val: string) => void;
+  setMqttNotificationEnabled: (val: boolean) => void;
   setCloudSyncEnabled: (val: boolean) => void;
   setCloudSyncAuto: (val: boolean) => void;
   setCloudSyncProvider: (val: "http" | "webdav") => void;
@@ -115,6 +116,7 @@ export const useSettingsPostInit = ({
   setMqttTopic,
   setMqttProtocol,
   setMqttWsPath,
+  setMqttNotificationEnabled,
   setCloudSyncEnabled,
   setCloudSyncAuto,
   setCloudSyncProvider,
@@ -255,6 +257,7 @@ export const useSettingsPostInit = ({
     setMqttTopic(settings["mqtt_topic"] || `tiez/tiez_${shortId}`);
     setMqttProtocol(settings["mqtt_protocol"] || "mqtt://");
     setMqttWsPath(settings["mqtt_ws_path"] || "/mqtt");
+    setMqttNotificationEnabled(settings["mqtt_notification_enabled"] !== "false");
     setCloudSyncEnabled(settings["cloud_sync_enabled"] === "true");
     setCloudSyncAuto(settings["cloud_sync_auto"] !== "false");
     setCloudSyncProvider(settings["cloud_sync_provider"] === "http" ? "http" : "webdav");

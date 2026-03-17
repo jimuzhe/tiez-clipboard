@@ -26,6 +26,27 @@
   display: flex;
   align-items: center;
   gap: 4px;
+  min-width: 0;
+}
+
+.app-info svg,
+.source-app-icon{
+  flex-shrink: 0;
+}
+
+.app-info span{
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.source-app-icon{
+  width: 14px;
+  height: 14px;
+  object-fit: contain;
+  display: block;
+  border-radius: 3px;
 }
 
 /* Clipboard Item Content Preview */

@@ -35,6 +35,7 @@ import { getConciseTime, getTagColor } from "../../../shared/lib/utils";
 import HtmlContent from "../../../shared/components/HtmlContent";
 import { toTauriLocalImageSrc } from "../../../shared/lib/localImageSrc";
 import { getRichTextSnapshotDataUrl } from "../../../shared/lib/richTextSnapshot";
+import { getSourceAppIcon, peekSourceAppIcon } from "../../../shared/lib/sourceAppIcon";
 
 const COMPACT_PREVIEW_LABEL = "compact-preview";
 const RICH_IMAGE_FALLBACK_PREFIX = "<!--TIEZ_RICH_IMAGE:";
@@ -535,6 +536,21 @@ const getIcon = (type: string) => {
     }
 };
 
+const renderSourceAppIcon = (iconSrc: string | null, contentType: string, sourceApp: string) => {
+    if (!iconSrc) {
+        return getIcon(contentType);
+    }
+
+    return (
+        <img
+            src={iconSrc}
+            alt={`${sourceApp} icon`}
+            className="source-app-icon"
+            loading="lazy"
+        />
+    );
+};
+
 const getFileIcon = (filePath: string) => {
     const ext = filePath.split('.').pop()?.toLowerCase();
     switch (ext) {
@@ -621,6 +637,7 @@ const ClipboardItem = ({
     const [localAiOptionsOpen, setLocalAiOptionsOpen] = useState(!!aiOptionsOpen);
     const [snapshotFailed, setSnapshotFailed] = useState(false);
     const [richImageFallbackFailed, setRichImageFallbackFailed] = useState(false);
+    const [sourceAppIcon, setSourceAppIcon] = useState<string | null>(() => peekSourceAppIcon(item.source_app_path) ?? null);
     const isComposing = useRef(false);
     const richSnapshotImgRef = useRef<HTMLImageElement | null>(null);
     const richSnapshotFallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -662,6 +679,36 @@ const ClipboardItem = ({
         ? (richTextFallback?.imageSrc || null)
         : effectiveRichTextSnapshotSrc;
     const useSnapshotPreviewImage = snapshotPreviewEnabled && !useRichImageFallback && !!effectiveRichTextSnapshotSrc;
+
+    useEffect(() => {
+        let cancelled = false;
+        const sourceAppPath = item.source_app_path?.trim();
+        const cachedIcon = peekSourceAppIcon(sourceAppPath);
+
+        if (cachedIcon !== undefined) {
+            setSourceAppIcon(cachedIcon ?? null);
+            return () => {
+                cancelled = true;
+            };
+        }
+
+        setSourceAppIcon(null);
+        if (!sourceAppPath) {
+            return () => {
+                cancelled = true;
+            };
+        }
+
+        getSourceAppIcon(sourceAppPath).then((icon) => {
+            if (!cancelled) {
+                setSourceAppIcon(icon);
+            }
+        });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [item.source_app_path]);
 
     const hideCompactPreview = async () => {
         await hideCompactPreviewGlobal();
@@ -1021,7 +1068,7 @@ const ClipboardItem = ({
                     )}
                     <div className="app-info">
                         {item.is_pinned && !dragControls && <Pin size={10} style={{ color: 'var(--accent-color)', marginRight: '-2px' }} />}
-                        {getIcon(item.content_type)}
+                        {renderSourceAppIcon(sourceAppIcon, item.content_type, item.source_app)}
                         <span>{item.source_app}</span>
                     </div>
                 </div>
@@ -1447,6 +1494,8 @@ export default memo(ClipboardItem, (prevProps, nextProps) => {
         prevProps.item.content === nextProps.item.content &&
         prevProps.item.preview === nextProps.item.preview &&
         prevProps.item.html_content === nextProps.item.html_content &&
+        prevProps.item.source_app === nextProps.item.source_app &&
+        prevProps.item.source_app_path === nextProps.item.source_app_path &&
         prevProps.item.is_pinned === nextProps.item.is_pinned &&
         prevProps.item.is_external === nextProps.item.is_external &&
         prevProps.item.file_preview_exists === nextProps.item.file_preview_exists &&

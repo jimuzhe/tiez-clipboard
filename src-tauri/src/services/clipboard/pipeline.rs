@@ -6,7 +6,10 @@ use crate::database::is_text_type;
 use crate::services::clipboard::utils::*;
 use std::sync::atomic::Ordering;
 use std::time::{SystemTime, UNIX_EPOCH};
-use crate::infrastructure::windows_api::window_tracker::get_active_app_info;
+use crate::infrastructure::windows_api::window_tracker::{
+    get_clipboard_source_app_info,
+    ActiveAppInfo,
+};
 use base64::Engine;
 
 #[derive(Debug, Clone)]
@@ -21,6 +24,7 @@ pub struct PipelineContext {
     pub data: ClipboardData,
     pub app_handle: AppHandle,
     pub source_app: String,
+    pub source_app_path: Option<String>,
     pub timestamp: i64,
     pub entry: Option<ClipboardEntry>,
     pub should_stop: bool,
@@ -29,8 +33,8 @@ pub struct PipelineContext {
 }
 
 impl PipelineContext {
-    pub fn new(app_handle: AppHandle, data: ClipboardData) -> Self {
-        let (source_app, _) = get_active_app_info();
+    pub fn new(app_handle: AppHandle, data: ClipboardData, source_snapshot: Option<ActiveAppInfo>) -> Self {
+        let active_app = source_snapshot.unwrap_or_else(get_clipboard_source_app_info);
         let timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
@@ -39,7 +43,8 @@ impl PipelineContext {
         Self {
             data,
             app_handle,
-            source_app,
+            source_app: active_app.app_name,
+            source_app_path: active_app.process_path,
             timestamp,
             entry: None,
             should_stop: false,
@@ -131,6 +136,7 @@ impl PipelineStage for DiscoveryStage {
             content,
             html_content,
             source_app: ctx.source_app.clone(),
+            source_app_path: ctx.source_app_path.clone(),
             timestamp: ctx.timestamp,
             preview,
             is_pinned: false,
@@ -336,6 +342,7 @@ impl PipelineStage for PersistenceStage {
                         existing.content = entry.content.clone();
                         existing.html_content = entry.html_content.clone();
                         existing.source_app = entry.source_app.clone();
+                        existing.source_app_path = entry.source_app_path.clone();
                         existing.timestamp = entry.timestamp;
                         existing.preview = entry.preview.clone();
                         existing.is_external = entry.is_external;

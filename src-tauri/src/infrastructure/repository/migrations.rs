@@ -165,6 +165,17 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
         conn.execute("INSERT INTO schema_migrations (version) VALUES (8)", [])?;
     }
 
+    // Migration 9: Persist source executable path for real app icon rendering
+    if current_version < 9 {
+        if !has_column(conn, "clipboard_history", "source_app_path")? {
+            conn.execute(
+                "ALTER TABLE clipboard_history ADD COLUMN source_app_path TEXT",
+                [],
+            )?;
+        }
+        conn.execute("INSERT INTO schema_migrations (version) VALUES (9)", [])?;
+    }
+
     Ok(())
 }
 

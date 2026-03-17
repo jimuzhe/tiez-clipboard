@@ -318,6 +318,10 @@ pub fn seed_defaults(conn: &Connection) -> Result<()> {
         "INSERT OR IGNORE INTO settings (key, value) VALUES ('mqtt_ws_path', '/mqtt')",
         [],
     );
+    let _ = conn.execute(
+        "INSERT OR IGNORE INTO settings (key, value) VALUES ('mqtt_notification_enabled', 'true')",
+        [],
+    );
 
     // Cloud sync settings
     let _ = conn.execute(
@@ -449,6 +453,7 @@ mod tests {
                 content TEXT NOT NULL,
                 html_content TEXT,
                 source_app TEXT NOT NULL,
+                source_app_path TEXT,
                 timestamp INTEGER NOT NULL,
                 preview TEXT NOT NULL,
                 is_pinned INTEGER NOT NULL DEFAULT 0,
@@ -501,6 +506,7 @@ mod tests {
             content: "Hello Integration Test".to_string(),
             html_content: None,
             source_app: "TestApp".to_string(),
+            source_app_path: Some("C:\\TestApp.exe".to_string()),
             timestamp: 123456789,
             preview: "Hello...".to_string(),
             is_pinned: false,

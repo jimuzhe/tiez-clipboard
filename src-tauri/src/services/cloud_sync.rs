@@ -1003,6 +1003,7 @@ fn apply_remote_changes(app: &AppHandle, remote_items: &[CloudSyncItem]) -> AppR
             content: item.content.clone(),
             html_content: item.html_content.clone(),
             source_app: item.source_app.clone(),
+            source_app_path: None,
             timestamp: effective_timestamp,
             preview,
             is_pinned: item.is_pinned,
@@ -1039,7 +1040,7 @@ fn update_existing_entry_from_sync(
 ) -> AppResult<bool> {
     let current = conn
         .query_row(
-            "SELECT timestamp, preview, source_app, is_pinned, pinned_order, tags, use_count
+            "SELECT timestamp, preview, source_app, is_pinned, pinned_order, tags, use_count, source_app_path
              FROM clipboard_history
              WHERE id = ?1",
             rusqlite::params![id],
@@ -1052,6 +1053,7 @@ fn update_existing_entry_from_sync(
                     row.get::<_, i64>(4).unwrap_or(0),
                     row.get::<_, String>(5).unwrap_or_else(|_| "[]".to_string()),
                     row.get::<_, i32>(6).unwrap_or(0),
+                    row.get::<_, Option<String>>(7).unwrap_or(None),
                 ))
             },
         )
@@ -1060,6 +1062,11 @@ fn update_existing_entry_from_sync(
     let incoming_tags_json =
         serde_json::to_string(&item.tags).unwrap_or_else(|_| "[]".to_string());
     let next_timestamp = current.0.max(effective_timestamp);
+    let next_source_app_path = if current.2 == item.source_app {
+        current.7.clone()
+    } else {
+        None
+    };
 
     let changed = next_timestamp != current.0
         || current.1 != preview
@@ -1081,8 +1088,9 @@ fn update_existing_entry_from_sync(
              is_pinned = ?4,
              pinned_order = ?5,
              tags = ?6,
-             use_count = ?7
-         WHERE id = ?8",
+             use_count = ?7,
+             source_app_path = ?8
+         WHERE id = ?9",
         rusqlite::params![
             next_timestamp,
             preview,
@@ -1091,6 +1099,7 @@ fn update_existing_entry_from_sync(
             item.pinned_order,
             incoming_tags_json,
             item.use_count,
+            next_source_app_path,
             id
         ],
     )

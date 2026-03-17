@@ -4,6 +4,7 @@ export interface ClipboardEntry {
   content: string;
   html_content?: string;
   source_app: string;
+  source_app_path?: string;
   timestamp: number;
   preview: string;
   is_pinned: boolean;

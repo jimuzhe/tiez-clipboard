@@ -287,7 +287,7 @@ pub async fn register_received_file(app_handle: &AppHandle, final_path: std::pat
         let timestamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as i64;
         let entry = ClipboardEntry {
             id: 0, content_type: type_enum.to_string(), content: saved_path.clone(), html_content: None,
-            source_app: "File Transfer".to_string(), timestamp, preview, is_pinned: false,
+            source_app: "File Transfer".to_string(), source_app_path: None, timestamp, preview, is_pinned: false,
             tags: Vec::new(), use_count: 0, is_external: false, pinned_order: 0, file_preview_exists: true,
         };
         if settings.persistent.load(Ordering::Relaxed) {
