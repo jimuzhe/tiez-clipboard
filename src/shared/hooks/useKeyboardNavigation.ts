@@ -92,18 +92,29 @@ export const useKeyboardNavigation = ({
       const isAnyInput = tagName === "INPUT" || tagName === "TEXTAREA";
       const isEditable = isAnyInput || target.isContentEditable === true;
 
-      if (isEditable) {
-        if (e.key === "Escape") {
-          searchInputRef.current?.blur();
+      if (e.key === "Escape") {
+          e.preventDefault();
+          if (isEditable) {
+              searchInputRef.current?.blur();
+          } else {
+              const isClipboardAtTop = !isKeyboardModeRef.current || selectedIndexRef.current <= 0;
+              if (isClipboardAtTop) {
+                invoke("hide_window_cmd");
+              } else {
+                setIsKeyboardMode(true);
+                setSelectedIndex(0);
+              }
+          }
           return;
-        }
+      }
 
-        if (e.key === "Enter" && isSearchInput) {
-          // Fall through
-        } else {
-          if (!arrowKeySelectionRef.current) return;
-          if (!isSearchInput) return;
-        }
+      if (isEditable) {
+          if (e.key === "Enter" && isSearchInput) {
+              // Fall through
+          } else {
+              if (!arrowKeySelectionRef.current) return;
+              if (!isSearchInput) return;
+          }
       }
 
       if (arrowKeySelectionRef.current && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
@@ -115,6 +126,7 @@ export const useKeyboardNavigation = ({
             setSelectedIndex(0);
             return true;
           }
+
           if (e.key === "ArrowDown") {
             setSelectedIndex((s) => Math.min(s + 1, filteredHistoryRef.current.length - 1));
           } else {
