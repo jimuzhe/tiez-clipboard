@@ -18,14 +18,14 @@ body.theme-macos {
   --border-light: rgba(255, 255, 255, 0.64);
   --shadow-color: rgba(15, 18, 26, 0.16);
   --hotkey-delete-btn-radius: 6px;
-  --hotkey-delete-btn-border: 2px solid #ccd1d8;
+  --hotkey-delete-btn-border: 1px solid #cfd5dd;
   --hotkey-delete-btn-border-hover: rgba(10, 132, 255, 0.34);
   --hotkey-delete-btn-bg: rgba(255, 255, 255, 0.94);
   --hotkey-delete-btn-bg-hover: rgba(255, 255, 255, 0.99);
   --hotkey-delete-btn-color: #2d3440;
   --hotkey-delete-btn-color-hover: var(--accent-color);
-  --hotkey-delete-btn-shadow: 0 0 0 1px rgba(255, 255, 255, 0.88) inset, 0 0 0 1px #d4d8df;
-  --hotkey-delete-btn-shadow-active: 0 0 0 1px #d4d8df, 0 0 0 1px rgba(10, 132, 255, 0.22) inset;
+  --hotkey-delete-btn-shadow: 0 0 0 1px rgba(255, 255, 255, 0.82) inset;
+  --hotkey-delete-btn-shadow-active: 0 0 0 1px rgba(10, 132, 255, 0.2) inset;
 }
 
 .theme-macos #root {
@@ -700,14 +700,14 @@ body.theme-macos {
     --text-secondary: #a8abb4;
     --border-dark: rgba(255, 255, 255, 0.14);
     --shadow-color: rgba(0, 0, 0, 0.5);
-    --hotkey-delete-btn-border: 2px solid rgba(173, 179, 191, 0.92);
+    --hotkey-delete-btn-border: 1px solid rgba(173, 179, 191, 0.74);
     --hotkey-delete-btn-border-hover: rgba(112, 191, 255, 0.5);
     --hotkey-delete-btn-bg: rgba(74, 76, 86, 0.9);
     --hotkey-delete-btn-bg-hover: rgba(86, 89, 99, 0.95);
     --hotkey-delete-btn-color: #f5f5f7;
     --hotkey-delete-btn-color-hover: #7fc2ff;
-    --hotkey-delete-btn-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08) inset, 0 0 0 1px rgba(16, 18, 24, 0.88);
-    --hotkey-delete-btn-shadow-active: 0 0 0 1px rgba(16, 18, 24, 0.88), 0 0 0 1px rgba(112, 191, 255, 0.22) inset;
+    --hotkey-delete-btn-shadow: 0 0 0 1px rgba(255, 255, 255, 0.07) inset;
+    --hotkey-delete-btn-shadow-active: 0 0 0 1px rgba(112, 191, 255, 0.2) inset;
   }
 
   body:not(.light-mode).theme-macos #root {
@@ -946,14 +946,14 @@ body.dark-mode.theme-macos {
   --text-secondary: #a8abb4;
   --border-dark: rgba(255, 255, 255, 0.14);
   --shadow-color: rgba(0, 0, 0, 0.5);
-  --hotkey-delete-btn-border: 2px solid rgba(173, 179, 191, 0.92);
+  --hotkey-delete-btn-border: 1px solid rgba(173, 179, 191, 0.74);
   --hotkey-delete-btn-border-hover: rgba(112, 191, 255, 0.5);
   --hotkey-delete-btn-bg: rgba(74, 76, 86, 0.9);
   --hotkey-delete-btn-bg-hover: rgba(86, 89, 99, 0.95);
   --hotkey-delete-btn-color: #f5f5f7;
   --hotkey-delete-btn-color-hover: #7fc2ff;
-  --hotkey-delete-btn-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08) inset, 0 0 0 1px rgba(16, 18, 24, 0.88);
-  --hotkey-delete-btn-shadow-active: 0 0 0 1px rgba(16, 18, 24, 0.88), 0 0 0 1px rgba(112, 191, 255, 0.22) inset;
+  --hotkey-delete-btn-shadow: 0 0 0 1px rgba(255, 255, 255, 0.07) inset;
+  --hotkey-delete-btn-shadow-active: 0 0 0 1px rgba(112, 191, 255, 0.2) inset;
 }
 
 body.dark-mode.theme-macos #root {
