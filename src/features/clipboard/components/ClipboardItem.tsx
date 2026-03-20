@@ -988,7 +988,7 @@ const ClipboardItem = ({
                 if (target.closest('a')) {
                     e.preventDefault();
                 }
-                onCopy(false); // Plain text by default for click
+                onCopy(false, false);
                 onSelect();
             }}
             onContextMenu={(e) => {
@@ -1002,7 +1002,8 @@ const ClipboardItem = ({
                 if (target.closest('a')) {
                     e.stopPropagation();
                 }
-                onCopy(true); // Formatted text for right-click
+                const pasteImageAsBase64 = item.content_type === "image";
+                onCopy(!pasteImageAsBase64, pasteImageAsBase64);
                 onSelect();
             }}
             onMouseEnter={(e) => {
