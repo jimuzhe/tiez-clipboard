@@ -13,8 +13,8 @@ interface UseSettingsPanelPropsOptions {
   mainHotkeys: string[];
   checkHotkeyConflict: (newHotkey: string, mode: "main" | "sequential" | "rich" | "search") => boolean;
   updateHotkey: (key: string) => void;
-  addMainHotkey: (key: string, options?: { skipAvailabilityCheck?: boolean }) => void;
-  removeMainHotkey: (key: string) => void;
+  addMainHotkey: (key: string, options?: { skipAvailabilityCheck?: boolean }) => Promise<boolean>;
+  removeMainHotkey: (key: string) => Promise<boolean>;
   updateSequentialHotkey: (key: string) => void;
   updateRichPasteHotkey: (key: string) => void;
   updateSearchHotkey: (key: string) => void;

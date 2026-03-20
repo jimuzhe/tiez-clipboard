@@ -67,8 +67,8 @@ interface ClipboardSettingsGroupProps {
     setIsRecording: (val: boolean) => void;
     mainHotkeys: string[];
     updateHotkey: (key: string) => void;
-    addMainHotkey: (key: string, options?: { skipAvailabilityCheck?: boolean }) => void;
-    removeMainHotkey: (key: string) => void;
+    addMainHotkey: (key: string, options?: { skipAvailabilityCheck?: boolean }) => Promise<boolean>;
+    removeMainHotkey: (key: string) => Promise<boolean>;
     hotkey: string;
     appSettings: Record<string, string>;
     theme: string;
@@ -81,6 +81,16 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
     const [persistentLimitDraft, setPersistentLimitDraft] = useState(
         props.persistentLimit.toString()
     );
+    const isWinVHotkey = (value: string) => {
+        const parts = value
+            .split('+')
+            .map((item) => item.trim().toUpperCase())
+            .filter((item) => !!item);
+        if (parts.length !== 2) return false;
+        const hasWin = parts.includes('WIN') || parts.includes('SUPER') || parts.includes('META') || parts.includes('COMMAND');
+        const hasV = parts.includes('V');
+        return hasWin && hasV;
+    };
 
     useEffect(() => {
         setPersistentLimitDraft(props.persistentLimit.toString());
@@ -668,13 +678,17 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
                                             <div key={i} className="key-cap">{k}</div>
                                         ))}
                                     </div>
-                                    <button
-                                        type="button"
-                                        className="icon-btn"
-                                        onClick={() => props.removeMainHotkey(item)}
-                                    >
-                                        ×
-                                    </button>
+                                    {!isWinVHotkey(item) && (
+                                        <button
+                                            type="button"
+                                            className="hotkey-delete-btn"
+                                            onClick={() => props.removeMainHotkey(item)}
+                                            aria-label={`${props.t('delete')} ${item}`}
+                                            title={`${props.t('delete')} ${item}`}
+                                        >
+                                            ×
+                                        </button>
+                                    )}
                                 </div>
                             ))}
 
@@ -731,18 +745,28 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
                                 checked={props.registryWinVEnabled}
                                 onChange={async (e) => {
                                     const enabled = e.target.checked;
+                                    const previousEnabled = !enabled;
+                                    const matchedWinV = props.mainHotkeys.find((item) => isWinVHotkey(item));
+                                    const hasWinV = !!matchedWinV;
                                     props.setRegistryWinVEnabled(enabled);
                                     try {
+                                        if (enabled && !hasWinV) {
+                                            const added = await props.addMainHotkey("Win+V", { skipAvailabilityCheck: true });
+                                            if (!added) {
+                                                props.setRegistryWinVEnabled(previousEnabled);
+                                                return;
+                                            }
+                                        }
+                                        if (!enabled && matchedWinV) {
+                                            const removed = await props.removeMainHotkey(matchedWinV);
+                                            if (!removed) {
+                                                props.setRegistryWinVEnabled(previousEnabled);
+                                                return;
+                                            }
+                                        }
+
                                         await invoke("save_setting", { key: 'app.use_win_v_shortcut', value: String(enabled) });
                                         const changed = await invoke("trigger_registry_win_v_optimization", { enable: enabled });
-                                        const hasWinV = props.mainHotkeys.some((item) => item.toUpperCase() === "WIN+V");
-
-                                        if (enabled && !hasWinV) {
-                                            await props.addMainHotkey("Win+V", { skipAvailabilityCheck: true });
-                                        }
-                                        if (!enabled && hasWinV) {
-                                            await props.removeMainHotkey("Win+V");
-                                        }
 
                                         if (changed) {
                                             const confirmed = await ask(
@@ -771,6 +795,13 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
                                             }
                                         }
                                     } catch (err) {
+                                        if (enabled && !hasWinV) {
+                                            await props.removeMainHotkey("Win+V");
+                                        }
+                                        if (!enabled && matchedWinV) {
+                                            await props.addMainHotkey(matchedWinV, { skipAvailabilityCheck: true });
+                                        }
+                                        props.setRegistryWinVEnabled(previousEnabled);
                                         console.error(err);
                                         message(props.t('error') + `: ${err}`, { kind: 'error' });
                                     }

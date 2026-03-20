@@ -439,6 +439,31 @@
   opacity: 0.8;
 }
 
+.hotkey-delete-btn {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border: 2px solid var(--border-dark);
+  background: var(--bg-element);
+  color: var(--text-primary);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.hotkey-delete-btn:hover {
+  background: var(--bg-button);
+}
+
+.hotkey-delete-btn:active {
+  transform: translateY(1px);
+}
+
 /* Switch-themed Industrial Style */
 .key-cap {
   position: relative;

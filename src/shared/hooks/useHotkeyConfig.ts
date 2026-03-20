@@ -82,6 +82,18 @@ export const useHotkeyConfig = ({
     [pushToast, saveAppSetting, serializeMainHotkeys, setHotkey, t]
   );
 
+  const resolveHotkeyErrorMessage = useCallback(
+    (err: unknown): string => {
+      if (typeof err === "string" && err.trim()) return err;
+      if (err instanceof Error && err.message.trim()) return err.message;
+      const fallback = t("hotkey_unavailable");
+      if (err === null || err === undefined) return fallback;
+      const text = String(err).trim();
+      return text || fallback;
+    },
+    [t]
+  );
+
   const checkHotkeyConflict = useCallback(
     (newHotkey: string, mode: HotkeyMode): boolean => {
       if (!newHotkey) return false;
@@ -121,7 +133,7 @@ export const useHotkeyConfig = ({
         try {
           await invoke<boolean>("test_hotkey_available", { hotkey: newHotkey });
         } catch (err) {
-          const errorMsg = `❌ ${newHotkey}: ${err || "快捷键被占用"}`;
+          const errorMsg = `${newHotkey}: ${resolveHotkeyErrorMessage(err)}`;
           pushToast(errorMsg, 5000);
           setIsRecording(false);
           return;
@@ -137,43 +149,45 @@ export const useHotkeyConfig = ({
   const addMainHotkey = useCallback(
     async (newHotkey: string, options?: { skipAvailabilityCheck?: boolean }) => {
       const value = newHotkey.trim();
-      if (!value) return;
+      if (!value) return false;
 
       const hasConflict = checkHotkeyConflict(value, "main");
       if (hasConflict) {
         setIsRecording(false);
-        return;
+        return false;
       }
 
       if (!options?.skipAvailabilityCheck) {
         try {
           await invoke<boolean>("test_hotkey_available", { hotkey: value });
         } catch (err) {
-          const errorMsg = `❌ ${value}: ${err || "快捷键被占用"}`;
+          const errorMsg = `${value}: ${resolveHotkeyErrorMessage(err)}`;
           pushToast(errorMsg, 5000);
           setIsRecording(false);
-          return;
+          return false;
         }
       }
 
       const existing = parseMainHotkeys(hotkey);
       if (existing.includes(value)) {
         setIsRecording(false);
-        return;
+        return true;
       }
 
       await persistMainHotkeys([...existing, value]);
       setIsRecording(false);
+      return true;
     },
-    [checkHotkeyConflict, hotkey, parseMainHotkeys, persistMainHotkeys, pushToast, setIsRecording]
+    [checkHotkeyConflict, hotkey, parseMainHotkeys, persistMainHotkeys, pushToast, resolveHotkeyErrorMessage, setIsRecording]
   );
 
   const removeMainHotkey = useCallback(
     async (targetHotkey: string) => {
       const existing = parseMainHotkeys(hotkey);
       const next = existing.filter((item) => item !== targetHotkey);
-      if (next.length === existing.length) return;
+      if (next.length === existing.length) return false;
       await persistMainHotkeys(next);
+      return true;
     },
     [hotkey, parseMainHotkeys, persistMainHotkeys]
   );
@@ -190,7 +204,7 @@ export const useHotkeyConfig = ({
         try {
           await invoke<boolean>("test_hotkey_available", { hotkey: newHotkey });
         } catch (err) {
-          const errorMsg = `❌ ${newHotkey}: ${err || "快捷键被占用"}`;
+          const errorMsg = `${newHotkey}: ${resolveHotkeyErrorMessage(err)}`;
           pushToast(errorMsg, 5000);
           setIsRecordingSequential(false);
           return;
@@ -223,7 +237,7 @@ export const useHotkeyConfig = ({
         try {
           await invoke<boolean>("test_hotkey_available", { hotkey: newHotkey });
         } catch (err) {
-          const errorMsg = `❌ ${newHotkey}: ${err || "快捷键被占用"}`;
+          const errorMsg = `${newHotkey}: ${resolveHotkeyErrorMessage(err)}`;
           pushToast(errorMsg, 5000);
           setIsRecordingRich(false);
           return;
@@ -256,7 +270,7 @@ export const useHotkeyConfig = ({
         try {
           await invoke<boolean>("test_hotkey_available", { hotkey: newHotkey });
         } catch (err) {
-          const errorMsg = `❌ ${newHotkey}: ${err || "快捷键被占用"}`;
+          const errorMsg = `${newHotkey}: ${resolveHotkeyErrorMessage(err)}`;
           pushToast(errorMsg, 5000);
           setIsRecordingSearch(false);
           return;
