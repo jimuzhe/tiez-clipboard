@@ -300,7 +300,8 @@ fn setup_main_window(app: &App, s: &StartupSettings) {
     // Handle silent start
     let args: Vec<String> = std::env::args().collect();
     let is_autostart = args.contains(&"--autostart".to_string()) || args.contains(&"--minimized".to_string());
-    if !is_autostart && !s.silent_start {
+    let should_show_window = cfg!(debug_assertions) || (!is_autostart && !s.silent_start);
+    if should_show_window {
         if let Some(window) = app.get_webview_window("main") {
             let _ = window.show();
         }
