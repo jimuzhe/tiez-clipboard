@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { ComponentType, ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { ask, message } from "@tauri-apps/plugin-dialog";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, X } from "lucide-react";
 
 interface LabelWithHintProps {
     label: string;
@@ -686,7 +686,7 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
                                             aria-label={`${props.t('delete')} ${item}`}
                                             title={`${props.t('delete')} ${item}`}
                                         >
-                                            ×
+                                            <X className="hotkey-delete-icon" size={14} strokeWidth={2.6} />
                                         </button>
                                     )}
                                 </div>

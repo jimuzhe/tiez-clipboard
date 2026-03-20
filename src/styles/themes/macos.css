@@ -17,6 +17,15 @@ body.theme-macos {
   --border-dark: rgba(60, 60, 67, 0.24);
   --border-light: rgba(255, 255, 255, 0.64);
   --shadow-color: rgba(15, 18, 26, 0.16);
+  --hotkey-delete-btn-radius: 6px;
+  --hotkey-delete-btn-border: 2px solid #ccd1d8;
+  --hotkey-delete-btn-border-hover: rgba(10, 132, 255, 0.34);
+  --hotkey-delete-btn-bg: rgba(255, 255, 255, 0.94);
+  --hotkey-delete-btn-bg-hover: rgba(255, 255, 255, 0.99);
+  --hotkey-delete-btn-color: #2d3440;
+  --hotkey-delete-btn-color-hover: var(--accent-color);
+  --hotkey-delete-btn-shadow: 0 0 0 1px rgba(255, 255, 255, 0.88) inset, 0 0 0 1px #d4d8df;
+  --hotkey-delete-btn-shadow-active: 0 0 0 1px #d4d8df, 0 0 0 1px rgba(10, 132, 255, 0.22) inset;
 }
 
 .theme-macos #root {
@@ -259,6 +268,134 @@ body.theme-macos {
 
 .theme-macos .switch input:disabled+.toggle {
   opacity: 0.56;
+}
+
+.theme-macos .key-group {
+  gap: 8px !important;
+  padding: 2px !important;
+  margin-top: 2px !important;
+  border-radius: 10px !important;
+  align-items: center !important;
+}
+
+.theme-macos .key-group.recording {
+  background: rgba(10, 132, 255, 0.1) !important;
+  box-shadow: 0 0 0 1px rgba(10, 132, 255, 0.22) inset !important;
+}
+
+.theme-macos .key-cap {
+  min-width: 2.4em !important;
+  height: 2em !important;
+  padding: 0 0.65em !important;
+  margin: 0 !important;
+  border: 1px solid rgba(60, 60, 67, 0.26) !important;
+  border-bottom-width: 1px !important;
+  border-radius: 8px !important;
+  background: rgba(255, 255, 255, 0.88) !important;
+  color: var(--text-primary) !important;
+  box-shadow: 0 1px 2px rgba(15, 18, 26, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+  font-weight: 700 !important;
+  font-size: 11px !important;
+  letter-spacing: 0.02em !important;
+  text-transform: uppercase !important;
+  transform: none !important;
+}
+
+.theme-macos .key-group:active .key-cap,
+.theme-macos .key-group.recording .key-cap {
+  transform: none !important;
+  background: rgba(10, 132, 255, 0.14) !important;
+  border-color: rgba(10, 132, 255, 0.36) !important;
+  box-shadow: 0 0 0 1px rgba(10, 132, 255, 0.2) inset !important;
+}
+
+.theme-macos .key-group:focus-visible {
+  outline: 2px solid rgba(10, 132, 255, 0.5) !important;
+  outline-offset: 2px !important;
+}
+
+.theme-macos .hotkey-delete-btn {
+  width: 24px !important;
+  height: 24px !important;
+  box-shadow: var(--hotkey-delete-btn-shadow) !important;
+  transform: none !important;
+}
+
+.theme-macos .hotkey-delete-btn:hover {
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.9) inset, 0 0 0 1px #d4d8df !important;
+}
+
+.theme-macos .hotkey-delete-btn:active {
+  box-shadow: var(--hotkey-delete-btn-shadow-active) !important;
+  background: rgba(10, 132, 255, 0.12) !important;
+  border-color: rgba(10, 132, 255, 0.42) !important;
+}
+
+.theme-macos .hotkey-delete-icon {
+  width: 12px !important;
+  height: 12px !important;
+  stroke-width: 2.6 !important;
+}
+
+.theme-macos .settings-view input[type="range"] {
+  height: 8px !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 999px !important;
+  box-shadow: none !important;
+}
+
+.theme-macos .settings-view input[type="range"]::-webkit-slider-runnable-track {
+  height: 8px;
+  border-radius: 999px;
+  background:
+    linear-gradient(var(--accent-color), var(--accent-color)) 0/ var(--range-progress, 0%) 100% no-repeat,
+    rgba(255, 255, 255, 0.62);
+  border: 1px solid rgba(60, 60, 67, 0.22);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.theme-macos .settings-view input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  margin-top: -6px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 1px solid rgba(60, 60, 67, 0.28);
+  box-shadow: 0 2px 6px rgba(15, 18, 26, 0.2);
+}
+
+.theme-macos .settings-view input[type="range"]::-moz-range-track {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.62);
+  border: 1px solid rgba(60, 60, 67, 0.22);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.theme-macos .settings-view input[type="range"]::-moz-range-progress {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--accent-color);
+}
+
+.theme-macos .settings-view input[type="range"]::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 1px solid rgba(60, 60, 67, 0.28);
+  box-shadow: 0 2px 6px rgba(15, 18, 26, 0.2);
+}
+
+.theme-macos .settings-view input[type="range"]:focus-visible {
+  outline: none !important;
+}
+
+.theme-macos .settings-view input[type="range"]:focus-visible::-webkit-slider-thumb,
+.theme-macos .settings-view input[type="range"]:focus-visible::-moz-range-thumb {
+  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.24), 0 2px 6px rgba(15, 18, 26, 0.2);
 }
 
 .theme-macos .modal-content,
@@ -563,6 +700,14 @@ body.theme-macos {
     --text-secondary: #a8abb4;
     --border-dark: rgba(255, 255, 255, 0.14);
     --shadow-color: rgba(0, 0, 0, 0.5);
+    --hotkey-delete-btn-border: 2px solid rgba(173, 179, 191, 0.92);
+    --hotkey-delete-btn-border-hover: rgba(112, 191, 255, 0.5);
+    --hotkey-delete-btn-bg: rgba(74, 76, 86, 0.9);
+    --hotkey-delete-btn-bg-hover: rgba(86, 89, 99, 0.95);
+    --hotkey-delete-btn-color: #f5f5f7;
+    --hotkey-delete-btn-color-hover: #7fc2ff;
+    --hotkey-delete-btn-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08) inset, 0 0 0 1px rgba(16, 18, 24, 0.88);
+    --hotkey-delete-btn-shadow-active: 0 0 0 1px rgba(16, 18, 24, 0.88), 0 0 0 1px rgba(112, 191, 255, 0.22) inset;
   }
 
   body:not(.light-mode).theme-macos #root {
@@ -648,6 +793,64 @@ body.theme-macos {
   body:not(.light-mode).theme-macos .toggle {
     background: rgba(120, 120, 128, 0.46) !important;
     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
+  }
+
+  body:not(.light-mode).theme-macos .key-group.recording {
+    background: rgba(10, 132, 255, 0.2) !important;
+    box-shadow: 0 0 0 1px rgba(112, 191, 255, 0.38) inset !important;
+  }
+
+  body:not(.light-mode).theme-macos .key-cap {
+    background: rgba(74, 76, 86, 0.84) !important;
+    border-color: rgba(255, 255, 255, 0.2) !important;
+    color: #f5f5f7 !important;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+  }
+
+  body:not(.light-mode).theme-macos .key-group:active .key-cap,
+  body:not(.light-mode).theme-macos .key-group.recording .key-cap {
+    background: rgba(10, 132, 255, 0.28) !important;
+    border-color: rgba(112, 191, 255, 0.58) !important;
+    box-shadow: 0 0 0 1px rgba(112, 191, 255, 0.2) inset !important;
+  }
+
+  body:not(.light-mode).theme-macos .hotkey-delete-btn {
+    box-shadow: var(--hotkey-delete-btn-shadow) !important;
+  }
+
+  body:not(.light-mode).theme-macos .hotkey-delete-btn:hover {
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1) inset, 0 0 0 1px rgba(16, 18, 24, 0.88) !important;
+  }
+
+  body:not(.light-mode).theme-macos .hotkey-delete-btn:active {
+    box-shadow: var(--hotkey-delete-btn-shadow-active) !important;
+    background: rgba(10, 132, 255, 0.28) !important;
+    border-color: rgba(112, 191, 255, 0.62) !important;
+  }
+
+  body:not(.light-mode).theme-macos .settings-view input[type="range"]::-webkit-slider-runnable-track {
+    background:
+      linear-gradient(var(--accent-color), var(--accent-color)) 0/ var(--range-progress, 0%) 100% no-repeat,
+      rgba(255, 255, 255, 0.14);
+    border-color: rgba(255, 255, 255, 0.12);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+
+  body:not(.light-mode).theme-macos .settings-view input[type="range"]::-moz-range-track {
+    background: rgba(255, 255, 255, 0.14);
+    border-color: rgba(255, 255, 255, 0.12);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+
+  body:not(.light-mode).theme-macos .settings-view input[type="range"]::-moz-range-progress {
+    background: var(--accent-color);
+  }
+
+  body:not(.light-mode).theme-macos .settings-view input[type="range"]::-webkit-slider-thumb,
+  body:not(.light-mode).theme-macos .settings-view input[type="range"]::-moz-range-thumb {
+    background: rgba(244, 245, 247, 0.96);
+    border-color: rgba(255, 255, 255, 0.5);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.5);
   }
 
   body:not(.light-mode).theme-macos .modal-content,
@@ -743,6 +946,14 @@ body.dark-mode.theme-macos {
   --text-secondary: #a8abb4;
   --border-dark: rgba(255, 255, 255, 0.14);
   --shadow-color: rgba(0, 0, 0, 0.5);
+  --hotkey-delete-btn-border: 2px solid rgba(173, 179, 191, 0.92);
+  --hotkey-delete-btn-border-hover: rgba(112, 191, 255, 0.5);
+  --hotkey-delete-btn-bg: rgba(74, 76, 86, 0.9);
+  --hotkey-delete-btn-bg-hover: rgba(86, 89, 99, 0.95);
+  --hotkey-delete-btn-color: #f5f5f7;
+  --hotkey-delete-btn-color-hover: #7fc2ff;
+  --hotkey-delete-btn-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08) inset, 0 0 0 1px rgba(16, 18, 24, 0.88);
+  --hotkey-delete-btn-shadow-active: 0 0 0 1px rgba(16, 18, 24, 0.88), 0 0 0 1px rgba(112, 191, 255, 0.22) inset;
 }
 
 body.dark-mode.theme-macos #root {
@@ -828,6 +1039,64 @@ body.dark-mode.theme-macos .history-item.compact .item-actions .btn-icon.active 
 body.dark-mode.theme-macos .toggle {
   background: rgba(120, 120, 128, 0.46) !important;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
+}
+
+body.dark-mode.theme-macos .key-group.recording {
+  background: rgba(10, 132, 255, 0.2) !important;
+  box-shadow: 0 0 0 1px rgba(112, 191, 255, 0.38) inset !important;
+}
+
+body.dark-mode.theme-macos .key-cap {
+  background: rgba(74, 76, 86, 0.84) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  color: #f5f5f7 !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+body.dark-mode.theme-macos .key-group:active .key-cap,
+body.dark-mode.theme-macos .key-group.recording .key-cap {
+  background: rgba(10, 132, 255, 0.28) !important;
+  border-color: rgba(112, 191, 255, 0.58) !important;
+  box-shadow: 0 0 0 1px rgba(112, 191, 255, 0.2) inset !important;
+}
+
+body.dark-mode.theme-macos .hotkey-delete-btn {
+  box-shadow: var(--hotkey-delete-btn-shadow) !important;
+}
+
+body.dark-mode.theme-macos .hotkey-delete-btn:hover {
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1) inset, 0 0 0 1px rgba(16, 18, 24, 0.88) !important;
+}
+
+body.dark-mode.theme-macos .hotkey-delete-btn:active {
+  box-shadow: var(--hotkey-delete-btn-shadow-active) !important;
+  background: rgba(10, 132, 255, 0.28) !important;
+  border-color: rgba(112, 191, 255, 0.62) !important;
+}
+
+body.dark-mode.theme-macos .settings-view input[type="range"]::-webkit-slider-runnable-track {
+  background:
+    linear-gradient(var(--accent-color), var(--accent-color)) 0/ var(--range-progress, 0%) 100% no-repeat,
+    rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+body.dark-mode.theme-macos .settings-view input[type="range"]::-moz-range-track {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+body.dark-mode.theme-macos .settings-view input[type="range"]::-moz-range-progress {
+  background: var(--accent-color);
+}
+
+body.dark-mode.theme-macos .settings-view input[type="range"]::-webkit-slider-thumb,
+body.dark-mode.theme-macos .settings-view input[type="range"]::-moz-range-thumb {
+  background: rgba(244, 245, 247, 0.96);
+  border-color: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.5);
 }
 
 body.dark-mode.theme-macos .modal-content,
