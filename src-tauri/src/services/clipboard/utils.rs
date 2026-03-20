@@ -319,7 +319,7 @@ pub fn truncate_html_for_preview(html: &str) -> Option<String> {
 
 pub fn detect_content_type(text: &str) -> String {
     let trimmed = text.trim();
-    if trimmed.starts_with("http") || trimmed.starts_with("www.") {
+    if trimmed.starts_with("www.") || trimmed.contains("://") && trimmed.split("://").next().map_or(false, |s| !s.is_empty() && s.chars().all(|c| c.is_ascii_alphanumeric() || c == '+' || c == '-' || c == '.')) {
         return "url".to_string();
     }
 
@@ -352,10 +352,16 @@ pub fn contains_sensitive_info(text: &str, kinds: &[String], custom_rules: &[Str
     static EMAIL_RE: OnceLock<Regex> = OnceLock::new();
     static SECRET_RE: OnceLock<Regex> = OnceLock::new();
 
+    static URL_RE: OnceLock<Regex> = OnceLock::new();
+
     if text.len() > 5000 || text.starts_with("data:") { return false; }
 
     let has_kind = |k: &str| kinds.iter().any(|t| t == k);
 
+    if has_kind("url") {
+        let re = URL_RE.get_or_init(|| Regex::new(r"(?i)(?:[a-zA-Z][a-zA-Z0-9+\-.]*://|www\.)\S+").unwrap());
+        if re.is_match(text) { return true; }
+    }
     if has_kind("phone") {
         let re = PHONE_RE.get_or_init(|| Regex::new(r"(?:\+?86)?[-\s\(]*1[3-9]\d{1}[-\s\)]*\d{4}[-\s]*\d{4}").unwrap());
         if re.is_match(text) { return true; }
@@ -597,4 +603,149 @@ pub fn parse_cf_html(raw: &[u8]) -> Option<String> {
     }
     if raw_text.trim().starts_with("<") { return Some(raw_text); }
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    mod detect_content_type_tests {
+        use super::*;
+
+        #[test]
+        fn http_url() {
+            assert_eq!(detect_content_type("http://example.com"), "url");
+        }
+
+        #[test]
+        fn https_url() {
+            assert_eq!(detect_content_type("https://example.com/path?q=1"), "url");
+        }
+
+        #[test]
+        fn ftp_url() {
+            assert_eq!(detect_content_type("ftp://files.example.com/doc.pdf"), "url");
+        }
+
+        #[test]
+        fn custom_protocol_url() {
+            assert_eq!(detect_content_type("myapp+custom://open/page"), "url");
+        }
+
+        #[test]
+        fn www_url() {
+            assert_eq!(detect_content_type("www.example.com"), "url");
+        }
+
+        #[test]
+        fn url_with_whitespace() {
+            assert_eq!(detect_content_type("  https://example.com  "), "url");
+        }
+
+        #[test]
+        fn plain_text_not_url() {
+            assert_eq!(detect_content_type("hello world"), "text");
+        }
+
+        #[test]
+        fn colon_slash_slash_in_plain_text_no_valid_scheme() {
+            // "://foo" alone — the part before :// is empty
+            assert_eq!(detect_content_type("://foo"), "text");
+        }
+
+        #[test]
+        fn code_snippet() {
+            assert_eq!(detect_content_type("const x = 1; function foo() {}"), "code");
+        }
+    }
+
+    mod contains_sensitive_info_tests {
+        use super::*;
+
+        fn kinds(list: &[&str]) -> Vec<String> {
+            list.iter().map(|s| s.to_string()).collect()
+        }
+
+        #[test]
+        fn detects_url() {
+            assert!(contains_sensitive_info(
+                "visit https://secret.internal/admin",
+                &kinds(&["url"]),
+                &[],
+            ));
+        }
+
+        #[test]
+        fn detects_ftp_url() {
+            assert!(contains_sensitive_info(
+                "ftp://files.company.com/secret.zip",
+                &kinds(&["url"]),
+                &[],
+            ));
+        }
+
+        #[test]
+        fn detects_www_url() {
+            assert!(contains_sensitive_info(
+                "visit www.example.com/admin",
+                &kinds(&["url"]),
+                &[],
+            ));
+        }
+
+        #[test]
+        fn no_url_kind_skips_url_check() {
+            assert!(!contains_sensitive_info(
+                "https://example.com",
+                &kinds(&["phone"]),
+                &[],
+            ));
+        }
+
+        #[test]
+        fn detects_phone() {
+            assert!(contains_sensitive_info(
+                "call me 13812345678",
+                &kinds(&["phone"]),
+                &[],
+            ));
+        }
+
+        #[test]
+        fn detects_email() {
+            assert!(contains_sensitive_info(
+                "send to user@example.com",
+                &kinds(&["email"]),
+                &[],
+            ));
+        }
+
+        #[test]
+        fn skips_data_uri() {
+            assert!(!contains_sensitive_info(
+                "data:image/png;base64,iVBOR...",
+                &kinds(&["url", "phone", "email"]),
+                &[],
+            ));
+        }
+
+        #[test]
+        fn skips_oversized_text() {
+            let big = "a".repeat(5001);
+            assert!(!contains_sensitive_info(
+                &big,
+                &kinds(&["phone"]),
+                &[],
+            ));
+        }
+
+        #[test]
+        fn custom_regex_rule() {
+            assert!(contains_sensitive_info(
+                "order-12345",
+                &kinds(&[]),
+                &["order-\\d+".to_string()],
+            ));
+        }
+    }
 }
