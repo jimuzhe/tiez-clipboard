@@ -123,7 +123,7 @@ const VirtualClipboardList = React.forwardRef<VirtualClipboardListHandle, Virtua
         // Memoized item renderer for Virtuoso
         const itemContent = useCallback((index: number, item: ClipboardEntry) => {
             return (
-                <div style={{ paddingBottom: compactMode ? 2 : 4 }}>
+                <div style={{ paddingBottom: compactMode ? 6 : 12 }}>
                     {renderItem(item, index, index === 0)}
                 </div>
             );
