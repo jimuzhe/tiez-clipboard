@@ -1,7 +1,7 @@
 import type { Locale } from "../types";
 
 const SENSITIVE_MASK = "...";
-const URL_PROTOCOL_RE = /^(https?:\/\/)/i;
+const URL_PROTOCOL_RE = /^([a-zA-Z][a-zA-Z0-9+\-.]*:\/\/)/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 interface MaskOptions {
@@ -82,7 +82,7 @@ export const formatSensitivePreview = (
     const protocol = protocolMatch[0];
     const rest = content.slice(protocol.length);
     const maskedRest = maskMiddleChars(rest, opts.prefixVisible, opts.suffixVisible);
-    return maskedRest === rest ? content : `${protocol}${maskedRest}`;
+    return `${protocol}${maskedRest}`;
   }
 
   if (EMAIL_RE.test(content.trim())) {

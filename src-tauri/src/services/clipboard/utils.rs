@@ -319,7 +319,7 @@ pub fn truncate_html_for_preview(html: &str) -> Option<String> {
 
 pub fn detect_content_type(text: &str) -> String {
     let trimmed = text.trim();
-    if trimmed.starts_with("http") || trimmed.starts_with("www.") {
+    if trimmed.starts_with("www.") || trimmed.contains("://") && trimmed.split("://").next().map_or(false, |s| !s.is_empty() && s.chars().all(|c| c.is_ascii_alphanumeric() || c == '+' || c == '-' || c == '.')) {
         return "url".to_string();
     }
 
