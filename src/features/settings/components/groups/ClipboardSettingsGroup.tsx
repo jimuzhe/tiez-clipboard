@@ -588,6 +588,7 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
                                     { id: 'phone', label: props.t('privacy_kind_phone') },
                                     { id: 'idcard', label: props.t('privacy_kind_idcard') },
                                     { id: 'email', label: props.t('privacy_kind_email') },
+                                    { id: 'url', label: props.t('privacy_kind_url') },
                                     { id: 'secret', label: props.t('privacy_kind_secret') },
                                     { id: 'password', label: props.t('privacy_kind_password') || "Strong Password" },
                                 ].map(opt => {

@@ -352,10 +352,16 @@ pub fn contains_sensitive_info(text: &str, kinds: &[String], custom_rules: &[Str
     static EMAIL_RE: OnceLock<Regex> = OnceLock::new();
     static SECRET_RE: OnceLock<Regex> = OnceLock::new();
 
+    static URL_RE: OnceLock<Regex> = OnceLock::new();
+
     if text.len() > 5000 || text.starts_with("data:") { return false; }
 
     let has_kind = |k: &str| kinds.iter().any(|t| t == k);
 
+    if has_kind("url") {
+        let re = URL_RE.get_or_init(|| Regex::new(r"(?i)[a-zA-Z][a-zA-Z0-9+\-.]*://\S+").unwrap());
+        if re.is_match(text) { return true; }
+    }
     if has_kind("phone") {
         let re = PHONE_RE.get_or_init(|| Regex::new(r"(?:\+?86)?[-\s\(]*1[3-9]\d{1}[-\s\)]*\d{4}[-\s]*\d{4}").unwrap());
         if re.is_match(text) { return true; }
