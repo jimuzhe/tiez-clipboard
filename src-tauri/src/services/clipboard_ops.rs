@@ -85,19 +85,19 @@ fn resolve_rich_image_fallback_bytes(payload: &str) -> Option<Vec<u8>> {
 }
 
 fn convert_image_content_to_base64(content: &str) -> AppResult<String> {
-    if content.starts_with("data:image/") {
-        return Ok(content
-            .split_once(',')
-            .map(|(_, b64)| b64.to_string())
-            .unwrap_or_else(|| content.to_string()));
-    }
-
-    if !content.starts_with("data:") && (content.starts_with('/') || content.contains(":\\")) {
-        let bytes = std::fs::read(content).map_err(AppError::from)?;
+    if let Some(bytes) = resolve_rich_image_fallback_bytes(content) {
         return Ok(general_purpose::STANDARD.encode(bytes));
     }
 
-    Ok(content.to_string())
+    let value = content.trim();
+    if value.is_empty() {
+        return Err(AppError::Validation("图片内容为空，无法转换为 base64".to_string()));
+    }
+    if general_purpose::STANDARD.decode(value).is_ok() {
+        return Ok(value.to_string());
+    }
+
+    Err(AppError::Validation("无法识别图片内容，无法转换为 base64".to_string()))
 }
 
 #[tauri::command]
