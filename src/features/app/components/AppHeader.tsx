@@ -94,22 +94,8 @@ const AppHeader = ({
   };
 
   return (
-  <header
-    data-tauri-drag-region
-    onMouseDown={(e) => {
-      // Don't drag if clicking on interactive elements
-      const target = e.target as HTMLElement;
-      if (target.closest('button, input, select, textarea, [role="button"]')) {
-        return;
-      }
-
-      // Blur search input if focused
-      if (searchInputRef.current && document.activeElement === searchInputRef.current) {
-        searchInputRef.current.blur();
-      }
-    }}
-  >
-    <div className="header-top">
+  <header data-tauri-drag-region>
+    <div className="header-top" data-tauri-drag-region>
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
         {(showSettings || showTagManager || showEmojiPanel) && (
           <button className="btn-icon" onClick={() => {
