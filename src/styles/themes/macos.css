@@ -78,6 +78,7 @@ body.theme-macos:not(.hide-app-border) {
   background: rgba(255, 255, 255, 0.68) !important;
   border: 1px solid rgba(60, 60, 67, 0.14) !important;
   padding: 10px 12px !important;
+  transition: background-color 0.2s ease !important;
 }
 
 .theme-macos .settings-group:not(.collapsed) .group-header {
@@ -753,10 +754,10 @@ body.theme-macos:not(.hide-app-border) {
   }
 
   body:not(.light-mode).theme-macos .settings-group:not(.collapsed) .group-header {
-    border-bottom-color: rgba(255, 255, 255, 0.1) !important;
     border-top: none !important;
     border-left: none !important;
     border-right: none !important;
+    border-bottom-color: rgba(255, 255, 255, 0.1) !important;
     background: rgba(62, 64, 74, 0.5) !important;
   }
 
@@ -1005,10 +1006,10 @@ body.dark-mode.theme-macos .settings-group .group-header {
 }
 
 body.dark-mode.theme-macos .settings-group:not(.collapsed) .group-header {
-  border-bottom-color: rgba(255, 255, 255, 0.1) !important;
   border-top: none !important;
   border-left: none !important;
   border-right: none !important;
+  border-bottom-color: rgba(255, 255, 255, 0.1) !important;
   background: rgba(62, 64, 74, 0.5) !important;
 }
 
