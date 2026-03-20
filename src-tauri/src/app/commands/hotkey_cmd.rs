@@ -4,6 +4,15 @@ use crate::error::{AppResult, AppError};
 use crate::global_state::HOTKEY_STRING;
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut};
 
+pub(crate) fn parse_hotkey_list(raw: &str) -> Vec<String> {
+    raw
+        .split(['\n', '\r'])
+        .map(str::trim)
+        .filter(|item| !item.is_empty())
+        .map(|item| item.to_string())
+        .collect()
+}
+
 #[tauri::command]
 pub fn register_hotkey(app_handle: AppHandle, hotkey: String) -> AppResult<()> {
     {
@@ -18,11 +27,12 @@ pub fn register_hotkey(app_handle: AppHandle, hotkey: String) -> AppResult<()> {
     
     let _ = app_handle.global_shortcut().unregister_all();
     
-    if !hotkey.is_empty() {
-        let normalized = hotkey.replace("Win", "Super");
-        if hotkey.eq_ignore_ascii_case("MouseMiddle") || hotkey.eq_ignore_ascii_case("MButton") {
-            // Mouse middle handled in hooks
-        } else if let Ok(shortcut) = normalized.parse::<Shortcut>() {
+    for main_hotkey in parse_hotkey_list(&hotkey) {
+        let normalized = main_hotkey.replace("Win", "Super");
+        if main_hotkey.eq_ignore_ascii_case("MouseMiddle") || main_hotkey.eq_ignore_ascii_case("MButton") {
+            continue;
+        }
+        if let Ok(shortcut) = normalized.parse::<Shortcut>() {
             let _ = app_handle.global_shortcut().register(shortcut);
         }
     }

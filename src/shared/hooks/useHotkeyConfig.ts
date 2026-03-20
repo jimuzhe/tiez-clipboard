@@ -49,12 +49,46 @@ export const useHotkeyConfig = ({
   t,
   pushToast
 }: UseHotkeyConfigOptions) => {
+  const parseMainHotkeys = useCallback(
+    (value: string): string[] =>
+      value
+        .split(/\r?\n/g)
+        .map((item) => item.trim())
+        .filter((item) => !!item),
+    []
+  );
+
+  const serializeMainHotkeys = useCallback(
+    (items: string[]): string =>
+      items
+        .map((item) => item.trim())
+        .filter((item) => !!item)
+        .join("\n"),
+    []
+  );
+
+  const persistMainHotkeys = useCallback(
+    async (items: string[]) => {
+      const serialized = serializeMainHotkeys(items);
+      setHotkey(serialized);
+      saveAppSetting("hotkey", serialized);
+      await invoke("register_hotkey", { hotkey: serialized }).catch((err) => {
+        if (serialized) {
+          const errorMsg = t("hotkey_register_failed") + (err?.toString() || "");
+          pushToast(errorMsg, 3000);
+        }
+      });
+    },
+    [pushToast, saveAppSetting, serializeMainHotkeys, setHotkey, t]
+  );
+
   const checkHotkeyConflict = useCallback(
     (newHotkey: string, mode: HotkeyMode): boolean => {
       if (!newHotkey) return false;
+      const mainHotkeys = parseMainHotkeys(hotkey);
 
       const conflicts = [];
-      if (mode !== "main" && newHotkey === hotkey) conflicts.push(t("global_hotkey"));
+      if (mode !== "main" && mainHotkeys.includes(newHotkey)) conflicts.push(t("global_hotkey"));
       if (mode !== "sequential" && sequentialMode && newHotkey === sequentialHotkey) {
         conflicts.push(t("sequential_paste_hotkey_label"));
       }
@@ -72,7 +106,7 @@ export const useHotkeyConfig = ({
       }
       return false;
     },
-    [hotkey, sequentialMode, sequentialHotkey, richPasteHotkey, searchHotkey, t, pushToast]
+    [hotkey, parseMainHotkeys, sequentialMode, sequentialHotkey, richPasteHotkey, searchHotkey, t, pushToast]
   );
 
   const updateHotkey = useCallback(
@@ -94,17 +128,54 @@ export const useHotkeyConfig = ({
         }
       }
 
-      setHotkey(newHotkey);
-      saveAppSetting("hotkey", newHotkey);
-      await invoke("register_hotkey", { hotkey: newHotkey }).catch((err) => {
-        if (newHotkey) {
-          const errorMsg = t("hotkey_register_failed") + (err?.toString() || "");
-          pushToast(errorMsg, 3000);
-        }
-      });
+      await persistMainHotkeys(newHotkey ? [newHotkey] : []);
       setIsRecording(false);
     },
-    [checkHotkeyConflict, pushToast, saveAppSetting, setHotkey, setIsRecording, t]
+    [checkHotkeyConflict, persistMainHotkeys, pushToast, setIsRecording]
+  );
+
+  const addMainHotkey = useCallback(
+    async (newHotkey: string, options?: { skipAvailabilityCheck?: boolean }) => {
+      const value = newHotkey.trim();
+      if (!value) return;
+
+      const hasConflict = checkHotkeyConflict(value, "main");
+      if (hasConflict) {
+        setIsRecording(false);
+        return;
+      }
+
+      if (!options?.skipAvailabilityCheck) {
+        try {
+          await invoke<boolean>("test_hotkey_available", { hotkey: value });
+        } catch (err) {
+          const errorMsg = `❌ ${value}: ${err || "快捷键被占用"}`;
+          pushToast(errorMsg, 5000);
+          setIsRecording(false);
+          return;
+        }
+      }
+
+      const existing = parseMainHotkeys(hotkey);
+      if (existing.includes(value)) {
+        setIsRecording(false);
+        return;
+      }
+
+      await persistMainHotkeys([...existing, value]);
+      setIsRecording(false);
+    },
+    [checkHotkeyConflict, hotkey, parseMainHotkeys, persistMainHotkeys, pushToast, setIsRecording]
+  );
+
+  const removeMainHotkey = useCallback(
+    async (targetHotkey: string) => {
+      const existing = parseMainHotkeys(hotkey);
+      const next = existing.filter((item) => item !== targetHotkey);
+      if (next.length === existing.length) return;
+      await persistMainHotkeys(next);
+    },
+    [hotkey, parseMainHotkeys, persistMainHotkeys]
   );
 
   const updateSequentialHotkey = useCallback(
@@ -214,7 +285,7 @@ export const useHotkeyConfig = ({
 
     if (isRecording || isRecordingSequential || isRecordingRich || isRecordingSearch) {
       const unlisten = listen<string>("hotkey-recorded", (event) => {
-        if (isRecording) updateHotkey(event.payload);
+        if (isRecording) addMainHotkey(event.payload);
         if (isRecordingSequential) updateSequentialHotkey(event.payload);
         if (isRecordingRich) updateRichPasteHotkey(event.payload);
         if (isRecordingSearch) updateSearchHotkey(event.payload);
@@ -241,7 +312,7 @@ export const useHotkeyConfig = ({
     setIsRecordingSequential,
     setIsRecordingRich,
     setIsRecordingSearch,
-    updateHotkey,
+    addMainHotkey,
     updateSequentialHotkey,
     updateRichPasteHotkey,
     updateSearchHotkey
@@ -250,6 +321,8 @@ export const useHotkeyConfig = ({
   return {
     checkHotkeyConflict,
     updateHotkey,
+    addMainHotkey,
+    removeMainHotkey,
     updateSequentialHotkey,
     updateRichPasteHotkey,
     updateSearchHotkey

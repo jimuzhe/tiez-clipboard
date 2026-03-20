@@ -65,8 +65,10 @@ interface ClipboardSettingsGroupProps {
     setRegistryWinVEnabled: (val: boolean) => void;
     isRecording: boolean;
     setIsRecording: (val: boolean) => void;
-    hotkeyParts: string[];
+    mainHotkeys: string[];
     updateHotkey: (key: string) => void;
+    addMainHotkey: (key: string, options?: { skipAvailabilityCheck?: boolean }) => void;
+    removeMainHotkey: (key: string) => void;
     hotkey: string;
     appSettings: Record<string, string>;
     theme: string;
@@ -639,30 +641,52 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
                         )}
                     </div>
 
-                    {!props.registryWinVEnabled && (
-                        <div className="setting-item no-border">
-                            <div className="item-label-group">
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                    <span className="item-label">{props.t('global_hotkey')}</span>
-                                </div>
-                                <span className="hint">
-                                    {props.isRecording ? (
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                                            <span style={{ color: '#ff9800', fontWeight: 'bold' }}>
-                                                {props.t('win_key_not_recommended')}
-                                            </span>
-                                            <span style={{ fontSize: '11px', opacity: 0.8 }}>
-                                                {props.t('hotkey_recording_esc')}
-                                            </span>
-                                        </div>
-                                    ) : props.t('hotkey_click_hint')}
-                                </span>
+                    <div className="setting-item no-border column">
+                        <div className="item-label-group">
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span className="item-label">{props.t('global_hotkey')}</span>
                             </div>
+                            <span className="hint">
+                                {props.isRecording ? (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                        <span style={{ color: '#ff9800', fontWeight: 'bold' }}>
+                                            {props.t('win_key_not_recommended')}
+                                        </span>
+                                        <span style={{ fontSize: '11px', opacity: 0.8 }}>
+                                            {props.t('hotkey_recording_esc')}
+                                        </span>
+                                    </div>
+                                ) : props.t('hotkey_click_hint')}
+                            </span>
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            {props.mainHotkeys.map((item, idx) => (
+                                <div key={`${item}-${idx}`} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <div className="key-group" style={{ flex: 1, cursor: 'default' }}>
+                                        {item.split('+').map((k, i) => (
+                                            <div key={i} className="key-cap">{k}</div>
+                                        ))}
+                                    </div>
+                                    <button
+                                        type="button"
+                                        className="icon-btn"
+                                        onClick={() => props.removeMainHotkey(item)}
+                                    >
+                                        ×
+                                    </button>
+                                </div>
+                            ))}
+
+                            {props.mainHotkeys.length === 0 && !props.isRecording && (
+                                <div className="key-group" style={{ cursor: 'default' }}>
+                                    <div className="key-cap" style={{ width: '8em', opacity: 0.5 }}>{props.t('not_set')}</div>
+                                </div>
+                            )}
 
                             <div
                                 className={`key-group ${props.isRecording ? 'recording' : ''}`}
-                                onClick={() => !props.registryWinVEnabled && props.setIsRecording(true)}
-                                style={{ cursor: props.registryWinVEnabled ? 'not-allowed' : 'pointer', opacity: props.registryWinVEnabled ? 0.6 : 1 }}
+                                onClick={() => props.setIsRecording(true)}
                                 tabIndex={0}
                                 onKeyDown={(e) => {
                                     if (!props.isRecording) return;
@@ -678,31 +702,21 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
                                     if (e.ctrlKey) modifiers.push('Ctrl');
                                     if (e.shiftKey) modifiers.push('Shift');
                                     if (e.altKey) modifiers.push('Alt');
-                                    // Normally tauri-plugin-global-shortcut doesn't support naked Win keys well,
-                                    // but we allow it for the user if they really want to try.
                                     if (e.metaKey) modifiers.push('Win');
 
                                     const key = e.key.toUpperCase();
                                     if (['CONTROL', 'SHIFT', 'ALT', 'META'].includes(key)) return;
 
                                     const newHotkey = [...modifiers, key].join('+');
-                                    props.updateHotkey(newHotkey);
+                                    props.addMainHotkey(newHotkey);
                                 }}
                             >
-                                {props.isRecording ? (
-                                    <div className="key-cap" style={{ width: '8em' }}>{props.t('waiting_for_input')}</div>
-                                ) : (
-                                    props.hotkeyParts.length > 0 ? (
-                                        props.hotkeyParts.map((k, i) => (
-                                            <div key={i} className="key-cap">{k}</div>
-                                        ))
-                                    ) : (
-                                        <div className="key-cap" style={{ width: '8em', opacity: 0.5 }}>{props.t('not_set')}</div>
-                                    )
-                                )}
+                                <div className="key-cap" style={{ width: '12em' }}>
+                                    {props.isRecording ? props.t('waiting_for_input') : `+ ${props.t('global_hotkey')}`}
+                                </div>
                             </div>
                         </div>
-                    )}
+                    </div>
 
                     <div className="setting-item">
                         <props.LabelWithHint
@@ -721,27 +735,13 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
                                     try {
                                         await invoke("save_setting", { key: 'app.use_win_v_shortcut', value: String(enabled) });
                                         const changed = await invoke("trigger_registry_win_v_optimization", { enable: enabled });
-                                        // Auto-switch hotkey based on user request
-                                        let targetHotkey = "Alt+C";
-                                        if (enabled) {
-                                            // Save current hotkey before switching to Win+V
-                                            if (props.hotkey && props.hotkey !== "Win+V") {
-                                                props.saveAppSetting('pre_win_v_hotkey', props.hotkey);
-                                            }
-                                            targetHotkey = "Win+V";
-                                        } else {
-                                            // Restore from pre_win_v_hotkey if available
-                                            const savedPreHotkey = props.appSettings['app.pre_win_v_hotkey'];
-                                            if (savedPreHotkey && savedPreHotkey !== "Win+V") {
-                                                targetHotkey = savedPreHotkey;
-                                            }
-                                        }
+                                        const hasWinV = props.mainHotkeys.some((item) => item.toUpperCase() === "WIN+V");
 
-                                        // Disable path: release Win+V capture immediately to avoid app-side interception.
-                                        if (!enabled) {
-                                            await props.updateHotkey(targetHotkey);
-                                        } else if (!changed) {
-                                            props.updateHotkey(targetHotkey);
+                                        if (enabled && !hasWinV) {
+                                            await props.addMainHotkey("Win+V", { skipAvailabilityCheck: true });
+                                        }
+                                        if (!enabled && hasWinV) {
+                                            await props.removeMainHotkey("Win+V");
                                         }
 
                                         if (changed) {
@@ -751,10 +751,9 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
                                             );
                                             if (confirmed) {
                                                 await invoke("restart_explorer");
-                                                // Enable path: re-register Win+V after explorer restart to ensure it's captured.
                                                 if (enabled) {
                                                     setTimeout(() => {
-                                                        props.updateHotkey(targetHotkey);
+                                                        props.addMainHotkey("Win+V", { skipAvailabilityCheck: true });
                                                     }, 1500);
                                                 }
 
@@ -769,8 +768,6 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
                                                         console.error("Failed to restore theme:", e);
                                                     }
                                                 }, 2500);
-                                            } else {
-                                                props.updateHotkey(targetHotkey);
                                             }
                                         }
                                     } catch (err) {

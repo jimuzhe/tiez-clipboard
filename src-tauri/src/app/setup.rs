@@ -764,11 +764,17 @@ pub fn handle_global_shortcut(app: &AppHandle, shortcut: &tauri_plugin_global_sh
     use tauri_plugin_global_shortcut::Shortcut;
     let settings = app.state::<SettingsState>();
 
-    if let Ok(main_s) = {
+    let main_items = {
         let val = settings.main_hotkey.lock().unwrap().clone();
-        val.replace("Win", "Super").parse::<Shortcut>()
-    } {
-        if shortcut == &main_s { toggle_window(app); return; }
+        crate::app::commands::hotkey_cmd::parse_hotkey_list(&val)
+    };
+    for item in main_items {
+        if let Ok(main_s) = item.replace("Win", "Super").parse::<Shortcut>() {
+            if shortcut == &main_s {
+                toggle_window(app);
+                return;
+            }
+        }
     }
 
     if let Ok(seq_s) = {

@@ -328,8 +328,12 @@ pub unsafe extern "system" fn mouse_proc(n_code: i32, w_param: WPARAM, l_param: 
 
             // Handle configured middle mouse hotkey
             if msg == WM_MBUTTONDOWN {
-                let current = HOTKEY_STRING.lock().unwrap().to_lowercase();
-                if current == "mousemiddle" || current == "mbutton" {
+                let configured = HOTKEY_STRING.lock().unwrap().clone();
+                let matched = configured
+                    .split(['\n', '\r'])
+                    .map(|item| item.trim().to_lowercase())
+                    .any(|item| item == "mousemiddle" || item == "mbutton");
+                if matched {
                     if let Some(handle) = GLOBAL_APP_HANDLE.get() {
                         toggle_window(&handle);
                     }

@@ -1,6 +1,7 @@
 use crate::app_state::SettingsState;
 use crate::database::DbState;
 use crate::infrastructure::repository::settings_repo::SettingsRepository;
+use crate::app::commands::hotkey_cmd::parse_hotkey_list;
 use std::sync::atomic::Ordering;
 use tauri::{AppHandle, Manager, State};
 use crate::error::{AppResult, AppError};
@@ -63,8 +64,11 @@ pub fn set_sequential_hotkey(
             .unwrap_or("Win+V".to_string())
     };
 
-    if !is_win_v_hotkey(&main_hotkey) {
-        let main_normalized = main_hotkey.replace("Win", "Super");
+    for main_item in parse_hotkey_list(&main_hotkey) {
+        if is_win_v_hotkey(&main_item) {
+            continue;
+        }
+        let main_normalized = main_item.replace("Win", "Super");
         if let Ok(shortcut) = main_normalized.parse::<Shortcut>() {
             let _ = app_handle.global_shortcut().register(shortcut);
         }
@@ -100,8 +104,11 @@ pub fn set_rich_paste_hotkey(
             .unwrap_or("Alt+C".to_string())
     };
 
-    if !is_win_v_hotkey(&main_hotkey) {
-        let main_normalized = main_hotkey.replace("Win", "Super");
+    for main_item in parse_hotkey_list(&main_hotkey) {
+        if is_win_v_hotkey(&main_item) {
+            continue;
+        }
+        let main_normalized = main_item.replace("Win", "Super");
         if let Ok(shortcut) = main_normalized.parse::<Shortcut>() {
             let _ = app_handle.global_shortcut().register(shortcut);
         }
@@ -147,8 +154,11 @@ pub fn set_search_hotkey(
             .unwrap_or("Alt+C".to_string())
     };
 
-    if !is_win_v_hotkey(&main_hotkey) {
-        let main_normalized = main_hotkey.replace("Win", "Super");
+    for main_item in parse_hotkey_list(&main_hotkey) {
+        if is_win_v_hotkey(&main_item) {
+            continue;
+        }
+        let main_normalized = main_item.replace("Win", "Super");
         if let Ok(shortcut) = main_normalized.parse::<Shortcut>() {
             let _ = app_handle.global_shortcut().register(shortcut);
         }
@@ -460,8 +470,11 @@ pub fn reset_settings(
 
     let _ = app.global_shortcut().unregister_all();
 
-    if !main_hotkey.is_empty() && !is_win_v_hotkey(&main_hotkey) {
-        if let Ok(shortcut) = main_hotkey.replace("Win", "Super").parse::<Shortcut>() { let _ = app.global_shortcut().register(shortcut); }
+    for main_item in parse_hotkey_list(&main_hotkey) {
+        if is_win_v_hotkey(&main_item) {
+            continue;
+        }
+        if let Ok(shortcut) = main_item.replace("Win", "Super").parse::<Shortcut>() { let _ = app.global_shortcut().register(shortcut); }
     }
     if !seq_hotkey.is_empty() {
         if let Ok(shortcut) = seq_hotkey.replace("Win", "Super").parse::<Shortcut>() { let _ = app.global_shortcut().register(shortcut); }

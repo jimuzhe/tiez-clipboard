@@ -168,8 +168,10 @@ interface SettingsPanelProps {
     setShowHotkeyHint: (val: boolean) => void;
     setIsRecording: (val: boolean) => void;
     isRecording: boolean;
-    hotkeyParts: string[];
+    mainHotkeys: string[];
     updateHotkey: (key: string) => void;
+    addMainHotkey: (key: string, options?: { skipAvailabilityCheck?: boolean }) => void;
+    removeMainHotkey: (key: string) => void;
     setWinClipboardDisabled: (val: boolean) => void;
 
     setTheme: (val: string) => void;
@@ -262,7 +264,7 @@ const SettingsPanel = (props: SettingsPanelProps) => {
         setIsRecordingRich, updateRichPasteHotkey,
         setIsRecordingSearch, updateSearchHotkey,
         setPrivacyProtection,
-        setIsRecording, isRecording, hotkey, hotkeyParts, updateHotkey,
+        setIsRecording, isRecording, hotkey, mainHotkeys, updateHotkey, addMainHotkey, removeMainHotkey,
         setTheme, setColorMode, setLanguage, showAppBorder, setShowAppBorder, compactMode, setCompactMode, checkHotkeyConflict,
         clipboardItemFontSize, setClipboardItemFontSize, clipboardTagFontSize, setClipboardTagFontSize,
         emojiPanelEnabled, setEmojiPanelEnabled, tagManagerEnabled, setTagManagerEnabled,
@@ -543,8 +545,10 @@ const SettingsPanel = (props: SettingsPanelProps) => {
                 setRegistryWinVEnabled={setRegistryWinVEnabled}
                 isRecording={isRecording}
                 setIsRecording={setIsRecording}
-                hotkeyParts={hotkeyParts}
+                mainHotkeys={mainHotkeys}
                 updateHotkey={updateHotkey}
+                addMainHotkey={addMainHotkey}
+                removeMainHotkey={removeMainHotkey}
                 hotkey={hotkey}
                 appSettings={appSettings}
                 theme={theme}
