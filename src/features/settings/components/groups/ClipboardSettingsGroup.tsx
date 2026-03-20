@@ -678,7 +678,7 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
                                             <div key={i} className="key-cap">{k}</div>
                                         ))}
                                     </div>
-                                    {!isWinVHotkey(item) && (
+                                    {(!isWinVHotkey(item) || !props.registryWinVEnabled) && (
                                         <button
                                             type="button"
                                             className="hotkey-delete-btn"
@@ -810,6 +810,16 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
                                         }
                                         if (!enabled && matchedWinV) {
                                             await props.addMainHotkey(matchedWinV, { skipAvailabilityCheck: true });
+                                        }
+                                        try {
+                                            await invoke("save_setting", { key: 'app.use_win_v_shortcut', value: String(previousEnabled) });
+                                        } catch (saveErr) {
+                                            console.error("Rollback save_setting failed:", saveErr);
+                                        }
+                                        try {
+                                            await invoke("trigger_registry_win_v_optimization", { enable: previousEnabled });
+                                        } catch (registryErr) {
+                                            console.error("Rollback registry optimization failed:", registryErr);
                                         }
                                         props.setRegistryWinVEnabled(previousEnabled);
                                         console.error(err);
