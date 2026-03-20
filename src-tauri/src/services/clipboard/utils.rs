@@ -781,7 +781,7 @@ pub fn contains_sensitive_info(text: &str, kinds: &[String], custom_rules: &[Str
     let has_kind = |k: &str| kinds.iter().any(|t| t == k);
 
     if has_kind("url") {
-        let re = URL_RE.get_or_init(|| Regex::new(r"(?i)[a-zA-Z][a-zA-Z0-9+\-.]*://\S+").unwrap());
+        let re = URL_RE.get_or_init(|| Regex::new(r"(?i)(?:[a-zA-Z][a-zA-Z0-9+\-.]*://|www\.)\S+").unwrap());
         if re.is_match(text) { return true; }
     }
     if has_kind("phone") {
@@ -1103,6 +1103,15 @@ mod tests {
         fn detects_ftp_url() {
             assert!(contains_sensitive_info(
                 "ftp://files.company.com/secret.zip",
+                &kinds(&["url"]),
+                &[],
+            ));
+        }
+
+        #[test]
+        fn detects_www_url() {
+            assert!(contains_sensitive_info(
+                "visit www.example.com/admin",
                 &kinds(&["url"]),
                 &[],
             ));
