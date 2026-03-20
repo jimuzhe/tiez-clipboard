@@ -27,7 +27,8 @@ interface UseClipboardItemRendererOptions {
     id: number,
     content: string,
     contentType: string,
-    pasteWithFormat?: boolean
+    pasteWithFormat?: boolean,
+    pasteImageAsBase64?: boolean
   ) => Promise<void>;
   setSelectedIndex: Dispatch<SetStateAction<number>>;
   setRevealedIds: Dispatch<SetStateAction<Set<number>>>;
@@ -104,8 +105,8 @@ export const useClipboardItemRenderer = ({
           compactMode={compactMode}
           richTextSnapshotPreview={richTextSnapshotPreview}
           onSelect={() => setSelectedIndex(index)}
-          onCopy={(withFormat) =>
-            copyToClipboard(item.id, item.content, item.content_type, withFormat)
+          onCopy={(withFormat, pasteImageAsBase64) =>
+            copyToClipboard(item.id, item.content, item.content_type, withFormat, pasteImageAsBase64)
           }
           onToggleReveal={(e) => {
             e.stopPropagation();

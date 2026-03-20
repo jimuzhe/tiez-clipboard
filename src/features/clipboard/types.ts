@@ -20,7 +20,7 @@ export interface ClipboardItemProps {
   richTextSnapshotPreview?: boolean;
 
   onSelect: () => void;
-  onCopy: (withFormat?: boolean) => void;
+  onCopy: (withFormat?: boolean, pasteImageAsBase64?: boolean) => void;
   onToggleReveal: (e: MouseEvent) => void;
   onOpen: (e: MouseEvent) => void;
   onTogglePin: (e: MouseEvent) => void;

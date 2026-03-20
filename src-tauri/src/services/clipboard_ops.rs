@@ -84,6 +84,22 @@ fn resolve_rich_image_fallback_bytes(payload: &str) -> Option<Vec<u8>> {
     std::fs::read(decoded_path).ok()
 }
 
+fn convert_image_content_to_base64(content: &str) -> AppResult<String> {
+    if content.starts_with("data:image/") {
+        return Ok(content
+            .split_once(',')
+            .map(|(_, b64)| b64.to_string())
+            .unwrap_or_else(|| content.to_string()));
+    }
+
+    if !content.starts_with("data:") && (content.starts_with('/') || content.contains(":\\")) {
+        let bytes = std::fs::read(content).map_err(AppError::from)?;
+        return Ok(general_purpose::STANDARD.encode(bytes));
+    }
+
+    Ok(content.to_string())
+}
+
 #[tauri::command]
 pub async fn copy_to_clipboard(
     app_handle: tauri::AppHandle,
@@ -96,6 +112,7 @@ pub async fn copy_to_clipboard(
     delete_after_use: bool,
     paste_with_format: Option<bool>,
     move_to_top: Option<bool>,
+    paste_image_as_base64: Option<bool>,
 ) -> AppResult<()> {
     println!("[DEBUG] copy_to_clipboard called: id={}, paste={}, content_type={}, content_len={}", id, paste, content_type, content.len());
 
@@ -119,6 +136,12 @@ pub async fn copy_to_clipboard(
         }
     }
 
+    let mut effective_content_type = content_type.clone();
+    if content_type == "image" && paste_image_as_base64.unwrap_or(false) {
+        content = convert_image_content_to_base64(&content)?;
+        effective_content_type = "text".to_string();
+    }
+
     // 1. Handle Window Visibility and Focus
     if paste {
         handle_window_focus_for_paste(&app_handle).await?;
@@ -133,9 +156,11 @@ pub async fn copy_to_clipboard(
     // 3. Copy to system clipboard
     copy_content_to_system_clipboard(
         &content,
-        &content_type,
+        &effective_content_type,
         html_content.as_deref(),
-        paste_with_format.unwrap_or(content_type == "rich_text" && html_content.as_deref().is_some()),
+        paste_with_format.unwrap_or(
+            effective_content_type == "rich_text" && html_content.as_deref().is_some()
+        ),
         content_hash,
         current_time,
     )
@@ -149,7 +174,7 @@ pub async fn copy_to_clipboard(
             id,
             delete_after_use,
             Some(&content),
-            &content_type,
+            &effective_content_type,
             move_to_top
         ).await?;
     }
@@ -965,6 +990,7 @@ pub fn paste_latest_rich(app_handle: tauri::AppHandle) {
                     item.id,
                     delete_after,       // delete_after_use
                     Some(true),  // paste_with_format
+                    None,
                     None,
                 ).await;
             }

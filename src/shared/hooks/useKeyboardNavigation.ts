@@ -20,7 +20,13 @@ interface UseKeyboardNavigationOptions {
   arrowKeySelection: boolean;
   richPasteHotkey: string;
   searchInputRef: RefObject<HTMLInputElement | null>;
-  copyToClipboard: (id: number, content: string, contentType: string, pasteWithFormat?: boolean) => Promise<void>;
+  copyToClipboard: (
+    id: number,
+    content: string,
+    contentType: string,
+    pasteWithFormat?: boolean,
+    pasteImageAsBase64?: boolean
+  ) => Promise<void>;
   setSearch: (val: string) => void;
 }
 
