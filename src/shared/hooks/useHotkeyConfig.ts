@@ -49,19 +49,80 @@ export const useHotkeyConfig = ({
   t,
   pushToast
 }: UseHotkeyConfigOptions) => {
+  const parseMainHotkeys = useCallback(
+    (value: string): string[] =>
+      value
+        .split(/[\r\n]+/g)
+        .map((item) => item.trim())
+        .filter((item) => !!item),
+    []
+  );
+
+  const serializeMainHotkeys = useCallback(
+    (items: string[]): string =>
+      items
+        .map((item) => item.trim())
+        .filter((item) => !!item)
+        .join("\n"),
+    []
+  );
+
+  const persistMainHotkeys = useCallback(
+    async (items: string[]) => {
+      const serialized = serializeMainHotkeys(items);
+      setHotkey(serialized);
+      saveAppSetting("hotkey", serialized);
+      await invoke("register_hotkey", { hotkey: serialized }).catch((err) => {
+        if (serialized) {
+          const errorMsg = t("hotkey_register_failed") + (err?.toString() || "");
+          pushToast(errorMsg, 3000);
+        }
+      });
+    },
+    [pushToast, saveAppSetting, serializeMainHotkeys, setHotkey, t]
+  );
+
+  const resolveHotkeyErrorMessage = useCallback(
+    (err: unknown): string => {
+      if (typeof err === "string" && err.trim()) return err;
+      if (err instanceof Error && err.message.trim()) return err.message;
+      const fallback = t("hotkey_unavailable");
+      if (err === null || err === undefined) return fallback;
+      const text = String(err).trim();
+      return text || fallback;
+    },
+    [t]
+  );
+
+  const normalizeHotkeyForCompare = useCallback(
+    (value: string): string =>
+      value
+        .split("+")
+        .map((item) => item.trim().toUpperCase())
+        .filter((item) => !!item)
+        .join("+"),
+    []
+  );
+
   const checkHotkeyConflict = useCallback(
     (newHotkey: string, mode: HotkeyMode): boolean => {
       if (!newHotkey) return false;
+      const normalizedNew = normalizeHotkeyForCompare(newHotkey);
+      const mainHotkeys = parseMainHotkeys(hotkey);
+      const normalizedMain = new Set(mainHotkeys.map(normalizeHotkeyForCompare));
+      const normalizedSequential = normalizeHotkeyForCompare(sequentialHotkey);
+      const normalizedRich = normalizeHotkeyForCompare(richPasteHotkey);
+      const normalizedSearch = normalizeHotkeyForCompare(searchHotkey);
 
       const conflicts = [];
-      if (mode !== "main" && newHotkey === hotkey) conflicts.push(t("global_hotkey"));
-      if (mode !== "sequential" && sequentialMode && newHotkey === sequentialHotkey) {
+      if (mode !== "main" && normalizedMain.has(normalizedNew)) conflicts.push(t("global_hotkey"));
+      if (mode !== "sequential" && sequentialMode && normalizedNew === normalizedSequential) {
         conflicts.push(t("sequential_paste_hotkey_label"));
       }
-      if (mode !== "rich" && newHotkey === richPasteHotkey) {
+      if (mode !== "rich" && normalizedNew === normalizedRich) {
         conflicts.push(t("rich_paste_hotkey_label"));
       }
-      if (mode !== "search" && newHotkey === searchHotkey) {
+      if (mode !== "search" && normalizedNew === normalizedSearch) {
         conflicts.push(t("search_hotkey_label"));
       }
 
@@ -72,7 +133,7 @@ export const useHotkeyConfig = ({
       }
       return false;
     },
-    [hotkey, sequentialMode, sequentialHotkey, richPasteHotkey, searchHotkey, t, pushToast]
+    [hotkey, normalizeHotkeyForCompare, parseMainHotkeys, sequentialMode, sequentialHotkey, richPasteHotkey, searchHotkey, t, pushToast]
   );
 
   const updateHotkey = useCallback(
@@ -87,24 +148,66 @@ export const useHotkeyConfig = ({
         try {
           await invoke<boolean>("test_hotkey_available", { hotkey: newHotkey });
         } catch (err) {
-          const errorMsg = `❌ ${newHotkey}: ${err || "快捷键被占用"}`;
+          const errorMsg = `${newHotkey}: ${resolveHotkeyErrorMessage(err)}`;
           pushToast(errorMsg, 5000);
           setIsRecording(false);
           return;
         }
       }
 
-      setHotkey(newHotkey);
-      saveAppSetting("hotkey", newHotkey);
-      await invoke("register_hotkey", { hotkey: newHotkey }).catch((err) => {
-        if (newHotkey) {
-          const errorMsg = t("hotkey_register_failed") + (err?.toString() || "");
-          pushToast(errorMsg, 3000);
-        }
-      });
+      await persistMainHotkeys(newHotkey ? [newHotkey] : []);
       setIsRecording(false);
     },
-    [checkHotkeyConflict, pushToast, saveAppSetting, setHotkey, setIsRecording, t]
+    [checkHotkeyConflict, persistMainHotkeys, pushToast, resolveHotkeyErrorMessage, setIsRecording]
+  );
+
+  const addMainHotkey = useCallback(
+    async (newHotkey: string, options?: { skipAvailabilityCheck?: boolean }) => {
+      const value = newHotkey.trim();
+      if (!value) return false;
+
+      const hasConflict = checkHotkeyConflict(value, "main");
+      if (hasConflict) {
+        setIsRecording(false);
+        return false;
+      }
+
+      if (!options?.skipAvailabilityCheck) {
+        try {
+          await invoke<boolean>("test_hotkey_available", { hotkey: value });
+        } catch (err) {
+          const errorMsg = `${value}: ${resolveHotkeyErrorMessage(err)}`;
+          pushToast(errorMsg, 5000);
+          setIsRecording(false);
+          return false;
+        }
+      }
+
+      const existing = parseMainHotkeys(hotkey);
+      const normalizedValue = normalizeHotkeyForCompare(value);
+      const hasExisting = existing.some((item) => normalizeHotkeyForCompare(item) === normalizedValue);
+      if (hasExisting) {
+        setIsRecording(false);
+        return true;
+      }
+
+      await persistMainHotkeys([...existing, value]);
+      setIsRecording(false);
+      return true;
+    },
+    [checkHotkeyConflict, hotkey, normalizeHotkeyForCompare, parseMainHotkeys, persistMainHotkeys, pushToast, resolveHotkeyErrorMessage, setIsRecording]
+  );
+
+  const removeMainHotkey = useCallback(
+    async (targetHotkey: string) => {
+      const existing = parseMainHotkeys(hotkey);
+      const normalizedTarget = normalizeHotkeyForCompare(targetHotkey);
+      const next = existing.filter((item) => normalizeHotkeyForCompare(item) !== normalizedTarget);
+      if (next.length === existing.length) return false;
+      await persistMainHotkeys(next);
+      return true;
+    },
+    [hotkey, normalizeHotkeyForCompare, parseMainHotkeys, persistMainHotkeys]
   );
 
   const updateSequentialHotkey = useCallback(
@@ -119,7 +222,7 @@ export const useHotkeyConfig = ({
         try {
           await invoke<boolean>("test_hotkey_available", { hotkey: newHotkey });
         } catch (err) {
-          const errorMsg = `❌ ${newHotkey}: ${err || "快捷键被占用"}`;
+          const errorMsg = `${newHotkey}: ${resolveHotkeyErrorMessage(err)}`;
           pushToast(errorMsg, 5000);
           setIsRecordingSequential(false);
           return;
@@ -136,7 +239,8 @@ export const useHotkeyConfig = ({
       pushToast,
       saveAppSetting,
       setSequentialHotkey,
-      setIsRecordingSequential
+      setIsRecordingSequential,
+      resolveHotkeyErrorMessage
     ]
   );
 
@@ -152,7 +256,7 @@ export const useHotkeyConfig = ({
         try {
           await invoke<boolean>("test_hotkey_available", { hotkey: newHotkey });
         } catch (err) {
-          const errorMsg = `❌ ${newHotkey}: ${err || "快捷键被占用"}`;
+          const errorMsg = `${newHotkey}: ${resolveHotkeyErrorMessage(err)}`;
           pushToast(errorMsg, 5000);
           setIsRecordingRich(false);
           return;
@@ -169,7 +273,8 @@ export const useHotkeyConfig = ({
       pushToast,
       saveAppSetting,
       setRichPasteHotkey,
-      setIsRecordingRich
+      setIsRecordingRich,
+      resolveHotkeyErrorMessage
     ]
   );
 
@@ -185,7 +290,7 @@ export const useHotkeyConfig = ({
         try {
           await invoke<boolean>("test_hotkey_available", { hotkey: newHotkey });
         } catch (err) {
-          const errorMsg = `❌ ${newHotkey}: ${err || "快捷键被占用"}`;
+          const errorMsg = `${newHotkey}: ${resolveHotkeyErrorMessage(err)}`;
           pushToast(errorMsg, 5000);
           setIsRecordingSearch(false);
           return;
@@ -202,7 +307,8 @@ export const useHotkeyConfig = ({
       pushToast,
       saveAppSetting,
       setSearchHotkey,
-      setIsRecordingSearch
+      setIsRecordingSearch,
+      resolveHotkeyErrorMessage
     ]
   );
 
@@ -214,7 +320,7 @@ export const useHotkeyConfig = ({
 
     if (isRecording || isRecordingSequential || isRecordingRich || isRecordingSearch) {
       const unlisten = listen<string>("hotkey-recorded", (event) => {
-        if (isRecording) updateHotkey(event.payload);
+        if (isRecording) addMainHotkey(event.payload);
         if (isRecordingSequential) updateSequentialHotkey(event.payload);
         if (isRecordingRich) updateRichPasteHotkey(event.payload);
         if (isRecordingSearch) updateSearchHotkey(event.payload);
@@ -241,7 +347,7 @@ export const useHotkeyConfig = ({
     setIsRecordingSequential,
     setIsRecordingRich,
     setIsRecordingSearch,
-    updateHotkey,
+    addMainHotkey,
     updateSequentialHotkey,
     updateRichPasteHotkey,
     updateSearchHotkey
@@ -250,6 +356,8 @@ export const useHotkeyConfig = ({
   return {
     checkHotkeyConflict,
     updateHotkey,
+    addMainHotkey,
+    removeMainHotkey,
     updateSequentialHotkey,
     updateRichPasteHotkey,
     updateSearchHotkey

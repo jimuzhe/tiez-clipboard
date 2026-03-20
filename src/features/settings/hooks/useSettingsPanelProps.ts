@@ -10,9 +10,11 @@ interface UseSettingsPanelPropsOptions {
   theme: string;
   language: Locale;
   colorMode: string;
-  hotkeyParts: string[];
+  mainHotkeys: string[];
   checkHotkeyConflict: (newHotkey: string, mode: "main" | "sequential" | "rich" | "search") => boolean;
   updateHotkey: (key: string) => void;
+  addMainHotkey: (key: string, options?: { skipAvailabilityCheck?: boolean }) => Promise<boolean>;
+  removeMainHotkey: (key: string) => Promise<boolean>;
   updateSequentialHotkey: (key: string) => void;
   updateRichPasteHotkey: (key: string) => void;
   updateSearchHotkey: (key: string) => void;
@@ -32,9 +34,11 @@ export const useSettingsPanelProps = ({
   theme,
   language,
   colorMode,
-  hotkeyParts,
+  mainHotkeys,
   checkHotkeyConflict,
   updateHotkey,
+  addMainHotkey,
+  removeMainHotkey,
   updateSequentialHotkey,
   updateRichPasteHotkey,
   updateSearchHotkey,
@@ -338,8 +342,10 @@ export const useSettingsPanelProps = ({
     setShowHotkeyHint,
     setIsRecording,
     isRecording,
-    hotkeyParts,
+    mainHotkeys,
     updateHotkey,
+    addMainHotkey,
+    removeMainHotkey,
     setWinClipboardDisabled,
     setTheme,
     setColorMode,

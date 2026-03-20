@@ -329,9 +329,13 @@ const App = () => {
     }));
   };
 
-  const hotkeyParts = useMemo(
-    () => (hotkey || t('not_set')).split('+'),
-    [hotkey, t]
+  const mainHotkeys = useMemo(
+    () =>
+      hotkey
+        .split(/[\r\n]+/g)
+        .map((item) => item.trim())
+        .filter((item) => !!item),
+    [hotkey]
   );
 
   // Compute all tags when tag manager is open OR when search box is focused
@@ -349,7 +353,7 @@ const App = () => {
   useEffect(() => {
     const handleKeydown = (event: KeyboardEvent) => {
       if (isRecording || isRecordingSequential || isRecordingRich || isRecordingSearch) return;
-      if (!hotkey || hotkey === t('not_set')) return;
+      if (mainHotkeys.length === 0) return;
 
       const activeEl = document.activeElement as HTMLElement | null;
       const isEditable = !!activeEl && (
@@ -358,21 +362,24 @@ const App = () => {
         activeEl.isContentEditable
       );
 
-      if (matchesHotkey(event, hotkey)) {
-        event.preventDefault();
-        invoke("toggle_window_cmd").catch(console.error);
-        return;
-      }
+      for (const item of mainHotkeys) {
+        if (matchesHotkey(event, item)) {
+          event.preventDefault();
+          invoke("toggle_window_cmd").catch(console.error);
+          return;
+        }
 
-      if (!isEditable && hotkey.toUpperCase().includes('WIN') && matchesHotkey(event, hotkey, { ignoreWin: true })) {
-        event.preventDefault();
-        invoke("toggle_window_cmd").catch(console.error);
+        if (!isEditable && item.toUpperCase().includes('WIN') && matchesHotkey(event, item, { ignoreWin: true })) {
+          event.preventDefault();
+          invoke("toggle_window_cmd").catch(console.error);
+          return;
+        }
       }
     };
 
     window.addEventListener('keydown', handleKeydown, true);
     return () => window.removeEventListener('keydown', handleKeydown, true);
-  }, [hotkey, isRecording, isRecordingSequential, isRecordingRich, isRecordingSearch, t]);
+  }, [isRecording, isRecordingSequential, isRecordingRich, isRecordingSearch, mainHotkeys]);
 
 
   const { toasts, pushToast, confirmDialog, openConfirm, closeConfirm } = useOverlays();
@@ -620,6 +627,8 @@ const App = () => {
   const {
     checkHotkeyConflict,
     updateHotkey,
+    addMainHotkey,
+    removeMainHotkey,
     updateSequentialHotkey,
     updateRichPasteHotkey,
     updateSearchHotkey
@@ -770,9 +779,11 @@ const App = () => {
     theme,
     language,
     colorMode,
-    hotkeyParts,
+    mainHotkeys,
     checkHotkeyConflict,
     updateHotkey,
+    addMainHotkey,
+    removeMainHotkey,
     updateSequentialHotkey,
     updateRichPasteHotkey,
     updateSearchHotkey,
