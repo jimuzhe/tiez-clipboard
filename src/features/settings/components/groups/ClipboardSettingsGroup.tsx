@@ -745,7 +745,7 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
                                 checked={props.registryWinVEnabled}
                                 onChange={async (e) => {
                                     const enabled = e.target.checked;
-                                    const previousEnabled = !enabled;
+                                    const previousEnabled = props.registryWinVEnabled;
                                     const matchedWinV = props.mainHotkeys.find((item) => isWinVHotkey(item));
                                     const hasWinV = !!matchedWinV;
                                     props.setRegistryWinVEnabled(enabled);
@@ -792,6 +792,16 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
                                                         console.error("Failed to restore theme:", e);
                                                     }
                                                 }, 2500);
+                                            } else {
+                                                if (enabled && !hasWinV) {
+                                                    await props.removeMainHotkey("Win+V");
+                                                }
+                                                if (!enabled && matchedWinV) {
+                                                    await props.addMainHotkey(matchedWinV, { skipAvailabilityCheck: true });
+                                                }
+                                                await invoke("save_setting", { key: 'app.use_win_v_shortcut', value: String(previousEnabled) });
+                                                await invoke("trigger_registry_win_v_optimization", { enable: previousEnabled });
+                                                props.setRegistryWinVEnabled(previousEnabled);
                                             }
                                         }
                                     } catch (err) {

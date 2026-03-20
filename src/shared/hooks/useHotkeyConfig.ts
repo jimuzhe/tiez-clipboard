@@ -94,20 +94,35 @@ export const useHotkeyConfig = ({
     [t]
   );
 
+  const normalizeHotkeyForCompare = useCallback(
+    (value: string): string =>
+      value
+        .split("+")
+        .map((item) => item.trim().toUpperCase())
+        .filter((item) => !!item)
+        .join("+"),
+    []
+  );
+
   const checkHotkeyConflict = useCallback(
     (newHotkey: string, mode: HotkeyMode): boolean => {
       if (!newHotkey) return false;
+      const normalizedNew = normalizeHotkeyForCompare(newHotkey);
       const mainHotkeys = parseMainHotkeys(hotkey);
+      const normalizedMain = new Set(mainHotkeys.map(normalizeHotkeyForCompare));
+      const normalizedSequential = normalizeHotkeyForCompare(sequentialHotkey);
+      const normalizedRich = normalizeHotkeyForCompare(richPasteHotkey);
+      const normalizedSearch = normalizeHotkeyForCompare(searchHotkey);
 
       const conflicts = [];
-      if (mode !== "main" && mainHotkeys.includes(newHotkey)) conflicts.push(t("global_hotkey"));
-      if (mode !== "sequential" && sequentialMode && newHotkey === sequentialHotkey) {
+      if (mode !== "main" && normalizedMain.has(normalizedNew)) conflicts.push(t("global_hotkey"));
+      if (mode !== "sequential" && sequentialMode && normalizedNew === normalizedSequential) {
         conflicts.push(t("sequential_paste_hotkey_label"));
       }
-      if (mode !== "rich" && newHotkey === richPasteHotkey) {
+      if (mode !== "rich" && normalizedNew === normalizedRich) {
         conflicts.push(t("rich_paste_hotkey_label"));
       }
-      if (mode !== "search" && newHotkey === searchHotkey) {
+      if (mode !== "search" && normalizedNew === normalizedSearch) {
         conflicts.push(t("search_hotkey_label"));
       }
 
@@ -118,7 +133,7 @@ export const useHotkeyConfig = ({
       }
       return false;
     },
-    [hotkey, parseMainHotkeys, sequentialMode, sequentialHotkey, richPasteHotkey, searchHotkey, t, pushToast]
+    [hotkey, normalizeHotkeyForCompare, parseMainHotkeys, sequentialMode, sequentialHotkey, richPasteHotkey, searchHotkey, t, pushToast]
   );
 
   const updateHotkey = useCallback(
@@ -143,7 +158,7 @@ export const useHotkeyConfig = ({
       await persistMainHotkeys(newHotkey ? [newHotkey] : []);
       setIsRecording(false);
     },
-    [checkHotkeyConflict, persistMainHotkeys, pushToast, setIsRecording]
+    [checkHotkeyConflict, persistMainHotkeys, pushToast, resolveHotkeyErrorMessage, setIsRecording]
   );
 
   const addMainHotkey = useCallback(
@@ -169,7 +184,9 @@ export const useHotkeyConfig = ({
       }
 
       const existing = parseMainHotkeys(hotkey);
-      if (existing.includes(value)) {
+      const normalizedValue = normalizeHotkeyForCompare(value);
+      const hasExisting = existing.some((item) => normalizeHotkeyForCompare(item) === normalizedValue);
+      if (hasExisting) {
         setIsRecording(false);
         return true;
       }
@@ -178,18 +195,19 @@ export const useHotkeyConfig = ({
       setIsRecording(false);
       return true;
     },
-    [checkHotkeyConflict, hotkey, parseMainHotkeys, persistMainHotkeys, pushToast, resolveHotkeyErrorMessage, setIsRecording]
+    [checkHotkeyConflict, hotkey, normalizeHotkeyForCompare, parseMainHotkeys, persistMainHotkeys, pushToast, resolveHotkeyErrorMessage, setIsRecording]
   );
 
   const removeMainHotkey = useCallback(
     async (targetHotkey: string) => {
       const existing = parseMainHotkeys(hotkey);
-      const next = existing.filter((item) => item !== targetHotkey);
+      const normalizedTarget = normalizeHotkeyForCompare(targetHotkey);
+      const next = existing.filter((item) => normalizeHotkeyForCompare(item) !== normalizedTarget);
       if (next.length === existing.length) return false;
       await persistMainHotkeys(next);
       return true;
     },
-    [hotkey, parseMainHotkeys, persistMainHotkeys]
+    [hotkey, normalizeHotkeyForCompare, parseMainHotkeys, persistMainHotkeys]
   );
 
   const updateSequentialHotkey = useCallback(
@@ -221,7 +239,8 @@ export const useHotkeyConfig = ({
       pushToast,
       saveAppSetting,
       setSequentialHotkey,
-      setIsRecordingSequential
+      setIsRecordingSequential,
+      resolveHotkeyErrorMessage
     ]
   );
 
@@ -254,7 +273,8 @@ export const useHotkeyConfig = ({
       pushToast,
       saveAppSetting,
       setRichPasteHotkey,
-      setIsRecordingRich
+      setIsRecordingRich,
+      resolveHotkeyErrorMessage
     ]
   );
 
@@ -287,7 +307,8 @@ export const useHotkeyConfig = ({
       pushToast,
       saveAppSetting,
       setSearchHotkey,
-      setIsRecordingSearch
+      setIsRecordingSearch,
+      resolveHotkeyErrorMessage
     ]
   );
 

@@ -6,31 +6,6 @@ use std::sync::atomic::Ordering;
 use tauri::{AppHandle, Manager, State};
 use crate::error::{AppResult, AppError};
 
-fn is_win_v_hotkey(hotkey: &str) -> bool {
-    let parts: Vec<String> = hotkey
-        .split('+')
-        .map(|p| p.trim().to_uppercase())
-        .filter(|p| !p.is_empty())
-        .collect();
-
-    if parts.is_empty() {
-        return false;
-    }
-
-    let mut has_win = false;
-    let mut has_v = false;
-
-    for part in &parts {
-        match part.as_str() {
-            "WIN" | "SUPER" | "COMMAND" | "META" => has_win = true,
-            "V" => has_v = true,
-            _ => return false,
-        }
-    }
-
-    has_win && has_v
-}
-
 #[tauri::command]
 pub fn set_sequential_mode(app_handle: AppHandle, state: State<'_, crate::app_state::SettingsState>, enabled: bool) {
     state.sequential_mode.store(enabled, Ordering::Relaxed);
@@ -65,9 +40,6 @@ pub fn set_sequential_hotkey(
     };
 
     for main_item in parse_hotkey_list(&main_hotkey) {
-        if is_win_v_hotkey(&main_item) {
-            continue;
-        }
         let main_normalized = main_item.replace("Win", "Super");
         if let Ok(shortcut) = main_normalized.parse::<Shortcut>() {
             let _ = app_handle.global_shortcut().register(shortcut);
@@ -105,9 +77,6 @@ pub fn set_rich_paste_hotkey(
     };
 
     for main_item in parse_hotkey_list(&main_hotkey) {
-        if is_win_v_hotkey(&main_item) {
-            continue;
-        }
         let main_normalized = main_item.replace("Win", "Super");
         if let Ok(shortcut) = main_normalized.parse::<Shortcut>() {
             let _ = app_handle.global_shortcut().register(shortcut);
@@ -155,9 +124,6 @@ pub fn set_search_hotkey(
     };
 
     for main_item in parse_hotkey_list(&main_hotkey) {
-        if is_win_v_hotkey(&main_item) {
-            continue;
-        }
         let main_normalized = main_item.replace("Win", "Super");
         if let Ok(shortcut) = main_normalized.parse::<Shortcut>() {
             let _ = app_handle.global_shortcut().register(shortcut);
@@ -471,9 +437,6 @@ pub fn reset_settings(
     let _ = app.global_shortcut().unregister_all();
 
     for main_item in parse_hotkey_list(&main_hotkey) {
-        if is_win_v_hotkey(&main_item) {
-            continue;
-        }
         if let Ok(shortcut) = main_item.replace("Win", "Super").parse::<Shortcut>() { let _ = app.global_shortcut().register(shortcut); }
     }
     if !seq_hotkey.is_empty() {
