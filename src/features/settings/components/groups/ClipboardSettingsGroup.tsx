@@ -656,8 +656,8 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                 <span className="item-label">{props.t('global_hotkey')}</span>
                             </div>
-                            <span className="hint">
-                                {props.isRecording ? (
+                            {props.isRecording && (
+                                <span className="hint">
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                                         <span style={{ color: '#ff9800', fontWeight: 'bold' }}>
                                             {props.t('win_key_not_recommended')}
@@ -666,38 +666,8 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
                                             {props.t('hotkey_recording_esc')}
                                         </span>
                                     </div>
-                                ) : props.t('hotkey_click_hint')}
-                            </span>
-                        </div>
-
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            {props.mainHotkeys.map((item, idx) => (
-                                <div key={`${item}-${idx}`} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <div className="key-group" style={{ flex: 1, cursor: 'default' }}>
-                                        {item.split('+').map((k, i) => (
-                                            <div key={i} className="key-cap">{k}</div>
-                                        ))}
-                                    </div>
-                                    {(!isWinVHotkey(item) || !props.registryWinVEnabled) && (
-                                        <button
-                                            type="button"
-                                            className="hotkey-delete-btn"
-                                            onClick={() => props.removeMainHotkey(item)}
-                                            aria-label={`${props.t('delete')} ${item}`}
-                                            title={`${props.t('delete')} ${item}`}
-                                        >
-                                            <X className="hotkey-delete-icon" size={14} strokeWidth={2.6} />
-                                        </button>
-                                    )}
-                                </div>
-                            ))}
-
-                            {props.mainHotkeys.length === 0 && !props.isRecording && (
-                                <div className="key-group" style={{ cursor: 'default' }}>
-                                    <div className="key-cap" style={{ width: '8em', opacity: 0.5 }}>{props.t('not_set')}</div>
-                                </div>
+                                </span>
                             )}
-
                             <div
                                 className={`key-group ${props.isRecording ? 'recording' : ''}`}
                                 onClick={() => props.setIsRecording(true)}
@@ -729,6 +699,36 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
                                     {props.isRecording ? props.t('waiting_for_input') : `+ ${props.t('global_hotkey')}`}
                                 </div>
                             </div>
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            {props.mainHotkeys.map((item, idx) => (
+                                <div key={`${item}-${idx}`} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <div className="key-group" style={{ flex: 1, cursor: 'default' }}>
+                                        {item.split('+').map((k, i) => (
+                                            <div key={i} className="key-cap">{k}</div>
+                                        ))}
+                                    </div>
+                                    {(!isWinVHotkey(item) || !props.registryWinVEnabled) && (
+                                        <button
+                                            type="button"
+                                            className="hotkey-delete-btn"
+                                            onClick={() => props.removeMainHotkey(item)}
+                                            aria-label={`${props.t('delete')} ${item}`}
+                                            title={`${props.t('delete')} ${item}`}
+                                        >
+                                            <X className="hotkey-delete-icon" size={14} strokeWidth={2.6} />
+                                        </button>
+                                    )}
+                                </div>
+                            ))}
+
+                            {props.mainHotkeys.length === 0 && !props.isRecording && (
+                                <div className="key-group" style={{ cursor: 'default' }}>
+                                    <div className="key-cap" style={{ width: '8em', opacity: 0.5 }}>{props.t('not_set')}</div>
+                                </div>
+                            )}
+
                         </div>
                     </div>
 
