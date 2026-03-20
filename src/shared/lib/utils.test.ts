@@ -19,8 +19,9 @@ describe("formatSensitivePreview", () => {
       expect(formatSensitivePreview("a", "text")).toBe("...");
     });
 
-    it("3字符文本只能露出部分", () => {
-      // 3 chars, available = 3 - 2 = 1, prefix = min(3, floor(1/2)) = 0, suffix = min(3, 1-0) = 1
+    it("3字符文本按比例分配可见字符", () => {
+      // 3 chars, available = 1, totalRequested = 6 > 1
+      // prefix = floor(1*3/6) = 0, suffix = min(3, 1) = 1
       const result = formatSensitivePreview("abc", "text");
       expect(result).toBe("...c");
     });
@@ -33,13 +34,34 @@ describe("formatSensitivePreview", () => {
       expect(result).toBe("12...90");
     });
 
-    it("prefix+suffix 超过可用字符时自动截断", () => {
-      // 5 chars, available = 5 - 2 = 3, prefix = min(10, floor(3/2)) = 1, suffix = min(10, 3-1) = 2
+    it("prefix+suffix 超过可用字符时按比例截断", () => {
+      // 5 chars, available = 3, totalRequested = 20 > 3
+      // prefix = floor(3*10/20) = 1, suffix = min(10, 2) = 2
       const result = formatSensitivePreview("abcde", "text", {
         prefixVisible: 10,
         suffixVisible: 10,
       });
       expect(result).toBe("a...de");
+    });
+
+    it("suffixVisible=0 时所有可见预算分配给 prefix", () => {
+      // 4 chars, available = 2, totalRequested = 2 <= 2
+      // prefix = 2, suffix = 0
+      const result = formatSensitivePreview("abcd", "text", {
+        prefixVisible: 2,
+        suffixVisible: 0,
+      });
+      expect(result).toBe("ab...");
+    });
+
+    it("prefixVisible=0 时所有可见预算分配给 suffix", () => {
+      // 6 chars, available = 4, totalRequested = 3 <= 4
+      // prefix = 0, suffix = 3
+      const result = formatSensitivePreview("abcdef", "text", {
+        prefixVisible: 0,
+        suffixVisible: 3,
+      });
+      expect(result).toBe("...def");
     });
   });
 

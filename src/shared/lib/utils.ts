@@ -25,8 +25,15 @@ const maskMiddleChars = (value: string, prefixVisibleCount: number, suffixVisibl
   }
 
   const available = chars.length - MIN_MASKED_CHARS;
-  const prefix = Math.min(prefixVisibleCount, Math.floor(available / 2));
-  const suffix = Math.min(suffixVisibleCount, available - prefix);
+  const totalRequested = prefixVisibleCount + suffixVisibleCount;
+  let prefix: number, suffix: number;
+  if (totalRequested <= available) {
+    prefix = prefixVisibleCount;
+    suffix = suffixVisibleCount;
+  } else {
+    prefix = totalRequested > 0 ? Math.floor(available * prefixVisibleCount / totalRequested) : 0;
+    suffix = Math.min(suffixVisibleCount, available - prefix);
+  }
 
   return `${chars.slice(0, prefix).join("")}${SENSITIVE_MASK}${chars.slice(chars.length - suffix).join("")}`;
 };
