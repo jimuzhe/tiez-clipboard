@@ -36,9 +36,18 @@ export default function TagManager({ t, theme }: TagManagerProps) {
     const [isCreatingItem, setIsCreatingItem] = useState(false);
     const [editingItem, setEditingItem] = useState<{ id: number, content: string } | null>(null);
     const [newItemContent, setNewItemContent] = useState('');
+    const [isManageMode, setIsManageMode] = useState(false);
+    const [selectedItemIds, setSelectedItemIds] = useState<number[]>([]);
 
     const selectedTagRef = useRef<string | null>(null);
     useEffect(() => { selectedTagRef.current = selectedTag; }, [selectedTag]);
+    useEffect(() => {
+        setIsManageMode(false);
+        setSelectedItemIds([]);
+    }, [selectedTag]);
+    useEffect(() => {
+        setSelectedItemIds(prev => prev.filter(id => tagItems.some(item => item.id === id)));
+    }, [tagItems]);
 
     useEffect(() => {
         let unlisteners: (() => void)[] = [];
@@ -155,6 +164,49 @@ export default function TagManager({ t, theme }: TagManagerProps) {
         } catch (err) { console.error(err); }
     };
 
+    const toggleItemSelection = (id: number) => {
+        setSelectedItemIds((prev) => (
+            prev.includes(id) ? prev.filter(itemId => itemId !== id) : [...prev, id]
+        ));
+    };
+
+    const handleManageAction = async () => {
+        if (!selectedTag) return;
+
+        if (!isManageMode) {
+            setIsManageMode(true);
+            setSelectedItemIds([]);
+            return;
+        }
+
+        if (selectedItemIds.length === 0) {
+            setIsManageMode(false);
+            setSelectedItemIds([]);
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const selectedSet = new Set(selectedItemIds);
+            const selectedItems = tagItems.filter(item => selectedSet.has(item.id));
+
+            for (const item of selectedItems) {
+                const updatedTags = item.tags.filter(tag => tag !== selectedTag);
+                await invoke<number>('update_tags', { id: item.id, tags: updatedTags });
+            }
+
+            setIsManageMode(false);
+            setSelectedItemIds([]);
+            await emit('clipboard-changed');
+            await fetchTags();
+            await loadTagItems(selectedTag);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const filteredTags = useMemo(() => {
         return tags.filter(t => t.name.toLowerCase().includes(tagSearch.toLowerCase()));
     }, [tags, tagSearch]);
@@ -163,6 +215,12 @@ export default function TagManager({ t, theme }: TagManagerProps) {
         if (sortBy === 'count') return (b.use_count || 0) - (a.use_count || 0);
         return b.timestamp - a.timestamp;
     });
+    const selectedItemIdSet = useMemo(() => new Set(selectedItemIds), [selectedItemIds]);
+    const manageButtonLabel = !isManageMode
+        ? (t('manage_items') || '管理')
+        : selectedItemIds.length > 0
+            ? (t('remove_from_tag') || '移出')
+            : (t('cancel') || '取消');
 
     return (
         <div
@@ -357,8 +415,23 @@ export default function TagManager({ t, theme }: TagManagerProps) {
                             </button>
                         </div>
                         {selectedTag && (
-                            <button className="add-item-btn btn-icon" onClick={() => setIsCreatingItem(true)} title={t('add_item')}>
+                            <button
+                                className="add-item-btn btn-icon"
+                                onClick={() => setIsCreatingItem(true)}
+                                title={t('add_item')}
+                                disabled={isManageMode}
+                            >
                                 <Plus size={14} />
+                            </button>
+                        )}
+                        {selectedTag && (
+                            <button
+                                type="button"
+                                className={`manage-action-btn ${isManageMode ? 'active' : ''} ${isManageMode && selectedItemIds.length > 0 ? 'remove-ready' : ''}`}
+                                onClick={handleManageAction}
+                                title={manageButtonLabel}
+                            >
+                                {manageButtonLabel}
                             </button>
                         )}
                     </div>
@@ -381,60 +454,97 @@ export default function TagManager({ t, theme }: TagManagerProps) {
                 <div className="items-area custom-scrollbar">
                     {loading ? <div className="status-msg">{t('processing')}</div> : (
                         <div className={`items-${viewMode}`}>
-                            {sortedItems.map(item => (
-                                <div key={item.id} className="themed-card" onClick={() => copyToClipboard(item.id, item.content, item.content_type)}>
-                                    <div className="card-top-row">
-                                        <div className="card-actions-left">
-                                            {item.content_type === 'text' || item.content_type === 'code' ? (
-                                                <button className="card-action-btn" title="编辑" onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setEditingItem({ id: item.id, content: item.content });
-                                                }}>
-                                                    <Edit2 size={10} />
-                                                </button>
-                                            ) : null}
+                            {sortedItems.map(item => {
+                                const isSelected = selectedItemIdSet.has(item.id);
+
+                                return (
+                                    <div
+                                        key={item.id}
+                                        className={`themed-card ${isManageMode ? 'manage-mode' : ''} ${isSelected ? 'selected' : ''}`}
+                                        onClick={() => {
+                                            if (isManageMode) {
+                                                toggleItemSelection(item.id);
+                                                return;
+                                            }
+                                            copyToClipboard(item.id, item.content, item.content_type);
+                                        }}
+                                    >
+                                        {isManageMode && (
                                             <button
-                                                className="card-action-btn"
+                                                type="button"
+                                                className={`manage-checkbox ${isSelected ? 'checked' : ''}`}
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    invoke('open_content', {
-                                                        id: item.id,
-                                                        content: item.content,
-                                                        contentType: item.content_type
-                                                    });
+                                                    toggleItemSelection(item.id);
                                                 }}
-                                                title={t('open')}
+                                                aria-label={manageButtonLabel}
                                             >
-                                                <ExternalLink size={10} />
+                                                <input
+                                                    type="checkbox"
+                                                    checked={isSelected}
+                                                    readOnly
+                                                    tabIndex={-1}
+                                                />
                                             </button>
-                                        </div>
-                                        <button className="del-btn" title="删除" onClick={(e) => {
-                                            e.stopPropagation();
-                                            setItemDeleteConfirmation({ show: true, id: item.id });
-                                        }}>
-                                            <X size={10} />
-                                        </button>
-                                    </div>
+                                        )}
 
-                                    {item.content_type === 'image' ? (
-                                        <div className="card-media">
-                                            <img
-                                                src={item.content.startsWith('data:') ? item.content : convertFileSrc(item.content)}
-                                                alt=""
-                                                className="image-preview"
-                                                loading="lazy"
-                                            />
-                                        </div>
-                                    ) : (
-                                        <div className="card-body-text">{item.preview || item.content}</div>
-                                    )}
+                                        {!isManageMode && (
+                                            <div className="card-top-row">
+                                                <div className="card-actions-left">
+                                                    {item.content_type === 'text' || item.content_type === 'code' ? (
+                                                        <button className="card-action-btn" title="编辑" onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setEditingItem({ id: item.id, content: item.content });
+                                                        }}>
+                                                            <Edit2 size={10} />
+                                                        </button>
+                                                    ) : null}
+                                                    <button
+                                                        className="card-action-btn"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            invoke('open_content', {
+                                                                id: item.id,
+                                                                content: item.content,
+                                                                contentType: item.content_type
+                                                            });
+                                                        }}
+                                                        title={t('open')}
+                                                    >
+                                                        <ExternalLink size={10} />
+                                                    </button>
+                                                </div>
+                                                <button className="del-btn" title="删除" onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setItemDeleteConfirmation({ show: true, id: item.id });
+                                                }}>
+                                                    <X size={10} />
+                                                </button>
+                                            </div>
+                                        )}
 
-                                    <div className="card-footer">
-                                        <span className="meta-time">{new Date(item.timestamp).toLocaleDateString()}</span>
-                                        <div className="meta-usage"><MousePointer2 size={8} /> {item.use_count || 0}</div>
+                                        {item.content_type === 'image' ? (
+                                            <div className="card-media">
+                                                <img
+                                                    src={item.content.startsWith('data:') ? item.content : convertFileSrc(item.content)}
+                                                    alt=""
+                                                    className="image-preview"
+                                                    loading="lazy"
+                                                />
+                                            </div>
+                                        ) : (
+                                            <div className="card-body-text">{item.preview || item.content}</div>
+                                        )}
+
+                                        {!isManageMode && (
+                                            <div className="card-footer">
+                                                <span className="meta-time">{new Date(item.timestamp).toLocaleDateString()}</span>
+                                                <div className="meta-usage"><MousePointer2 size={8} /> {item.use_count || 0}</div>
+                                            </div>
+                                        )}
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
                 </div>
@@ -729,6 +839,35 @@ export default function TagManager({ t, theme }: TagManagerProps) {
                 .add-item-btn {
                     margin-left: 12px;
                 }
+                .add-item-btn:disabled {
+                    opacity: 0.35;
+                    cursor: not-allowed;
+                }
+                .manage-action-btn {
+                    margin-left: 6px;
+                    height: 24px;
+                    padding: 0 10px;
+                    border: 2px solid var(--border-dark);
+                    background: var(--bg-button);
+                    color: var(--text-primary);
+                    font-size: 10px;
+                    font-weight: 800;
+                    cursor: pointer;
+                    transition: all 0.1s;
+                    box-shadow: 2px 2px 0 var(--border-dark);
+                    text-transform: uppercase;
+                }
+                .manage-action-btn:active {
+                    transform: translate(1px, 1px);
+                    box-shadow: 1px 1px 0 var(--border-dark);
+                }
+                .manage-action-btn.active {
+                    background: var(--bg-input);
+                }
+                .manage-action-btn.remove-ready {
+                    background: var(--accent-color);
+                    color: #fff;
+                }
 
                 .card-top-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
                 .card-actions-left { display: flex; gap: 4px; }
@@ -744,6 +883,45 @@ export default function TagManager({ t, theme }: TagManagerProps) {
                     transition: opacity 0.2s;
                 }
                 .card-action-btn:hover { opacity: 1; color: var(--accent-color); }
+                .themed-card.manage-mode {
+                    cursor: pointer;
+                }
+                .themed-card.selected {
+                    border-color: var(--accent-color);
+                    box-shadow: 3px 3px 0 var(--accent-color);
+                }
+                .manage-checkbox {
+                    position: absolute;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    width: 30px;
+                    height: 30px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    background: var(--bg-window);
+                    border: 2px solid var(--border-dark);
+                    box-shadow: 2px 2px 0 var(--border-dark);
+                    z-index: 4;
+                    cursor: pointer;
+                    padding: 0;
+                }
+                .manage-checkbox.checked {
+                    border-color: var(--accent-color);
+                }
+                .manage-checkbox input {
+                    width: 14px;
+                    height: 14px;
+                    pointer-events: none;
+                }
+                .items-list .themed-card.manage-mode {
+                    padding-left: 34px;
+                }
+                .items-list .manage-checkbox {
+                    left: 10px;
+                    transform: translateY(-50%);
+                }
 
                 /* Overlay */
                 .modal-overlay {
@@ -923,6 +1101,7 @@ export default function TagManager({ t, theme }: TagManagerProps) {
                 .theme-mica .sort-btn, .theme-acrylic .sort-btn,
                 .theme-mica .toggle-btn, .theme-acrylic .toggle-btn,
                 .theme-mica .add-item-btn, .theme-acrylic .add-item-btn,
+                .theme-mica .manage-action-btn, .theme-acrylic .manage-action-btn,
                 .theme-mica .card-action-btn, .theme-acrylic .card-action-btn,
                 .theme-mica .del-btn, .theme-acrylic .del-btn {
                     border-radius: 8px;
@@ -937,5 +1116,4 @@ export default function TagManager({ t, theme }: TagManagerProps) {
         </div >
     );
 }
-
 
