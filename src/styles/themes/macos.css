@@ -1,5 +1,6 @@
 :root.theme-macos,
 body.theme-macos {
+  --radius-window: 12px;
   --font-main: "SF Pro Text", "SF Pro Display", "PingFang SC", "Segoe UI", sans-serif;
   --font-mono: "SF Mono", "JetBrains Mono", "Consolas", monospace;
   --bg-body: #eceff3;
@@ -30,11 +31,22 @@ body.theme-macos {
 
 .theme-macos #root {
   border: 1px solid var(--border-dark) !important;
-  border-radius: 12px !important;
+  border-radius: var(--radius-window) !important;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.88) 0%, rgba(245, 247, 250, 0.82) 100%) !important;
   box-shadow: 0 8px 24px rgba(15, 18, 26, 0.18), 0 1px 0 rgba(255, 255, 255, 0.72) inset !important;
   backdrop-filter: blur(18px) saturate(128%);
   -webkit-backdrop-filter: blur(18px) saturate(128%);
+}
+
+body.theme-macos:not(.hide-app-border) #root {
+  border-radius: 0 !important;
+  border-color: transparent !important;
+  box-shadow: 0 8px 24px rgba(15, 18, 26, 0.18) !important;
+}
+
+:root.theme-macos:not(.hide-app-border),
+body.theme-macos:not(.hide-app-border) {
+  border-radius: 0 !important;
 }
 
 .theme-macos header {
@@ -716,6 +728,12 @@ body.theme-macos {
     box-shadow: 0 12px 30px rgba(0, 0, 0, 0.38), 0 1px 0 rgba(255, 255, 255, 0.08) inset !important;
   }
 
+  body:not(.light-mode).theme-macos:not(.hide-app-border) #root {
+    border-radius: 0 !important;
+    border-color: transparent !important;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.38) !important;
+  }
+
   body:not(.light-mode).theme-macos header {
     background: rgba(44, 46, 54, 0.56) !important;
     border-bottom-color: rgba(255, 255, 255, 0.12) !important;
@@ -960,6 +978,12 @@ body.dark-mode.theme-macos #root {
   background: linear-gradient(180deg, rgba(40, 42, 49, 0.76) 0%, rgba(29, 31, 36, 0.78) 100%) !important;
   border-color: rgba(255, 255, 255, 0.12) !important;
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.38), 0 1px 0 rgba(255, 255, 255, 0.08) inset !important;
+}
+
+body.dark-mode.theme-macos:not(.hide-app-border) #root {
+  border-radius: 0 !important;
+  border-color: transparent !important;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.38) !important;
 }
 
 body.dark-mode.theme-macos header {
