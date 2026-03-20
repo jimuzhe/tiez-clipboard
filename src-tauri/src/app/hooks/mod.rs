@@ -16,6 +16,7 @@ use windows::Win32::UI::Input::KeyboardAndMouse::{
 
 use crate::global_state::*;
 use crate::app_state::SettingsState;
+use crate::app::commands::hotkey_cmd::parse_hotkey_list;
 use crate::app::window_manager::{toggle_window, hide_window_cmd};
 use crate::infrastructure::windows_ext::WindowExt;
 
@@ -329,10 +330,12 @@ pub unsafe extern "system" fn mouse_proc(n_code: i32, w_param: WPARAM, l_param: 
             // Handle configured middle mouse hotkey
             if msg == WM_MBUTTONDOWN {
                 let configured = HOTKEY_STRING.lock().unwrap().clone();
-                let matched = configured
-                    .split(['\n', '\r'])
-                    .map(|item| item.trim().to_lowercase())
-                    .any(|item| item == "mousemiddle" || item == "mbutton");
+                let matched = parse_hotkey_list(&configured)
+                    .into_iter()
+                    .any(|item| {
+                        let item = item.to_lowercase();
+                        item == "mousemiddle" || item == "mbutton"
+                    });
                 if matched {
                     if let Some(handle) = GLOBAL_APP_HANDLE.get() {
                         toggle_window(&handle);

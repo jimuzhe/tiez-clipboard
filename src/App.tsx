@@ -332,7 +332,7 @@ const App = () => {
   const mainHotkeys = useMemo(
     () =>
       hotkey
-        .split(/\r?\n/g)
+        .split(/[\r\n]+/g)
         .map((item) => item.trim())
         .filter((item) => !!item),
     [hotkey]

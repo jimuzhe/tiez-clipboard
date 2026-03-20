@@ -52,7 +52,7 @@ export const useHotkeyConfig = ({
   const parseMainHotkeys = useCallback(
     (value: string): string[] =>
       value
-        .split(/\r?\n/g)
+        .split(/[\r\n]+/g)
         .map((item) => item.trim())
         .filter((item) => !!item),
     []
