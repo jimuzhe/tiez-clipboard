@@ -16,15 +16,19 @@ const DEFAULT_MASK_OPTIONS: MaskOptions = {
   maskEmailDomain: false,
 };
 
+const MIN_MASKED_CHARS = 2;
+
 const maskMiddleChars = (value: string, prefixVisibleCount: number, suffixVisibleCount: number) => {
   const chars = Array.from(value);
-  if (chars.length <= prefixVisibleCount + suffixVisibleCount) {
-    return value;
+  if (chars.length <= MIN_MASKED_CHARS) {
+    return SENSITIVE_MASK;
   }
 
-  const prefix = chars.slice(0, prefixVisibleCount).join("");
-  const suffix = chars.slice(chars.length - suffixVisibleCount).join("");
-  return `${prefix}${SENSITIVE_MASK}${suffix}`;
+  const available = chars.length - MIN_MASKED_CHARS;
+  const prefix = Math.min(prefixVisibleCount, Math.floor(available / 2));
+  const suffix = Math.min(suffixVisibleCount, available - prefix);
+
+  return `${chars.slice(0, prefix).join("")}${SENSITIVE_MASK}${chars.slice(chars.length - suffix).join("")}`;
 };
 
 // Helper function to generate a consistent color from a string based on theme
