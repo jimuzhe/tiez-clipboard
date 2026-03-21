@@ -1,162 +1,42 @@
-<div align="center">
+## 分叉说明
 
-<img src="docs/images/show.png" alt="TieZ Logo" />
+本项目是从 [jimuzhe/tiez-clipboard](https://github.com/jimuzhe/tiez-clipboard) fork 而来的版本。
 
-# TieZ
+创建此 fork 的主要目的是推进一些对实际使用很有帮助、但上游不考虑继续演进的改进，包括：
 
-A lightweight cross-platform clipboard manager focused on speed, practical daily workflows, and a polished desktop experience.
+- 更易扩展的主题支持
+  - 尽可能减少主题设置在代码中的硬编码，以便于后续的主题定制
+  - 增加一个完全来自ai的新主题
+  - 扩展主题能定制的控件的范围
 
-[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![Version](https://img.shields.io/badge/version-0.3.1-green.svg)](https://github.com/jimuzhe/tiez-clipboard/releases)
-[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS-lightgrey.svg)](https://github.com/jimuzhe/tiez-clipboard/releases)
-[![Built with Tauri](https://img.shields.io/badge/built%20with-Tauri%202-4a90d9.svg)](https://tauri.app/)
+- 简单且有用的新功能
+  - 新增右键图片时粘贴base64编码的支持
+  - 新增对多个呼出快捷键的支持
 
-[English](./README.md) | [简体中文](./README.zh-CN.md)
+- 若干问题修复与可维护性优化
+  - 修复tauri:dev模式不可用的问题，加快开发速度
+  - 修复上游在合并pr时因未删除冗余代码，导致拖拽功能偶现失效的问题
 
-[Releases](https://github.com/jimuzhe/tiez-clipboard/releases) · [Issues](https://github.com/jimuzhe/tiez-clipboard/issues)
+本 fork 大概率不会继续维护，因为继续开发将无法与上游保持不冲突，于是难以与上游合并；同时，由于我没有macos设备，将无法保证macos版本的可用性
 
-</div>
+如果有精力继续维护，则路线图为
 
----
+- 解决在窗口大小发生巨大变化时的文字排版问题
+- 处理主题modern-override导致的优先级问题
+- 大幅清理冗余代码
+  - 抽取公共策略
+  - 移除重复逻辑
+  - 移除重复主题定义
+  - 统一设置路径
+  
+- 拆分过大的代码文件和函数
+- 解决内存峰值问题
+  - 数据加载和预加载策略过于激进
+  - 主题加载策略过于激进
+  - 分页窗口过大
+  - 无裁剪策略
+  - 渲染逻辑复杂
 
-## Preview
 
-<div align="center">
-  <img src="docs/images/ui预览.png" alt="TieZ UI Preview" width="860" />
-</div>
 
-## Overview
-
-**TieZ** is a cross-platform clipboard manager built with [Tauri 2](https://tauri.app/), available on **Windows** and **macOS**. It stays in the system tray, opens instantly with a global shortcut, and helps you manage clipboard history, rich text, tags, device sync, LAN transfer, and AI-assisted actions in one place.
-
-## Highlights
-
-| Highlight | Description |
-| --- | --- |
-| Fast | Open instantly with `Alt+V` and keep common actions close |
-| Complete | Text, images, rich text, tags, emoji, AI, sync, and file transfer |
-| Practical | Designed as a daily background utility, not a demo app |
-| Flexible | Themes, hotkeys, persistence, and sync behavior are configurable |
-
-## Features
-
-### 1. Capture and Monitoring
-
-- Native system clipboard event-driven listener, not polling
-- Plain text capture
-- Rich text (HTML) capture
-- Automatic image capture with `.png` external storage
-- File and folder path tracking
-- Hash-based deduplication
-- Code snippet type detection
-
-### 2. Storage Management
-
-- Configurable history size limit
-- Pinned item protection from cleanup
-- Tagged item protection from cleanup
-- Periodic automatic cleanup of old records
-- Day-based history grouping
-- Usage count statistics
-
-### 3. Browsing and Search
-
-- Full-text content search
-- Source application name search
-- Tag-based filtering
-- Compact / detailed preview modes
-- Pinned items shown first
-- Paginated history loading
-
-### 4. Organization and Actions
-
-- Multi-color custom tag system
-- Global tag rename and management
-- Pin / unpin records
-- Manual drag sorting for pinned items
-- Delete single or multiple records
-- One-click clear for non-protected items
-- JSON export / import
-
-### 5. Interaction Flow and External Editing
-
-- Global shortcut to summon the interface
-- Open content in an external editor or handler
-- Automatic sync-back when edited externally
-- Sequential paste mode
-- Click / Enter to paste
-- Optional auto-pin after paste
-- Optional auto-delete after paste
-
-### 6. Security and Privacy
-
-- End-to-end database encryption
-- Automatic encryption for sensitive-tagged records
-- Regex-based masking for ID cards, phone numbers, emails, and other private data
-
-### 7. Networking and Multi-Device
-
-- WebDAV cloud sync
-- Tombstone sync mechanism for cross-device deletions
-- Seamless verification code sync
-- Custom MQTT transport protocol selection (WS / WSS)
-- Conflict handling across multiple devices
-
-### 8. System Personalization
-
-- Mica / Acrylic background effects
-- Dark / regular mode with system follow
-- Window opacity control
-- Edge docking and always-on-top behavior
-- Popup near mouse position
-- Tray icon visibility control
-- Auto-start management
-- Sound effects toggle
-
-## Requirements
-
-| Platform | Requirement |
-| --- | --- |
-| Windows | Windows 10/11 (x64); Windows 10 requires [Microsoft Edge WebView2](https://developer.microsoft.com/en-us/microsoft-edge/webview2/) |
-| macOS | macOS 10.15 Catalina or later (Apple Silicon / Intel) |
-
-## Quick Start
-
-Download the latest installer from [Releases](https://github.com/jimuzhe/tiez-clipboard/releases).
-
-| Platform | Package |
-| --- | --- |
-| Windows | `.exe` installer / `.zip` portable build |
-| macOS | `.dmg` disk image |
-
-## Support and Community
-
-If TieZ is useful to you, sponsorship helps keep the project moving.
-
-- Please leave a name or nickname with your donation so it can be added to the [sponsor list](https://tiez.name666.top/zh/sponsors.html)
-- You can also join the QQ group by scanning the QR code below
-
-<div align="center">
-  <table>
-    <tr>
-      <td align="center">
-        <p><strong>WeChat</strong></p>
-        <img src="docs/images/wx.jpeg" alt="WeChat donation QR" width="220" />
-      </td>
-      <td align="center">
-        <p><strong>Alipay</strong></p>
-        <img src="docs/images/zfb.jpeg" alt="Alipay donation QR" width="220" />
-      </td>
-    </tr>
-  </table>
-  <p><strong>QQ Group</strong></p>
-  <img src="docs/images/qq.jpeg" alt="QQ group QR" width="220" />
-</div>
-
----
-
-<div align="center">
-
-If TieZ helps your workflow, a Star is appreciated.
-
-</div>
+如需查看上游提供的README文件，可点击[English](./README.en-US.md) | [中文](./README.zh-CN.md)
