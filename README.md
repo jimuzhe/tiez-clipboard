@@ -1,4 +1,4 @@
-## 分叉说明
+# 分叉说明
 
 本项目是从 [jimuzhe/tiez-clipboard](https://github.com/jimuzhe/tiez-clipboard) fork 而来的版本。
 
@@ -22,7 +22,7 @@
 如果有精力继续维护，则路线图为
 
 - 解决在窗口大小发生巨大变化时的文字排版问题
-- 处理主题modern-override导致的优先级问题
+- 处理主题modern-override策略导致的优先级问题：这是个很奇怪的策略
 - 大幅清理冗余代码
   - 抽取公共策略
   - 移除重复逻辑
@@ -36,7 +36,5 @@
   - 分页窗口过大
   - 无裁剪策略
   - 渲染逻辑复杂
-
-
 
 如需查看上游提供的README文件，可点击[English](./README.en-US.md) | [中文](./README.zh-CN.md)
