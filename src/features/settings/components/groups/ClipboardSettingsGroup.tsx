@@ -3,6 +3,7 @@ import type { ComponentType, ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { ask, message } from "@tauri-apps/plugin-dialog";
 import { ChevronDown, ChevronRight, X } from "lucide-react";
+import ThemedSelect from "../ThemedSelect";
 
 interface LabelWithHintProps {
     label: string;
@@ -78,6 +79,41 @@ interface ClipboardSettingsGroupProps {
 const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
     const sequentialHotkeyParts = props.sequentialHotkey ? props.sequentialHotkey.split('+') : [];
     const searchHotkeyParts = props.searchHotkey ? props.searchHotkey.split('+') : [];
+    const pasteMethodOptions = [
+        { value: "shift_insert", label: props.t("paste_method_shift_insert") },
+        { value: "ctrl_v", label: props.t("paste_method_ctrl_v") },
+        { value: "game_mode", label: props.t("paste_method_game_mode") }
+    ];
+
+    const applyPasteMethod = async (val: string) => {
+        if (val === 'game_mode') {
+            try {
+                const isAdmin = await invoke<boolean>("check_is_admin");
+                if (!isAdmin) {
+                    const confirmed = await ask(
+                        props.t('game_mode_admin_required') || "Game Mode requires Administrator privileges to work correctly with games (especially for IME/Input handling). Restart as Admin now?",
+                        {
+                            title: props.t('admin_required') || "Administrator Required",
+                            kind: 'warning'
+                        }
+                    );
+
+                    if (confirmed) {
+                        await invoke("save_setting", { key: 'app.paste_method', value: 'game_mode' });
+                        await invoke("restart_as_admin");
+                        return;
+                    } else {
+                        return;
+                    }
+                }
+            } catch (err) {
+                console.error("Failed to check admin status:", err);
+            }
+        }
+
+        props.setPasteMethod(val);
+        invoke("save_setting", { key: 'app.paste_method', value: val }).catch(console.error);
+    };
     const [persistentLimitDraft, setPersistentLimitDraft] = useState(
         props.persistentLimit.toString()
     );
@@ -426,48 +462,15 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
                             hint={props.t(`paste_method_${props.pasteMethod}_hint`)}
                             hintKey="paste_method"
                         />
-                        <select
-                            className="search-input"
-                            style={{ borderRadius: '0', padding: '6px', width: '110px', background: 'var(--bg-input)', border: '2px solid var(--border-dark)', color: 'var(--text-primary)', fontSize: '12px' }}
+                        <ThemedSelect
+                            theme={props.theme}
+                            colorMode={props.colorMode}
+                            options={pasteMethodOptions}
                             value={props.pasteMethod}
-                            onChange={async (e) => {
-                                const val = e.target.value;
-
-                                if (val === 'game_mode') {
-                                    try {
-                                        const isAdmin = await invoke<boolean>("check_is_admin");
-                                        if (!isAdmin) {
-                                            const confirmed = await ask(
-                                                props.t('game_mode_admin_required') || "Game Mode requires Administrator privileges to work correctly with games (especially for IME/Input handling). Restart as Admin now?",
-                                                {
-                                                    title: props.t('admin_required') || "Administrator Required",
-                                                    kind: 'warning'
-                                                }
-                                            );
-
-                                            if (confirmed) {
-                                                // Save the setting BEFORE restarting so it persists
-                                                await invoke("save_setting", { key: 'app.paste_method', value: 'game_mode' });
-                                                await invoke("restart_as_admin");
-                                                return; // App will restart, no need to set state
-                                            } else {
-                                                // User declined, do not change setting
-                                                return;
-                                            }
-                                        }
-                                    } catch (err) {
-                                        console.error("Failed to check admin status:", err);
-                                    }
-                                }
-
-                                props.setPasteMethod(val);
-                                invoke("save_setting", { key: 'app.paste_method', value: val }).catch(console.error);
-                            }}
-                        >
-                            <option value="shift_insert">{props.t('paste_method_shift_insert')}</option>
-                            <option value="ctrl_v">{props.t('paste_method_ctrl_v')}</option>
-                            <option value="game_mode">{props.t('paste_method_game_mode')}</option>
-                        </select>
+                            width="160px"
+                            nativeStyle={{ borderRadius: '0', padding: '6px', width: '110px', background: 'var(--bg-input)', border: '2px solid var(--border-dark)', color: 'var(--text-primary)', fontSize: '12px' }}
+                            onChange={applyPasteMethod}
+                        />
                     </div>
                     <div className="setting-item">
                         <props.LabelWithHint

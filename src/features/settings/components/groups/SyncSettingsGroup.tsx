@@ -1,6 +1,7 @@
 import type { ComponentType, ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { ChevronDown, ChevronRight } from "lucide-react";
+import ThemedSelect from "../ThemedSelect";
 
 interface LabelWithHintProps {
     label: string;
@@ -33,6 +34,8 @@ interface SyncSettingsGroupProps {
     setMqttTopic: (val: string) => void;
     mqttNotificationEnabled: boolean;
     setMqttNotificationEnabled: (val: boolean) => void;
+    theme: string;
+    colorMode: string;
 }
 
 const SyncSettingsGroup = ({
@@ -59,7 +62,9 @@ const SyncSettingsGroup = ({
     mqttTopic,
     setMqttTopic,
     mqttNotificationEnabled,
-    setMqttNotificationEnabled
+    setMqttNotificationEnabled,
+    theme,
+    colorMode
 }: SyncSettingsGroupProps) => (
     <div className={`settings-group ${collapsed ? 'collapsed' : ''}`}>
         <div className="group-header" onClick={onToggle}>
@@ -135,15 +140,21 @@ const SyncSettingsGroup = ({
                                 hint={t('mqtt_protocol_hint') || 'mqtt:// = standard (1883), mqtts:// = SSL/TLS (8883), ws:// = WebSocket (8083), wss:// = Secure WebSocket (8084)'}
                                 hintKey="mqtt_protocol"
                             />
-                            <select
-                                className="search-input"
-                                style={{ borderRadius: '0', padding: '6px', width: '100px', background: 'var(--bg-input)', border: '2px solid var(--border-dark)', color: 'var(--text-primary)', fontSize: '12px' }}
+                            <ThemedSelect
+                                theme={theme}
+                                colorMode={colorMode}
+                                width="120px"
+                                nativeStyle={{ borderRadius: '0', padding: '6px', width: '100px', background: 'var(--bg-input)', border: '2px solid var(--border-dark)', color: 'var(--text-primary)', fontSize: '12px' }}
+                                options={[
+                                    { value: "mqtt://", label: "mqtt://" },
+                                    { value: "mqtts://", label: "mqtts://" },
+                                    { value: "ws://", label: "ws://" },
+                                    { value: "wss://", label: "wss://" }
+                                ]}
                                 value={mqttProtocol}
-                                onChange={e => {
-                                    const protocol = e.target.value;
+                                onChange={(protocol) => {
                                     setMqttProtocol(protocol);
                                     saveMqtt('mqtt_protocol', protocol);
-                                    // Auto-update port based on protocol
                                     let defaultPort = '1883';
                                     if (protocol === 'mqtts://') defaultPort = '8883';
                                     else if (protocol === 'ws://') defaultPort = '8083';
@@ -151,12 +162,7 @@ const SyncSettingsGroup = ({
                                     setMqttPort(defaultPort);
                                     saveMqtt('mqtt_port', defaultPort);
                                 }}
-                            >
-                                <option value="mqtt://">mqtt://</option>
-                                <option value="mqtts://">mqtts://</option>
-                                <option value="ws://">ws://</option>
-                                <option value="wss://">wss://</option>
-                            </select>
+                            />
                         </div>
                         {(mqttProtocol === 'ws://' || mqttProtocol === 'wss://') && (
                             <div className="setting-item">
