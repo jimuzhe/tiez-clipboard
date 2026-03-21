@@ -16,6 +16,7 @@ interface ThemedSelectProps {
   onChange: (value: string) => void | Promise<void>;
   width?: string;
   nativeStyle?: CSSProperties;
+  placeholder?: string;
 }
 
 const ThemedSelect = ({
@@ -25,9 +26,10 @@ const ThemedSelect = ({
   value,
   onChange,
   width = "160px",
-  nativeStyle
+  nativeStyle,
+  placeholder
 }: ThemedSelectProps) => {
-  const selected = options.find((option) => option.value === value) ?? options[0];
+  const selected = options.find((option) => option.value === value) ?? null;
   const isMacosTheme = theme === "macos";
   const isDarkMode =
     colorMode === "dark" ||
@@ -58,6 +60,7 @@ const ThemedSelect = ({
         classNamePrefix="tiez-select"
         options={options}
         value={selected}
+        placeholder={placeholder}
         isSearchable={false}
         isOptionDisabled={(option) => !!option.disabled}
         menuPortalTarget={document.body}
@@ -89,6 +92,11 @@ const ThemedSelect = ({
             ...base,
             color: isDarkMode ? "#f5f5f7" : "var(--text-primary)",
             fontWeight: 600
+          }),
+          placeholder: (base) => ({
+            ...base,
+            color: isDarkMode ? "rgba(245,245,247,0.62)" : "rgba(29,29,31,0.5)",
+            fontWeight: 500
           }),
           dropdownIndicator: (base) => ({
             ...base,
