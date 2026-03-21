@@ -154,11 +154,9 @@ const AiSettingsGroup = ({
                                     theme={theme}
                                     colorMode={colorMode}
                                     width="160px"
+                                    placeholder={aiProfiles.length > 0 ? t('select_a_profile') : t('add_profile_first')}
                                     nativeStyle={{ borderRadius: '0', padding: '6px', width: '160px', background: 'var(--bg-input)', border: '2px solid var(--border-dark)', color: 'var(--text-primary)', fontSize: '12px' }}
-                                    options={[
-                                        { value: "none", label: aiProfiles.length > 0 ? t('select_a_profile') : t('add_profile_first'), disabled: true },
-                                        ...aiProfiles.map(p => ({ value: p.id, label: p.model }))
-                                    ]}
+                                    options={aiProfiles.map(p => ({ value: p.id, label: p.model }))}
                                     value={strategy.value}
                                     onChange={(next) => {
                                         strategy.setter(next);
@@ -176,11 +174,9 @@ const AiSettingsGroup = ({
                                 theme={theme}
                                 colorMode={colorMode}
                                 width="160px"
+                                placeholder={aiProfiles.length > 0 ? t('select_a_profile') : t('add_profile_first')}
                                 nativeStyle={{ borderRadius: '0', padding: '6px', width: '160px', background: 'var(--bg-input)', border: '2px solid var(--border-dark)', color: 'var(--text-primary)', fontSize: '12px' }}
-                                options={[
-                                    { value: "none", label: aiProfiles.length > 0 ? t('select_a_profile') : t('add_profile_first'), disabled: true },
-                                    ...aiProfiles.map(p => ({ value: p.id, label: p.model }))
-                                ]}
+                                options={aiProfiles.map(p => ({ value: p.id, label: p.model }))}
                                 value={aiAssignedProfileTranslate}
                                 onChange={(next) => {
                                     setAiAssignedProfileTranslate(next);
