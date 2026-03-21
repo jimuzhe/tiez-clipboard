@@ -3,6 +3,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { ChevronDown, ChevronRight, HelpCircle } from "lucide-react";
 import { motion } from "framer-motion";
 import { QRCodeCanvas } from "qrcode.react";
+import ThemedSelect from "../ThemedSelect";
 
 interface FileTransferSettingsGroupProps {
     t: (key: string) => string;
@@ -29,6 +30,8 @@ interface FileTransferSettingsGroupProps {
     fileTransferPath: string;
     saveSetting: (key: string, val: string) => void;
     fetchEffectiveTransferPath: () => void;
+    theme: string;
+    colorMode: string;
 }
 
 const FileTransferSettingsGroup = ({
@@ -55,7 +58,9 @@ const FileTransferSettingsGroup = ({
     onOpenChat,
     fileTransferPath,
     saveSetting,
-    fetchEffectiveTransferPath
+    fetchEffectiveTransferPath,
+    theme,
+    colorMode
 }: FileTransferSettingsGroupProps) => (
     <div className={`settings-group ${collapsed ? 'collapsed' : ''}`}>
         <div className="group-header" onClick={onToggle}>
@@ -108,9 +113,11 @@ const FileTransferSettingsGroup = ({
                             <div className="item-label-group"><span className="item-label">Local IP</span></div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', opacity: 0.9 }}>
                                 {availableIps && availableIps.length > 1 && setLocalIp ? (
-                                    <select
-                                        className="search-input"
-                                        style={{
+                                    <ThemedSelect
+                                        theme={theme}
+                                        colorMode={colorMode}
+                                        width="140px"
+                                        nativeStyle={{
                                             borderRadius: '4px',
                                             padding: '2px 6px',
                                             width: 'auto',
@@ -121,17 +128,13 @@ const FileTransferSettingsGroup = ({
                                             fontSize: 'inherit',
                                             height: '24px'
                                         }}
+                                        options={availableIps.map(ip => ({ value: ip, label: ip }))}
                                         value={localIp}
-                                        onChange={(e) => {
-                                            const newIp = e.target.value;
+                                        onChange={(newIp) => {
                                             setLocalIp(newIp);
                                             invoke("set_display_ip", { ip: newIp }).catch(console.error);
                                         }}
-                                    >
-                                        {availableIps.map(ip => (
-                                            <option key={ip} value={ip}>{ip}</option>
-                                        ))}
-                                    </select>
+                                    />
                                 ) : (
                                     <span>{localIp}</span>
                                 )}

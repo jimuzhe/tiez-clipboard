@@ -610,6 +610,8 @@ const SettingsPanel = (props: SettingsPanelProps) => {
                 setMqttTopic={setMqttTopic}
                 mqttNotificationEnabled={mqttNotificationEnabled}
                 setMqttNotificationEnabled={setMqttNotificationEnabled}
+                theme={theme}
+                colorMode={colorMode}
             />
 
             {CLOUD_SYNC_ENABLED && (
@@ -665,6 +667,7 @@ const SettingsPanel = (props: SettingsPanelProps) => {
                 aiThinkingBudget={aiThinkingBudget}
                 setAiThinkingBudget={setAiThinkingBudget}
                 theme={theme}
+                colorMode={colorMode}
             />
 
             {/* File Transfer Settings */}
@@ -693,6 +696,8 @@ const SettingsPanel = (props: SettingsPanelProps) => {
                 fileTransferPath={fileTransferPath}
                 saveSetting={saveSetting}
                 fetchEffectiveTransferPath={fetchEffectiveTransferPath}
+                theme={theme}
+                colorMode={colorMode}
             />
 
             {/* Default Apps Settings */}

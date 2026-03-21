@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { ChevronDown, ChevronRight, Edit2, RotateCcw, Trash2 } from "lucide-react";
 import type { AiProfile, AiProfileStatusMap, EditableAiProfile } from "../../types";
+import ThemedSelect from "../ThemedSelect";
 
 interface AiSettingsGroupProps {
     t: (key: string) => string;
@@ -25,6 +26,7 @@ interface AiSettingsGroupProps {
     aiThinkingBudget: string;
     setAiThinkingBudget: (val: string) => void;
     theme: string;
+    colorMode: string;
 }
 
 const AiSettingsGroup = ({
@@ -49,7 +51,8 @@ const AiSettingsGroup = ({
     setAiTargetLang,
     aiThinkingBudget,
     setAiThinkingBudget,
-    theme
+    theme,
+    colorMode
 }: AiSettingsGroupProps) => (
     <div className={`settings-group ${collapsed ? 'collapsed' : ''}`}>
         <div className="group-header" onClick={onToggle}>
@@ -147,20 +150,21 @@ const AiSettingsGroup = ({
                                 <div className="item-label-group">
                                     <span className="item-label">{strategy.label}</span>
                                 </div>
-                                <select
-                                    className="search-input"
-                                    style={{ borderRadius: '0', padding: '6px', width: '160px', background: 'var(--bg-input)', border: '2px solid var(--border-dark)', color: 'var(--text-primary)', fontSize: '12px' }}
+                                <ThemedSelect
+                                    theme={theme}
+                                    colorMode={colorMode}
+                                    width="160px"
+                                    nativeStyle={{ borderRadius: '0', padding: '6px', width: '160px', background: 'var(--bg-input)', border: '2px solid var(--border-dark)', color: 'var(--text-primary)', fontSize: '12px' }}
+                                    options={[
+                                        { value: "none", label: aiProfiles.length > 0 ? t('select_a_profile') : t('add_profile_first'), disabled: true },
+                                        ...aiProfiles.map(p => ({ value: p.id, label: p.model }))
+                                    ]}
                                     value={strategy.value}
-                                    onChange={e => {
-                                        strategy.setter(e.target.value);
-                                        saveSetting(strategy.key, e.target.value);
+                                    onChange={(next) => {
+                                        strategy.setter(next);
+                                        saveSetting(strategy.key, next);
                                     }}
-                                >
-                                    <option value="none" disabled>{aiProfiles.length > 0 ? t('select_a_profile') : t('add_profile_first')}</option>
-                                    {aiProfiles.map(p => (
-                                        <option key={p.id} value={p.id}>{p.model}</option>
-                                    ))}
-                                </select>
+                                />
                             </div>
                         ))}
 
@@ -168,42 +172,46 @@ const AiSettingsGroup = ({
                             <div className="item-label-group">
                                 <span className="item-label">{t('ai_strategy_translate')}</span>
                             </div>
-                            <select
-                                className="search-input"
-                                style={{ borderRadius: '0', padding: '6px', width: '160px', background: 'var(--bg-input)', border: '2px solid var(--border-dark)', color: 'var(--text-primary)', fontSize: '12px' }}
+                            <ThemedSelect
+                                theme={theme}
+                                colorMode={colorMode}
+                                width="160px"
+                                nativeStyle={{ borderRadius: '0', padding: '6px', width: '160px', background: 'var(--bg-input)', border: '2px solid var(--border-dark)', color: 'var(--text-primary)', fontSize: '12px' }}
+                                options={[
+                                    { value: "none", label: aiProfiles.length > 0 ? t('select_a_profile') : t('add_profile_first'), disabled: true },
+                                    ...aiProfiles.map(p => ({ value: p.id, label: p.model }))
+                                ]}
                                 value={aiAssignedProfileTranslate}
-                                onChange={e => {
-                                    setAiAssignedProfileTranslate(e.target.value);
-                                    saveSetting('ai_assigned_profile_translate', e.target.value);
+                                onChange={(next) => {
+                                    setAiAssignedProfileTranslate(next);
+                                    saveSetting('ai_assigned_profile_translate', next);
                                 }}
-                            >
-                                <option value="none" disabled>{aiProfiles.length > 0 ? t('select_a_profile') : t('add_profile_first')}</option>
-                                {aiProfiles.map(p => (
-                                    <option key={p.id} value={p.id}>{p.model}</option>
-                                ))}
-                            </select>
+                            />
                         </div>
 
                         <div className="setting-item">
                             <div className="item-label-group">
                                 <span className="item-label">{t('ai_target_lang')}</span>
                             </div>
-                            <select
-                                className="search-input"
-                                style={{ borderRadius: '0', padding: '6px', width: '160px', background: 'var(--bg-input)', border: '2px solid var(--border-dark)', color: 'var(--text-primary)', fontSize: '12px' }}
+                            <ThemedSelect
+                                theme={theme}
+                                colorMode={colorMode}
+                                width="160px"
+                                nativeStyle={{ borderRadius: '0', padding: '6px', width: '160px', background: 'var(--bg-input)', border: '2px solid var(--border-dark)', color: 'var(--text-primary)', fontSize: '12px' }}
+                                options={[
+                                    { value: "auto_zh_en", label: t('lang_auto_zh_en') },
+                                    { value: "zh", label: t('lang_zh') },
+                                    { value: "en", label: t('lang_en') },
+                                    { value: "ja", label: t('lang_ja') },
+                                    { value: "de", label: t('lang_de') },
+                                    { value: "fr", label: t('lang_fr') }
+                                ]}
                                 value={aiTargetLang}
-                                onChange={e => {
-                                    setAiTargetLang(e.target.value);
-                                    saveSetting('ai_target_lang', e.target.value);
+                                onChange={(next) => {
+                                    setAiTargetLang(next);
+                                    saveSetting('ai_target_lang', next);
                                 }}
-                            >
-                                <option value="auto_zh_en">{t('lang_auto_zh_en')}</option>
-                                <option value="zh">{t('lang_zh')}</option>
-                                <option value="en">{t('lang_en')}</option>
-                                <option value="ja">{t('lang_ja')}</option>
-                                <option value="de">{t('lang_de')}</option>
-                                <option value="fr">{t('lang_fr')}</option>
-                            </select>
+                            />
                         </div>
 
                         <div className="setting-item no-border">
