@@ -71,6 +71,7 @@ body.theme-macos:not(.hide-app-border) {
   border-radius: 14px !important;
   box-shadow: 0 6px 18px rgba(16, 21, 34, 0.08) !important;
   overflow: hidden !important;
+  transition: background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.22s ease !important;
 }
 
 .theme-macos .settings-group .group-header {
@@ -78,7 +79,7 @@ body.theme-macos:not(.hide-app-border) {
   background: rgba(255, 255, 255, 0.68) !important;
   border: 1px solid rgba(60, 60, 67, 0.14) !important;
   padding: 10px 12px !important;
-  transition: background-color 0.2s ease !important;
+  transition: background-color 0.18s ease, border-bottom-color 0.18s ease, padding 0.18s ease !important;
 }
 
 .theme-macos .settings-group:not(.collapsed) .group-header {
@@ -100,6 +101,18 @@ body.theme-macos:not(.hide-app-border) {
   padding: 8px 14px 12px 14px !important;
   background: transparent !important;
   border-top: none !important;
+  animation: macos-settings-content-in 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes macos-settings-content-in {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .theme-macos .settings-group h3 {
