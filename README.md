@@ -21,6 +21,10 @@
 
 本 fork 主要基于个人需求进行维护，后续更新频率不作保证。由于我目前没有 macOS 设备，macOS 平台的可用性也暂未经过完整验证。
 
-如果有精力继续维护，则路线图为 [路线图](./RoadMap.md)
+如果有精力继续维护，则暂定的路线图为[路线图](docs/markdown/RoadMap.md)；暂未定的内容为[愿景](docs/markdown/Wish.md)
 
-如需查看上游仓库文档，可点击[English](https://github.com/jimuzhe/tiez-clipboard/blob/master/README.md) | [中文](https://github.com/jimuzhe/tiez-clipboard/blob/master/README.zh-CN.md)
+如需查看上游仓库文档：
+
+- [English README](https://github.com/jimuzhe/tiez-clipboard/blob/master/README.md)
+- [中文 README](https://github.com/jimuzhe/tiez-clipboard/blob/master/README.zh-CN.md)
+- [上游仓库](https://github.com/jimuzhe/tiez-clipboard)
