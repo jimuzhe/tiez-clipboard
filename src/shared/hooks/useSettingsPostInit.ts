@@ -25,6 +25,7 @@ interface UseSettingsPostInitOptions {
   setSilentStart: (val: boolean) => void;
   setFollowMouse: (val: boolean) => void;
   setShowAppBorder: (val: boolean) => void;
+  setShowSourceAppIcon: (val: boolean) => void;
   setDeleteAfterPaste: (val: boolean) => void;
   setMoveToTopAfterPaste: (val: boolean) => void;
   setHideTrayIcon: (val: boolean) => void;
@@ -101,6 +102,7 @@ export const useSettingsPostInit = ({
   setSilentStart,
   setFollowMouse,
   setShowAppBorder,
+  setShowSourceAppIcon,
   setDeleteAfterPaste,
   setMoveToTopAfterPaste,
   setHideTrayIcon,
@@ -234,6 +236,7 @@ export const useSettingsPostInit = ({
     setSilentStart(settings["app.silent_start"] !== "false");
     setFollowMouse(settings["app.follow_mouse"] !== "false");
     setShowAppBorder(settings["app.show_app_border"] !== "false");
+    setShowSourceAppIcon(settings["app.show_source_app_icon"] !== "false");
 
     // These have false as default, so check for 'true'
     setDeleteAfterPaste(settings["app.delete_after_paste"] === "true");
@@ -398,6 +401,7 @@ export const useSettingsPostInit = ({
     setSilentStart,
     setFollowMouse,
     setShowAppBorder,
+    setShowSourceAppIcon,
     setDeleteAfterPaste,
     setMoveToTopAfterPaste,
     setHideTrayIcon,

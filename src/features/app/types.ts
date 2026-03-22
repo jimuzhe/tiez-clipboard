@@ -102,6 +102,8 @@ export interface AppState {
   setColorMode: StateSetter<string>;
   showAppBorder: boolean;
   setShowAppBorder: StateSetter<boolean>;
+  showSourceAppIcon: boolean;
+  setShowSourceAppIcon: StateSetter<boolean>;
   compactMode: boolean;
   setCompactMode: StateSetter<boolean>;
   clipboardItemFontSize: number;

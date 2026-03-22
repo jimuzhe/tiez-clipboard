@@ -627,6 +627,7 @@ const ClipboardItem = ({
     onAIOptionsToggle,
     tagColors,
     richTextSnapshotPreview = false,
+    showSourceAppIcon = true,
     dragControls,
     id,
     compactMode,
@@ -662,6 +663,7 @@ const ClipboardItem = ({
     const richTextCleanHtml = richTextFallback?.cleanHtml || item.html_content || "";
     const richTextSnapshotDisplayMaxHeight = compactMode ? 40 : 64;
     const richTextSnapshotRenderMaxHeight = compactMode ? 100 : 200;
+    const canShowCompactPreview = compactMode && item.content_type !== "file";
     const richTextSnapshotSrc = useMemo(() => {
         if (!richTextSnapshotPreview) return null;
         if (item.content_type !== "rich_text" || !item.html_content) return null;
@@ -933,10 +935,10 @@ const ClipboardItem = ({
     }, [isEditingTags]);
 
     useEffect(() => {
-        if (!compactMode) {
+        if (!canShowCompactPreview) {
             hideCompactPreview();
         }
-    }, [compactMode]);
+    }, [canShowCompactPreview]);
 
     useEffect(() => {
         return () => {
@@ -1050,7 +1052,7 @@ const ClipboardItem = ({
                 onSelect();
             }}
             onMouseEnter={(e) => {
-                if (!compactMode) return;
+                if (!canShowCompactPreview) return;
                 // Don't show preview if AI options are open to avoid interference
                 if (showAIOptions) return;
                 compactPreviewLog("mouseenter schedule preview", { itemId: item.id });
@@ -1077,7 +1079,7 @@ const ClipboardItem = ({
                 }, 1000); // 1s delay
             }}
             onMouseMove={(e) => {
-                if (!compactMode) return;
+                if (!canShowCompactPreview) return;
                 hoverAnchorRef.current = {
                     clientX: e.clientX,
                     clientY: e.clientY,
@@ -1112,7 +1114,9 @@ const ClipboardItem = ({
                     )}
                     <div className="app-info">
                         {item.is_pinned && !dragControls && <Pin size={10} style={{ color: 'var(--accent-color)', marginRight: '-2px' }} />}
-                        {renderSourceAppIcon(sourceAppIcon, item.content_type, item.source_app)}
+                        {showSourceAppIcon
+                            ? renderSourceAppIcon(sourceAppIcon, item.content_type, item.source_app)
+                            : getIcon(item.content_type)}
                         <span>{item.source_app}</span>
                     </div>
                 </div>
@@ -1552,6 +1556,7 @@ export default memo(ClipboardItem, (prevProps, nextProps) => {
         prevProps.aiOptionsOpen === nextProps.aiOptionsOpen &&
         prevProps.aiEnabled === nextProps.aiEnabled &&
         prevProps.richTextSnapshotPreview === nextProps.richTextSnapshotPreview &&
+        prevProps.showSourceAppIcon === nextProps.showSourceAppIcon &&
         prevProps.compactMode === nextProps.compactMode &&
         prevProps.theme === nextProps.theme &&
         prevProps.language === nextProps.language &&

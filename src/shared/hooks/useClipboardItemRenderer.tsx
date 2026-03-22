@@ -18,6 +18,7 @@ interface UseClipboardItemRendererOptions {
   language: Locale;
   t: (key: string) => string;
   compactMode: boolean;
+  showSourceAppIcon: boolean;
   richTextSnapshotPreview: boolean;
   processingAiId: number | null;
   aiEnabled: boolean;
@@ -60,6 +61,7 @@ export const useClipboardItemRenderer = ({
   language,
   t,
   compactMode,
+  showSourceAppIcon,
   richTextSnapshotPreview,
   processingAiId,
   aiEnabled,
@@ -102,6 +104,7 @@ export const useClipboardItemRenderer = ({
           language={language}
           t={t}
           compactMode={compactMode}
+          showSourceAppIcon={showSourceAppIcon}
           richTextSnapshotPreview={richTextSnapshotPreview}
           onSelect={() => setSelectedIndex(index)}
           onCopy={(withFormat) =>
@@ -175,6 +178,7 @@ export const useClipboardItemRenderer = ({
       language,
       t,
       compactMode,
+      showSourceAppIcon,
       richTextSnapshotPreview,
       processingAiId,
       aiEnabled,

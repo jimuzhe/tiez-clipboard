@@ -29,6 +29,8 @@ interface AppearanceSettingsGroupProps {
     setLanguage: (val: Locale) => void;
     showAppBorder: boolean;
     setShowAppBorder: (val: boolean) => void;
+    showSourceAppIcon: boolean;
+    setShowSourceAppIcon: (val: boolean) => void;
     compactMode: boolean;
     setCompactMode: (val: boolean) => void;
     clipboardItemFontSize: number;
@@ -71,6 +73,8 @@ const AppearanceSettingsGroup = ({
     setLanguage,
     showAppBorder,
     setShowAppBorder,
+    showSourceAppIcon,
+    setShowSourceAppIcon,
     compactMode,
     setCompactMode,
     clipboardItemFontSize,
@@ -184,6 +188,27 @@ const AppearanceSettingsGroup = ({
                                 const val = e.target.checked;
                                 setShowAppBorder(val);
                                 saveAppSetting('show_app_border', String(val));
+                            }}
+                        />
+                        <div className="toggle"><div className="left" /><div className="right" /></div>
+                    </label>
+                </div>
+
+                <div className="setting-item">
+                    <LabelWithHint
+                        label={t('show_source_app_icon') || '显示来源应用图标'}
+                        hint={t('show_source_app_icon_hint') || '关闭后不显示来源应用图标，改为显示剪贴板条目类型图标'}
+                        hintKey="show_source_app_icon"
+                    />
+                    <label className="switch">
+                        <input
+                            className="cb"
+                            type="checkbox"
+                            checked={showSourceAppIcon}
+                            onChange={(e) => {
+                                const val = e.target.checked;
+                                setShowSourceAppIcon(val);
+                                saveAppSetting('show_source_app_icon', String(val));
                             }}
                         />
                         <div className="toggle"><div className="left" /><div className="right" /></div>

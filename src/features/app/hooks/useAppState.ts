@@ -69,6 +69,7 @@ export const useAppState = (): AppState => {
   const [theme, setTheme] = useState(DEFAULT_THEME);
   const [colorMode, setColorMode] = useState("system");
   const [showAppBorder, setShowAppBorder] = useState(true);
+  const [showSourceAppIcon, setShowSourceAppIcon] = useState(true);
   const [compactMode, setCompactMode] = useState(false);
   const [clipboardItemFontSize, setClipboardItemFontSize] = useState(13);
   const [clipboardTagFontSize, setClipboardTagFontSize] = useState(10);
@@ -255,6 +256,8 @@ export const useAppState = (): AppState => {
     setColorMode,
     showAppBorder,
     setShowAppBorder,
+    showSourceAppIcon,
+    setShowSourceAppIcon,
     compactMode,
     setCompactMode,
     clipboardItemFontSize,
