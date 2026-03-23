@@ -6,7 +6,10 @@ pub mod repository;
 #[cfg(target_os = "windows")]
 pub mod windows_api;
 
-#[cfg(not(target_os = "windows"))]
+#[cfg(target_os = "linux")]
+pub mod linux_api;
+
+#[cfg(not(any(target_os = "windows", target_os = "linux")))]
 pub mod windows_api {
     pub mod win_clipboard {
         pub struct ImageData { pub width: usize, pub height: usize, pub bytes: Vec<u8> }
