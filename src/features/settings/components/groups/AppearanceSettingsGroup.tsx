@@ -52,12 +52,10 @@ const buildRangeStyle = (value: number, min: number, max: number) =>
         "--range-progress": clampProgress(value, min, max)
     }) as CSSProperties;
 
-const themeCssModules = import.meta.glob("../../../../styles/themes/*.css", { eager: true });
+const themeCssModules = import.meta.glob("../../../../styles/themes/*.css");
 const hiddenThemeIds = new Set(["dark", "index"]);
 const preferredThemeOrder = ["retro", "mica", "acrylic"];
-const themeIdAliases: Record<string, string[]> = {
-    "mica-acrylic": ["mica", "acrylic"]
-};
+const themeIdAliases: Record<string, string[]> = {};
 const discoveredThemeIds = Object.keys(themeCssModules)
     .map(path => path.split("/").pop()?.replace(".css", "") ?? "")
     .filter(id => id && !hiddenThemeIds.has(id));

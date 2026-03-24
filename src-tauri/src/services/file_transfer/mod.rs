@@ -7,6 +7,7 @@ use axum::{
     routing::{get, post},
     Router, extract::DefaultBodyLimit,
 };
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::Ordering;
 use tauri::{AppHandle, Manager, Emitter};
@@ -23,7 +24,94 @@ use crate::database::ClipboardEntry;
 use crate::infrastructure::repository::clipboard_repo::ClipboardRepository;
 use crate::infrastructure::repository::settings_repo::SettingsRepository;
 
+pub const KEY_APP_FILE_TRANSFER_PATH: &str = "app.file_transfer_path";
+pub const KEY_APP_FILE_SERVER_ENABLED: &str = "app.file_server_enabled";
+pub const KEY_APP_FILE_SERVER_PORT: &str = "app.file_server_port";
+pub const KEY_APP_FILE_TRANSFER_AUTO_OPEN: &str = "app.file_transfer_auto_open";
+pub const LEGACY_KEY_FILE_TRANSFER_PATH: &str = "file_transfer_path";
+pub const LEGACY_KEY_FILE_SERVER_ENABLED: &str = "file_server_enabled";
+pub const LEGACY_KEY_FILE_SERVER_PORT: &str = "file_server_port";
+pub const LEGACY_KEY_FILE_TRANSFER_AUTO_OPEN: &str = "file_transfer_auto_open";
+
 pub static SERVER_HANDLE: Mutex<Option<JoinHandle<()>>> = Mutex::new(None);
+const SHARED_FILE_TOKEN_MAX: usize = 2048;
+const SHARED_FILE_TOKEN_TTL_MS: i64 = 2 * 60 * 60 * 1000;
+const CHAT_MESSAGE_MAX: usize = 2000;
+
+fn now_ms() -> i64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis() as i64
+}
+
+fn cleanup_shared_tokens(map: &mut HashMap<String, SharedFileTokenEntry>, now: i64) {
+    map.retain(|_, entry| now - entry.last_access_at <= SHARED_FILE_TOKEN_TTL_MS);
+    while map.len() > SHARED_FILE_TOKEN_MAX {
+        if let Some(oldest_key) = map
+            .iter()
+            .min_by_key(|(_, entry)| entry.last_access_at)
+            .map(|(key, _)| key.clone())
+        {
+            map.remove(&oldest_key);
+        } else {
+            break;
+        }
+    }
+}
+
+pub fn register_shared_file_token(app_handle: &AppHandle, token: String, path: String) {
+    let shared_state = app_handle.state::<SharedFileState>();
+    let Ok(mut map) = shared_state.0.lock() else {
+        return;
+    };
+    let now = now_ms();
+    cleanup_shared_tokens(&mut map, now);
+    map.insert(
+        token,
+        SharedFileTokenEntry {
+            path,
+            created_at: now,
+            last_access_at: now,
+        },
+    );
+    cleanup_shared_tokens(&mut map, now);
+}
+
+pub fn resolve_shared_file_token(app_handle: &AppHandle, token: &str) -> Option<String> {
+    let shared_state = app_handle.state::<SharedFileState>();
+    let Ok(mut map) = shared_state.0.lock() else {
+        return None;
+    };
+    let now = now_ms();
+    cleanup_shared_tokens(&mut map, now);
+    if let Some(entry) = map.get_mut(token) {
+        entry.last_access_at = now;
+        return Some(entry.path.clone());
+    }
+    None
+}
+
+pub fn consume_shared_file_token(app_handle: &AppHandle, token: &str) -> Option<String> {
+    let shared_state = app_handle.state::<SharedFileState>();
+    let Ok(mut map) = shared_state.0.lock() else {
+        return None;
+    };
+    let now = now_ms();
+    cleanup_shared_tokens(&mut map, now);
+    map.remove(token).map(|entry| entry.path)
+}
+
+fn get_setting_with_legacy(db_state: &DbState, key: &str, legacy_key: &str) -> Option<String> {
+    if let Ok(Some(value)) = db_state.settings_repo.get(key) {
+        return Some(value);
+    }
+    if let Ok(Some(legacy)) = db_state.settings_repo.get(legacy_key) {
+        let _ = db_state.settings_repo.set(key, &legacy);
+        return Some(legacy);
+    }
+    None
+}
 
 #[tauri::command]
 pub fn get_local_ip_addr(app_handle: AppHandle) -> String {
@@ -61,7 +149,11 @@ pub fn set_display_ip(app_handle: AppHandle, ip: String) {
 pub fn get_active_file_transfer_path(app_handle: AppHandle) -> String {
     let db_state = app_handle.state::<DbState>();
     let mut dir = app_handle.path().download_dir().unwrap_or_else(|_| std::env::temp_dir());
-    if let Ok(Some(custom)) = db_state.settings_repo.get("file_transfer_path") {
+    if let Some(custom) = get_setting_with_legacy(
+        &db_state,
+        KEY_APP_FILE_TRANSFER_PATH,
+        LEGACY_KEY_FILE_TRANSFER_PATH,
+    ) {
         if !custom.trim().is_empty() { dir = std::path::PathBuf::from(custom); }
     }
     dir.to_string_lossy().to_string()
@@ -82,13 +174,10 @@ pub fn get_chat_history(app_handle: AppHandle) -> Vec<Message> {
 
 #[tauri::command]
 pub fn send_file_to_client(app_handle: AppHandle, file_path: String) -> Result<(), String> {
-    let shared_state = app_handle.state::<SharedFileState>();
     update_activity(&app_handle);
 
     let token = uuid::Uuid::new_v4().to_string();
-    if let Ok(mut map) = shared_state.0.lock() {
-        map.insert(token.clone(), file_path.clone());
-    }
+    register_shared_file_token(&app_handle, token.clone(), file_path.clone());
 
     let server_info = app_handle.state::<ServerInfo>();
     let port = server_info.port.load(Ordering::Relaxed);
@@ -141,9 +230,8 @@ pub async fn get_download_url(app_handle: AppHandle, file_path: String) -> Resul
         } else { p }
     };
     if port == 0 { return Err("Failed to start server".to_string()); }
-    let shared_state = app_handle.state::<SharedFileState>();
     let token = format!("fallback_{}", uuid::Uuid::new_v4());
-    if let Ok(mut map) = shared_state.0.lock() { map.insert(token.clone(), file_path.clone()); }
+    register_shared_file_token(&app_handle, token.clone(), file_path.clone());
     let filename = std::path::Path::new(&file_path).file_name().unwrap_or_default().to_string_lossy().to_string();
     Ok(format!("/download/{}?name={}", token, urlencoding::encode(&filename)))
 }
@@ -183,15 +271,18 @@ pub async fn toggle_file_server(
             ip: if actual_ip.is_empty() || actual_ip.contains("0.0.0.0") { "127.0.0.1".to_string() } else { actual_ip },
         });
         let db_state = app_handle.state::<DbState>();
-        let _ = db_state.settings_repo.set("file_server_enabled", "true");
-        let _ = db_state.settings_repo.set("file_server_port", &actual_port.to_string());
+        let _ = db_state.settings_repo.set(KEY_APP_FILE_SERVER_ENABLED, "true");
+        let _ = db_state.settings_repo.set(LEGACY_KEY_FILE_SERVER_ENABLED, "true");
+        let _ = db_state.settings_repo.set(KEY_APP_FILE_SERVER_PORT, &actual_port.to_string());
+        let _ = db_state.settings_repo.set(LEGACY_KEY_FILE_SERVER_PORT, &actual_port.to_string());
         Ok(format!("{}", actual_port))
     } else {
         let mut handle = SERVER_HANDLE.lock().unwrap();
         if let Some(h) = handle.take() {
             h.abort();
             let db_state = app_handle.state::<DbState>();
-            let _ = db_state.settings_repo.set("file_server_enabled", "false");
+            let _ = db_state.settings_repo.set(KEY_APP_FILE_SERVER_ENABLED, "false");
+            let _ = db_state.settings_repo.set(LEGACY_KEY_FILE_SERVER_ENABLED, "false");
             let server_info = app_handle.state::<ServerInfo>();
             server_info.port.store(0, Ordering::SeqCst);
             {
@@ -244,13 +335,12 @@ pub async fn run_server(listener: tokio::net::TcpListener, app_handle: AppHandle
 pub fn append_message(app: &AppHandle, direction: &str, msg_type: &str, content: &str, sender_id: &str, sender_name: &str, file_path: Option<&str>) {
     let chat_state = app.state::<ChatState>();
     let mut msgs = match chat_state.0.lock() { Ok(guard) => guard, Err(_) => return };
-    let id = msgs.len() as u64 + 1;
+    let id = msgs.last().map(|m| m.id).unwrap_or(0) + 1;
     let mut final_content = content.to_string();
     if (msg_type == "image" || msg_type == "video" || msg_type == "file") && !final_content.starts_with("data:") && !final_content.starts_with("/download/") {
         if let Some(path) = file_path {
             let token = format!("{}_{}", chrono::Utc::now().timestamp_millis(), uuid::Uuid::new_v4());
-            let shared_files = app.state::<SharedFileState>();
-            if let Ok(mut map) = shared_files.0.lock() { map.insert(token.clone(), path.to_string()); }
+            register_shared_file_token(app, token.clone(), path.to_string());
             let filename = std::path::Path::new(path).file_name().unwrap_or_default().to_string_lossy().to_string();
             final_content = format!("/download/{}?name={}", token, urlencoding::encode(&filename));
         }
@@ -262,6 +352,10 @@ pub fn append_message(app: &AppHandle, direction: &str, msg_type: &str, content:
         file_path: file_path.map(|s| s.to_string()),
     };
     msgs.push(msg.clone());
+    if msgs.len() > CHAT_MESSAGE_MAX {
+        let excess = msgs.len() - CHAT_MESSAGE_MAX;
+        msgs.drain(0..excess);
+    }
     drop(msgs);
     if let Some(ws_state) = app.try_state::<WsBroadcaster>() {
         if let Ok(guard) = ws_state.0.lock() {
@@ -307,7 +401,11 @@ pub async fn register_received_file(app_handle: &AppHandle, final_path: std::pat
          unsafe { let _ = crate::infrastructure::windows_api::win_clipboard::set_clipboard_files(vec![saved_path]); }
     }
     let db_state = app_handle.state::<DbState>();
-    if let Ok(Some(val)) = db_state.settings_repo.get("file_transfer_auto_open") {
+    if let Some(val) = get_setting_with_legacy(
+        &db_state,
+        KEY_APP_FILE_TRANSFER_AUTO_OPEN,
+        LEGACY_KEY_FILE_TRANSFER_AUTO_OPEN,
+    ) {
         if val == "true" {
             let parent = final_path.parent().unwrap_or(std::path::Path::new("."));
             #[cfg(target_os = "windows")] let _ = std::process::Command::new("explorer").arg(parent).spawn();

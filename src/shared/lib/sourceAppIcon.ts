@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 
 const sourceAppIconCache = new Map<string, string | null>();
 const sourceAppIconRequests = new Map<string, Promise<string | null>>();
+const SOURCE_APP_ICON_CACHE_LIMIT = 256;
 
 const normalizeSourceAppPath = (sourceAppPath?: string | null) => {
   const value = sourceAppPath?.trim();
@@ -22,6 +23,8 @@ export const getSourceAppIcon = async (sourceAppPath?: string | null): Promise<s
 
   const cached = sourceAppIconCache.get(cacheKey);
   if (cached !== undefined) {
+    sourceAppIconCache.delete(cacheKey);
+    sourceAppIconCache.set(cacheKey, cached);
     return cached;
   }
 
@@ -34,6 +37,12 @@ export const getSourceAppIcon = async (sourceAppPath?: string | null): Promise<s
     .then((icon) => {
       const normalizedIcon = typeof icon === "string" && icon.trim() ? icon : null;
       sourceAppIconCache.set(cacheKey, normalizedIcon);
+      if (sourceAppIconCache.size > SOURCE_APP_ICON_CACHE_LIMIT) {
+        const oldestKey = sourceAppIconCache.keys().next().value;
+        if (oldestKey) {
+          sourceAppIconCache.delete(oldestKey);
+        }
+      }
       return normalizedIcon;
     })
     .catch((error) => {

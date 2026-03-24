@@ -15,10 +15,16 @@ export const usePinnedSort = ({
   setHistory
 }: UsePinnedSortOptions) => {
   const { pinnedItems, unpinnedItems } = useMemo(() => {
-    return {
-      pinnedItems: filteredHistory.filter((item) => item.is_pinned),
-      unpinnedItems: filteredHistory.filter((item) => !item.is_pinned)
-    };
+    const pinnedItems: ClipboardEntry[] = [];
+    const unpinnedItems: ClipboardEntry[] = [];
+    for (const item of filteredHistory) {
+      if (item.is_pinned) {
+        pinnedItems.push(item);
+      } else {
+        unpinnedItems.push(item);
+      }
+    }
+    return { pinnedItems, unpinnedItems };
   }, [filteredHistory]);
 
   const handlePinnedReorder = useCallback(

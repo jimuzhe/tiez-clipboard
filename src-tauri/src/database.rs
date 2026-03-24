@@ -261,7 +261,19 @@ pub fn seed_defaults(conn: &Connection) -> Result<()> {
         [],
     );
     let _ = conn.execute(
+        "INSERT OR IGNORE INTO settings (key, value) VALUES ('app.file_transfer_auto_close', 'false')",
+        [],
+    );
+    let _ = conn.execute(
         "INSERT OR IGNORE INTO settings (key, value) VALUES ('file_transfer_auto_copy', 'false')",
+        [],
+    );
+    let _ = conn.execute(
+        "INSERT OR IGNORE INTO settings (key, value) VALUES ('app.file_transfer_auto_copy', 'false')",
+        [],
+    );
+    let _ = conn.execute(
+        "INSERT OR IGNORE INTO settings (key, value) VALUES ('app.file_transfer_auto_open', 'false')",
         [],
     );
     let _ = conn.execute(
@@ -269,7 +281,19 @@ pub fn seed_defaults(conn: &Connection) -> Result<()> {
         [],
     );
     let _ = conn.execute(
+        "INSERT OR IGNORE INTO settings (key, value) VALUES ('app.file_server_enabled', 'false')",
+        [],
+    );
+    let _ = conn.execute(
         "INSERT OR IGNORE INTO settings (key, value) VALUES ('file_server_port', '12345')",
+        [],
+    );
+    let _ = conn.execute(
+        "INSERT OR IGNORE INTO settings (key, value) VALUES ('app.file_server_port', '12345')",
+        [],
+    );
+    let _ = conn.execute(
+        "INSERT OR IGNORE INTO settings (key, value) VALUES ('app.file_transfer_path', '')",
         [],
     );
 

@@ -251,7 +251,7 @@ const FileTransferSettingsGroup = ({
                                         try {
                                             const selected = await open({ directory: true, multiple: false });
                                             if (selected) {
-                                                saveSetting('file_transfer_path', selected as string);
+                                                saveSetting('app.file_transfer_path', selected as string);
                                                 setTimeout(fetchEffectiveTransferPath, 100);
                                             }
                                         } catch (e) { console.error(e); }

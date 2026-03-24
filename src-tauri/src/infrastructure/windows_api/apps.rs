@@ -27,6 +27,7 @@ pub struct AppInfo {
 }
 
 static EXECUTABLE_ICON_CACHE: OnceLock<Mutex<HashMap<String, Option<String>>>> = OnceLock::new();
+const EXECUTABLE_ICON_CACHE_MAX: usize = 256;
 
 #[tauri::command]
 pub async fn scan_installed_apps() -> AppResult<Vec<AppInfo>> {
@@ -248,20 +249,29 @@ pub fn get_executable_icon(executable_path: String) -> AppResult<Option<String>>
     }
 
     let cache = EXECUTABLE_ICON_CACHE.get_or_init(|| Mutex::new(HashMap::new()));
-    if let Some(cached) = cache
-        .lock()
-        .map_err(|e| AppError::Internal(e.to_string()))?
-        .get(&cache_key)
-        .cloned()
     {
-        return Ok(cached);
+        let mut guard = cache
+            .lock()
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+        if let Some(cached) = guard.get(&cache_key).cloned() {
+            guard.remove(&cache_key);
+            guard.insert(cache_key.clone(), cached.clone());
+            return Ok(cached);
+        }
     }
 
     let icon = extract_executable_icon_data_url(&executable_path)?;
-    cache
+    let mut guard = cache
         .lock()
-        .map_err(|e| AppError::Internal(e.to_string()))?
-        .insert(cache_key, icon.clone());
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+    guard.insert(cache_key, icon.clone());
+    while guard.len() > EXECUTABLE_ICON_CACHE_MAX {
+        if let Some(oldest_key) = guard.keys().next().cloned() {
+            guard.remove(&oldest_key);
+        } else {
+            break;
+        }
+    }
     Ok(icon)
 }
 

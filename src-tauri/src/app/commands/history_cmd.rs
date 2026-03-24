@@ -7,6 +7,45 @@ use crate::domain::models::ClipboardEntry;
 use crate::error::{AppResult, AppError};
 use crate::services::clipboard::truncate_html_for_preview;
 
+const UI_CONTENT_LIMIT: usize = 2000;
+const UI_PREVIEW_LIMIT: usize = 500;
+const TAG_CONTENT_LIMIT: usize = 50000;
+const MAX_HISTORY_LIMIT: i32 = 150;
+const MIN_HISTORY_LIMIT: i32 = 1;
+
+fn is_text_like_content_type(content_type: &str) -> bool {
+    matches!(content_type, "text" | "code" | "url" | "rich_text")
+}
+
+fn truncate_with_suffix(input: &str, limit: usize, suffix: &str) -> String {
+    let mut chars = input.chars();
+    if chars.by_ref().nth(limit).is_some() {
+        let head: String = input.chars().take(limit).collect();
+        format!("{head}{suffix}")
+    } else {
+        input.to_string()
+    }
+}
+
+fn normalize_entries_for_ui(entries: &mut [ClipboardEntry]) {
+    for item in entries {
+        if is_text_like_content_type(&item.content_type) {
+            item.content = truncate_with_suffix(&item.content, UI_CONTENT_LIMIT, "... [Truncated for speed]");
+            item.preview = truncate_with_suffix(&item.content, UI_PREVIEW_LIMIT.saturating_sub(3), "...");
+        }
+
+        if let Some(ref html) = item.html_content {
+            if html.chars().count() > 5000 {
+                item.html_content = truncate_html_for_preview(html);
+            }
+        }
+    }
+}
+
+fn normalize_limit(limit: i32) -> i32 {
+    limit.clamp(MIN_HISTORY_LIMIT, MAX_HISTORY_LIMIT)
+}
+
 #[tauri::command]
 pub fn get_clipboard_history(
     state: State<'_, DbState>,
@@ -15,6 +54,7 @@ pub fn get_clipboard_history(
     offset: i32,
     content_type: Option<String>,
 ) -> AppResult<Vec<ClipboardEntry>> {
+    let limit = normalize_limit(limit);
     // 1. Get history from repository
     let mut history = state
         .repo
@@ -50,28 +90,7 @@ pub fn get_clipboard_history(
         history.truncate(limit as usize);
     }
     
-    // 5. Truncate content for UI performance
-    for item in &mut history {
-        if (item.content_type == "text" || item.content_type == "code" || item.content_type == "url" || item.content_type == "rich_text") 
-           && item.content.chars().count() > 2000 
-        {
-            item.content = format!("{}... [Truncated for speed]", item.content.chars().take(2000).collect::<String>());
-        }
-
-        if let Some(ref html) = item.html_content {
-            if html.chars().count() > 5000 {
-                item.html_content = truncate_html_for_preview(html);
-            }
-        }
-
-        if item.content_type == "text" || item.content_type == "code" || item.content_type == "url" || item.content_type == "rich_text" {
-            if item.content.chars().count() > 500 {
-                item.preview = format!("{}...", item.content.chars().take(497).collect::<String>());
-            } else {
-                item.preview = item.content.clone();
-            }
-        }
-    }
+    normalize_entries_for_ui(&mut history);
     
     Ok(history)
 }
@@ -83,6 +102,7 @@ pub fn search_clipboard_history(
     search_term: String,
     limit: i32,
 ) -> AppResult<Vec<ClipboardEntry>> {
+    let limit = normalize_limit(limit);
     let mut history = state.repo.search(&search_term, limit)?;
 
     let term = search_term.to_lowercase();
@@ -104,27 +124,7 @@ pub fn search_clipboard_history(
         history.truncate(limit as usize);
     }
 
-    for item in &mut history {
-        if (item.content_type == "text" || item.content_type == "code" || item.content_type == "url" || item.content_type == "rich_text") 
-           && item.content.chars().count() > 2000 
-        {
-            item.content = format!("{}... [Truncated for speed]", item.content.chars().take(2000).collect::<String>());
-        }
-
-        if let Some(ref html) = item.html_content {
-            if html.chars().count() > 5000 {
-                item.html_content = truncate_html_for_preview(html);
-            }
-        }
-
-        if item.content_type == "text" || item.content_type == "code" || item.content_type == "url" || item.content_type == "rich_text" {
-            if item.content.chars().count() > 500 {
-                item.preview = format!("{}...", item.content.chars().take(497).collect::<String>());
-            } else {
-                item.preview = item.content.clone();
-            }
-        }
-    }
+    normalize_entries_for_ui(&mut history);
 
     Ok(history)
 }
@@ -167,10 +167,8 @@ pub fn get_tag_items(state: State<'_, DbState>, tag: String) -> AppResult<Vec<Cl
     let mut history = state.tag_repo.get_entries_by_tag(&tag).map_err(AppError::from)?;
     
     for item in &mut history {
-          if (item.content_type == "text" || item.content_type == "code" || item.content_type == "url" || item.content_type == "rich_text") 
-           && item.content.chars().count() > 50000 
-        {
-            item.content = format!("{}... [Content Truncated]", item.content.chars().take(50000).collect::<String>());
+        if is_text_like_content_type(&item.content_type) {
+            item.content = truncate_with_suffix(&item.content, TAG_CONTENT_LIMIT, "... [Content Truncated]");
         }
     }
     

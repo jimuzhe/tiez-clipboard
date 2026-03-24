@@ -232,52 +232,6 @@
   gap: 8px;
 }
 
-.wt-header{
-  padding: 16px;
-  background: var(--bg-toolbar);
-  border-bottom: 2px solid var(--border-dark);
-}
-
-.wt-info-panel{
-  display: flex;
-  gap: 16px;
-  align-items: center;
-  background: var(--bg-element);
-  border: 2px solid var(--border-dark);
-  padding: 12px;
-  box-shadow: 2px 2px 0 0 var(--border-dark);
-}
-
-.wt-qr-container{
-  background: #fff;
-  padding: 4px;
-  border: 2px solid var(--border-dark);
-  display: flex;
-}
-
-.wt-info-list{
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.wt-info-row{
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-}
-
-.wt-info-label{
-  font-weight: 900;
-  color: var(--text-secondary);
-}
-
-.wt-info-value{
-  font-weight: bold;
-  font-family: var(--font-mono);
-}
-
 .wt-input{
   flex: 1;
   height: 40px;
@@ -324,7 +278,6 @@
   font-size: 12px;
 }
 
-/* New Header/QR Styles */
 .wt-header{
   padding: 8px;
   border-bottom: 2px solid var(--border-dark);

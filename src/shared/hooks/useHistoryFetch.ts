@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { Dispatch, SetStateAction } from "react";
 import type { ClipboardEntry } from "../types";
+import { HISTORY_SEARCH_LIMIT } from "../../features/app/constants/pagination";
 
 interface UseHistoryFetchOptions {
   debouncedSearch: string;
@@ -22,8 +23,6 @@ interface UseHistoryFetchOptions {
 export const useHistoryFetch = ({
   debouncedSearch,
   typeFilter,
-  persistentLimitEnabled,
-  persistentLimit,
   pageSize,
   currentOffset,
   historyLength,
@@ -72,7 +71,7 @@ export const useHistoryFetch = ({
           try {
             data = await invoke<ClipboardEntry[]>("search_clipboard_history", {
               searchTerm: term,
-              limit: 200
+              limit: HISTORY_SEARCH_LIMIT
             });
           } catch (e) {
             console.error("Search failed, falling back", e);
@@ -131,8 +130,6 @@ export const useHistoryFetch = ({
       debouncedSearch,
       typeFilter,
       pageSize,
-      persistentLimit,
-      persistentLimitEnabled,
       setCurrentOffset,
       setHasMore,
       setHistory

@@ -13,65 +13,48 @@ pub(crate) fn parse_hotkey_list(raw: &str) -> Vec<String> {
         .collect()
 }
 
-#[tauri::command]
-pub fn register_hotkey(app_handle: AppHandle, hotkey: String) -> AppResult<()> {
+fn register_shortcut_if_valid(app: &AppHandle, raw_hotkey: &str) {
+    if raw_hotkey.is_empty() || raw_hotkey.eq_ignore_ascii_case("MouseMiddle") || raw_hotkey.eq_ignore_ascii_case("MButton") {
+        return;
+    }
+    if let Ok(shortcut) = raw_hotkey.replace("Win", "Super").parse::<Shortcut>() {
+        let _ = app.global_shortcut().register(shortcut);
+    }
+}
+
+pub fn sync_hotkeys_from_settings(app: &AppHandle) -> AppResult<()> {
+    let settings = app
+        .try_state::<SettingsState>()
+        .ok_or_else(|| AppError::Internal("SettingsState 不可用".to_string()))?;
+
+    let main_hotkey = settings.main_hotkey.lock().unwrap().clone();
+    let sequential_hotkey = settings.sequential_paste_hotkey.lock().unwrap().clone();
+    let rich_hotkey = settings.rich_paste_hotkey.lock().unwrap().clone();
+    let search_hotkey = settings.search_hotkey.lock().unwrap().clone();
+
     {
         let mut guard = HOTKEY_STRING.lock().unwrap();
-        *guard = hotkey.clone();
+        *guard = main_hotkey.clone();
     }
 
+    let _ = app.global_shortcut().unregister_all();
+    for item in parse_hotkey_list(&main_hotkey) {
+        register_shortcut_if_valid(app, &item);
+    }
+    register_shortcut_if_valid(app, &sequential_hotkey);
+    register_shortcut_if_valid(app, &rich_hotkey);
+    register_shortcut_if_valid(app, &search_hotkey);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn register_hotkey(app_handle: AppHandle, hotkey: String) -> AppResult<()> {
     if let Some(settings) = app_handle.try_state::<SettingsState>() {
         let mut guard = settings.main_hotkey.lock().unwrap();
         *guard = hotkey.clone();
     }
-    
-    let _ = app_handle.global_shortcut().unregister_all();
-    
-    for main_hotkey in parse_hotkey_list(&hotkey) {
-        let normalized = main_hotkey.replace("Win", "Super");
-        if main_hotkey.eq_ignore_ascii_case("MouseMiddle") || main_hotkey.eq_ignore_ascii_case("MButton") {
-            continue;
-        }
-        if let Ok(shortcut) = normalized.parse::<Shortcut>() {
-            let _ = app_handle.global_shortcut().register(shortcut);
-        }
-    }
-    
-    // sequential hotkey
-    let seq_hotkey = {
-        let settings = app_handle.state::<SettingsState>();
-        let val = settings.sequential_paste_hotkey.lock().unwrap().clone();
-        val
-    };
-    if let Ok(shortcut) = seq_hotkey.replace("Win", "Super").parse::<Shortcut>() {
-        let _ = app_handle.global_shortcut().register(shortcut);
-    }
-    
-    // rich paste hotkey
-    let rich_hotkey = {
-        let settings = app_handle.state::<SettingsState>();
-        let val = settings.rich_paste_hotkey.lock().unwrap().clone();
-        val
-    };
-    if !rich_hotkey.is_empty() {
-        if let Ok(shortcut) = rich_hotkey.replace("Win", "Super").parse::<Shortcut>() {
-            let _ = app_handle.global_shortcut().register(shortcut);
-        }
-    }
 
-    // search hotkey
-    let search_hotkey = {
-        let settings = app_handle.state::<SettingsState>();
-        let val = settings.search_hotkey.lock().unwrap().clone();
-        val
-    };
-    if !search_hotkey.is_empty() {
-        if let Ok(shortcut) = search_hotkey.replace("Win", "Super").parse::<Shortcut>() {
-            let _ = app_handle.global_shortcut().register(shortcut);
-        }
-    }
-    
-    Ok(())
+    sync_hotkeys_from_settings(&app_handle)
 }
 
 #[tauri::command]

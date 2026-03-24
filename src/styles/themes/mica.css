@@ -1,8 +1,6 @@
-/* Modern Theme Adjustments for Mica/Acrylic */
+/* Modern Theme Adjustments for Mica */
 :root.theme-mica,
-:root.theme-acrylic,
-body.theme-mica,
-body.theme-acrylic {
+body.theme-mica {
   background-color: transparent !important;
   --font-main: "Segoe UI", "Inter", "Microsoft YaHei", sans-serif;
   --font-mono: "Cascadia Code", "Consolas", monospace;
@@ -16,8 +14,7 @@ body.theme-acrylic {
 }
 
 /* Custom background image support */
-body.theme-mica::before,
-body.theme-acrylic::before {
+body.theme-mica::before {
   content: '';
   position: fixed;
   top: 0;
@@ -36,22 +33,19 @@ body.theme-acrylic::before {
 }
 
 /* Make custom background clearer */
-body.has-custom-bg.theme-mica::before,
-body.has-custom-bg.theme-acrylic::before {
+body.has-custom-bg.theme-mica::before {
   opacity: var(--custom-bg-opacity, 0.45);
 }
 
 @media (prefers-color-scheme: dark) {
 
-  body:not(.light-mode).theme-mica,
-  body:not(.light-mode).theme-acrylic {
+  body:not(.light-mode).theme-mica {
     --bg-panel: rgba(0, 0, 0, 0.15);
     /* More transparent dark */
   }
 }
 
-body.dark-mode.theme-mica,
-body.dark-mode.theme-acrylic {
+body.dark-mode.theme-mica {
   --bg-panel: rgba(0, 0, 0, 0.15);
 }
 
@@ -95,7 +89,7 @@ body.has-custom-bg.light-mode.theme-mica #root {
   opacity: 0.22;
 }
 
-body.light-mode.theme-acrylic #root {
+body.light-mode.theme-mica #root {
   background-color: rgba(252, 252, 252, calc(0.10 * var(--surface-opacity-scale, 1))) !important;
   /* Acrylic with blur effect - more transparent */
   border: none !important;
@@ -103,11 +97,11 @@ body.light-mode.theme-acrylic #root {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12) !important;
 }
 
-body.has-custom-bg.light-mode.theme-acrylic #root {
+body.has-custom-bg.light-mode.theme-mica #root {
   background-color: rgba(252, 252, 252, calc(0.10 * var(--surface-opacity-scale, 1))) !important;
 }
 
-.theme-acrylic #root {
+.theme-mica #root {
   background-color: rgba(252, 252, 252, calc(0.10 * var(--surface-opacity-scale, 1))) !important;
   /* Acrylic with blur effect - more transparent */
   border: none !important;
@@ -117,14 +111,12 @@ body.has-custom-bg.light-mode.theme-acrylic #root {
 
 @media (prefers-color-scheme: dark) {
 
-  body:not(.light-mode).theme-mica,
-  body:not(.light-mode).theme-acrylic {
+  body:not(.light-mode).theme-mica {
     --text-primary: #e8e8e8;
     --text-secondary: #a8a8a8;
   }
 
-  body:not(.light-mode).theme-mica #root,
-  body:not(.light-mode).theme-acrylic #root {
+  body:not(.light-mode).theme-mica #root {
     background: linear-gradient(135deg,
         rgba(26, 26, 26, var(--surface-opacity-scale, 1)) 0%,
         rgba(15, 15, 15, var(--surface-opacity-scale, 1)) 100%) !important;
@@ -136,7 +128,7 @@ body.has-custom-bg.light-mode.theme-acrylic #root {
     background: rgba(26, 26, 26, calc(0.75 * var(--surface-opacity-scale, 1))) !important;
   }
 
-  body.has-custom-bg:not(.light-mode).theme-acrylic #root {
+  body.has-custom-bg:not(.light-mode).theme-mica #root {
     background: rgba(26, 26, 26, calc(0.10 * var(--surface-opacity-scale, 1))) !important;
   }
 
@@ -148,19 +140,17 @@ body.has-custom-bg.light-mode.theme-acrylic #root {
   }
 
   /* Dark mode Acrylic blur */
-  body:not(.light-mode).theme-acrylic #root {
+  body:not(.light-mode).theme-mica #root {
     background: rgba(26, 26, 26, calc(0.10 * var(--surface-opacity-scale, 1))) !important;
   }
 }
 
-body.dark-mode.theme-mica,
-body.dark-mode.theme-acrylic {
+body.dark-mode.theme-mica {
   --text-primary: #e8e8e8;
   --text-secondary: #a8a8a8;
 }
 
-body.dark-mode.theme-mica #root,
-body.dark-mode.theme-acrylic #root {
+body.dark-mode.theme-mica #root {
   background: linear-gradient(135deg,
       rgba(26, 26, 26, var(--surface-opacity-scale, 1)) 0%,
       rgba(15, 15, 15, var(--surface-opacity-scale, 1)) 100%) !important;
@@ -172,7 +162,7 @@ body.has-custom-bg.dark-mode.theme-mica #root {
   background: rgba(26, 26, 26, calc(0.75 * var(--surface-opacity-scale, 1))) !important;
 }
 
-body.has-custom-bg.dark-mode.theme-acrylic #root {
+body.has-custom-bg.dark-mode.theme-mica #root {
   background: rgba(26, 26, 26, calc(0.10 * var(--surface-opacity-scale, 1))) !important;
 }
 
@@ -184,89 +174,75 @@ body.dark-mode.theme-mica #root::before {
 }
 
 /* Dark mode Acrylic blur */
-body.dark-mode.theme-acrylic #root {
+body.dark-mode.theme-mica #root {
   background: rgba(26, 26, 26, calc(0.10 * var(--surface-opacity-scale, 1))) !important;
 }
 
 /* ---- Moved from index.css (theme overrides) ---- */
 
 /* Mica/Acrylic theme adjustments */
-.theme-mica .video-file-card,
-.theme-acrylic .video-file-card {
+.theme-mica .video-file-card {
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(128, 128, 128, 0.2);
   border-radius: 8px;
 }
 
-.theme-mica .video-thumbnail-card,
-.theme-acrylic .video-thumbnail-card {
+.theme-mica .video-thumbnail-card {
   background: rgba(255, 255, 255, 0.15);
   border: 1px solid rgba(128, 128, 128, 0.2);
   border-radius: 8px;
   padding: 8px;
 }
 
-.theme-mica .video-thumbnail-wrapper,
-.theme-acrylic .video-thumbnail-wrapper {
+.theme-mica .video-thumbnail-wrapper {
   border-radius: 6px;
   border: none;
 }
 
-.theme-mica .file-thumbnail-card,
-.theme-acrylic .file-thumbnail-card {
+.theme-mica .file-thumbnail-card {
   background: rgba(255, 255, 255, 0.15);
   border: 1px solid rgba(128, 128, 128, 0.2);
   border-radius: 8px;
   padding: 8px;
 }
 
-.theme-mica .file-icon-wrapper,
-.theme-acrylic .file-icon-wrapper {
+.theme-mica .file-icon-wrapper {
   border-radius: 6px;
   border: none;
   background: rgba(255, 255, 255, 0.2);
   color: var(--text-primary);
 }
 
-.theme-mica .item-actions,
-.theme-acrylic .item-actions {
+.theme-mica .item-actions {
   border-top: none;
 }
 
 /* Exclude compact mode buttons from transparent styling */
 .theme-mica .item-actions:not(.compact) .btn-icon,
-.theme-acrylic .item-actions:not(.compact) .btn-icon,
-body:not(.compact-mode) .theme-mica .item-actions .btn-icon,
-body:not(.compact-mode) .theme-acrylic .item-actions .btn-icon {
+body:not(.compact-mode) .theme-mica .item-actions .btn-icon {
   background: transparent !important;
   box-shadow: none !important;
 }
 
-.theme-mica .ai-profile-card,
-.theme-acrylic .ai-profile-card {
+.theme-mica .ai-profile-card {
   border-bottom-color: rgba(255, 255, 255, 0.1);
 }
 
-.theme-mica .ai-profile-card:hover,
-.theme-acrylic .ai-profile-card:hover {
+.theme-mica .ai-profile-card:hover {
   background: rgba(255, 255, 255, 0.1);
 }
 
-
-.theme-mica header,
-.theme-acrylic header {
+.theme-mica header {
   background: transparent !important;
   border-bottom: 1px solid rgba(128, 128, 128, 0.15) !important;
 }
 
-.theme-mica .main-content,
-.theme-acrylic .main-content {
+.theme-mica .main-content {
   background: transparent !important;
 }
 
 /* Titles */
-.theme-mica .header-title,
-.theme-acrylic .header-title {
+.theme-mica .header-title {
   background: transparent !important;
   color: var(--text-primary) !important;
   font-family: inherit;
@@ -278,16 +254,14 @@ body:not(.compact-mode) .theme-acrylic .item-actions .btn-icon {
 }
 
 /* Settings Group & Headers */
-.theme-mica .settings-group,
-.theme-acrylic .settings-group {
+.theme-mica .settings-group {
   border: none !important;
   background: rgba(255, 255, 255, 0.25) !important;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03) !important;
   border-radius: 12px !important;
 }
 
-.theme-mica .settings-group h3,
-.theme-acrylic .settings-group h3 {
+.theme-mica .settings-group h3 {
   position: relative !important;
   top: 0 !important;
   left: 0 !important;
@@ -302,23 +276,20 @@ body:not(.compact-mode) .theme-acrylic .item-actions .btn-icon {
 
 @media (prefers-color-scheme: dark) {
 
-  body:not(.light-mode).theme-mica .settings-group,
-  body:not(.light-mode).theme-acrylic .settings-group {
+  body:not(.light-mode).theme-mica .settings-group {
     background: linear-gradient(145deg, #242424 0%, #1e1e1e 100%) !important;
     border: 1px solid rgba(255, 255, 255, 0.08) !important;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4) !important;
   }
 }
 
-body.dark-mode.theme-mica .settings-group,
-body.dark-mode.theme-acrylic .settings-group {
+body.dark-mode.theme-mica .settings-group {
   background: linear-gradient(145deg, #242424 0%, #1e1e1e 100%) !important;
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4) !important;
 }
 
-.theme-mica .setting-item span,
-.theme-acrylic .setting-item span {
+.theme-mica .setting-item span {
   font-family: inherit;
   font-weight: 500;
   color: var(--text-primary);
@@ -326,14 +297,12 @@ body.dark-mode.theme-acrylic .settings-group {
 }
 
 /* Switch & Toggles */
-.theme-mica .switch,
-.theme-acrylic .switch {
+.theme-mica .switch {
   width: 44px !important;
   height: 22px !important;
 }
 
-.theme-mica .toggle,
-.theme-acrylic .toggle {
+.theme-mica .toggle {
   background-color: rgba(128, 128, 128, 0.3) !important;
   border-radius: 20px !important;
   box-shadow: none !important;
@@ -343,14 +312,11 @@ body.dark-mode.theme-acrylic .settings-group {
 }
 
 .theme-mica .toggle>.left,
-.theme-mica .toggle>.right,
-.theme-acrylic .toggle>.left,
-.theme-acrylic .toggle>.right {
+.theme-mica .toggle>.right {
   display: none !important;
 }
 
-.theme-mica .toggle::before,
-.theme-acrylic .toggle::before {
+.theme-mica .toggle::before {
   content: "";
   position: absolute;
   top: 3px;
@@ -363,21 +329,18 @@ body.dark-mode.theme-acrylic .settings-group {
   z-index: 10;
 }
 
-.theme-mica .switch input:checked+.toggle,
-.theme-acrylic .switch input:checked+.toggle {
+.theme-mica .switch input:checked+.toggle {
   background-color: var(--accent-color) !important;
   box-shadow: none !important;
   /* Force shadow off in checked state */
 }
 
-.theme-mica .switch input:checked+.toggle::before,
-.theme-acrylic .switch input:checked+.toggle::before {
+.theme-mica .switch input:checked+.toggle::before {
   transform: translateX(22px);
 }
 
 /* History Items Fixes */
-.theme-mica .history-item,
-.theme-acrylic .history-item {
+.theme-mica .history-item {
   border-radius: 14px !important;
   border: 1px solid rgba(128, 128, 128, 0.15) !important;
   box-shadow: none !important;
@@ -390,9 +353,7 @@ body.dark-mode.theme-acrylic .settings-group {
   /* Added from original */
 }
 
-
-.theme-mica .history-item:hover,
-.theme-acrylic .history-item:hover {
+.theme-mica .history-item:hover {
   box-shadow: none !important;
   background: rgba(255, 255, 255, 0.9) !important;
   transform: translateY(-2px) !important;
@@ -400,8 +361,7 @@ body.dark-mode.theme-acrylic .settings-group {
 
 @media (prefers-color-scheme: dark) {
 
-  body:not(.light-mode).theme-mica .history-item,
-  body:not(.light-mode).theme-acrylic .history-item {
+  body:not(.light-mode).theme-mica .history-item {
     background: linear-gradient(135deg, rgba(45, 45, 45, 0.65) 0%, rgba(35, 35, 35, 0.65) 100%) !important;
     border: 1px solid rgba(255, 255, 255, 0.1) !important;
     box-shadow: none !important;
@@ -409,16 +369,14 @@ body.dark-mode.theme-acrylic .settings-group {
     /* Added from original */
   }
 
-  body:not(.light-mode).theme-mica .history-item:hover,
-  body:not(.light-mode).theme-acrylic .history-item:hover {
+  body:not(.light-mode).theme-mica .history-item:hover {
     background: linear-gradient(135deg, rgba(55, 55, 55, 0.75) 0%, rgba(45, 45, 45, 0.75) 100%) !important;
     border-color: rgba(255, 255, 255, 0.15) !important;
     box-shadow: none !important;
   }
 }
 
-body.dark-mode.theme-mica .history-item,
-body.dark-mode.theme-acrylic .history-item {
+body.dark-mode.theme-mica .history-item {
   background: linear-gradient(135deg, rgba(45, 45, 45, 0.65) 0%, rgba(35, 35, 35, 0.65) 100%) !important;
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
   box-shadow: none !important;
@@ -426,45 +384,39 @@ body.dark-mode.theme-acrylic .history-item {
   /* Added from original */
 }
 
-body.dark-mode.theme-mica .history-item:hover,
-body.dark-mode.theme-acrylic .history-item:hover {
+body.dark-mode.theme-mica .history-item:hover {
   background: linear-gradient(135deg, rgba(55, 55, 55, 0.75) 0%, rgba(45, 45, 45, 0.75) 100%) !important;
   border-color: rgba(255, 255, 255, 0.15) !important;
   box-shadow: none !important;
 }
 
-.theme-mica .item-meta,
-.theme-acrylic .item-meta {
+.theme-mica .item-meta {
   border-bottom: 1px solid rgba(128, 128, 128, 0.1) !important;
   font-weight: 600 !important;
   padding-bottom: 1px !important;
   margin-bottom: 2px !important;
 }
 
-.theme-mica .content-preview,
-.theme-acrylic .content-preview {
+.theme-mica .content-preview {
   font-family: inherit !important;
   /* Remove monospace */
   font-size: var(--clipboard-item-font-size) !important;
 }
 
-.theme-mica .image-preview,
-.theme-acrylic .image-preview {
+.theme-mica .image-preview {
   border-radius: 6px !important;
   border: 1px solid rgba(128, 128, 128, 0.2) !important;
 }
 
 @media (prefers-color-scheme: dark) {
 
-  body:not(.light-mode).theme-mica .image-preview,
-  body:not(.light-mode).theme-acrylic .image-preview {
+  body:not(.light-mode).theme-mica .image-preview {
     border-color: rgba(255, 255, 255, 0.1) !important;
   }
 }
 
 /* Input Fields (Search & App Paths) */
-.theme-mica .search-input,
-.theme-acrylic .search-input {
+.theme-mica .search-input {
   border-radius: 10px !important;
   border: 1px solid rgba(128, 128, 128, 0.2) !important;
   background: rgba(255, 255, 255, 0.75) !important;
@@ -472,44 +424,38 @@ body.dark-mode.theme-acrylic .history-item:hover {
   font-family: inherit;
 }
 
-.theme-mica .search-input:focus,
-.theme-acrylic .search-input:focus {
+.theme-mica .search-input:focus {
   border-color: var(--accent-color) !important;
   background: rgba(255, 255, 255, 0.85) !important;
 }
 
 @media (prefers-color-scheme: dark) {
 
-  body:not(.light-mode).theme-mica .search-input,
-  body:not(.light-mode).theme-acrylic .search-input {
+  body:not(.light-mode).theme-mica .search-input {
     background: rgba(255, 255, 255, 0.18) !important;
     border: 1px solid rgba(255, 255, 255, 0.1) !important;
     color: #e8e8e8 !important;
   }
 
-  body:not(.light-mode).theme-mica .search-input:focus,
-  body:not(.light-mode).theme-acrylic .search-input:focus {
+  body:not(.light-mode).theme-mica .search-input:focus {
     background: rgba(255, 255, 255, 0.24) !important;
     border-color: var(--accent-color) !important;
   }
 }
 
-body.dark-mode.theme-mica .search-input,
-body.dark-mode.theme-acrylic .search-input {
+body.dark-mode.theme-mica .search-input {
   background: rgba(255, 255, 255, 0.18) !important;
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
   color: #e8e8e8 !important;
 }
 
-body.dark-mode.theme-mica .search-input:focus,
-body.dark-mode.theme-acrylic .search-input:focus {
+body.dark-mode.theme-mica .search-input:focus {
   background: rgba(255, 255, 255, 0.24) !important;
   border-color: var(--accent-color) !important;
 }
 
 /* App path containers / Data panels */
-.theme-mica .data-panel,
-.theme-acrylic .data-panel {
+.theme-mica .data-panel {
   background: rgba(255, 255, 255, 0.2) !important;
   border: 1px solid rgba(128, 128, 128, 0.2) !important;
   box-shadow: none !important;
@@ -521,16 +467,14 @@ body.dark-mode.theme-acrylic .search-input:focus {
 
 @media (prefers-color-scheme: dark) {
 
-  body:not(.light-mode).theme-mica .data-panel,
-  body:not(.light-mode).theme-acrylic .data-panel {
+  body:not(.light-mode).theme-mica .data-panel {
     background: rgba(255, 255, 255, 0.05) !important;
     border: 1px solid rgba(255, 255, 255, 0.1) !important;
     color: #e8e8e8 !important;
   }
 }
 
-body.dark-mode.theme-mica .data-panel,
-body.dark-mode.theme-acrylic .data-panel {
+body.dark-mode.theme-mica .data-panel {
   background: rgba(255, 255, 255, 0.05) !important;
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
   color: #e8e8e8 !important;
@@ -538,9 +482,7 @@ body.dark-mode.theme-acrylic .data-panel {
 
 /* Buttons - exclude compact mode */
 .theme-mica .btn-icon:not(.compact .btn-icon),
-.theme-acrylic .btn-icon:not(.compact .btn-icon),
-body:not(.compact-mode) .theme-mica .btn-icon,
-body:not(.compact-mode) .theme-acrylic .btn-icon {
+body:not(.compact-mode) .theme-mica .btn-icon {
   border-radius: 6px !important;
   border: 1px solid rgba(128, 128, 128, 0.2) !important;
   background: rgba(255, 255, 255, 0.4) !important;
@@ -551,17 +493,13 @@ body:not(.compact-mode) .theme-acrylic .btn-icon {
 }
 
 .theme-mica .btn-icon:not(.compact .btn-icon):hover,
-.theme-acrylic .btn-icon:not(.compact .btn-icon):hover,
-body:not(.compact-mode) .theme-mica .btn-icon:hover,
-body:not(.compact-mode) .theme-acrylic .btn-icon:hover {
+body:not(.compact-mode) .theme-mica .btn-icon:hover {
   background: rgba(255, 255, 255, 0.7) !important;
   border-color: rgba(128, 128, 128, 0.4) !important;
 }
 
 .theme-mica .btn-icon:not(.compact .btn-icon).active,
-.theme-acrylic .btn-icon:not(.compact .btn-icon).active,
-body:not(.compact-mode) .theme-mica .btn-icon.active,
-body:not(.compact-mode) .theme-acrylic .btn-icon.active {
+body:not(.compact-mode) .theme-mica .btn-icon.active {
   background: var(--accent-color) !important;
   color: #ffffff !important;
   border-color: var(--accent-color) !important;
@@ -571,26 +509,20 @@ body:not(.compact-mode) .theme-acrylic .btn-icon.active {
 @media (prefers-color-scheme: dark) {
 
   body:not(.light-mode).theme-mica .btn-icon:not(.compact .btn-icon),
-  body:not(.light-mode).theme-acrylic .btn-icon:not(.compact .btn-icon),
-  body:not(.light-mode):not(.compact-mode).theme-mica .btn-icon,
-  body:not(.light-mode):not(.compact-mode).theme-acrylic .btn-icon {
+  body:not(.light-mode):not(.compact-mode).theme-mica .btn-icon {
     background: rgba(255, 255, 255, 0.05) !important;
     border: 1px solid rgba(255, 255, 255, 0.12) !important;
     color: #e8e8e8 !important;
   }
 
   body:not(.light-mode).theme-mica .btn-icon:not(.compact .btn-icon):hover,
-  body:not(.light-mode).theme-acrylic .btn-icon:not(.compact .btn-icon):hover,
-  body:not(.light-mode):not(.compact-mode).theme-mica .btn-icon:hover,
-  body:not(.light-mode):not(.compact-mode).theme-acrylic .btn-icon:hover {
+  body:not(.light-mode):not(.compact-mode).theme-mica .btn-icon:hover {
     background: rgba(255, 255, 255, 0.12) !important;
     border-color: rgba(255, 255, 255, 0.2) !important;
   }
 
   body:not(.light-mode).theme-mica .btn-icon:not(.compact .btn-icon).active,
-  body:not(.light-mode).theme-acrylic .btn-icon:not(.compact .btn-icon).active,
-  body:not(.light-mode):not(.compact-mode).theme-mica .btn-icon.active,
-  body:not(.light-mode):not(.compact-mode).theme-acrylic .btn-icon.active {
+  body:not(.light-mode):not(.compact-mode).theme-mica .btn-icon.active {
     background: var(--accent-color) !important;
     color: #ffffff !important;
     border-color: var(--accent-color) !important;
@@ -598,34 +530,27 @@ body:not(.compact-mode) .theme-acrylic .btn-icon.active {
 }
 
 body.dark-mode.theme-mica .btn-icon:not(.compact .btn-icon),
-body.dark-mode.theme-acrylic .btn-icon:not(.compact .btn-icon),
-body.dark-mode:not(.compact-mode).theme-mica .btn-icon,
-body.dark-mode:not(.compact-mode).theme-acrylic .btn-icon {
+body.dark-mode:not(.compact-mode).theme-mica .btn-icon {
   background: rgba(255, 255, 255, 0.05) !important;
   border: 1px solid rgba(255, 255, 255, 0.12) !important;
   color: #e8e8e8 !important;
 }
 
 body.dark-mode.theme-mica .btn-icon:not(.compact .btn-icon):hover,
-body.dark-mode.theme-acrylic .btn-icon:not(.compact .btn-icon):hover,
-body.dark-mode:not(.compact-mode).theme-mica .btn-icon:hover,
-body.dark-mode:not(.compact-mode).theme-acrylic .btn-icon:hover {
+body.dark-mode:not(.compact-mode).theme-mica .btn-icon:hover {
   background: rgba(255, 255, 255, 0.12) !important;
   border-color: rgba(255, 255, 255, 0.2) !important;
 }
 
 body.dark-mode.theme-mica .btn-icon:not(.compact .btn-icon).active,
-body.dark-mode.theme-acrylic .btn-icon:not(.compact .btn-icon).active,
-body.dark-mode:not(.compact-mode).theme-mica .btn-icon.active,
-body.dark-mode:not(.compact-mode).theme-acrylic .btn-icon.active {
+body.dark-mode:not(.compact-mode).theme-mica .btn-icon.active {
   background: var(--accent-color) !important;
   color: #ffffff !important;
   border-color: var(--accent-color) !important;
 }
 
 /* Modern Key Caps */
-.theme-mica .key-cap,
-.theme-acrylic .key-cap {
+.theme-mica .key-cap {
   background-color: rgba(255, 255, 255, 0.6) !important;
   border: 1px solid rgba(128, 128, 128, 0.3) !important;
   border-bottom-width: 1px !important;
@@ -637,14 +562,12 @@ body.dark-mode:not(.compact-mode).theme-acrylic .btn-icon.active {
 }
 
 /* Modern Overrides for Modal */
-.theme-mica .modal-overlay,
-.theme-acrylic .modal-overlay {
+.theme-mica .modal-overlay {
   backdrop-filter: blur(4px);
   background: rgba(0, 0, 0, 0.2);
 }
 
-.theme-mica .modal-content,
-.theme-acrylic .modal-content {
+.theme-mica .modal-content {
   background: rgba(255, 255, 255, 0.8) !important;
   border: 1px solid rgba(255, 255, 255, 0.2) !important;
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.2) !important;
@@ -654,14 +577,12 @@ body.dark-mode:not(.compact-mode).theme-acrylic .btn-icon.active {
 }
 
 /* Use app color mode instead of system preference */
-:root.dark-mode .theme-mica .modal-content,
-:root.dark-mode .theme-acrylic .modal-content {
+:root.dark-mode .theme-mica .modal-content {
   background: rgba(30, 30, 30, 0.8) !important;
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
 }
 
-.theme-mica .modal-title,
-.theme-acrylic .modal-title {
+.theme-mica .modal-title {
   background: transparent !important;
   color: var(--text-primary) !important;
   font-size: 16px !important;
@@ -670,16 +591,14 @@ body.dark-mode:not(.compact-mode).theme-acrylic .btn-icon.active {
   padding: 0 !important;
 }
 
-.theme-mica .selector-container,
-.theme-acrylic .selector-container {
+.theme-mica .selector-container {
   border: none !important;
   background: transparent !important;
   padding: 0 !important;
 }
 
 /* Modern theme overrides for confirm dialog */
-.theme-mica .confirm-dialog,
-.theme-acrylic .confirm-dialog {
+.theme-mica .confirm-dialog {
   background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
@@ -692,10 +611,8 @@ body.dark-mode:not(.compact-mode).theme-acrylic .btn-icon.active {
 
   /* Fix for when theme class is on body */
   :root:not(.light-mode) .theme-mica .confirm-dialog,
-  :root:not(.light-mode) .theme-acrylic .confirm-dialog,
   /* Fix for when theme class is on dialog itself */
-  :root:not(.light-mode) .confirm-dialog.theme-mica,
-  :root:not(.light-mode) .confirm-dialog.theme-acrylic {
+  :root:not(.light-mode) .confirm-dialog.theme-mica {
     background: rgba(30, 30, 30, 0.85);
     border: 1px solid rgba(255, 255, 255, 0.1);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
@@ -703,23 +620,20 @@ body.dark-mode:not(.compact-mode).theme-acrylic .btn-icon.active {
 }
 
 /* Dark mode when theme class is on body */
-:root.dark-mode .theme-mica .confirm-dialog,
-:root.dark-mode .theme-acrylic .confirm-dialog {
+:root.dark-mode .theme-mica .confirm-dialog {
   background: rgba(30, 30, 30, 0.85);
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 }
 
 /* Dark mode when theme class is on the dialog element itself */
-:root.dark-mode .confirm-dialog.theme-mica,
-:root.dark-mode .confirm-dialog.theme-acrylic {
+:root.dark-mode .confirm-dialog.theme-mica {
   background: rgba(30, 30, 30, 0.85);
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 }
 
-.theme-mica .confirm-dialog-button,
-.theme-acrylic .confirm-dialog-button {
+.theme-mica .confirm-dialog-button {
   border: 1px solid rgba(128, 128, 128, 0.2);
   background: rgba(255, 255, 255, 0.5);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
@@ -733,38 +647,32 @@ body.dark-mode:not(.compact-mode).theme-acrylic .btn-icon.active {
 
   /* Fix for buttons */
   :root:not(.light-mode) .theme-mica .confirm-dialog-button,
-  :root:not(.light-mode) .theme-acrylic .confirm-dialog-button,
-  :root:not(.light-mode) .confirm-dialog.theme-mica .confirm-dialog-button,
-  :root:not(.light-mode) .confirm-dialog.theme-acrylic .confirm-dialog-button {
+  :root:not(.light-mode) .confirm-dialog.theme-mica .confirm-dialog-button {
     background: rgba(255, 255, 255, 0.1);
     border-color: rgba(255, 255, 255, 0.1);
     color: #ededed;
   }
 }
 
-:root.dark-mode.theme-mica .confirm-dialog-button,
-:root.dark-mode.theme-acrylic .confirm-dialog-button {
+:root.dark-mode.theme-mica .confirm-dialog-button {
   background: rgba(255, 255, 255, 0.1);
   border-color: rgba(255, 255, 255, 0.1);
   color: #ededed;
 }
 
-:root.dark-mode .theme-mica .confirm-dialog-button,
-:root.dark-mode .theme-acrylic .confirm-dialog-button {
+:root.dark-mode .theme-mica .confirm-dialog-button {
   background: rgba(255, 255, 255, 0.1);
   border-color: rgba(255, 255, 255, 0.1);
   color: #ededed;
 }
 
-:root.dark-mode .confirm-dialog.theme-mica .confirm-dialog-button,
-:root.dark-mode .confirm-dialog.theme-acrylic .confirm-dialog-button {
+:root.dark-mode .confirm-dialog.theme-mica .confirm-dialog-button {
   background: rgba(255, 255, 255, 0.1);
   border-color: rgba(255, 255, 255, 0.1);
   color: #ededed;
 }
 
-.theme-mica .confirm-dialog-button:hover,
-.theme-acrylic .confirm-dialog-button:hover {
+.theme-mica .confirm-dialog-button:hover {
   background: rgba(255, 255, 255, 0.8);
   transform: translateY(-1px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
@@ -772,55 +680,46 @@ body.dark-mode:not(.compact-mode).theme-acrylic .btn-icon.active {
 
 @media (prefers-color-scheme: dark) {
 
-  :root:not(.light-mode).theme-mica .confirm-dialog-button:hover,
-  :root:not(.light-mode).theme-acrylic .confirm-dialog-button:hover {
+  :root:not(.light-mode).theme-mica .confirm-dialog-button:hover {
     background: rgba(255, 255, 255, 0.15);
   }
 }
 
-:root.dark-mode.theme-mica .confirm-dialog-button:hover,
-:root.dark-mode.theme-acrylic .confirm-dialog-button:hover {
+:root.dark-mode.theme-mica .confirm-dialog-button:hover {
   background: rgba(255, 255, 255, 0.15);
 }
 
-:root.dark-mode .theme-mica .confirm-dialog-button:hover,
-:root.dark-mode .theme-acrylic .confirm-dialog-button:hover {
+:root.dark-mode .theme-mica .confirm-dialog-button:hover {
   background: rgba(255, 255, 255, 0.15);
 }
 
-:root.dark-mode .confirm-dialog.theme-mica .confirm-dialog-button:hover,
-:root.dark-mode .confirm-dialog.theme-acrylic .confirm-dialog-button:hover {
+:root.dark-mode .confirm-dialog.theme-mica .confirm-dialog-button:hover {
   background: rgba(255, 255, 255, 0.15);
 }
 
-.theme-mica .confirm-dialog-button:active,
-.theme-acrylic .confirm-dialog-button:active {
+.theme-mica .confirm-dialog-button:active {
   transform: translateY(0);
   box-shadow: none;
 }
 
-.theme-mica .confirm-dialog-button.primary,
-.theme-acrylic .confirm-dialog-button.primary {
+.theme-mica .confirm-dialog-button.primary {
   background: var(--accent-color);
   color: #fff;
   border: none;
 }
 
-.theme-mica .confirm-dialog-button.primary:hover,
-.theme-acrylic .confirm-dialog-button.primary:hover {
+.theme-mica .confirm-dialog-button.primary:hover {
   filter: brightness(1.1);
   background: var(--accent-color);
 }
 
 /* Modern Scrollbars */
-.theme-mica ::-webkit-scrollbar,
-.theme-acrylic ::-webkit-scrollbar {
+.theme-mica ::-webkit-scrollbar {
   width: 10px !important;
   background: transparent !important;
 }
 
-.theme-mica ::-webkit-scrollbar-thumb,
-.theme-acrylic ::-webkit-scrollbar-thumb {
+.theme-mica ::-webkit-scrollbar-thumb {
   background-color: rgba(128, 128, 128, 0.15) !important;
   border: 3.5px solid transparent !important;
   background-clip: padding-box !important;
@@ -828,8 +727,7 @@ body.dark-mode:not(.compact-mode).theme-acrylic .btn-icon.active {
 }
 
 /* Modern Theme Overrides */
-.theme-mica .file-transfer-panel,
-.theme-acrylic .file-transfer-panel {
+.theme-mica .file-transfer-panel {
   background: rgba(255, 255, 255, 0.4) !important;
   border: 1px solid rgba(128, 128, 128, 0.2) !important;
   box-shadow: none !important;
@@ -839,43 +737,35 @@ body.dark-mode:not(.compact-mode).theme-acrylic .btn-icon.active {
 
 /* Emoji Panel - subtle rounding in modern themes */
 .theme-mica .emoji-btn,
-.theme-acrylic .emoji-btn,
 .theme-mica .emoji-fav-preview,
-.theme-acrylic .emoji-fav-preview,
-.theme-mica .emoji-fav-add,
-.theme-acrylic .emoji-fav-add {
+.theme-mica .emoji-fav-add {
   border-radius: 6px;
 }
 
-.theme-mica .qr-container,
-.theme-acrylic .qr-container {
+.theme-mica .qr-container {
   border: none !important;
   background: #fff !important;
   border-radius: 8px !important;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
 }
 
-.theme-mica .qr-label,
-.theme-acrylic .qr-label {
+.theme-mica .qr-label {
   color: #666;
   font-weight: 600;
   letter-spacing: 0.5px;
 }
 
-.theme-mica .scan-title,
-.theme-acrylic .scan-title {
+.theme-mica .scan-title {
   font-family: inherit !important;
   border-bottom: none !important;
   font-size: 13px !important;
 }
 
-.theme-mica .info-value,
-.theme-acrylic .info-value {
+.theme-mica .info-value {
   font-family: inherit !important;
 }
 
-.theme-mica .open-browser-btn,
-.theme-acrylic .open-browser-btn {
+.theme-mica .open-browser-btn {
   background: var(--accent-color) !important;
   color: #fff !important;
   border-radius: 6px !important;
@@ -888,42 +778,36 @@ body.dark-mode:not(.compact-mode).theme-acrylic .btn-icon.active {
 
 @media (prefers-color-scheme: dark) {
 
-  body:not(.light-mode).theme-mica .file-transfer-panel,
-  body:not(.light-mode).theme-acrylic .file-transfer-panel {
+  body:not(.light-mode).theme-mica .file-transfer-panel {
     background: rgba(0, 0, 0, 0.2) !important;
     border: 1px solid rgba(255, 255, 255, 0.1) !important;
   }
 
-  body:not(.light-mode).theme-mica .qr-container,
-  body:not(.light-mode).theme-acrylic .qr-container {
+  body:not(.light-mode).theme-mica .qr-container {
     background: #fff !important;
   }
 }
 
-.theme-mica ::-webkit-scrollbar-thumb:hover,
-.theme-acrylic ::-webkit-scrollbar-thumb:hover {
+.theme-mica ::-webkit-scrollbar-thumb:hover {
   background-color: rgba(128, 128, 128, 0.4) !important;
   border: 1px solid transparent !important;
 }
 
 /* Theme Overrides for Web Transfer Interface */
 /* Mica / Acrylic Shared Adjustments */
-.theme-mica .wt-chat-view,
-.theme-acrylic .wt-chat-view {
+.theme-mica .wt-chat-view {
   background-color: transparent !important;
   font-family: var(--font-main);
 }
 
-.theme-mica .wt-chat-box,
-.theme-acrylic .wt-chat-box {
+.theme-mica .wt-chat-box {
   background-color: transparent !important;
   background-image: none !important;
   padding: 16px;
   gap: 16px;
 }
 
-.theme-mica .wt-avatar,
-.theme-acrylic .wt-avatar {
+.theme-mica .wt-avatar {
   border: 1px solid rgba(128, 128, 128, 0.2) !important;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
   border-radius: 50% !important;
@@ -931,21 +815,18 @@ body.dark-mode:not(.compact-mode).theme-acrylic .btn-icon.active {
 
 @media (prefers-color-scheme: dark) {
 
-  body:not(.light-mode).theme-mica .wt-avatar,
-  body:not(.light-mode).theme-acrylic .wt-avatar {
+  body:not(.light-mode).theme-mica .wt-avatar {
     border: 1px solid rgba(255, 255, 255, 0.15) !important;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5) !important;
   }
 }
 
-body.dark-mode.theme-mica .wt-avatar,
-body.dark-mode.theme-acrylic .wt-avatar {
+body.dark-mode.theme-mica .wt-avatar {
   border: 1px solid rgba(255, 255, 255, 0.15) !important;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5) !important;
 }
 
-.theme-mica .wt-bubble,
-.theme-acrylic .wt-bubble {
+.theme-mica .wt-bubble {
   border: 1px solid rgba(128, 128, 128, 0.2) !important;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
   border-radius: 12px !important;
@@ -955,8 +836,7 @@ body.dark-mode.theme-acrylic .wt-avatar {
 
 @media (prefers-color-scheme: dark) {
 
-  body:not(.light-mode).theme-mica .wt-bubble,
-  body:not(.light-mode).theme-acrylic .wt-bubble {
+  body:not(.light-mode).theme-mica .wt-bubble {
     background: linear-gradient(135deg, rgba(50, 50, 50, 0.7) 0%, rgba(40, 40, 40, 0.7) 100%) !important;
     border: 1px solid rgba(255, 255, 255, 0.12) !important;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
@@ -964,42 +844,36 @@ body.dark-mode.theme-acrylic .wt-avatar {
   }
 }
 
-body.dark-mode.theme-mica .wt-bubble,
-body.dark-mode.theme-acrylic .wt-bubble {
+body.dark-mode.theme-mica .wt-bubble {
   background: linear-gradient(135deg, rgba(50, 50, 50, 0.7) 0%, rgba(40, 40, 40, 0.7) 100%) !important;
   border: 1px solid rgba(255, 255, 255, 0.12) !important;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
   color: #e8e8e8 !important;
 }
 
-.theme-mica .wt-message.sent .wt-bubble,
-.theme-acrylic .wt-message.sent .wt-bubble {
+.theme-mica .wt-message.sent .wt-bubble {
   background: var(--accent-color) !important;
   color: #fff !important;
   border: none !important;
 }
 
-.theme-mica .wt-footer,
-.theme-acrylic .wt-footer {
+.theme-mica .wt-footer {
   background: transparent !important;
   border-top: 1px solid rgba(128, 128, 128, 0.15) !important;
 }
 
 @media (prefers-color-scheme: dark) {
 
-  body:not(.light-mode).theme-mica .wt-footer,
-  body:not(.light-mode).theme-acrylic .wt-footer {
+  body:not(.light-mode).theme-mica .wt-footer {
     border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
   }
 }
 
-body.dark-mode.theme-mica .wt-footer,
-body.dark-mode.theme-acrylic .wt-footer {
+body.dark-mode.theme-mica .wt-footer {
   border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
 }
 
-.theme-mica .wt-input,
-.theme-acrylic .wt-input {
+.theme-mica .wt-input {
   border: 1px solid rgba(128, 128, 128, 0.2) !important;
   border-radius: 8px !important;
   background: rgba(255, 255, 255, 0.5) !important;
@@ -1008,35 +882,30 @@ body.dark-mode.theme-acrylic .wt-footer {
 
 @media (prefers-color-scheme: dark) {
 
-  body:not(.light-mode).theme-mica .wt-input,
-  body:not(.light-mode).theme-acrylic .wt-input {
+  body:not(.light-mode).theme-mica .wt-input {
     background: rgba(255, 255, 255, 0.06) !important;
     border: 1px solid rgba(255, 255, 255, 0.12) !important;
     color: #e8e8e8 !important;
   }
 
-  body:not(.light-mode).theme-mica .wt-input:focus,
-  body:not(.light-mode).theme-acrylic .wt-input:focus {
+  body:not(.light-mode).theme-mica .wt-input:focus {
     background: rgba(255, 255, 255, 0.1) !important;
     border-color: rgba(255, 255, 255, 0.2) !important;
   }
 }
 
-body.dark-mode.theme-mica .wt-input,
-body.dark-mode.theme-acrylic .wt-input {
+body.dark-mode.theme-mica .wt-input {
   background: rgba(255, 255, 255, 0.06) !important;
   border: 1px solid rgba(255, 255, 255, 0.12) !important;
   color: #e8e8e8 !important;
 }
 
-body.dark-mode.theme-mica .wt-input:focus,
-body.dark-mode.theme-acrylic .wt-input:focus {
+body.dark-mode.theme-mica .wt-input:focus {
   background: rgba(255, 255, 255, 0.1) !important;
   border-color: rgba(255, 255, 255, 0.2) !important;
 }
 
-.theme-mica .wt-btn,
-.theme-acrylic .wt-btn {
+.theme-mica .wt-btn {
   border: 1px solid rgba(128, 128, 128, 0.2) !important;
   border-radius: 8px !important;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
@@ -1046,47 +915,40 @@ body.dark-mode.theme-acrylic .wt-input:focus {
 
 @media (prefers-color-scheme: dark) {
 
-  body:not(.light-mode).theme-mica .wt-btn,
-  body:not(.light-mode).theme-acrylic .wt-btn {
+  body:not(.light-mode).theme-mica .wt-btn {
     background: rgba(255, 255, 255, 0.08) !important;
     border: 1px solid rgba(255, 255, 255, 0.12) !important;
     color: #e8e8e8 !important;
   }
 
-  body:not(.light-mode).theme-mica .wt-btn:hover,
-  body:not(.light-mode).theme-acrylic .wt-btn:hover {
+  body:not(.light-mode).theme-mica .wt-btn:hover {
     background: rgba(255, 255, 255, 0.15) !important;
   }
 }
 
-body.dark-mode.theme-mica .wt-btn,
-body.dark-mode.theme-acrylic .wt-btn {
+body.dark-mode.theme-mica .wt-btn {
   background: rgba(255, 255, 255, 0.08) !important;
   border: 1px solid rgba(255, 255, 255, 0.12) !important;
   color: #e8e8e8 !important;
 }
 
-body.dark-mode.theme-mica .wt-btn:hover,
-body.dark-mode.theme-acrylic .wt-btn:hover {
+body.dark-mode.theme-mica .wt-btn:hover {
   background: rgba(255, 255, 255, 0.15) !important;
 }
 
-.theme-mica .wt-btn.send,
-.theme-acrylic .wt-btn.send {
+.theme-mica .wt-btn.send {
   background: var(--accent-color) !important;
   color: #fff !important;
   border: none !important;
 }
 
 /* Theme Overrides for Header */
-.theme-mica .wt-header,
-.theme-acrylic .wt-header {
+.theme-mica .wt-header {
   background: transparent !important;
   border-bottom: 1px solid rgba(128, 128, 128, 0.15) !important;
 }
 
-.theme-mica .wt-info-panel,
-.theme-acrylic .wt-info-panel {
+.theme-mica .wt-info-panel {
   background: rgba(255, 255, 255, 0.5) !important;
   border: 1px solid rgba(128, 128, 128, 0.2) !important;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
@@ -1095,42 +957,36 @@ body.dark-mode.theme-acrylic .wt-btn:hover {
 
 @media (prefers-color-scheme: dark) {
 
-  body:not(.light-mode).theme-mica .wt-info-panel,
-  body:not(.light-mode).theme-acrylic .wt-info-panel {
+  body:not(.light-mode).theme-mica .wt-info-panel {
     background: rgba(255, 255, 255, 0.05) !important;
   }
 }
 
-.theme-mica .wt-qr-container,
-.theme-acrylic .wt-qr-container {
+.theme-mica .wt-qr-container {
   border: none;
   border-radius: 8px;
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-.theme-mica .wt-info-label,
-.theme-acrylic .wt-info-label {
+.theme-mica .wt-info-label {
   color: var(--text-primary);
   opacity: 0.6;
 }
 
-.theme-mica .context-item:hover,
-.theme-acrylic .context-item:hover {
+.theme-mica .context-item:hover {
   background: rgba(0, 0, 0, 0.05);
 }
 
 @media (prefers-color-scheme: dark) {
 
-  body:not(.light-mode).theme-mica .context-item:hover,
-  body:not(.light-mode).theme-acrylic .context-item:hover {
+  body:not(.light-mode).theme-mica .context-item:hover {
     background: rgba(255, 255, 255, 0.1);
   }
 }
 
 /* Context Menu Container Theme Overrides */
-.theme-mica .wt-context-menu,
-.theme-acrylic .wt-context-menu {
+.theme-mica .wt-context-menu {
   background: rgba(255, 255, 255, 0.85) !important;
   border: 1px solid rgba(128, 128, 128, 0.2) !important;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15) !important;
@@ -1140,66 +996,56 @@ body.dark-mode.theme-acrylic .wt-btn:hover {
 
 @media (prefers-color-scheme: dark) {
 
-  body:not(.light-mode).theme-mica .wt-context-menu,
-  body:not(.light-mode).theme-acrylic .wt-context-menu {
+  body:not(.light-mode).theme-mica .wt-context-menu {
     background: rgba(40, 40, 40, 0.85) !important;
     border-color: rgba(255, 255, 255, 0.1) !important;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3) !important;
   }
 }
 
-body.dark-mode.theme-mica .wt-context-menu,
-body.dark-mode.theme-acrylic .wt-context-menu {
+body.dark-mode.theme-mica .wt-context-menu {
   background: rgba(40, 40, 40, 0.85) !important;
   border-color: rgba(255, 255, 255, 0.1) !important;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3) !important;
 }
 
 /* Mica / Acrylic Scrollbar Overrides */
-.theme-mica .wt-chat-box::-webkit-scrollbar,
-.theme-acrylic .wt-chat-box::-webkit-scrollbar {
+.theme-mica .wt-chat-box::-webkit-scrollbar {
   width: 6px;
 }
 
-.theme-mica .wt-chat-box::-webkit-scrollbar-track,
-.theme-acrylic .wt-chat-box::-webkit-scrollbar-track {
+.theme-mica .wt-chat-box::-webkit-scrollbar-track {
   border: none;
   background: transparent;
 }
 
-.theme-mica .wt-chat-box::-webkit-scrollbar-thumb,
-.theme-acrylic .wt-chat-box::-webkit-scrollbar-thumb {
+.theme-mica .wt-chat-box::-webkit-scrollbar-thumb {
   background: rgba(128, 128, 128, 0.3);
   border: none;
   border-radius: 3px;
 }
 
-.theme-mica .wt-chat-box::-webkit-scrollbar-thumb:hover,
-.theme-acrylic .wt-chat-box::-webkit-scrollbar-thumb:hover {
+.theme-mica .wt-chat-box::-webkit-scrollbar-thumb:hover {
   background: rgba(128, 128, 128, 0.5);
 }
 
 @media (prefers-color-scheme: dark) {
 
-  body:not(.light-mode).theme-mica .wt-chat-box::-webkit-scrollbar-thumb,
-  body:not(.light-mode).theme-acrylic .wt-chat-box::-webkit-scrollbar-thumb {
+  body:not(.light-mode).theme-mica .wt-chat-box::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.2);
   }
 
-  body:not(.light-mode).theme-mica .wt-chat-box::-webkit-scrollbar-thumb:hover,
-  body:not(.light-mode).theme-acrylic .wt-chat-box::-webkit-scrollbar-thumb:hover {
+  body:not(.light-mode).theme-mica .wt-chat-box::-webkit-scrollbar-thumb:hover {
     background: rgba(255, 255, 255, 0.4);
   }
 }
 
-.theme-mica .wt-chat-box,
-.theme-acrylic .wt-chat-box {
+.theme-mica .wt-chat-box {
   background-image: none;
   background: transparent;
 }
 
-.theme-mica .wt-avatar,
-.theme-acrylic .wt-avatar {
+.theme-mica .wt-avatar {
   border-radius: 10px;
   border-width: 1px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
@@ -1209,15 +1055,13 @@ body.dark-mode.theme-acrylic .wt-context-menu {
 }
 
 /* Modern Theme Tails - Nuclear Option */
-.theme-mica .wt-message.received .wt-bubble::before,
-.theme-acrylic .wt-message.received .wt-bubble::before {
+.theme-mica .wt-message.received .wt-bubble::before {
   content: none !important;
   display: none !important;
   border: none !important;
 }
 
-.theme-mica .wt-message.received .wt-bubble::after,
-.theme-acrylic .wt-message.received .wt-bubble::after {
+.theme-mica .wt-message.received .wt-bubble::after {
   content: "" !important;
   position: absolute !important;
   bottom: 8px !important;
@@ -1232,45 +1076,38 @@ body.dark-mode.theme-acrylic .wt-context-menu {
 
 @media (prefers-color-scheme: dark) {
 
-  body:not(.light-mode).theme-mica .wt-message.received .wt-bubble::after,
-  body:not(.light-mode).theme-acrylic .wt-message.received .wt-bubble::after {
+  body:not(.light-mode).theme-mica .wt-message.received .wt-bubble::after {
     border-color: transparent rgba(45, 45, 45, 0.8) transparent transparent !important;
   }
 }
 
 /* Manual Dark Mode Overrides for Tails */
-body.dark-mode.theme-mica .wt-message.received .wt-bubble::before,
-body.dark-mode.theme-acrylic .wt-message.received .wt-bubble::before {
+body.dark-mode.theme-mica .wt-message.received .wt-bubble::before {
   content: none !important;
   display: none !important;
 }
 
-body.dark-mode.theme-mica .wt-message.received .wt-bubble::after,
-body.dark-mode.theme-acrylic .wt-message.received .wt-bubble::after {
+body.dark-mode.theme-mica .wt-message.received .wt-bubble::after {
   border-color: transparent rgba(45, 45, 45, 0.8) transparent transparent !important;
 }
 
-body.dark-mode.theme-mica .wt-message.received .wt-bubble,
-body.dark-mode.theme-acrylic .wt-message.received .wt-bubble {
+body.dark-mode.theme-mica .wt-message.received .wt-bubble {
   background: rgba(45, 45, 45, 0.8) !important;
   border-color: rgba(255, 255, 255, 0.1) !important;
 }
 
-.theme-mica .wt-message.sent .wt-bubble::before,
-.theme-acrylic .wt-message.sent .wt-bubble::before {
+.theme-mica .wt-message.sent .wt-bubble::before {
   display: none;
   /* No border in modern sent bubbles */
 }
 
-.theme-mica .wt-message.sent .wt-bubble::after,
-.theme-acrylic .wt-message.sent .wt-bubble::after {
+.theme-mica .wt-message.sent .wt-bubble::after {
   right: -4px;
   border-left-color: var(--accent-color);
 }
 
 /* Modern Theme Overrides */
-.theme-mica .wt-bubble,
-.theme-acrylic .wt-bubble {
+.theme-mica .wt-bubble {
   border-radius: 16px;
   border-width: 1px;
   border-color: rgba(128, 128, 128, 0.15);
@@ -1280,28 +1117,24 @@ body.dark-mode.theme-acrylic .wt-message.received .wt-bubble {
   /* backdrop-filter removed for performance */
 }
 
-.theme-mica .wt-bubble:hover,
-.theme-acrylic .wt-bubble:hover {
+.theme-mica .wt-bubble:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
 }
 
-.theme-mica .wt-message.received .wt-bubble,
-.theme-acrylic .wt-message.received .wt-bubble {
+.theme-mica .wt-message.received .wt-bubble {
   background: rgba(255, 255, 255, 0.75);
 }
 
 @media (prefers-color-scheme: dark) {
 
-  body:not(.light-mode).theme-mica .wt-message.received .wt-bubble,
-  body:not(.light-mode).theme-acrylic .wt-message.received .wt-bubble {
+  body:not(.light-mode).theme-mica .wt-message.received .wt-bubble {
     background: rgba(45, 45, 45, 0.8);
   }
 }
 
 /* Modern Theme Adjustments for Reset Button */
-.theme-mica .reset-btn,
-.theme-acrylic .reset-btn {
+.theme-mica .reset-btn {
   background: rgba(255, 59, 48, 0.1) !important;
   color: #ff3b30 !important;
   border: 1px solid rgba(255, 59, 48, 0.2) !important;
@@ -1314,22 +1147,19 @@ body.dark-mode.theme-acrylic .wt-message.received .wt-bubble {
   transition: all 0.2s !important;
 }
 
-.theme-mica .reset-btn:hover,
-.theme-acrylic .reset-btn:hover {
+.theme-mica .reset-btn:hover {
   background: rgba(255, 59, 48, 0.15) !important;
   transform: none !important;
   box-shadow: 0 2px 8px rgba(255, 59, 48, 0.15) !important;
 }
 
-.theme-mica .reset-btn:active,
-.theme-acrylic .reset-btn:active {
+.theme-mica .reset-btn:active {
   transform: scale(0.98) !important;
   box-shadow: none !important;
 }
 
 /* Modern Theme Adjustments for Settings Groups */
-.theme-mica .settings-group,
-.theme-acrylic .settings-group {
+.theme-mica .settings-group {
   background: rgba(255, 255, 255, 0.5) !important;
   border: 1px solid rgba(255, 255, 255, 0.3) !important;
   border-radius: 12px !important;
@@ -1338,8 +1168,7 @@ body.dark-mode.theme-acrylic .wt-message.received .wt-bubble {
   overflow: hidden !important;
 }
 
-.theme-mica .settings-group .group-header,
-.theme-acrylic .settings-group .group-header {
+.theme-mica .settings-group .group-header {
   padding: 12px 16px !important;
   background: transparent !important;
   height: auto !important;
@@ -1353,18 +1182,15 @@ body.dark-mode.theme-acrylic .wt-message.received .wt-bubble {
 }
 
 /* Hide header border when collapsed or if it's the only element */
-.theme-mica .settings-group:not(.collapsed) .group-header,
-.theme-acrylic .settings-group:not(.collapsed) .group-header {
+.theme-mica .settings-group:not(.collapsed) .group-header {
   border-bottom: 1px solid rgba(0, 0, 0, 0.05);
 }
 
-.theme-mica .settings-group.collapsed .group-header,
-.theme-acrylic .settings-group.collapsed .group-header {
+.theme-mica .settings-group.collapsed .group-header {
   border-bottom: none;
 }
 
-.theme-mica .settings-group h3,
-.theme-acrylic .settings-group h3 {
+.theme-mica .settings-group h3 {
   position: static !important;
   background: transparent !important;
   border: none !important;
@@ -1379,30 +1205,26 @@ body.dark-mode.theme-acrylic .wt-message.received .wt-bubble {
 }
 
 /* Re-enable chevron for modern themes */
-.theme-mica .settings-group .group-header svg,
-.theme-acrylic .settings-group .group-header svg {
+.theme-mica .settings-group .group-header svg {
   display: block !important;
   color: var(--text-secondary);
   opacity: 0.7;
 }
 
-.theme-mica .settings-group .group-content,
-.theme-acrylic .settings-group .group-content {
+.theme-mica .settings-group .group-content {
   padding: 4px 16px 16px 16px !important;
   border-top: none !important;
 }
 
 /* Modern Theme Range Slider */
-.theme-mica .settings-view input[type="range"],
-.theme-acrylic .settings-view input[type="range"] {
+.theme-mica .settings-view input[type="range"] {
   height: 8px;
   background: transparent;
   border: none;
   box-shadow: none;
 }
 
-.theme-mica .settings-view input[type="range"]::-webkit-slider-runnable-track,
-.theme-acrylic .settings-view input[type="range"]::-webkit-slider-runnable-track {
+.theme-mica .settings-view input[type="range"]::-webkit-slider-runnable-track {
   height: 8px;
   border-radius: 999px;
   background:
@@ -1412,8 +1234,7 @@ body.dark-mode.theme-acrylic .wt-message.received .wt-bubble {
   box-shadow: none;
 }
 
-.theme-mica .settings-view input[type="range"]::-webkit-slider-thumb,
-.theme-acrylic .settings-view input[type="range"]::-webkit-slider-thumb {
+.theme-mica .settings-view input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
   width: 16px;
   height: 16px;
@@ -1424,8 +1245,7 @@ body.dark-mode.theme-acrylic .wt-message.received .wt-bubble {
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
 }
 
-.theme-mica .settings-view input[type="range"]::-moz-range-track,
-.theme-acrylic .settings-view input[type="range"]::-moz-range-track {
+.theme-mica .settings-view input[type="range"]::-moz-range-track {
   height: 8px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.35);
@@ -1433,15 +1253,13 @@ body.dark-mode.theme-acrylic .wt-message.received .wt-bubble {
   box-shadow: none;
 }
 
-.theme-mica .settings-view input[type="range"]::-moz-range-progress,
-.theme-acrylic .settings-view input[type="range"]::-moz-range-progress {
+.theme-mica .settings-view input[type="range"]::-moz-range-progress {
   height: 8px;
   border-radius: 999px;
   background: var(--accent-color);
 }
 
-.theme-mica .settings-view input[type="range"]::-moz-range-thumb,
-.theme-acrylic .settings-view input[type="range"]::-moz-range-thumb {
+.theme-mica .settings-view input[type="range"]::-moz-range-thumb {
   width: 16px;
   height: 16px;
   border-radius: 50%;
@@ -1452,116 +1270,134 @@ body.dark-mode.theme-acrylic .wt-message.received .wt-bubble {
 
 @media (prefers-color-scheme: dark) {
 
-  body:not(.light-mode).theme-mica .settings-view input[type="range"]::-webkit-slider-runnable-track,
-  body:not(.light-mode).theme-acrylic .settings-view input[type="range"]::-webkit-slider-runnable-track {
+  body:not(.light-mode).theme-mica .settings-view input[type="range"]::-webkit-slider-runnable-track {
     background:
       linear-gradient(var(--accent-color), var(--accent-color)) 0/ var(--range-progress, 0%) 100% no-repeat,
       rgba(255, 255, 255, 0.14);
     border-color: rgba(255, 255, 255, 0.1);
   }
 
-  body:not(.light-mode).theme-mica .settings-view input[type="range"]::-moz-range-track,
-  body:not(.light-mode).theme-acrylic .settings-view input[type="range"]::-moz-range-track {
+  body:not(.light-mode).theme-mica .settings-view input[type="range"]::-moz-range-track {
     background: rgba(255, 255, 255, 0.14);
     border-color: rgba(255, 255, 255, 0.1);
   }
 
-  body:not(.light-mode).theme-mica .settings-view input[type="range"]::-moz-range-progress,
-  body:not(.light-mode).theme-acrylic .settings-view input[type="range"]::-moz-range-progress {
+  body:not(.light-mode).theme-mica .settings-view input[type="range"]::-moz-range-progress {
     background: var(--accent-color);
   }
 
   body:not(.light-mode).theme-mica .settings-view input[type="range"]::-webkit-slider-thumb,
-  body:not(.light-mode).theme-acrylic .settings-view input[type="range"]::-webkit-slider-thumb,
-  body:not(.light-mode).theme-mica .settings-view input[type="range"]::-moz-range-thumb,
-  body:not(.light-mode).theme-acrylic .settings-view input[type="range"]::-moz-range-thumb {
+  body:not(.light-mode).theme-mica .settings-view input[type="range"]::-moz-range-thumb {
     border-color: rgba(255, 255, 255, 0.5);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
   }
 }
 
-body.dark-mode.theme-mica .settings-view input[type="range"]::-webkit-slider-runnable-track,
-body.dark-mode.theme-acrylic .settings-view input[type="range"]::-webkit-slider-runnable-track {
+body.dark-mode.theme-mica .settings-view input[type="range"]::-webkit-slider-runnable-track {
   background:
     linear-gradient(var(--accent-color), var(--accent-color)) 0/ var(--range-progress, 0%) 100% no-repeat,
     rgba(255, 255, 255, 0.14);
   border-color: rgba(255, 255, 255, 0.1);
 }
 
-body.dark-mode.theme-mica .settings-view input[type="range"]::-moz-range-track,
-body.dark-mode.theme-acrylic .settings-view input[type="range"]::-moz-range-track {
+body.dark-mode.theme-mica .settings-view input[type="range"]::-moz-range-track {
   background: rgba(255, 255, 255, 0.14);
   border-color: rgba(255, 255, 255, 0.1);
 }
 
-body.dark-mode.theme-mica .settings-view input[type="range"]::-moz-range-progress,
-body.dark-mode.theme-acrylic .settings-view input[type="range"]::-moz-range-progress {
+body.dark-mode.theme-mica .settings-view input[type="range"]::-moz-range-progress {
   background: var(--accent-color);
 }
 
 body.dark-mode.theme-mica .settings-view input[type="range"]::-webkit-slider-thumb,
-body.dark-mode.theme-acrylic .settings-view input[type="range"]::-webkit-slider-thumb,
-body.dark-mode.theme-mica .settings-view input[type="range"]::-moz-range-thumb,
-body.dark-mode.theme-acrylic .settings-view input[type="range"]::-moz-range-thumb {
+body.dark-mode.theme-mica .settings-view input[type="range"]::-moz-range-thumb {
   border-color: rgba(255, 255, 255, 0.5);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
 }
 
-.theme-mica .setting-item,
-.theme-acrylic .setting-item {
+.theme-mica .setting-item {
   border-bottom-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+.theme-mica .segmented-control {
+  background: rgba(128, 128, 128, 0.08) !important;
+  border: 1px solid rgba(128, 128, 128, 0.1) !important;
+  border-radius: 8px !important;
+  padding: 3px !important;
+  box-shadow: none !important;
+  margin-bottom: 4px;
+}
+
+.theme-mica .segment-btn {
+  border-radius: 6px !important;
+  color: var(--text-secondary) !important;
+  font-weight: 500 !important;
+  text-transform: none !important;
+  font-size: 13px !important;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.theme-mica .segment-btn:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: var(--text-primary) !important;
+}
+
+.theme-mica .segment-btn.active {
+  background: rgba(255, 255, 255, 0.8) !important;
+  color: #000 !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+}
+
+body.dark-mode.theme-mica .segment-btn.active {
+  background: rgba(255, 255, 255, 0.15) !important;
+  color: #fff !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
 }
 
 @media (prefers-color-scheme: dark) {
 
-  body:not(.light-mode).theme-mica .settings-group,
-  body:not(.light-mode).theme-acrylic .settings-group {
+  body:not(.light-mode).theme-mica .settings-group {
     background: rgba(30, 30, 30, 0.4) !important;
     border: 1px solid rgba(255, 255, 255, 0.05) !important;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
   }
 
-  body:not(.light-mode).theme-mica .settings-group .group-header,
-  body:not(.light-mode).theme-acrylic .settings-group .group-header {
+  body:not(.light-mode).theme-mica .settings-group .group-header {
     border-bottom-color: rgba(255, 255, 255, 0.05);
   }
 
-  body:not(.light-mode).theme-mica .setting-item,
-  body:not(.light-mode).theme-acrylic .setting-item {
+  body:not(.light-mode).theme-mica .setting-item {
     border-bottom-color: rgba(255, 255, 255, 0.05) !important;
   }
 }
 
-.theme-mica,
-.theme-acrylic {
+.theme-mica {
   --bg-panel-translucent: rgb(255, 255, 255);
   --bg-panel-opaque: #ffffff;
 }
 
 @media (prefers-color-scheme: dark) {
 
-  body:not(.light-mode).theme-mica,
-  body:not(.light-mode).theme-acrylic {
+  body:not(.light-mode).theme-mica {
     --bg-panel-translucent: rgb(30, 30, 30);
     --bg-panel-opaque: #1e1e1e;
   }
 }
 
-.theme-mica .tags-dropdown,
-.theme-acrylic .tags-dropdown {
+.theme-mica .tags-dropdown {
   background: rgba(255, 255, 255, 0.75) !important;
   border: 1px solid rgba(128, 128, 128, 0.2) !important;
   box-shadow: none !important;
   border-radius: 10px !important;
 }
 
-.theme-mica .search-input.dropdown-open,
-.theme-acrylic .search-input.dropdown-open {
+.theme-mica .search-input.dropdown-open {
   border-radius: 10px !important;
 }
 
-.theme-mica .tag-chip,
-.theme-acrylic .tag-chip {
+.theme-mica .tag-chip {
   border: none !important;
   border-radius: 12px !important;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
@@ -1569,44 +1405,38 @@ body.dark-mode.theme-acrylic .settings-view input[type="range"]::-moz-range-thum
   font-size: var(--clipboard-tag-font-size) !important;
 }
 
-.theme-mica .tag-chip:hover,
-.theme-acrylic .tag-chip:hover {
+.theme-mica .tag-chip:hover {
   transform: none;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15) !important;
 }
 
-.theme-mica .tag-chip:active,
-.theme-acrylic .tag-chip:active {
+.theme-mica .tag-chip:active {
   transform: scale(0.95);
   box-shadow: none !important;
 }
 
 @media (prefers-color-scheme: dark) {
 
-  body:not(.light-mode).theme-mica .tags-dropdown,
-  body:not(.light-mode).theme-acrylic .tags-dropdown {
+  body:not(.light-mode).theme-mica .tags-dropdown {
     background: rgba(255, 255, 255, 0.18) !important;
     border: 1px solid rgba(255, 255, 255, 0.1) !important;
   }
 }
 
 .dark-mode .queue-bar,
-.theme-mica.dark-mode .queue-bar,
-.theme-acrylic.dark-mode .queue-bar {
+.theme-mica.dark-mode .queue-bar {
   background: #1a1a1a !important;
   border-color: #000;
   box-shadow: 8px 8px 0 #000;
 }
 
-.theme-mica .history-item.selected,
-.theme-acrylic .history-item.selected {
+.theme-mica .history-item.selected {
   background: rgba(255, 255, 255, 0.85) !important;
 }
 
 @media (prefers-color-scheme: dark) {
 
-  body:not(.light-mode) .theme-mica .history-item.selected,
-  body:not(.light-mode) .theme-acrylic .history-item.selected {
+  body:not(.light-mode) .theme-mica .history-item.selected {
     background: rgba(45, 45, 45, 0.8) !important;
   }
 }
@@ -1618,7 +1448,7 @@ body.theme-mica #root {
   background: rgba(248, 248, 248, calc(0.9 * var(--surface-opacity-scale, 1))) !important;
 }
 
-body.theme-acrylic #root {
+body.theme-mica #root {
   position: relative;
   overflow: hidden;
   background: rgba(252, 252, 252, calc(0.62 * var(--surface-opacity-scale, 1))) !important;
@@ -1627,7 +1457,7 @@ body.theme-acrylic #root {
   box-shadow: 0 10px 38px rgba(0, 0, 0, 0.16) !important;
 }
 
-body.theme-acrylic #root::before {
+body.theme-mica #root::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -1638,13 +1468,13 @@ body.theme-acrylic #root::before {
     linear-gradient(145deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.03) 100%);
 }
 
-body.theme-acrylic #root>* {
+body.theme-mica #root>* {
   position: relative;
   z-index: 1;
 }
 
 /* No custom image: provide subtle backdrop texture so acrylic blur stays perceivable */
-body.theme-acrylic:not(.has-custom-bg)::before {
+body.theme-mica:not(.has-custom-bg)::before {
   background-image:
     radial-gradient(120% 120% at 8% 8%, rgba(255, 255, 255, 0.32) 0%, rgba(255, 255, 255, 0.08) 52%, rgba(255, 255, 255, 0.02) 100%),
     linear-gradient(160deg, rgba(170, 190, 220, 0.12) 0%, rgba(210, 220, 236, 0.06) 45%, rgba(180, 195, 215, 0.11) 100%);
@@ -1664,19 +1494,19 @@ body.theme-mica:not(.has-custom-bg)::before {
     background: rgba(24, 24, 24, calc(0.82 * var(--surface-opacity-scale, 1))) !important;
   }
 
-  body:not(.light-mode).theme-acrylic #root {
+  body:not(.light-mode).theme-mica #root {
     background: rgba(20, 20, 20, calc(0.52 * var(--surface-opacity-scale, 1))) !important;
     backdrop-filter: blur(30px) saturate(145%) !important;
     -webkit-backdrop-filter: blur(30px) saturate(145%) !important;
   }
 
-  body:not(.light-mode).theme-acrylic #root::before {
+  body:not(.light-mode).theme-mica #root::before {
     background:
       radial-gradient(140% 120% at 0% 0%, rgba(255, 255, 255, 0.09) 0%, rgba(255, 255, 255, 0.02) 55%, transparent 100%),
       linear-gradient(160deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%);
   }
 
-  body:not(.light-mode).theme-acrylic:not(.has-custom-bg)::before {
+  body:not(.light-mode).theme-mica:not(.has-custom-bg)::before {
     background-image:
       radial-gradient(120% 120% at 10% 8%, rgba(120, 138, 164, 0.2) 0%, rgba(74, 86, 108, 0.08) 48%, rgba(48, 56, 72, 0.18) 100%),
       linear-gradient(150deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0.07) 100%);
@@ -1696,15 +1526,15 @@ body.dark-mode.theme-mica #root {
   background: rgba(24, 24, 24, calc(0.82 * var(--surface-opacity-scale, 1))) !important;
 }
 
-body.dark-mode.theme-acrylic #root {
+body.dark-mode.theme-mica #root {
   background: rgba(20, 20, 20, calc(0.52 * var(--surface-opacity-scale, 1))) !important;
   backdrop-filter: blur(30px) saturate(145%) !important;
   -webkit-backdrop-filter: blur(30px) saturate(145%) !important;
 }
 
-body.windows-10.theme-acrylic #root,
-body.windows-10.dark-mode.theme-acrylic #root,
-body.windows-10:not(.light-mode).theme-acrylic #root {
+body.windows-10.theme-mica #root,
+body.windows-10.dark-mode.theme-mica #root,
+body.windows-10:not(.light-mode).theme-mica #root {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
@@ -1712,11 +1542,8 @@ body.windows-10:not(.light-mode).theme-acrylic #root {
 /* Compact preview is a standalone floating window.
    Do not apply mica/acrylic app-shell layers to its #root. */
 body.compact-preview.theme-mica #root,
-body.compact-preview.theme-acrylic #root,
 body.theme-mica.compact-preview #root,
-body.theme-acrylic.compact-preview #root,
-body.dark-mode.compact-preview.theme-mica #root,
-body.dark-mode.compact-preview.theme-acrylic #root {
+body.dark-mode.compact-preview.theme-mica #root {
   background: transparent !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
@@ -1724,17 +1551,19 @@ body.dark-mode.compact-preview.theme-acrylic #root {
   box-shadow: none !important;
 }
 
-body.compact-preview.theme-acrylic #root::before,
-body.theme-acrylic.compact-preview #root::before,
-body.dark-mode.compact-preview.theme-acrylic #root::before {
+body.compact-preview.theme-mica #root::before,
+body.theme-mica.compact-preview #root::before,
+body.dark-mode.compact-preview.theme-mica #root::before {
   content: none !important;
   display: none !important;
   background: none !important;
 }
 
-body.compact-preview.theme-acrylic #root>*,
-body.theme-acrylic.compact-preview #root>*,
-body.dark-mode.compact-preview.theme-acrylic #root>* {
+body.compact-preview.theme-mica #root>*,
+body.theme-mica.compact-preview #root>*,
+body.dark-mode.compact-preview.theme-mica #root>* {
   position: static !important;
   z-index: auto !important;
 }
+
+
