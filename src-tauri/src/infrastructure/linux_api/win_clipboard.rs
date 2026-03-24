@@ -64,7 +64,16 @@ pub unsafe fn set_clipboard_text_and_html(text: &str, _html: &str) -> Result<(),
     clipboard.set_text(text).map_err(|e| e.to_string())
 }
 
-pub fn set_clipboard_image_with_formats(data: ImageData) -> Result<(), String> {
+pub unsafe fn append_clipboard_text_and_html(text: &str, _html: &str) -> Result<(), String> {
+    let mut clipboard = arboard::Clipboard::new().map_err(|e| e.to_string())?;
+    clipboard.set_text(text).map_err(|e| e.to_string())
+}
+
+pub fn set_clipboard_image_with_formats(
+    data: ImageData,
+    _gif_data: Option<&Vec<u8>>,
+    _png_data: Option<&Vec<u8>>,
+) -> Result<Option<String>, String> {
     let mut clipboard = arboard::Clipboard::new().map_err(|e| e.to_string())?;
 
     let image = arboard::ImageData {
@@ -73,5 +82,6 @@ pub fn set_clipboard_image_with_formats(data: ImageData) -> Result<(), String> {
         bytes: std::borrow::Cow::Owned(data.bytes),
     };
 
-    clipboard.set_image(image).map_err(|e| e.to_string())
+    clipboard.set_image(image).map_err(|e| e.to_string())?;
+    Ok(None)
 }

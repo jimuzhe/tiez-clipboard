@@ -6,6 +6,17 @@ use crate::database::is_text_type;
 use crate::services::clipboard::utils::*;
 use std::sync::atomic::Ordering;
 use std::time::{SystemTime, UNIX_EPOCH};
+#[cfg(target_os = "windows")]
+use crate::infrastructure::windows_api::window_tracker::{
+    get_clipboard_source_app_info,
+    ActiveAppInfo,
+};
+#[cfg(target_os = "linux")]
+use crate::infrastructure::linux_api::window_tracker::{
+    get_clipboard_source_app_info,
+    ActiveAppInfo,
+};
+#[cfg(not(any(target_os = "windows", target_os = "linux")))]
 use crate::infrastructure::windows_api::window_tracker::{
     get_clipboard_source_app_info,
     ActiveAppInfo,

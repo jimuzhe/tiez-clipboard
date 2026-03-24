@@ -20,3 +20,9 @@ src-tauri/target/
 .DS_Store
 Thumbs.db
 .vscode/
+
+# Claude Code
+.specify/
+.specs/
+.claude/
+CLAUDE.md

@@ -22,13 +22,9 @@ pub fn start_window_tracking(_app_handle: tauri::AppHandle) {
     std::thread::spawn(move || {
         #[cfg(target_os = "linux")]
         {
-            use x11_clipboard::Clipboard;
-
-            if let Ok(clipboard) = Clipboard::new() {
-                let display = clipboard.setter.display;
-
+            if let Ok((conn, _)) = x11rb::connect(None) {
                 loop {
-                    if let Some(app_name) = get_active_window_app_name(display) {
+                    if let Some(app_name) = get_active_window_app_name(&conn) {
                         if let Ok(mut store) = get_active_app_store().write() {
                             store.app_name = app_name;
                             store.process_path = None;
@@ -42,11 +38,9 @@ pub fn start_window_tracking(_app_handle: tauri::AppHandle) {
 }
 
 #[cfg(target_os = "linux")]
-fn get_active_window_app_name(display: *mut x11_clipboard::x11rb::protocol::xproto::Display) -> Option<String> {
-    use x11_clipboard::x11rb::connection::Connection;
-    use x11_clipboard::x11rb::protocol::xproto::{ConnectionExt, AtomEnum};
-
-    let conn = unsafe { x11_clipboard::x11rb::rust_connection::RustConnection::from_raw_display(display as _)? };
+fn get_active_window_app_name(conn: &x11rb::rust_connection::RustConnection) -> Option<String> {
+    use x11rb::connection::Connection;
+    use x11rb::protocol::xproto::{ConnectionExt, AtomEnum};
 
     let screen = conn.setup().roots.first()?;
     let root = screen.root;
@@ -55,11 +49,12 @@ fn get_active_window_app_name(display: *mut x11_clipboard::x11rb::protocol::xpro
 
     let reply = conn.get_property(false, root, active_window_atom, AtomEnum::WINDOW, 0, 1).ok()?.reply().ok()?;
 
-    if reply.data32().is_empty() {
+    // Parse the window ID from the value (u32 in native byte order)
+    if reply.value.len() < 4 {
         return None;
     }
 
-    let active_window = reply.data32()[0];
+    let active_window = u32::from_ne_bytes([reply.value[0], reply.value[1], reply.value[2], reply.value[3]]);
     if active_window == 0 {
         return None;
     }
@@ -68,7 +63,7 @@ fn get_active_window_app_name(display: *mut x11_clipboard::x11rb::protocol::xpro
 
     let class_reply = conn.get_property(false, active_window, wm_class_atom, AtomEnum::STRING, 0, 1024).ok()?.reply().ok()?;
 
-    let class_data = class_reply.data;
+    let class_data = class_reply.value;
     if class_data.is_empty() {
         return None;
     }
@@ -80,7 +75,7 @@ fn get_active_window_app_name(display: *mut x11_clipboard::x11rb::protocol::xpro
 }
 
 #[cfg(not(target_os = "linux"))]
-fn get_active_window_app_name(_display: *mut std::ffi::c_void) -> Option<String> {
+fn get_active_window_app_name(_conn: &()) -> Option<String> {
     None
 }
 

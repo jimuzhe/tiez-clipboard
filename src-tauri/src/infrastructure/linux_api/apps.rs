@@ -1,22 +1,34 @@
 use std::process::Command;
+use serde::{Serialize, Deserialize};
+use crate::error::{AppResult, AppError};
 
-pub fn get_executable_icon(_executable_path: String) -> Result<Option<String>, String> {
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct AppInfo {
+    pub name: String,
+    pub path: String,
+}
+
+#[tauri::command]
+pub fn get_executable_icon(_executable_path: String) -> AppResult<Option<String>> {
     Ok(None)
 }
 
-pub fn scan_installed_apps() -> Vec<serde_json::Value> {
-    vec![]
+#[tauri::command]
+pub async fn scan_installed_apps() -> AppResult<Vec<AppInfo>> {
+    Ok(vec![])
 }
 
-pub fn get_associated_apps(_ext: &str) -> Vec<serde_json::Value> {
-    vec![]
+#[tauri::command]
+pub async fn get_associated_apps(_extension: String) -> AppResult<Vec<AppInfo>> {
+    Ok(vec![])
 }
 
-pub fn get_system_default_app(_ext: &str) -> String {
-    String::new()
+#[tauri::command]
+pub fn get_system_default_app(_content_type: String) -> AppResult<String> {
+    Ok(String::new())
 }
 
-pub fn launch_uwp_with_file(_package: &str, _file: &str) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn launch_uwp_with_file(_app_id: &str, _file_path: &str) -> AppResult<()> {
     Ok(())
 }
 

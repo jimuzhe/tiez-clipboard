@@ -184,6 +184,7 @@ async fn handle_window_focus_for_paste(app_handle: &tauri::AppHandle) -> AppResu
     Ok(())
 }
 
+#[cfg(target_os = "windows")]
 async fn restore_focus_before_paste(_app_handle: &tauri::AppHandle) -> AppResult<()> {
     let last_hwnd_val = crate::LAST_ACTIVE_HWND.load(Ordering::Relaxed);
     if last_hwnd_val == 0 {
@@ -192,7 +193,6 @@ async fn restore_focus_before_paste(_app_handle: &tauri::AppHandle) -> AppResult
 
     {
         let target_hwnd = HWND(last_hwnd_val as _);
-        #[cfg(target_os = "windows")]
         unsafe {
             if !IsWindowVisible(target_hwnd).as_bool() {
                  return Err(AppError::Internal("Target window is no longer visible".to_string()));
@@ -225,6 +225,12 @@ async fn restore_focus_before_paste(_app_handle: &tauri::AppHandle) -> AppResult
     // Settling time for Windows to process focus change msg
     // Increased to 150ms for heavy games/apps
     tokio::time::sleep(std::time::Duration::from_millis(150)).await;
+    Ok(())
+}
+
+#[cfg(not(target_os = "windows"))]
+async fn restore_focus_before_paste(_app_handle: &tauri::AppHandle) -> AppResult<()> {
+    // Focus restoration is not implemented on non-Windows platforms
     Ok(())
 }
 

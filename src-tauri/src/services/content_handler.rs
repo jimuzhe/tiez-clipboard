@@ -1,4 +1,5 @@
 // Content handler module for opening various content types
+#[cfg(target_os = "windows")]
 use crate::infrastructure::windows_api::apps::launch_uwp_with_file;
 use crate::database::DbState;
 use crate::infrastructure::repository::settings_repo::SettingsRepository;
@@ -237,6 +238,7 @@ async fn launch_file_with_app(
             }
 
             println!("Attempting to launch UWP app: {} for file: {}", app, path_str);
+            #[cfg(target_os = "windows")]
             if let Err(e) = launch_uwp_with_file(app, path_str).await {
                 println!("WinRT launch failed: {}, falling back to old method", e);
                 let safe_path = path_str.replace("'", "''");
@@ -244,7 +246,6 @@ async fn launch_file_with_app(
                     "Start-Process -FilePath 'shell:AppsFolder\\{}' -ArgumentList '{}'",
                     app, safe_path
                 );
-                #[cfg(target_os = "windows")]
                 {
                     let mut cmd = Command::new("powershell");
                     cmd.args(["-NoProfile", "-Command", &ps_script])
@@ -257,8 +258,11 @@ async fn launch_file_with_app(
                         }
                     }
                 }
-                
-                #[cfg(not(target_os = "windows"))]
+            }
+
+            #[cfg(not(target_os = "windows"))]
+            {
+                let safe_path = path_str.replace("'", "''");
                 Command::new("open").arg(safe_path).spawn().map_err(|e| AppError::Internal(format!("启动 UWP 程序失败 (Fallback): {}", e)))?;
             }
         }

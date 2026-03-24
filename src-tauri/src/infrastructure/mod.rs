@@ -9,6 +9,25 @@ pub mod windows_api;
 #[cfg(target_os = "linux")]
 pub mod linux_api;
 
+#[cfg(target_os = "linux")]
+pub mod windows_api {
+    pub mod win_clipboard {
+        pub use crate::infrastructure::linux_api::win_clipboard::*;
+    }
+
+    pub mod window_tracker {
+        pub use crate::infrastructure::linux_api::window_tracker::*;
+    }
+
+    pub mod apps {
+        pub use crate::infrastructure::linux_api::apps::*;
+    }
+
+    pub mod drag_drop {
+        pub fn register_emoji_drag_drop(_app_handle: tauri::AppHandle) {}
+    }
+}
+
 #[cfg(not(any(target_os = "windows", target_os = "linux")))]
 pub mod windows_api {
     pub mod win_clipboard {
@@ -22,7 +41,7 @@ pub mod windows_api {
         pub unsafe fn set_clipboard_text_and_html(_text: &str, _: &str) -> Result<(), String> { Ok(()) }
         pub fn set_clipboard_image_with_formats(_data: ImageData) -> Result<(), String> { Ok(()) }
     }
-    
+
     pub mod window_tracker {
         pub fn start_window_tracking(_app_handle: tauri::AppHandle) {}
         #[derive(Debug, Clone, Default)]
@@ -43,7 +62,7 @@ pub mod windows_api {
             }
         }
     }
-    
+
     pub mod apps {
         pub fn launch_uwp_with_file(_package: &str, _file: &str) -> Result<(), Box<dyn std::error::Error>> { Ok(()) }
         pub fn get_system_default_app(_ext: &str) -> String { "".into() }
@@ -51,7 +70,7 @@ pub mod windows_api {
         pub fn scan_installed_apps() -> Vec<serde_json::Value> { vec![] }
         pub fn get_associated_apps(_ext: &str) -> Vec<serde_json::Value> { vec![] }
     }
-    
+
     pub mod drag_drop {
         pub fn register_emoji_drag_drop(_app_handle: tauri::AppHandle) {}
     }

@@ -52,6 +52,15 @@ pub fn toggle_autostart(enable: bool, app_id: &str) -> Result<(), String> {
     Ok(())
 }
 
+pub fn set_autostart(enabled: bool) -> Result<(), String> {
+    toggle_autostart(enabled, "tiez")
+}
+
+pub fn is_autostart_enabled() -> bool {
+    let autostart_path = get_autostart_path("tiez");
+    autostart_path.exists()
+}
+
 pub fn get_autostart_path(app_id: &str) -> PathBuf {
     dirs::config_dir()
         .map(|p| p.join("autostart").join(format!("{}.desktop", app_id)))

@@ -1,5 +1,6 @@
 use crate::error::{AppResult, AppError};
 
+#[cfg(target_os = "windows")]
 #[tauri::command]
 pub async fn download_and_install_update(url: String) -> AppResult<()> {
     use std::process::Command;
@@ -29,6 +30,12 @@ pub async fn download_and_install_update(url: String) -> AppResult<()> {
     Command::new(&installer_path)
         .spawn()
         .map_err(|e| AppError::Internal(format!("Failed to launch installer: {}", e)))?;
-    
+
     Ok(())
+}
+
+#[cfg(not(target_os = "windows"))]
+#[tauri::command]
+pub async fn download_and_install_update(_url: String) -> AppResult<()> {
+    Err(AppError::Internal("Auto-update is only available on Windows".to_string()))
 }

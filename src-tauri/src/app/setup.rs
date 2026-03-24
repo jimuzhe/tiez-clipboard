@@ -11,6 +11,7 @@ use crate::infrastructure::repository::settings_repo::{SqliteSettingsRepository,
 use crate::infrastructure::repository::tag_repo::SqliteTagRepository;
 use crate::services::encryption_queue::init_encryption_queue;
 use crate::services::sensitive_align::spawn_sensitive_alignment;
+#[cfg(target_os = "windows")]
 use crate::infrastructure::windows_ext::WindowExt;
 use crate::app::window_manager::{toggle_window, release_win_keys, restore_last_focus};
 #[cfg(target_os = "windows")]
@@ -52,7 +53,10 @@ pub fn init(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     let db_path_str = db_path.to_string_lossy();
     let conn = database::init_db(&db_path_str).map_err(|e| {
         let err_msg = format!("数据库初始化失败: {}", e);
+        #[cfg(target_os = "windows")]
         WindowExt::show_error_box("TieZ 启动错误", &err_msg);
+        #[cfg(not(target_os = "windows"))]
+        eprintln!("{}", err_msg);
         e
     })?;
     let conn_arc = std::sync::Arc::new(std::sync::Mutex::new(conn));
@@ -360,6 +364,7 @@ fn start_services(app: &App, s: &StartupSettings, app_handle: AppHandle) {
     }
 
     // Win+V Optimization
+    #[cfg(target_os = "windows")]
     if db_state.settings_repo.get("app.use_win_v_shortcut").unwrap_or(Some("false".to_string())) == Some("true".to_string()) {
         if !crate::app::commands::system_cmd::get_registry_win_v_optimized_status() {
             let _ = crate::app::commands::trigger_registry_win_v_optimization(true);
@@ -898,9 +903,10 @@ fn persist_window_size(window: &tauri::Window, width: u32, height: u32) {
     });
 }
 
+#[cfg(target_os = "windows")]
 fn handle_blur(window: &tauri::Window) {
     if IGNORE_BLUR.load(Ordering::Relaxed) || WINDOW_PINNED.load(Ordering::Relaxed) { return; }
-    
+
     let settings = window.app_handle().state::<SettingsState>();
     if settings.edge_docking.load(Ordering::Relaxed) { return; }
 
@@ -928,6 +934,28 @@ fn handle_blur(window: &tauri::Window) {
                 NAVIGATION_ENABLED.store(false, Ordering::SeqCst);
                 release_win_keys();
                 let _ = restore_last_focus(w.app_handle().clone());
+            }
+        }
+    });
+}
+
+#[cfg(not(target_os = "windows"))]
+fn handle_blur(window: &tauri::Window) {
+    if IGNORE_BLUR.load(Ordering::Relaxed) || WINDOW_PINNED.load(Ordering::Relaxed) { return; }
+
+    let settings = window.app_handle().state::<SettingsState>();
+    if settings.edge_docking.load(Ordering::Relaxed) { return; }
+
+    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as u64;
+    if now.saturating_sub(LAST_SHOW_TIMESTAMP.load(Ordering::Relaxed)) < 500 { return; }
+
+    let w = window.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_millis(200));
+        if matches!(w.is_focused(), Ok(false)) {
+            if !IGNORE_BLUR.load(Ordering::Relaxed) && !WINDOW_PINNED.load(Ordering::Relaxed) {
+                let _ = w.hide();
+                NAVIGATION_ENABLED.store(false, Ordering::SeqCst);
             }
         }
     });
