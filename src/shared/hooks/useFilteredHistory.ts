@@ -15,19 +15,18 @@ export const useFilteredHistory = ({
   typeFilter
 }: UseFilteredHistoryOptions) => {
   return useMemo(() => {
-    const lowerSearch = search.toLowerCase();
+    let effectiveSearch = search.toLowerCase();
+    if (effectiveSearch.startsWith("tag:")) {
+      effectiveSearch = effectiveSearch.slice(4);
+    }
+    const shouldBypassLocalSearch = !!debouncedSearch && debouncedSearch === search;
 
     const filtered = history.filter((item) => {
       if (typeFilter && item.content_type !== typeFilter) {
         return false;
       }
 
-      let effectiveSearch = lowerSearch;
-      if (effectiveSearch.startsWith("tag:")) {
-        effectiveSearch = effectiveSearch.slice(4);
-      }
-
-      if (debouncedSearch && debouncedSearch === search) {
+      if (shouldBypassLocalSearch) {
         return true;
       }
 

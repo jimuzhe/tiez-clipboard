@@ -4,12 +4,195 @@ mod utils;
 pub use crate::database::DbState;
 use crate::app_state::SettingsState;
 use arboard::Clipboard;
+use std::sync::mpsc::{self, Sender};
+use std::sync::OnceLock;
 use std::sync::atomic::Ordering;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Manager};
 use base64::Engine;
 
 use utils::*;
+
+enum ClipboardProcessPayload {
+    Pipeline {
+        data: ClipboardData,
+        source_override: Option<String>,
+        source_snapshot: Option<crate::infrastructure::windows_api::window_tracker::ActiveAppInfo>,
+    },
+    GifImage {
+        bytes: Vec<u8>,
+        source_snapshot: Option<crate::infrastructure::windows_api::window_tracker::ActiveAppInfo>,
+    },
+    RgbaImage {
+        width: u32,
+        height: u32,
+        bytes: Vec<u8>,
+        source_snapshot: Option<crate::infrastructure::windows_api::window_tracker::ActiveAppInfo>,
+    },
+}
+
+struct ClipboardProcessTask {
+    app_handle: AppHandle,
+    payload: ClipboardProcessPayload,
+}
+
+fn clipboard_process_sender() -> &'static Sender<ClipboardProcessTask> {
+    static SENDER: OnceLock<Sender<ClipboardProcessTask>> = OnceLock::new();
+    SENDER.get_or_init(|| {
+        let (tx, rx) = mpsc::channel::<ClipboardProcessTask>();
+        let _ = std::thread::Builder::new()
+            .name("clipboard-process-worker".to_string())
+            .spawn(move || {
+                while let Ok(task) = rx.recv() {
+                    match task.payload {
+                        ClipboardProcessPayload::Pipeline {
+                            data,
+                            source_override,
+                            source_snapshot,
+                        } => {
+                            process_new_entry(
+                                &task.app_handle,
+                                data,
+                                source_override,
+                                source_snapshot,
+                            );
+                        }
+                        ClipboardProcessPayload::GifImage { bytes, source_snapshot } => {
+                            let b64 = base64::engine::general_purpose::STANDARD.encode(bytes);
+                            process_new_entry(
+                                &task.app_handle,
+                                ClipboardData::Image {
+                                    data_url: format!("data:image/gif;base64,{}", b64),
+                                },
+                                None,
+                                source_snapshot,
+                            );
+                        }
+                        ClipboardProcessPayload::RgbaImage {
+                            width,
+                            height,
+                            bytes,
+                            source_snapshot,
+                        } => {
+                            if let Some(data_url) = build_png_data_url_from_rgba(width, height, bytes) {
+                                process_new_entry(
+                                    &task.app_handle,
+                                    ClipboardData::Image { data_url },
+                                    None,
+                                    source_snapshot,
+                                );
+                            }
+                        }
+                    }
+                }
+            });
+        tx
+    })
+}
+
+fn process_new_entry_async(
+    app_handle: AppHandle,
+    data: ClipboardData,
+    source_override: Option<String>,
+    source_snapshot: Option<crate::infrastructure::windows_api::window_tracker::ActiveAppInfo>,
+) {
+    let task = ClipboardProcessTask {
+        app_handle,
+        payload: ClipboardProcessPayload::Pipeline {
+            data,
+            source_override,
+            source_snapshot,
+        },
+    };
+    if let Err(err) = clipboard_process_sender().send(task) {
+        let task = err.0;
+        if let ClipboardProcessPayload::Pipeline {
+            data,
+            source_override,
+            source_snapshot,
+        } = task.payload
+        {
+            process_new_entry(&task.app_handle, data, source_override, source_snapshot);
+        }
+    }
+}
+
+fn build_png_data_url_from_rgba(width: u32, height: u32, bytes: Vec<u8>) -> Option<String> {
+    if let Some(img_buf) = image::RgbaImage::from_raw(width, height, bytes) {
+        let mut encoded: Vec<u8> = Vec::new();
+        let mut cursor = std::io::Cursor::new(&mut encoded);
+        if img_buf.write_to(&mut cursor, image::ImageFormat::Png).is_ok() {
+            let b64 = base64::engine::general_purpose::STANDARD.encode(encoded);
+            return Some(format!("data:image/png;base64,{}", b64));
+        }
+    }
+    None
+}
+
+fn process_gif_entry_async(
+    app_handle: AppHandle,
+    bytes: Vec<u8>,
+    source_snapshot: Option<crate::infrastructure::windows_api::window_tracker::ActiveAppInfo>,
+) {
+    let task = ClipboardProcessTask {
+        app_handle,
+        payload: ClipboardProcessPayload::GifImage {
+            bytes,
+            source_snapshot,
+        },
+    };
+    if let Err(err) = clipboard_process_sender().send(task) {
+        let task = err.0;
+        if let ClipboardProcessPayload::GifImage { bytes, source_snapshot } = task.payload {
+            let b64 = base64::engine::general_purpose::STANDARD.encode(bytes);
+            process_new_entry(
+                &task.app_handle,
+                ClipboardData::Image {
+                    data_url: format!("data:image/gif;base64,{}", b64),
+                },
+                None,
+                source_snapshot,
+            );
+        }
+    }
+}
+
+fn process_rgba_image_entry_async(
+    app_handle: AppHandle,
+    width: u32,
+    height: u32,
+    bytes: Vec<u8>,
+    source_snapshot: Option<crate::infrastructure::windows_api::window_tracker::ActiveAppInfo>,
+) -> bool {
+    let fallback_bytes = bytes.clone();
+    let fallback_snapshot = source_snapshot.clone();
+    let task = ClipboardProcessTask {
+        app_handle,
+        payload: ClipboardProcessPayload::RgbaImage {
+            width,
+            height,
+            bytes,
+            source_snapshot,
+        },
+    };
+    if let Err(err) = clipboard_process_sender().send(task) {
+        let task = err.0;
+        if let ClipboardProcessPayload::RgbaImage { width, height, source_snapshot, .. } = task.payload
+        {
+            if let Some(data_url) = build_png_data_url_from_rgba(width, height, fallback_bytes) {
+                process_new_entry(
+                    &task.app_handle,
+                    ClipboardData::Image { data_url },
+                    None,
+                    source_snapshot.or(fallback_snapshot),
+                );
+                return true;
+            }
+            return false;
+        }
+    }
+    true
+}
 
 fn clipboard_image_fallback_data_url() -> Option<String> {
     for _ in 0..3 {
@@ -203,7 +386,12 @@ pub fn start_clipboard_monitor(app_handle: AppHandle) {
                             
                             let settings = app.state::<SettingsState>();
                             if settings.capture_files.load(Ordering::Relaxed) || files.len() == 1 {
-                                process_new_entry(&app, ClipboardData::Files(files), None, Some(source_snapshot.clone()));
+                                process_new_entry_async(
+                                    app.clone(),
+                                    ClipboardData::Files(files),
+                                    None,
+                                    Some(source_snapshot.clone()),
+                                );
                             }
                         }
                     }
@@ -259,8 +447,11 @@ pub fn start_clipboard_monitor(app_handle: AppHandle) {
                                 crate::LAST_APP_SET_HASH.store(0, Ordering::SeqCst);
                                 crate::LAST_APP_SET_HASH_ALT.store(0, Ordering::SeqCst);
                             } else {
-                                let b64 = base64::engine::general_purpose::STANDARD.encode(gif_data);
-                                process_new_entry(&app, ClipboardData::Image { data_url: format!("data:image/gif;base64,{}", b64) }, None, Some(source_snapshot.clone()));
+                                process_gif_entry_async(
+                                    app.clone(),
+                                    gif_data,
+                                    Some(source_snapshot.clone()),
+                                );
                                 monitor_state.last_text = String::new();
                             }
                             monitor_state.last_image_hash = hash;
@@ -284,15 +475,13 @@ pub fn start_clipboard_monitor(app_handle: AppHandle) {
                                     crate::LAST_APP_SET_HASH.store(0, Ordering::SeqCst);
                                     crate::LAST_APP_SET_HASH_ALT.store(0, Ordering::SeqCst);
                                 } else {
-                                    if let Some(img_buf) = image::RgbaImage::from_raw(image.width as u32, image.height as u32, image.bytes) {
-                                        let mut bytes: Vec<u8> = Vec::new();
-                                        let mut cursor = std::io::Cursor::new(&mut bytes);
-                                        if img_buf.write_to(&mut cursor, image::ImageFormat::Png).is_ok() {
-                                            let b64 = base64::engine::general_purpose::STANDARD.encode(bytes);
-                                            process_new_entry(&app, ClipboardData::Image { data_url: format!("data:image/png;base64,{}", b64) }, None, Some(source_snapshot.clone()));
-                                            handled = true;
-                                        }
-                                    }
+                                    handled = process_rgba_image_entry_async(
+                                        app.clone(),
+                                        image.width as u32,
+                                        image.height as u32,
+                                        image.bytes,
+                                        Some(source_snapshot.clone()),
+                                    );
                                 }
                                 monitor_state.last_image_hash = hash;
                             }
@@ -337,8 +526,8 @@ pub fn start_clipboard_monitor(app_handle: AppHandle) {
                                     }
 
                                     monitor_state.last_text = text.clone();
-                                    process_new_entry(
-                                        &app,
+                                    process_new_entry_async(
+                                        app.clone(),
                                         ClipboardData::RichText {
                                             text: text.clone(),
                                             html: html_to_store,
@@ -355,7 +544,12 @@ pub fn start_clipboard_monitor(app_handle: AppHandle) {
                     if !handled {
                         if last_app_hash != 0 { crate::LAST_APP_SET_HASH.store(0, Ordering::SeqCst); }
                         monitor_state.last_text = text.clone();
-                        process_new_entry(&app, ClipboardData::Text(text), None, Some(source_snapshot.clone()));
+                        process_new_entry_async(
+                            app.clone(),
+                            ClipboardData::Text(text),
+                            None,
+                            Some(source_snapshot.clone()),
+                        );
                     }
                 }
             }

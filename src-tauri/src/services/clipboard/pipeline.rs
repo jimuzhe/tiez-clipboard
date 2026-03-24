@@ -185,124 +185,138 @@ impl PipelineStage for TransformationStage {
 
 // Stage 3: Validation (Deduplication & Sequential Echo)
 pub struct ValidationStage;
+impl ValidationStage {
+    fn should_stop_for_sequential_echo(&self, ctx: &PipelineContext) -> bool {
+        let settings = ctx.app_handle.state::<SettingsState>();
+        if !settings.sequential_mode.load(Ordering::Relaxed) {
+            return false;
+        }
+        let entry = ctx.entry.as_ref().unwrap();
+        let queue_state = ctx.app_handle.state::<PasteQueue>();
+        let queue = queue_state.0.lock().unwrap();
+        queue.last_action_was_paste && queue.last_pasted_content.as_deref() == Some(&entry.content)
+    }
+
+    fn process_deduplication(&self, ctx: &mut PipelineContext) {
+        let settings = ctx.app_handle.state::<SettingsState>();
+        if !settings.deduplicate.load(Ordering::Relaxed) {
+            return;
+        }
+
+        let persistent_enabled = settings.persistent.load(Ordering::Relaxed);
+        let db_state = ctx.app_handle.state::<DbState>();
+        let conn = db_state.conn.lock().unwrap();
+
+        let mut existing_id = None;
+        let (content, content_type, html_content) = {
+            let e = ctx.entry.as_ref().unwrap();
+            (e.content.clone(), e.content_type.clone(), e.html_content.clone())
+        };
+
+        let normalized_content = content.trim().replace("\r\n", "\n");
+        let normalized_html = |html: &str| html.trim().replace("\r\n", "\n");
+        let htmls_equivalent = |a: Option<&str>, b: Option<&str>| -> bool {
+            match (a, b) {
+                (None, None) => true,
+                (Some(left), Some(right)) => normalized_html(left) == normalized_html(right),
+                _ => false,
+            }
+        };
+        let rich_text_html_matches = |id: i64| -> bool {
+            if let Ok(Some((_content, c_type, h_content))) =
+                db_state.repo.get_entry_content_with_html_with_conn(&conn, id)
+            {
+                if c_type != "rich_text" {
+                    return false;
+                }
+                return htmls_equivalent(html_content.as_deref(), h_content.as_deref());
+            }
+            false
+        };
+
+        let types_to_check = if content_type == "rich_text" {
+            vec!["rich_text", "text", "code", "url"]
+        } else {
+            vec![content_type.as_str()]
+        };
+
+        for t in types_to_check {
+            if let Ok(Some(id)) = db_state.repo.find_by_content_with_conn(&conn, &content, Some(t)) {
+                if content_type == "rich_text" && t == "rich_text" && !rich_text_html_matches(id) {
+                    continue;
+                }
+                existing_id = Some(id);
+                break;
+            }
+            if let Ok(Some(id)) = db_state
+                .repo
+                .find_by_content_with_conn(&conn, &normalized_content, Some(t))
+            {
+                if content_type == "rich_text" && t == "rich_text" && !rich_text_html_matches(id) {
+                    continue;
+                }
+                existing_id = Some(id);
+                break;
+            }
+        }
+
+        if persistent_enabled {
+            if let Some(id) = existing_id {
+                let entry_mut = ctx.entry.as_mut().unwrap();
+                entry_mut.id = id;
+            }
+        }
+
+        let session_history = ctx.app_handle.state::<SessionHistory>();
+        let mut removed_ids = Vec::new();
+        let mut reuse_session_id: Option<i64> = None;
+        {
+            let session = session_history.0.lock().unwrap();
+            let entry = ctx.entry.as_ref().expect("entry exists");
+            let normalized_entry_content = entry.content.trim().replace("\r\n", "\n");
+            for item in session.iter() {
+                let item_normalized = item.content.trim().replace("\r\n", "\n");
+                let html_match = if entry.content_type == "rich_text" && item.content_type == "rich_text"
+                {
+                    htmls_equivalent(item.html_content.as_deref(), entry.html_content.as_deref())
+                } else {
+                    true
+                };
+                let match_found =
+                    (item.content == entry.content || item_normalized == normalized_entry_content)
+                        && html_match;
+                if match_found {
+                    removed_ids.push(item.id);
+                    if !persistent_enabled {
+                        reuse_session_id = Some(item.id);
+                    }
+                }
+            }
+        }
+
+        if !persistent_enabled {
+            if let Some(reuse_id) = reuse_session_id {
+                ctx.reuse_session_id = Some(reuse_id);
+                if let Some(entry_mut) = ctx.entry.as_mut() {
+                    entry_mut.id = reuse_id;
+                }
+                removed_ids.retain(|id| *id != reuse_id);
+            }
+        }
+
+        ctx.pending_removals.extend(removed_ids);
+    }
+}
+
 impl PipelineStage for ValidationStage {
     fn process(&self, ctx: &mut PipelineContext) {
-        let settings = ctx.app_handle.state::<SettingsState>();
-
-        // Sequential Echo Check
-        if settings.sequential_mode.load(Ordering::Relaxed) {
-            let entry = ctx.entry.as_ref().unwrap();
-            let queue_state = ctx.app_handle.state::<PasteQueue>();
-            let queue = queue_state.0.lock().unwrap();
-            if queue.last_action_was_paste && queue.last_pasted_content.as_deref() == Some(&entry.content) {
-                println!("Ignoring echo paste from queue");
-                ctx.should_stop = true;
-                return;
-            }
+        if self.should_stop_for_sequential_echo(ctx) {
+            println!("Ignoring echo paste from queue");
+            ctx.should_stop = true;
+            return;
         }
 
-        // Deduplication
-        if settings.deduplicate.load(Ordering::Relaxed) {
-            let persistent_enabled = settings.persistent.load(Ordering::Relaxed);
-            let db_state = ctx.app_handle.state::<DbState>();
-            let conn = db_state.conn.lock().unwrap();
-            
-            let mut existing_id = None;
-            let (content, content_type, html_content) = {
-                let e = ctx.entry.as_ref().unwrap();
-                (e.content.clone(), e.content_type.clone(), e.html_content.clone())
-            };
-
-            // Try precise match and normalized match
-            let normalized_content = content.trim().replace("\r\n", "\n");
-            let normalized_html = |html: &str| html.trim().replace("\r\n", "\n");
-            let htmls_equivalent = |a: Option<&str>, b: Option<&str>| -> bool {
-                match (a, b) {
-                    (None, None) => true,
-                    (Some(left), Some(right)) => normalized_html(left) == normalized_html(right),
-                    _ => false,
-                }
-            };
-            let rich_text_html_matches = |id: i64| -> bool {
-                if let Ok(Some((_content, c_type, h_content))) =
-                    db_state.repo.get_entry_content_with_html_with_conn(&conn, id)
-                {
-                    if c_type != "rich_text" {
-                        return false;
-                    }
-                    return htmls_equivalent(html_content.as_deref(), h_content.as_deref());
-                }
-                false
-            };
-            
-            // For rich text, we want to deduplicate against all text types
-            let types_to_check = if content_type == "rich_text" {
-                vec!["rich_text", "text", "code", "url"]
-            } else {
-                vec![content_type.as_str()]
-            };
-
-            for t in types_to_check {
-                if let Ok(Some(id)) = db_state.repo.find_by_content_with_conn(&conn, &content, Some(t)) {
-                    if content_type == "rich_text" && t == "rich_text" && !rich_text_html_matches(id) {
-                        continue;
-                    }
-                    existing_id = Some(id);
-                    break;
-                }
-                if let Ok(Some(id)) = db_state.repo.find_by_content_with_conn(&conn, &normalized_content, Some(t)) {
-                    if content_type == "rich_text" && t == "rich_text" && !rich_text_html_matches(id) {
-                        continue;
-                    }
-                    existing_id = Some(id);
-                    break;
-                }
-            }
-
-            if persistent_enabled {
-                if let Some(id) = existing_id {
-                    // Instead of deleting, we set the entry ID so PersistenceStage performs an UPDATE
-                    // This ensures the item is "moved to top" without risking data loss
-                    let entry_mut = ctx.entry.as_mut().unwrap();
-                    entry_mut.id = id;
-                }
-            }
-            
-            // Session history cleanup
-            let session_history = ctx.app_handle.state::<SessionHistory>();
-            let mut removed_ids = Vec::new();
-            let mut reuse_session_id: Option<i64> = None;
-            {
-                let session = session_history.0.lock().unwrap();
-                let entry = ctx.entry.as_ref().expect("entry exists");
-                let normalized_content = entry.content.trim().replace("\r\n", "\n");
-                for item in session.iter() {
-                    let item_normalized = item.content.trim().replace("\r\n", "\n");
-                    let html_match = if entry.content_type == "rich_text" && item.content_type == "rich_text" {
-                        htmls_equivalent(item.html_content.as_deref(), entry.html_content.as_deref())
-                    } else {
-                        true
-                    };
-                    let match_found = (item.content == entry.content || item_normalized == normalized_content) && html_match;
-                    if match_found {
-                        removed_ids.push(item.id);
-                        if !persistent_enabled {
-                            reuse_session_id = Some(item.id);
-                        }
-                    }
-                }
-            }
-            if !persistent_enabled {
-                if let Some(reuse_id) = reuse_session_id {
-                    ctx.reuse_session_id = Some(reuse_id);
-                    if let Some(entry_mut) = ctx.entry.as_mut() {
-                        entry_mut.id = reuse_id;
-                    }
-                    removed_ids.retain(|id| *id != reuse_id);
-                }
-            }
-            ctx.pending_removals.extend(removed_ids);
-        }
+        self.process_deduplication(ctx);
     }
 }
 

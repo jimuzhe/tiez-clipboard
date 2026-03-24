@@ -5,10 +5,6 @@
   border-color: var(--accent-color) !important;
   box-shadow: 0 0 10px rgba(72, 123, 219, 0.3), 4px 4px 0 0 var(--shadow-color) !important;
   z-index: 10;
-}
-
-/* Ensure original colors are preserved */
-.history-item.selected {
   background: inherit;
   color: inherit;
   transform: none !important;

@@ -1,13 +1,19 @@
 import { toTauriLocalImageSrc } from "./localImageSrc";
 
-const SNAPSHOT_CACHE_LIMIT = 240;
+const SNAPSHOT_CACHE_LIMIT = 120;
+const SNAPSHOT_CACHE_TTL_MS = 10 * 60 * 1000;
 const SNAPSHOT_CACHE_VERSION = "v4";
-const snapshotCache = new Map<string, string>();
+const snapshotCache = new Map<string, { dataUrl: string; at: number }>();
 
 const RICH_IMAGE_FALLBACK_PREFIX = "<!--TIEZ_RICH_IMAGE:";
 const RICH_IMAGE_FALLBACK_SUFFIX = "-->";
 
-const trimCache = () => {
+const trimCache = (now = Date.now()) => {
+  for (const [key, value] of snapshotCache.entries()) {
+    if (now - value.at > SNAPSHOT_CACHE_TTL_MS) {
+      snapshotCache.delete(key);
+    }
+  }
   while (snapshotCache.size > SNAPSHOT_CACHE_LIMIT) {
     const first = snapshotCache.keys().next();
     if (first.done) return;
@@ -269,7 +275,15 @@ export const getRichTextSnapshotDataUrl = (
 
     const key = `${SNAPSHOT_CACHE_VERSION}:${hashString(sourceHtml)}:${sourceHtml.length}:${width}:${maxHeight}`;
     const cached = snapshotCache.get(key);
-    if (cached) return cached;
+    if (cached) {
+      const now = Date.now();
+      if (now - cached.at <= SNAPSHOT_CACHE_TTL_MS) {
+        snapshotCache.delete(key);
+        snapshotCache.set(key, { dataUrl: cached.dataUrl, at: now });
+        return cached.dataUrl;
+      }
+      snapshotCache.delete(key);
+    }
 
     const normalized = normalizeRichHtml(sourceHtml);
     if (!normalized) {
@@ -347,7 +361,7 @@ export const getRichTextSnapshotDataUrl = (
     }
     const svgBase64 = toBase64Utf8(safeSvg);
     const dataUrl = `data:image/svg+xml;base64,${svgBase64}`;
-    if (dataUrl.length > 2_000_000) {
+    if (dataUrl.length > 1_200_000) {
       logSnapshotFailure("data_url_too_large", {
         htmlLength: sourceHtml.length,
         bodyHtmlLength: normalized.bodyHtml.length,
@@ -361,8 +375,9 @@ export const getRichTextSnapshotDataUrl = (
       return null;
     }
 
-    snapshotCache.set(key, dataUrl);
-    trimCache();
+    const now = Date.now();
+    snapshotCache.set(key, { dataUrl, at: now });
+    trimCache(now);
     return dataUrl;
   } catch (error) {
     logSnapshotFailure("unexpected_error", {

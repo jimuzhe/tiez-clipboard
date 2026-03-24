@@ -1,0 +1,1569 @@
+/* Modern Theme Adjustments for Acrylic */
+:root.theme-acrylic,
+body.theme-acrylic {
+  background-color: transparent !important;
+  --font-main: "Segoe UI", "Inter", "Microsoft YaHei", sans-serif;
+  --font-mono: "Cascadia Code", "Consolas", monospace;
+  --bg-window: transparent !important;
+  --bg-content: transparent !important;
+  --bg-toolbar: transparent !important;
+  --bg-panel: rgba(255, 255, 255, 0.15);
+  /* More transparent */
+  --border-dark: transparent !important;
+  --shadow-color: transparent !important;
+}
+
+/* Custom background image support */
+body.theme-acrylic::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: var(--custom-bg-image, none);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  z-index: -1;
+  opacity: 0.18;
+  pointer-events: none;
+  border-radius: var(--radius-window);
+  clip-path: inset(0 round var(--radius-window));
+}
+
+/* Make custom background clearer */
+body.has-custom-bg.theme-acrylic::before {
+  opacity: var(--custom-bg-opacity, 0.45);
+}
+
+@media (prefers-color-scheme: dark) {
+
+  body:not(.light-mode).theme-acrylic {
+    --bg-panel: rgba(0, 0, 0, 0.15);
+    /* More transparent dark */
+  }
+}
+
+body.dark-mode.theme-acrylic {
+  --bg-panel: rgba(0, 0, 0, 0.15);
+}
+
+body.light-mode.theme-acrylic #root {
+  background-color: rgba(248, 248, 248, calc(0.90 * var(--surface-opacity-scale, 1))) !important;
+  /* Mica material with subtle noise texture */
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 8px;
+  backdrop-filter: none !important;
+  position: relative;
+}
+
+body.has-custom-bg.light-mode.theme-acrylic #root {
+  background-color: rgba(248, 248, 248, calc(0.75 * var(--surface-opacity-scale, 1))) !important;
+}
+
+.theme-acrylic #root {
+  background-color: rgba(248, 248, 248, calc(0.90 * var(--surface-opacity-scale, 1))) !important;
+  /* Mica material with subtle noise texture */
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 8px;
+  backdrop-filter: none !important;
+  position: relative;
+}
+
+/* Mica noise texture overlay */
+.theme-acrylic #root::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image:
+    repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 0, 0, .03) 2px, rgba(0, 0, 0, .03) 4px),
+    repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(0, 0, 0, .03) 2px, rgba(0, 0, 0, .03) 4px);
+  pointer-events: none;
+  border-radius: 8px;
+  opacity: 0.22;
+}
+
+body.light-mode.theme-acrylic #root {
+  background-color: rgba(252, 252, 252, calc(0.10 * var(--surface-opacity-scale, 1))) !important;
+  /* Acrylic with blur effect - more transparent */
+  border: none !important;
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12) !important;
+}
+
+body.has-custom-bg.light-mode.theme-acrylic #root {
+  background-color: rgba(252, 252, 252, calc(0.10 * var(--surface-opacity-scale, 1))) !important;
+}
+
+.theme-acrylic #root {
+  background-color: rgba(252, 252, 252, calc(0.10 * var(--surface-opacity-scale, 1))) !important;
+  /* Acrylic with blur effect - more transparent */
+  border: none !important;
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12) !important;
+}
+
+@media (prefers-color-scheme: dark) {
+
+  body:not(.light-mode).theme-acrylic {
+    --text-primary: #e8e8e8;
+    --text-secondary: #a8a8a8;
+  }
+
+  body:not(.light-mode).theme-acrylic #root {
+    background: linear-gradient(135deg,
+        rgba(26, 26, 26, var(--surface-opacity-scale, 1)) 0%,
+        rgba(15, 15, 15, var(--surface-opacity-scale, 1)) 100%) !important;
+    border: none !important;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05) inset !important;
+  }
+
+  body.has-custom-bg:not(.light-mode).theme-acrylic #root {
+    background: rgba(26, 26, 26, calc(0.75 * var(--surface-opacity-scale, 1))) !important;
+  }
+
+  body.has-custom-bg:not(.light-mode).theme-acrylic #root {
+    background: rgba(26, 26, 26, calc(0.10 * var(--surface-opacity-scale, 1))) !important;
+  }
+
+  /* Dark mode Mica texture */
+  body:not(.light-mode).theme-acrylic #root::before {
+    background-image:
+      repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255, 255, 255, .02) 2px, rgba(255, 255, 255, .02) 4px),
+      repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(255, 255, 255, .02) 2px, rgba(255, 255, 255, .02) 4px);
+  }
+
+  /* Dark mode Acrylic blur */
+  body:not(.light-mode).theme-acrylic #root {
+    background: rgba(26, 26, 26, calc(0.10 * var(--surface-opacity-scale, 1))) !important;
+  }
+}
+
+body.dark-mode.theme-acrylic {
+  --text-primary: #e8e8e8;
+  --text-secondary: #a8a8a8;
+}
+
+body.dark-mode.theme-acrylic #root {
+  background: linear-gradient(135deg,
+      rgba(26, 26, 26, var(--surface-opacity-scale, 1)) 0%,
+      rgba(15, 15, 15, var(--surface-opacity-scale, 1)) 100%) !important;
+  border: none !important;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05) inset !important;
+}
+
+body.has-custom-bg.dark-mode.theme-acrylic #root {
+  background: rgba(26, 26, 26, calc(0.75 * var(--surface-opacity-scale, 1))) !important;
+}
+
+body.has-custom-bg.dark-mode.theme-acrylic #root {
+  background: rgba(26, 26, 26, calc(0.10 * var(--surface-opacity-scale, 1))) !important;
+}
+
+/* Dark mode Mica texture */
+body.dark-mode.theme-acrylic #root::before {
+  background-image:
+    repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255, 255, 255, .02) 2px, rgba(255, 255, 255, .02) 4px),
+    repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(255, 255, 255, .02) 2px, rgba(255, 255, 255, .02) 4px);
+}
+
+/* Dark mode Acrylic blur */
+body.dark-mode.theme-acrylic #root {
+  background: rgba(26, 26, 26, calc(0.10 * var(--surface-opacity-scale, 1))) !important;
+}
+
+/* ---- Moved from index.css (theme overrides) ---- */
+
+/* Mica/Acrylic theme adjustments */
+.theme-acrylic .video-file-card {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(128, 128, 128, 0.2);
+  border-radius: 8px;
+}
+
+.theme-acrylic .video-thumbnail-card {
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(128, 128, 128, 0.2);
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.theme-acrylic .video-thumbnail-wrapper {
+  border-radius: 6px;
+  border: none;
+}
+
+.theme-acrylic .file-thumbnail-card {
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(128, 128, 128, 0.2);
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.theme-acrylic .file-icon-wrapper {
+  border-radius: 6px;
+  border: none;
+  background: rgba(255, 255, 255, 0.2);
+  color: var(--text-primary);
+}
+
+.theme-acrylic .item-actions {
+  border-top: none;
+}
+
+/* Exclude compact mode buttons from transparent styling */
+.theme-acrylic .item-actions:not(.compact) .btn-icon,
+body:not(.compact-mode) .theme-acrylic .item-actions .btn-icon {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.theme-acrylic .ai-profile-card {
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+.theme-acrylic .ai-profile-card:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.theme-acrylic header {
+  background: transparent !important;
+  border-bottom: 1px solid rgba(128, 128, 128, 0.15) !important;
+}
+
+.theme-acrylic .main-content {
+  background: transparent !important;
+}
+
+/* Titles */
+.theme-acrylic .header-title {
+  background: transparent !important;
+  color: var(--text-primary) !important;
+  font-family: inherit;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 20px;
+  padding: 0;
+}
+
+/* Settings Group & Headers */
+.theme-acrylic .settings-group {
+  border: none !important;
+  background: rgba(255, 255, 255, 0.25) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03) !important;
+  border-radius: 12px !important;
+}
+
+.theme-acrylic .settings-group h3 {
+  position: relative !important;
+  top: 0 !important;
+  left: 0 !important;
+  background: transparent !important;
+  color: var(--text-primary) !important;
+  padding: 0 0 12px 0 !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+}
+
+@media (prefers-color-scheme: dark) {
+
+  body:not(.light-mode).theme-acrylic .settings-group {
+    background: linear-gradient(145deg, #242424 0%, #1e1e1e 100%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4) !important;
+  }
+}
+
+body.dark-mode.theme-acrylic .settings-group {
+  background: linear-gradient(145deg, #242424 0%, #1e1e1e 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4) !important;
+}
+
+.theme-acrylic .setting-item span {
+  font-family: inherit;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-top: 0;
+}
+
+/* Switch & Toggles */
+.theme-acrylic .switch {
+  width: 44px !important;
+  height: 22px !important;
+}
+
+.theme-acrylic .toggle {
+  background-color: rgba(128, 128, 128, 0.3) !important;
+  border-radius: 20px !important;
+  box-shadow: none !important;
+  transform: none !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.theme-acrylic .toggle>.left,
+.theme-acrylic .toggle>.right {
+  display: none !important;
+}
+
+.theme-acrylic .toggle::before {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  background-color: #fff;
+  border-radius: 50%;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 10;
+}
+
+.theme-acrylic .switch input:checked+.toggle {
+  background-color: var(--accent-color) !important;
+  box-shadow: none !important;
+  /* Force shadow off in checked state */
+}
+
+.theme-acrylic .switch input:checked+.toggle::before {
+  transform: translateX(22px);
+}
+
+/* History Items Fixes */
+.theme-acrylic .history-item {
+  border-radius: 14px !important;
+  border: 1px solid rgba(128, 128, 128, 0.15) !important;
+  box-shadow: none !important;
+  background: rgba(255, 255, 255, 0.7) !important;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  margin: 0 8px 2px 8px !important;
+  padding: 8px 12px 6px 12px !important;
+  /* Added from original */
+  transform: none !important;
+  /* Added from original */
+}
+
+.theme-acrylic .history-item:hover {
+  box-shadow: none !important;
+  background: rgba(255, 255, 255, 0.9) !important;
+  transform: translateY(-2px) !important;
+}
+
+@media (prefers-color-scheme: dark) {
+
+  body:not(.light-mode).theme-acrylic .history-item {
+    background: linear-gradient(135deg, rgba(45, 45, 45, 0.65) 0%, rgba(35, 35, 35, 0.65) 100%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    box-shadow: none !important;
+    color: #e0e0e0 !important;
+    /* Added from original */
+  }
+
+  body:not(.light-mode).theme-acrylic .history-item:hover {
+    background: linear-gradient(135deg, rgba(55, 55, 55, 0.75) 0%, rgba(45, 45, 45, 0.75) 100%) !important;
+    border-color: rgba(255, 255, 255, 0.15) !important;
+    box-shadow: none !important;
+  }
+}
+
+body.dark-mode.theme-acrylic .history-item {
+  background: linear-gradient(135deg, rgba(45, 45, 45, 0.65) 0%, rgba(35, 35, 35, 0.65) 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: none !important;
+  color: #e0e0e0 !important;
+  /* Added from original */
+}
+
+body.dark-mode.theme-acrylic .history-item:hover {
+  background: linear-gradient(135deg, rgba(55, 55, 55, 0.75) 0%, rgba(45, 45, 45, 0.75) 100%) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  box-shadow: none !important;
+}
+
+.theme-acrylic .item-meta {
+  border-bottom: 1px solid rgba(128, 128, 128, 0.1) !important;
+  font-weight: 600 !important;
+  padding-bottom: 1px !important;
+  margin-bottom: 2px !important;
+}
+
+.theme-acrylic .content-preview {
+  font-family: inherit !important;
+  /* Remove monospace */
+  font-size: var(--clipboard-item-font-size) !important;
+}
+
+.theme-acrylic .image-preview {
+  border-radius: 6px !important;
+  border: 1px solid rgba(128, 128, 128, 0.2) !important;
+}
+
+@media (prefers-color-scheme: dark) {
+
+  body:not(.light-mode).theme-acrylic .image-preview {
+    border-color: rgba(255, 255, 255, 0.1) !important;
+  }
+}
+
+/* Input Fields (Search & App Paths) */
+.theme-acrylic .search-input {
+  border-radius: 10px !important;
+  border: 1px solid rgba(128, 128, 128, 0.2) !important;
+  background: rgba(255, 255, 255, 0.75) !important;
+  box-shadow: none !important;
+  font-family: inherit;
+}
+
+.theme-acrylic .search-input:focus {
+  border-color: var(--accent-color) !important;
+  background: rgba(255, 255, 255, 0.85) !important;
+}
+
+@media (prefers-color-scheme: dark) {
+
+  body:not(.light-mode).theme-acrylic .search-input {
+    background: rgba(255, 255, 255, 0.18) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: #e8e8e8 !important;
+  }
+
+  body:not(.light-mode).theme-acrylic .search-input:focus {
+    background: rgba(255, 255, 255, 0.24) !important;
+    border-color: var(--accent-color) !important;
+  }
+}
+
+body.dark-mode.theme-acrylic .search-input {
+  background: rgba(255, 255, 255, 0.18) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: #e8e8e8 !important;
+}
+
+body.dark-mode.theme-acrylic .search-input:focus {
+  background: rgba(255, 255, 255, 0.24) !important;
+  border-color: var(--accent-color) !important;
+}
+
+/* App path containers / Data panels */
+.theme-acrylic .data-panel {
+  background: rgba(255, 255, 255, 0.2) !important;
+  border: 1px solid rgba(128, 128, 128, 0.2) !important;
+  box-shadow: none !important;
+  border-radius: 8px !important;
+  font-family: var(--font-mono) !important;
+  font-weight: 500 !important;
+  color: var(--text-primary) !important;
+}
+
+@media (prefers-color-scheme: dark) {
+
+  body:not(.light-mode).theme-acrylic .data-panel {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: #e8e8e8 !important;
+  }
+}
+
+body.dark-mode.theme-acrylic .data-panel {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: #e8e8e8 !important;
+}
+
+/* Buttons - exclude compact mode */
+.theme-acrylic .btn-icon:not(.compact .btn-icon),
+body:not(.compact-mode) .theme-acrylic .btn-icon {
+  border-radius: 6px !important;
+  border: 1px solid rgba(128, 128, 128, 0.2) !important;
+  background: rgba(255, 255, 255, 0.4) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+  transition: all 0.2s !important;
+  transform: none !important;
+  color: var(--text-primary) !important;
+}
+
+.theme-acrylic .btn-icon:not(.compact .btn-icon):hover,
+body:not(.compact-mode) .theme-acrylic .btn-icon:hover {
+  background: rgba(255, 255, 255, 0.7) !important;
+  border-color: rgba(128, 128, 128, 0.4) !important;
+}
+
+.theme-acrylic .btn-icon:not(.compact .btn-icon).active,
+body:not(.compact-mode) .theme-acrylic .btn-icon.active {
+  background: var(--accent-color) !important;
+  color: #ffffff !important;
+  border-color: var(--accent-color) !important;
+  box-shadow: 0 4px 12px rgba(72, 123, 219, 0.3) !important;
+}
+
+@media (prefers-color-scheme: dark) {
+
+  body:not(.light-mode).theme-acrylic .btn-icon:not(.compact .btn-icon),
+  body:not(.light-mode):not(.compact-mode).theme-acrylic .btn-icon {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    color: #e8e8e8 !important;
+  }
+
+  body:not(.light-mode).theme-acrylic .btn-icon:not(.compact .btn-icon):hover,
+  body:not(.light-mode):not(.compact-mode).theme-acrylic .btn-icon:hover {
+    background: rgba(255, 255, 255, 0.12) !important;
+    border-color: rgba(255, 255, 255, 0.2) !important;
+  }
+
+  body:not(.light-mode).theme-acrylic .btn-icon:not(.compact .btn-icon).active,
+  body:not(.light-mode):not(.compact-mode).theme-acrylic .btn-icon.active {
+    background: var(--accent-color) !important;
+    color: #ffffff !important;
+    border-color: var(--accent-color) !important;
+  }
+}
+
+body.dark-mode.theme-acrylic .btn-icon:not(.compact .btn-icon),
+body.dark-mode:not(.compact-mode).theme-acrylic .btn-icon {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  color: #e8e8e8 !important;
+}
+
+body.dark-mode.theme-acrylic .btn-icon:not(.compact .btn-icon):hover,
+body.dark-mode:not(.compact-mode).theme-acrylic .btn-icon:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+body.dark-mode.theme-acrylic .btn-icon:not(.compact .btn-icon).active,
+body.dark-mode:not(.compact-mode).theme-acrylic .btn-icon.active {
+  background: var(--accent-color) !important;
+  color: #ffffff !important;
+  border-color: var(--accent-color) !important;
+}
+
+/* Modern Key Caps */
+.theme-acrylic .key-cap {
+  background-color: rgba(255, 255, 255, 0.6) !important;
+  border: 1px solid rgba(128, 128, 128, 0.3) !important;
+  border-bottom-width: 1px !important;
+  border-radius: 4px !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+  font-family: inherit !important;
+  font-weight: 600 !important;
+  height: 2em !important;
+}
+
+/* Modern Overrides for Modal */
+.theme-acrylic .modal-overlay {
+  backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.theme-acrylic .modal-content {
+  background: rgba(255, 255, 255, 0.8) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.2) !important;
+  border-radius: 16px !important;
+  max-width: 500px;
+  /* backdrop-filter removed for performance */
+}
+
+/* Use app color mode instead of system preference */
+:root.dark-mode .theme-acrylic .modal-content {
+  background: rgba(30, 30, 30, 0.8) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.theme-acrylic .modal-title {
+  background: transparent !important;
+  color: var(--text-primary) !important;
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  text-transform: none !important;
+  padding: 0 !important;
+}
+
+.theme-acrylic .selector-container {
+  border: none !important;
+  background: transparent !important;
+  padding: 0 !important;
+}
+
+/* Modern theme overrides for confirm dialog */
+.theme-acrylic .confirm-dialog {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  border-radius: 12px;
+}
+
+@media (prefers-color-scheme: dark) {
+
+  /* Fix for when theme class is on body */
+  :root:not(.light-mode) .theme-acrylic .confirm-dialog,
+  /* Fix for when theme class is on dialog itself */
+  :root:not(.light-mode) .confirm-dialog.theme-acrylic {
+    background: rgba(30, 30, 30, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  }
+}
+
+/* Dark mode when theme class is on body */
+:root.dark-mode .theme-acrylic .confirm-dialog {
+  background: rgba(30, 30, 30, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+/* Dark mode when theme class is on the dialog element itself */
+:root.dark-mode .confirm-dialog.theme-acrylic {
+  background: rgba(30, 30, 30, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.theme-acrylic .confirm-dialog-button {
+  border: 1px solid rgba(128, 128, 128, 0.2);
+  background: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  border-radius: 6px;
+  transform: none;
+  font-weight: 600;
+  text-transform: none;
+}
+
+@media (prefers-color-scheme: dark) {
+
+  /* Fix for buttons */
+  :root:not(.light-mode) .theme-acrylic .confirm-dialog-button,
+  :root:not(.light-mode) .confirm-dialog.theme-acrylic .confirm-dialog-button {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: #ededed;
+  }
+}
+
+:root.dark-mode.theme-acrylic .confirm-dialog-button {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #ededed;
+}
+
+:root.dark-mode .theme-acrylic .confirm-dialog-button {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #ededed;
+}
+
+:root.dark-mode .confirm-dialog.theme-acrylic .confirm-dialog-button {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #ededed;
+}
+
+.theme-acrylic .confirm-dialog-button:hover {
+  background: rgba(255, 255, 255, 0.8);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+
+  :root:not(.light-mode).theme-acrylic .confirm-dialog-button:hover {
+    background: rgba(255, 255, 255, 0.15);
+  }
+}
+
+:root.dark-mode.theme-acrylic .confirm-dialog-button:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+:root.dark-mode .theme-acrylic .confirm-dialog-button:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+:root.dark-mode .confirm-dialog.theme-acrylic .confirm-dialog-button:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.theme-acrylic .confirm-dialog-button:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+.theme-acrylic .confirm-dialog-button.primary {
+  background: var(--accent-color);
+  color: #fff;
+  border: none;
+}
+
+.theme-acrylic .confirm-dialog-button.primary:hover {
+  filter: brightness(1.1);
+  background: var(--accent-color);
+}
+
+/* Modern Scrollbars */
+.theme-acrylic ::-webkit-scrollbar {
+  width: 10px !important;
+  background: transparent !important;
+}
+
+.theme-acrylic ::-webkit-scrollbar-thumb {
+  background-color: rgba(128, 128, 128, 0.15) !important;
+  border: 3.5px solid transparent !important;
+  background-clip: padding-box !important;
+  border-radius: 10px !important;
+}
+
+/* Modern Theme Overrides */
+.theme-acrylic .file-transfer-panel {
+  background: rgba(255, 255, 255, 0.4) !important;
+  border: 1px solid rgba(128, 128, 128, 0.2) !important;
+  box-shadow: none !important;
+  border-radius: 12px !important;
+  padding: 16px !important;
+}
+
+/* Emoji Panel - subtle rounding in modern themes */
+.theme-acrylic .emoji-btn,
+.theme-acrylic .emoji-fav-preview,
+.theme-acrylic .emoji-fav-add {
+  border-radius: 6px;
+}
+
+.theme-acrylic .qr-container {
+  border: none !important;
+  background: #fff !important;
+  border-radius: 8px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
+}
+
+.theme-acrylic .qr-label {
+  color: #666;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.theme-acrylic .scan-title {
+  font-family: inherit !important;
+  border-bottom: none !important;
+  font-size: 13px !important;
+}
+
+.theme-acrylic .info-value {
+  font-family: inherit !important;
+}
+
+.theme-acrylic .open-browser-btn {
+  background: var(--accent-color) !important;
+  color: #fff !important;
+  border-radius: 6px !important;
+  font-family: inherit !important;
+  margin-top: 10px !important;
+  padding: 6px !important;
+  font-weight: 500 !important;
+  box-shadow: 0 2px 4px rgba(72, 123, 219, 0.2) !important;
+}
+
+@media (prefers-color-scheme: dark) {
+
+  body:not(.light-mode).theme-acrylic .file-transfer-panel {
+    background: rgba(0, 0, 0, 0.2) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  }
+
+  body:not(.light-mode).theme-acrylic .qr-container {
+    background: #fff !important;
+  }
+}
+
+.theme-acrylic ::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(128, 128, 128, 0.4) !important;
+  border: 1px solid transparent !important;
+}
+
+/* Theme Overrides for Web Transfer Interface */
+/* Mica / Acrylic Shared Adjustments */
+.theme-acrylic .wt-chat-view {
+  background-color: transparent !important;
+  font-family: var(--font-main);
+}
+
+.theme-acrylic .wt-chat-box {
+  background-color: transparent !important;
+  background-image: none !important;
+  padding: 16px;
+  gap: 16px;
+}
+
+.theme-acrylic .wt-avatar {
+  border: 1px solid rgba(128, 128, 128, 0.2) !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+  border-radius: 50% !important;
+}
+
+@media (prefers-color-scheme: dark) {
+
+  body:not(.light-mode).theme-acrylic .wt-avatar {
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5) !important;
+  }
+}
+
+body.dark-mode.theme-acrylic .wt-avatar {
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5) !important;
+}
+
+.theme-acrylic .wt-bubble {
+  border: 1px solid rgba(128, 128, 128, 0.2) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+  border-radius: 12px !important;
+  background: rgba(255, 255, 255, 0.6) !important;
+  color: var(--text-primary) !important;
+}
+
+@media (prefers-color-scheme: dark) {
+
+  body:not(.light-mode).theme-acrylic .wt-bubble {
+    background: linear-gradient(135deg, rgba(50, 50, 50, 0.7) 0%, rgba(40, 40, 40, 0.7) 100%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+    color: #e8e8e8 !important;
+  }
+}
+
+body.dark-mode.theme-acrylic .wt-bubble {
+  background: linear-gradient(135deg, rgba(50, 50, 50, 0.7) 0%, rgba(40, 40, 40, 0.7) 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+  color: #e8e8e8 !important;
+}
+
+.theme-acrylic .wt-message.sent .wt-bubble {
+  background: var(--accent-color) !important;
+  color: #fff !important;
+  border: none !important;
+}
+
+.theme-acrylic .wt-footer {
+  background: transparent !important;
+  border-top: 1px solid rgba(128, 128, 128, 0.15) !important;
+}
+
+@media (prefers-color-scheme: dark) {
+
+  body:not(.light-mode).theme-acrylic .wt-footer {
+    border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+  }
+}
+
+body.dark-mode.theme-acrylic .wt-footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.theme-acrylic .wt-input {
+  border: 1px solid rgba(128, 128, 128, 0.2) !important;
+  border-radius: 8px !important;
+  background: rgba(255, 255, 255, 0.5) !important;
+  box-shadow: none !important;
+}
+
+@media (prefers-color-scheme: dark) {
+
+  body:not(.light-mode).theme-acrylic .wt-input {
+    background: rgba(255, 255, 255, 0.06) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    color: #e8e8e8 !important;
+  }
+
+  body:not(.light-mode).theme-acrylic .wt-input:focus {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-color: rgba(255, 255, 255, 0.2) !important;
+  }
+}
+
+body.dark-mode.theme-acrylic .wt-input {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  color: #e8e8e8 !important;
+}
+
+body.dark-mode.theme-acrylic .wt-input:focus {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+.theme-acrylic .wt-btn {
+  border: 1px solid rgba(128, 128, 128, 0.2) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+  background: rgba(255, 255, 255, 0.5) !important;
+  transform: none !important;
+}
+
+@media (prefers-color-scheme: dark) {
+
+  body:not(.light-mode).theme-acrylic .wt-btn {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    color: #e8e8e8 !important;
+  }
+
+  body:not(.light-mode).theme-acrylic .wt-btn:hover {
+    background: rgba(255, 255, 255, 0.15) !important;
+  }
+}
+
+body.dark-mode.theme-acrylic .wt-btn {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  color: #e8e8e8 !important;
+}
+
+body.dark-mode.theme-acrylic .wt-btn:hover {
+  background: rgba(255, 255, 255, 0.15) !important;
+}
+
+.theme-acrylic .wt-btn.send {
+  background: var(--accent-color) !important;
+  color: #fff !important;
+  border: none !important;
+}
+
+/* Theme Overrides for Header */
+.theme-acrylic .wt-header {
+  background: transparent !important;
+  border-bottom: 1px solid rgba(128, 128, 128, 0.15) !important;
+}
+
+.theme-acrylic .wt-info-panel {
+  background: rgba(255, 255, 255, 0.5) !important;
+  border: 1px solid rgba(128, 128, 128, 0.2) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
+  border-radius: 12px;
+}
+
+@media (prefers-color-scheme: dark) {
+
+  body:not(.light-mode).theme-acrylic .wt-info-panel {
+    background: rgba(255, 255, 255, 0.05) !important;
+  }
+}
+
+.theme-acrylic .wt-qr-container {
+  border: none;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.theme-acrylic .wt-info-label {
+  color: var(--text-primary);
+  opacity: 0.6;
+}
+
+.theme-acrylic .context-item:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+@media (prefers-color-scheme: dark) {
+
+  body:not(.light-mode).theme-acrylic .context-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+}
+
+/* Context Menu Container Theme Overrides */
+.theme-acrylic .wt-context-menu {
+  background: rgba(255, 255, 255, 0.85) !important;
+  border: 1px solid rgba(128, 128, 128, 0.2) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15) !important;
+  backdrop-filter: blur(12px) !important;
+  border-radius: 8px !important;
+}
+
+@media (prefers-color-scheme: dark) {
+
+  body:not(.light-mode).theme-acrylic .wt-context-menu {
+    background: rgba(40, 40, 40, 0.85) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3) !important;
+  }
+}
+
+body.dark-mode.theme-acrylic .wt-context-menu {
+  background: rgba(40, 40, 40, 0.85) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Mica / Acrylic Scrollbar Overrides */
+.theme-acrylic .wt-chat-box::-webkit-scrollbar {
+  width: 6px;
+}
+
+.theme-acrylic .wt-chat-box::-webkit-scrollbar-track {
+  border: none;
+  background: transparent;
+}
+
+.theme-acrylic .wt-chat-box::-webkit-scrollbar-thumb {
+  background: rgba(128, 128, 128, 0.3);
+  border: none;
+  border-radius: 3px;
+}
+
+.theme-acrylic .wt-chat-box::-webkit-scrollbar-thumb:hover {
+  background: rgba(128, 128, 128, 0.5);
+}
+
+@media (prefers-color-scheme: dark) {
+
+  body:not(.light-mode).theme-acrylic .wt-chat-box::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+  }
+
+  body:not(.light-mode).theme-acrylic .wt-chat-box::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.4);
+  }
+}
+
+.theme-acrylic .wt-chat-box {
+  background-image: none;
+  background: transparent;
+}
+
+.theme-acrylic .wt-avatar {
+  border-radius: 10px;
+  border-width: 1px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  background: var(--accent-color);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Modern Theme Tails - Nuclear Option */
+.theme-acrylic .wt-message.received .wt-bubble::before {
+  content: none !important;
+  display: none !important;
+  border: none !important;
+}
+
+.theme-acrylic .wt-message.received .wt-bubble::after {
+  content: "" !important;
+  position: absolute !important;
+  bottom: 8px !important;
+  left: -4px !important;
+  right: auto !important;
+  width: 0 !important;
+  height: 0 !important;
+  border-width: 4px 5px 4px 0 !important;
+  border-style: solid !important;
+  border-color: transparent rgba(255, 255, 255, 0.75) transparent transparent !important;
+}
+
+@media (prefers-color-scheme: dark) {
+
+  body:not(.light-mode).theme-acrylic .wt-message.received .wt-bubble::after {
+    border-color: transparent rgba(45, 45, 45, 0.8) transparent transparent !important;
+  }
+}
+
+/* Manual Dark Mode Overrides for Tails */
+body.dark-mode.theme-acrylic .wt-message.received .wt-bubble::before {
+  content: none !important;
+  display: none !important;
+}
+
+body.dark-mode.theme-acrylic .wt-message.received .wt-bubble::after {
+  border-color: transparent rgba(45, 45, 45, 0.8) transparent transparent !important;
+}
+
+body.dark-mode.theme-acrylic .wt-message.received .wt-bubble {
+  background: rgba(45, 45, 45, 0.8) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.theme-acrylic .wt-message.sent .wt-bubble::before {
+  display: none;
+  /* No border in modern sent bubbles */
+}
+
+.theme-acrylic .wt-message.sent .wt-bubble::after {
+  right: -4px;
+  border-left-color: var(--accent-color);
+}
+
+/* Modern Theme Overrides */
+.theme-acrylic .wt-bubble {
+  border-radius: 16px;
+  border-width: 1px;
+  border-color: rgba(128, 128, 128, 0.15);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+  border-color: rgba(128, 128, 128, 0.15);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+  /* backdrop-filter removed for performance */
+}
+
+.theme-acrylic .wt-bubble:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.theme-acrylic .wt-message.received .wt-bubble {
+  background: rgba(255, 255, 255, 0.75);
+}
+
+@media (prefers-color-scheme: dark) {
+
+  body:not(.light-mode).theme-acrylic .wt-message.received .wt-bubble {
+    background: rgba(45, 45, 45, 0.8);
+  }
+}
+
+/* Modern Theme Adjustments for Reset Button */
+.theme-acrylic .reset-btn {
+  background: rgba(255, 59, 48, 0.1) !important;
+  color: #ff3b30 !important;
+  border: 1px solid rgba(255, 59, 48, 0.2) !important;
+  border-radius: 8px !important;
+  box-shadow: none !important;
+  font-family: var(--font-main) !important;
+  text-transform: none !important;
+  font-weight: 600 !important;
+  letter-spacing: normal !important;
+  transition: all 0.2s !important;
+}
+
+.theme-acrylic .reset-btn:hover {
+  background: rgba(255, 59, 48, 0.15) !important;
+  transform: none !important;
+  box-shadow: 0 2px 8px rgba(255, 59, 48, 0.15) !important;
+}
+
+.theme-acrylic .reset-btn:active {
+  transform: scale(0.98) !important;
+  box-shadow: none !important;
+}
+
+/* Modern Theme Adjustments for Settings Groups */
+.theme-acrylic .settings-group {
+  background: rgba(255, 255, 255, 0.5) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03) !important;
+  margin-bottom: 12px !important;
+  overflow: hidden !important;
+}
+
+.theme-acrylic .settings-group .group-header {
+  padding: 12px 16px !important;
+  background: transparent !important;
+  height: auto !important;
+  margin-bottom: 0 !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  cursor: pointer !important;
+  pointer-events: auto !important;
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+}
+
+/* Hide header border when collapsed or if it's the only element */
+.theme-acrylic .settings-group:not(.collapsed) .group-header {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.theme-acrylic .settings-group.collapsed .group-header {
+  border-bottom: none;
+}
+
+.theme-acrylic .settings-group h3 {
+  position: static !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  color: var(--text-primary) !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+  pointer-events: none !important;
+}
+
+/* Re-enable chevron for modern themes */
+.theme-acrylic .settings-group .group-header svg {
+  display: block !important;
+  color: var(--text-secondary);
+  opacity: 0.7;
+}
+
+.theme-acrylic .settings-group .group-content {
+  padding: 4px 16px 16px 16px !important;
+  border-top: none !important;
+}
+
+/* Modern Theme Range Slider */
+.theme-acrylic .settings-view input[type="range"] {
+  height: 8px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.theme-acrylic .settings-view input[type="range"]::-webkit-slider-runnable-track {
+  height: 8px;
+  border-radius: 999px;
+  background:
+    linear-gradient(var(--accent-color), var(--accent-color)) 0/ var(--range-progress, 0%) 100% no-repeat,
+    rgba(255, 255, 255, 0.35);
+  border: 1px solid rgba(128, 128, 128, 0.2);
+  box-shadow: none;
+}
+
+.theme-acrylic .settings-view input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: -5px;
+  border-radius: 50%;
+  background: var(--accent-color);
+  border: 2px solid rgba(255, 255, 255, 0.7);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.theme-acrylic .settings-view input[type="range"]::-moz-range-track {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.35);
+  border: 1px solid rgba(128, 128, 128, 0.2);
+  box-shadow: none;
+}
+
+.theme-acrylic .settings-view input[type="range"]::-moz-range-progress {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--accent-color);
+}
+
+.theme-acrylic .settings-view input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent-color);
+  border: 2px solid rgba(255, 255, 255, 0.7);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+@media (prefers-color-scheme: dark) {
+
+  body:not(.light-mode).theme-acrylic .settings-view input[type="range"]::-webkit-slider-runnable-track {
+    background:
+      linear-gradient(var(--accent-color), var(--accent-color)) 0/ var(--range-progress, 0%) 100% no-repeat,
+      rgba(255, 255, 255, 0.14);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+
+  body:not(.light-mode).theme-acrylic .settings-view input[type="range"]::-moz-range-track {
+    background: rgba(255, 255, 255, 0.14);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+
+  body:not(.light-mode).theme-acrylic .settings-view input[type="range"]::-moz-range-progress {
+    background: var(--accent-color);
+  }
+
+  body:not(.light-mode).theme-acrylic .settings-view input[type="range"]::-webkit-slider-thumb,
+  body:not(.light-mode).theme-acrylic .settings-view input[type="range"]::-moz-range-thumb {
+    border-color: rgba(255, 255, 255, 0.5);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+  }
+}
+
+body.dark-mode.theme-acrylic .settings-view input[type="range"]::-webkit-slider-runnable-track {
+  background:
+    linear-gradient(var(--accent-color), var(--accent-color)) 0/ var(--range-progress, 0%) 100% no-repeat,
+    rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+body.dark-mode.theme-acrylic .settings-view input[type="range"]::-moz-range-track {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+body.dark-mode.theme-acrylic .settings-view input[type="range"]::-moz-range-progress {
+  background: var(--accent-color);
+}
+
+body.dark-mode.theme-acrylic .settings-view input[type="range"]::-webkit-slider-thumb,
+body.dark-mode.theme-acrylic .settings-view input[type="range"]::-moz-range-thumb {
+  border-color: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+}
+
+.theme-acrylic .setting-item {
+  border-bottom-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+.theme-acrylic .segmented-control {
+  background: rgba(128, 128, 128, 0.08) !important;
+  border: 1px solid rgba(128, 128, 128, 0.1) !important;
+  border-radius: 8px !important;
+  padding: 3px !important;
+  box-shadow: none !important;
+  margin-bottom: 4px;
+}
+
+.theme-acrylic .segment-btn {
+  border-radius: 6px !important;
+  color: var(--text-secondary) !important;
+  font-weight: 500 !important;
+  text-transform: none !important;
+  font-size: 13px !important;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.theme-acrylic .segment-btn:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: var(--text-primary) !important;
+}
+
+.theme-acrylic .segment-btn.active {
+  background: rgba(255, 255, 255, 0.8) !important;
+  color: #000 !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+}
+
+body.dark-mode.theme-acrylic .segment-btn.active {
+  background: rgba(255, 255, 255, 0.15) !important;
+  color: #fff !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
+}
+
+@media (prefers-color-scheme: dark) {
+
+  body:not(.light-mode).theme-acrylic .settings-group {
+    background: rgba(30, 30, 30, 0.4) !important;
+    border: 1px solid rgba(255, 255, 255, 0.05) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+  }
+
+  body:not(.light-mode).theme-acrylic .settings-group .group-header {
+    border-bottom-color: rgba(255, 255, 255, 0.05);
+  }
+
+  body:not(.light-mode).theme-acrylic .setting-item {
+    border-bottom-color: rgba(255, 255, 255, 0.05) !important;
+  }
+}
+
+.theme-acrylic {
+  --bg-panel-translucent: rgb(255, 255, 255);
+  --bg-panel-opaque: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+
+  body:not(.light-mode).theme-acrylic {
+    --bg-panel-translucent: rgb(30, 30, 30);
+    --bg-panel-opaque: #1e1e1e;
+  }
+}
+
+.theme-acrylic .tags-dropdown {
+  background: rgba(255, 255, 255, 0.75) !important;
+  border: 1px solid rgba(128, 128, 128, 0.2) !important;
+  box-shadow: none !important;
+  border-radius: 10px !important;
+}
+
+.theme-acrylic .search-input.dropdown-open {
+  border-radius: 10px !important;
+}
+
+.theme-acrylic .tag-chip {
+  border: none !important;
+  border-radius: 12px !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+  padding: 2px 8px !important;
+  font-size: var(--clipboard-tag-font-size) !important;
+}
+
+.theme-acrylic .tag-chip:hover {
+  transform: none;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15) !important;
+}
+
+.theme-acrylic .tag-chip:active {
+  transform: scale(0.95);
+  box-shadow: none !important;
+}
+
+@media (prefers-color-scheme: dark) {
+
+  body:not(.light-mode).theme-acrylic .tags-dropdown {
+    background: rgba(255, 255, 255, 0.18) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  }
+}
+
+.dark-mode .queue-bar,
+.theme-acrylic.dark-mode .queue-bar {
+  background: #1a1a1a !important;
+  border-color: #000;
+  box-shadow: 8px 8px 0 #000;
+}
+
+.theme-acrylic .history-item.selected {
+  background: rgba(255, 255, 255, 0.85) !important;
+}
+
+@media (prefers-color-scheme: dark) {
+
+  body:not(.light-mode) .theme-acrylic .history-item.selected {
+    background: rgba(45, 45, 45, 0.8) !important;
+  }
+}
+
+/* ---- Mica vs Acrylic separation + acrylic fallback blur (no custom background) ---- */
+body.theme-acrylic #root {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background: rgba(248, 248, 248, calc(0.9 * var(--surface-opacity-scale, 1))) !important;
+}
+
+body.theme-acrylic #root {
+  position: relative;
+  overflow: hidden;
+  background: rgba(252, 252, 252, calc(0.62 * var(--surface-opacity-scale, 1))) !important;
+  backdrop-filter: blur(28px) saturate(185%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(185%) !important;
+  box-shadow: 0 10px 38px rgba(0, 0, 0, 0.16) !important;
+}
+
+body.theme-acrylic #root::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: 8px;
+  background:
+    radial-gradient(140% 110% at 0% 0%, rgba(255, 255, 255, 0.24) 0%, rgba(255, 255, 255, 0.03) 60%, transparent 100%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.03) 100%);
+}
+
+body.theme-acrylic #root>* {
+  position: relative;
+  z-index: 1;
+}
+
+/* No custom image: provide subtle backdrop texture so acrylic blur stays perceivable */
+body.theme-acrylic:not(.has-custom-bg)::before {
+  background-image:
+    radial-gradient(120% 120% at 8% 8%, rgba(255, 255, 255, 0.32) 0%, rgba(255, 255, 255, 0.08) 52%, rgba(255, 255, 255, 0.02) 100%),
+    linear-gradient(160deg, rgba(170, 190, 220, 0.12) 0%, rgba(210, 220, 236, 0.06) 45%, rgba(180, 195, 215, 0.11) 100%);
+  opacity: 0.42;
+}
+
+body.theme-acrylic:not(.has-custom-bg)::before {
+  background-image:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.04) 100%);
+  opacity: 0.2;
+}
+
+@media (prefers-color-scheme: dark) {
+  body:not(.light-mode).theme-acrylic #root {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background: rgba(24, 24, 24, calc(0.82 * var(--surface-opacity-scale, 1))) !important;
+  }
+
+  body:not(.light-mode).theme-acrylic #root {
+    background: rgba(20, 20, 20, calc(0.52 * var(--surface-opacity-scale, 1))) !important;
+    backdrop-filter: blur(30px) saturate(145%) !important;
+    -webkit-backdrop-filter: blur(30px) saturate(145%) !important;
+  }
+
+  body:not(.light-mode).theme-acrylic #root::before {
+    background:
+      radial-gradient(140% 120% at 0% 0%, rgba(255, 255, 255, 0.09) 0%, rgba(255, 255, 255, 0.02) 55%, transparent 100%),
+      linear-gradient(160deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%);
+  }
+
+  body:not(.light-mode).theme-acrylic:not(.has-custom-bg)::before {
+    background-image:
+      radial-gradient(120% 120% at 10% 8%, rgba(120, 138, 164, 0.2) 0%, rgba(74, 86, 108, 0.08) 48%, rgba(48, 56, 72, 0.18) 100%),
+      linear-gradient(150deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0.07) 100%);
+    opacity: 0.5;
+  }
+
+  body:not(.light-mode).theme-acrylic:not(.has-custom-bg)::before {
+    background-image:
+      linear-gradient(150deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.015) 100%);
+    opacity: 0.16;
+  }
+}
+
+body.dark-mode.theme-acrylic #root {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background: rgba(24, 24, 24, calc(0.82 * var(--surface-opacity-scale, 1))) !important;
+}
+
+body.dark-mode.theme-acrylic #root {
+  background: rgba(20, 20, 20, calc(0.52 * var(--surface-opacity-scale, 1))) !important;
+  backdrop-filter: blur(30px) saturate(145%) !important;
+  -webkit-backdrop-filter: blur(30px) saturate(145%) !important;
+}
+
+body.windows-10.theme-acrylic #root,
+body.windows-10.dark-mode.theme-acrylic #root,
+body.windows-10:not(.light-mode).theme-acrylic #root {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Compact preview is a standalone floating window.
+   Do not apply mica/acrylic app-shell layers to its #root. */
+body.compact-preview.theme-acrylic #root,
+body.theme-acrylic.compact-preview #root,
+body.dark-mode.compact-preview.theme-acrylic #root {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+body.compact-preview.theme-acrylic #root::before,
+body.theme-acrylic.compact-preview #root::before,
+body.dark-mode.compact-preview.theme-acrylic #root::before {
+  content: none !important;
+  display: none !important;
+  background: none !important;
+}
+
+body.compact-preview.theme-acrylic #root>*,
+body.theme-acrylic.compact-preview #root>*,
+body.dark-mode.compact-preview.theme-acrylic #root>* {
+  position: static !important;
+  z-index: auto !important;
+}
+
+

@@ -6,7 +6,9 @@ use crate::infrastructure::repository::clipboard_repo::ClipboardRepository;
 use crate::error::AppError;
 use base64::{engine::general_purpose, Engine as _};
 use std::io::Read;
+use std::collections::HashMap;
 use std::process::Command;
+use std::sync::{mpsc, OnceLock};
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
 use tauri::{Emitter, Manager, State};
@@ -310,41 +312,103 @@ fn launch_with_default_app(
     Ok(())
 }
 
+struct WatchEntry {
+    app_handle: tauri::AppHandle,
+    file_path: std::path::PathBuf,
+    content_type: String,
+    id: i64,
+    last_mtime: Option<std::time::SystemTime>,
+    start_time: std::time::Instant,
+}
+
+enum FileWatcherCommand {
+    Watch {
+        app_handle: tauri::AppHandle,
+        file_path: std::path::PathBuf,
+        content_type: String,
+        id: i64,
+    },
+}
+
+fn watcher_sender() -> &'static mpsc::Sender<FileWatcherCommand> {
+    static WATCHER_SENDER: OnceLock<mpsc::Sender<FileWatcherCommand>> = OnceLock::new();
+    WATCHER_SENDER.get_or_init(|| {
+        let (tx, rx) = mpsc::channel::<FileWatcherCommand>();
+        let _ = std::thread::Builder::new()
+            .name("content-file-watcher".to_string())
+            .spawn(move || run_file_watcher_loop(rx));
+        tx
+    })
+}
+
+fn run_file_watcher_loop(rx: mpsc::Receiver<FileWatcherCommand>) {
+    let mut watchers: HashMap<String, WatchEntry> = HashMap::new();
+    loop {
+        match rx.recv_timeout(std::time::Duration::from_secs(2)) {
+            Ok(FileWatcherCommand::Watch { app_handle, file_path, content_type, id }) => {
+                let key = file_path.to_string_lossy().to_string();
+                let last_mtime = std::fs::metadata(&file_path)
+                    .ok()
+                    .and_then(|m| m.modified().ok());
+                watchers.insert(
+                    key,
+                    WatchEntry {
+                        app_handle,
+                        file_path,
+                        content_type,
+                        id,
+                        last_mtime,
+                        start_time: std::time::Instant::now(),
+                    },
+                );
+            }
+            Err(mpsc::RecvTimeoutError::Timeout) => {}
+            Err(mpsc::RecvTimeoutError::Disconnected) => break,
+        }
+
+        if watchers.is_empty() {
+            continue;
+        }
+
+        let mut remove_keys = Vec::new();
+        for (key, entry) in watchers.iter_mut() {
+            if entry.start_time.elapsed().as_secs() >= 3600 {
+                remove_keys.push(key.clone());
+                continue;
+            }
+            if !entry.file_path.exists() {
+                remove_keys.push(key.clone());
+                continue;
+            }
+            let current_mtime = std::fs::metadata(&entry.file_path)
+                .ok()
+                .and_then(|m| m.modified().ok());
+            if current_mtime != entry.last_mtime {
+                entry.last_mtime = current_mtime;
+                if let Some((new_content, preview)) =
+                    read_changed_file(&entry.file_path, &entry.content_type)
+                {
+                    update_database_with_changes(&entry.app_handle, entry.id, &new_content, &preview);
+                }
+            }
+        }
+        for key in remove_keys {
+            watchers.remove(&key);
+        }
+    }
+}
+
 fn start_file_watcher(
     app_handle: tauri::AppHandle,
     file_path: std::path::PathBuf,
     content_type: String,
     id: i64,
 ) {
-    std::thread::spawn(move || {
-        let mut last_mtime = std::fs::metadata(&file_path)
-            .ok()
-            .and_then(|m| m.modified().ok());
-        let start_time = std::time::Instant::now();
-
-        // Monitor for 1 hour or until file deleted
-        while start_time.elapsed().as_secs() < 3600 {
-            std::thread::sleep(std::time::Duration::from_secs(2));
-
-            if !file_path.exists() {
-                break;
-            }
-
-            let current_mtime = std::fs::metadata(&file_path)
-                .ok()
-                .and_then(|m| m.modified().ok());
-
-            if current_mtime != last_mtime {
-                last_mtime = current_mtime;
-                println!("File changed detected: {:?}", file_path);
-
-                if let Some((new_content, preview)) =
-                    read_changed_file(&file_path, &content_type)
-                {
-                    update_database_with_changes(&app_handle, id, &new_content, &preview);
-                }
-            }
-        }
+    let _ = watcher_sender().send(FileWatcherCommand::Watch {
+        app_handle,
+        file_path,
+        content_type,
+        id,
     });
 }
 

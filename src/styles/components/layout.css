@@ -26,6 +26,10 @@ header {
   color: var(--bg-window);
   padding: 4px 8px;
   font-size: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: min(50vw, 320px);
 }
 
 /* Mechanical Input Field */

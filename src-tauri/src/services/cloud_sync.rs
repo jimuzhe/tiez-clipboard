@@ -167,6 +167,16 @@ fn now_ms() -> i64 {
         .as_millis() as i64
 }
 
+fn webdav_href_regex() -> &'static Regex {
+    static RE: OnceLock<Regex> = OnceLock::new();
+    RE.get_or_init(|| Regex::new(r"(?is)<[^>]*href[^>]*>\s*([^<]+)\s*</[^>]*href>").expect("valid href regex"))
+}
+
+fn webdav_op_file_regex() -> &'static Regex {
+    static RE: OnceLock<Regex> = OnceLock::new();
+    RE.get_or_init(|| Regex::new(r"^(.+)__(\d+)\.json$").expect("valid op filename regex"))
+}
+
 fn status_store() -> &'static Mutex<CloudSyncStatus> {
     static STORE: OnceLock<Mutex<CloudSyncStatus>> = OnceLock::new();
     STORE.get_or_init(|| {
@@ -891,12 +901,12 @@ fn apply_remote_changes(app: &AppHandle, remote_items: &[CloudSyncItem]) -> AppR
         .try_state::<DbState>()
         .ok_or_else(|| AppError::Internal("DB state unavailable".to_string()))?;
     let app_data_dir = get_app_data_dir(app);
+    let conn = db_state
+        .conn
+        .lock()
+        .map_err(|e| AppError::Internal(e.to_string()))?;
 
     for item in normal_items {
-        let conn = db_state
-            .conn
-            .lock()
-            .map_err(|e| AppError::Internal(e.to_string()))?;
         let effective_timestamp = if item.timestamp > 0 {
             item.timestamp
         } else {
@@ -1219,12 +1229,8 @@ async fn ensure_webdav_directories(client: &Client, cfg: &CloudSyncConfig) -> Ap
 }
 
 fn parse_webdav_snapshot_ids(xml: &str) -> Vec<String> {
-    let Ok(re) = Regex::new(r"(?is)<[^>]*href[^>]*>\s*([^<]+)\s*</[^>]*href>") else {
-        return Vec::new();
-    };
-
     let mut ids = Vec::new();
-    for caps in re.captures_iter(xml) {
+    for caps in webdav_href_regex().captures_iter(xml) {
         let Some(raw_match) = caps.get(1) else {
             continue;
         };
@@ -1418,15 +1424,8 @@ async fn upload_webdav_ops_batch(
 }
 
 fn parse_webdav_op_refs(xml: &str) -> Vec<WebDavOpRef> {
-    let Ok(re_href) = Regex::new(r"(?is)<[^>]*href[^>]*>\s*([^<]+)\s*</[^>]*href>") else {
-        return Vec::new();
-    };
-    let Ok(re_file) = Regex::new(r"^(.+)__(\d+)\.json$") else {
-        return Vec::new();
-    };
-
     let mut refs: HashMap<String, WebDavOpRef> = HashMap::new();
-    for caps in re_href.captures_iter(xml) {
+    for caps in webdav_href_regex().captures_iter(xml) {
         let Some(raw_match) = caps.get(1) else {
             continue;
         };
@@ -1442,7 +1441,7 @@ fn parse_webdav_op_refs(xml: &str) -> Vec<WebDavOpRef> {
         let Some(file_name) = normalized.rsplit('/').next() else {
             continue;
         };
-        let Some(file_caps) = re_file.captures(file_name) else {
+        let Some(file_caps) = webdav_op_file_regex().captures(file_name) else {
             continue;
         };
         let Some(device_id_match) = file_caps.get(1) else {
@@ -1761,7 +1760,7 @@ fn should_pull_webdav_snapshot(
         // Cold-start fallback for new peers without op cursors yet.
         return should_run_periodic_snapshot(last, now, (5 * 60).min(snapshot_interval_secs));
     }
-    should_run_periodic_snapshot(last, now, snapshot_interval_secs)
+    should_run_periodic_snapshot(last, now, snapshot_interval_secs.saturating_mul(6))
 }
 
 async fn pull_remote_webdav_ops(
@@ -1893,8 +1892,9 @@ async fn sync_once_webdav(app: &AppHandle, cfg: &CloudSyncConfig) -> AppResult<C
 
     let cursor_map = load_webdav_op_cursor_map(app);
 
-    if should_pull_webdav_snapshot(app, now, !cursor_map.is_empty(), cfg.snapshot_interval_secs) {
-        let mut remote_items: Vec<CloudSyncItem> = Vec::new();
+    if received_items == 0
+        && should_pull_webdav_snapshot(app, now, !cursor_map.is_empty(), cfg.snapshot_interval_secs)
+    {
         let ids = list_webdav_snapshot_ids(&client, cfg, &paths.devices_path).await?;
         for device_id in ids.into_iter().take(MAX_REMOTE_SNAPSHOTS) {
             if crate::app::system::is_same_device_id(&device_id, &cfg.device_id) {
@@ -1903,11 +1903,9 @@ async fn sync_once_webdav(app: &AppHandle, cfg: &CloudSyncConfig) -> AppResult<C
             if let Some(snapshot) =
                 fetch_webdav_snapshot(&client, cfg, &paths.devices_path, &device_id).await?
             {
-                remote_items.extend(snapshot.entries);
+                received_items += apply_remote_changes(app, &snapshot.entries)?;
             }
         }
-        remote_items.sort_by_key(|item| item.timestamp);
-        received_items += apply_remote_changes(app, &remote_items)?;
 
         // Also pull remote settings when pulling snapshots
         let settings_changed = pull_remote_settings_snapshot(app, &client, cfg, &paths.settings_path).await?;

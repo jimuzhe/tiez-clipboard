@@ -3,6 +3,7 @@ use tauri::{AppHandle, Manager, Emitter};
 use std::time::Duration;
 use tokio::time::sleep;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
+use std::sync::mpsc;
 use crate::database::{DbState};
 use crate::infrastructure::repository::settings_repo::SettingsRepository;
 use std::collections::hash_map::DefaultHasher;
@@ -162,6 +163,37 @@ pub fn start_mqtt_client(app: AppHandle) {
     tauri::async_runtime::spawn(async move {
         let _guard = MqttTaskGuard;
         const MAX_RECONNECT_ATTEMPTS: u32 = 3;
+        let (clipboard_tx, clipboard_rx) = mpsc::sync_channel::<(AppHandle, String)>(512);
+        let _ = std::thread::Builder::new()
+            .name("mqtt-clipboard-worker".to_string())
+            .spawn(move || {
+                while let Ok((app_handle_for_clipboard, payload_owned)) = clipboard_rx.recv() {
+                    let normalized = payload_owned.trim().replace("\r\n", "\n");
+                    let mut hasher = DefaultHasher::new();
+                    normalized.hash(&mut hasher);
+                    let content_hash = hasher.finish();
+                    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs();
+                    LAST_APP_SET_HASH.store(content_hash, Ordering::SeqCst);
+                    LAST_APP_SET_TIMESTAMP.store(now, Ordering::SeqCst);
+                    if let Ok(mut clipboard) = arboard::Clipboard::new() {
+                        let mut attempts = 0;
+                        while attempts < 3 {
+                            if clipboard.set_text(payload_owned.clone()).is_err() {
+                                std::thread::sleep(std::time::Duration::from_millis(100));
+                                attempts += 1;
+                            } else {
+                                break;
+                            }
+                        }
+                    }
+                    crate::services::clipboard::process_new_entry(
+                        &app_handle_for_clipboard,
+                        crate::services::clipboard::ClipboardData::Text(payload_owned),
+                        Some("mqtt".to_string()),
+                        None,
+                    );
+                }
+            });
         
         loop {
             let config = get_mqtt_config(&app);
@@ -383,31 +415,9 @@ pub fn start_mqtt_client(app: AppHandle) {
                                                 payload_trimmed.to_string()
                                             };
 
-                                            let payload_owned = final_content.clone();
-                                            let app_handle_for_clipboard = app.clone();
-                                            
-                                            std::thread::spawn(move || {
-                                                let normalized = payload_owned.trim().replace("\r\n", "\n");
-                                                let mut hasher = DefaultHasher::new();
-                                                normalized.hash(&mut hasher);
-                                                let content_hash = hasher.finish();
-                                                let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs();
-                                                LAST_APP_SET_HASH.store(content_hash, Ordering::SeqCst);
-                                                LAST_APP_SET_TIMESTAMP.store(now, Ordering::SeqCst);
-                                                match arboard::Clipboard::new() {
-                                                    Ok(mut clipboard) => {
-                                                        let mut attempts = 0;
-                                                        while attempts < 3 {
-                                                            if let Err(_) = clipboard.set_text(payload_owned.clone()) {
-                                                                 std::thread::sleep(std::time::Duration::from_millis(100));
-                                                                attempts += 1;
-                                                            } else { break; }
-                                                        }
-                                                    },
-                                                    Err(_) => {}
-                                                }
-                                                crate::services::clipboard::process_new_entry(&app_handle_for_clipboard, crate::services::clipboard::ClipboardData::Text(payload_owned), Some("mqtt".to_string()), None);
-                                            });
+                                            if clipboard_tx.try_send((app.clone(), final_content.clone())).is_err() {
+                                                error!(">>> [MQTT] clipboard queue is full, drop one message");
+                                            }
 
                                             let _ = app.emit("mqtt-message", &final_content);
                                         }

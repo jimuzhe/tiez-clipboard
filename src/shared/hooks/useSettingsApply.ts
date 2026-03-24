@@ -8,6 +8,18 @@ type PlatformInfo = {
   is_windows_11: boolean;
 };
 
+const themeCssLoaders = import.meta.glob("../../styles/themes/*.css");
+const loadedThemes = new Set<string>();
+
+const ensureThemeCssLoaded = async (theme: string) => {
+  if (!theme || loadedThemes.has(theme)) return;
+  const path = `../../styles/themes/${theme}.css`;
+  const loader = themeCssLoaders[path];
+  if (!loader) return;
+  await loader();
+  loadedThemes.add(theme);
+};
+
 const clearThemeClasses = (element: HTMLElement) => {
   Array.from(element.classList)
     .filter(className => className.startsWith("theme-"))
@@ -68,6 +80,8 @@ export const useSettingsApply = ({
         applyExplicitMode(isDark ? "dark" : "light");
       }
     };
+
+    ensureThemeCssLoaded(theme).catch(console.error);
 
     clearThemeClasses(root);
     clearThemeClasses(body);

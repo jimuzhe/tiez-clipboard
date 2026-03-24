@@ -23,7 +23,22 @@ use crate::database::ClipboardEntry;
 use super::models::*;
 use super::utils::*;
 use super::web_ui::render_index;
-use super::{append_message, register_received_file};
+use super::{append_message, register_received_file, register_shared_file_token, resolve_shared_file_token, consume_shared_file_token};
+use super::{
+    KEY_APP_FILE_TRANSFER_PATH,
+    LEGACY_KEY_FILE_TRANSFER_PATH,
+};
+
+fn get_setting_with_legacy(db_state: &DbState, key: &str, legacy_key: &str) -> Option<String> {
+    if let Ok(Some(value)) = db_state.settings_repo.get(key) {
+        return Some(value);
+    }
+    if let Ok(Some(legacy)) = db_state.settings_repo.get(legacy_key) {
+        let _ = db_state.settings_repo.set(key, &legacy);
+        return Some(legacy);
+    }
+    None
+}
 
 pub async fn index(State(state): State<Arc<AppState>>) -> Html<String> {
     let app_handle = &state.app_handle;
@@ -59,10 +74,7 @@ pub async fn poll_messages(
                                 filename = name.to_string_lossy().to_string();
                             }
                             
-                            let shared_files = state.app_handle.state::<SharedFileState>();
-                            if let Ok(mut map) = shared_files.0.lock() {
-                                 map.insert(token.clone(), m.content.clone());
-                            }
+                            register_shared_file_token(&state.app_handle, token.clone(), m.content.clone());
                             m_clone.content = format!("/download/{}?name={}", token, urlencoding::encode(&filename));
                          }
                          m_clone
@@ -266,7 +278,11 @@ pub async fn upload(
             let content_type = field.content_type().unwrap_or("application/octet-stream").to_string();
             
             let mut save_dir = state.app_handle.path().download_dir().unwrap_or_else(|_| std::env::temp_dir());
-            if let Ok(Some(custom)) = db_state.settings_repo.get("file_transfer_path") {
+            if let Some(custom) = get_setting_with_legacy(
+                &db_state,
+                KEY_APP_FILE_TRANSFER_PATH,
+                LEGACY_KEY_FILE_TRANSFER_PATH,
+            ) {
                  if !custom.trim().is_empty() { save_dir = std::path::PathBuf::from(custom); }
             }
             if !save_dir.exists() { let _ = std::fs::create_dir_all(&save_dir); }
@@ -312,22 +328,20 @@ pub async fn upload_chunk(
 ) -> axum::response::Response {
     update_activity(&state.app_handle);
     let mut metadata: Option<ChunkMetadata> = None;
-    let mut chunk_data: Option<Vec<u8>> = None;
+    let mut chunk_data: Option<axum::body::Bytes> = None;
 
     while let Ok(Some(field)) = multipart.next_field().await {
         let name = field.name().unwrap_or("").to_string();
 
         if name == "metadata" {
             if let Ok(bytes) = field.bytes().await {
-                if let Ok(text) = String::from_utf8(bytes.to_vec()) {
-                    if let Ok(m) = serde_json::from_str(&text) {
-                        metadata = Some(m);
-                    }
+                if let Ok(m) = serde_json::from_slice::<ChunkMetadata>(&bytes) {
+                    metadata = Some(m);
                 }
             }
         } else if name == "data" || name == "file" {
             if let Ok(bytes) = field.bytes().await {
-                chunk_data = Some(bytes.to_vec());
+                chunk_data = Some(bytes);
             }
         }
     }
@@ -348,7 +362,11 @@ pub async fn upload_chunk(
             .entry(meta.upload_id.clone())
             .or_insert_with(|| {
                 let mut path = state.app_handle.path().download_dir().unwrap_or_else(|_| std::env::temp_dir());
-                if let Ok(Some(custom)) = state.app_handle.state::<DbState>().settings_repo.get("file_transfer_path") {
+                if let Some(custom) = get_setting_with_legacy(
+                    &state.app_handle.state::<DbState>(),
+                    KEY_APP_FILE_TRANSFER_PATH,
+                    LEGACY_KEY_FILE_TRANSFER_PATH,
+                ) {
                     if !custom.trim().is_empty() { path = std::path::PathBuf::from(custom); }
                 }
                 if !path.exists() { let _ = std::fs::create_dir_all(&path); }
@@ -361,7 +379,7 @@ pub async fn upload_chunk(
     options.create(true).append(true).write(true);
 
     if let Ok(mut file) = options.open(&temp_path).await {
-        if let Err(e) = file.write_all(&data).await {
+        if let Err(e) = file.write_all(data.as_ref()).await {
             eprintln!("Error writing chunk: {}", e);
             return (StatusCode::INTERNAL_SERVER_ERROR, "Write failed").into_response();
         }
@@ -406,12 +424,7 @@ pub async fn handle_file_download_proxy(
 ) -> impl IntoResponse {
     let app_handle = &state.app_handle;
     update_activity(app_handle);
-    let shared_state = app_handle.state::<SharedFileState>();
-
-    let file_path = {
-        let guard = shared_state.0.lock().unwrap();
-        guard.get(&token).cloned()
-    };
+    let file_path = resolve_shared_file_token(app_handle, &token);
 
     if let Some(path_str) = file_path {
         let path = std::path::PathBuf::from(&path_str);
@@ -469,6 +482,9 @@ pub async fn handle_file_download_proxy(
 
                 let stream = ReaderStream::with_capacity(file, 64 * 1024);
                 let body = Body::from_stream(stream);
+                if !is_image && !is_video {
+                    let _ = consume_shared_file_token(app_handle, &token);
+                }
 
                 return (
                     StatusCode::OK,

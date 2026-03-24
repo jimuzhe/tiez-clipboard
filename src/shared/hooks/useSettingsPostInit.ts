@@ -269,10 +269,18 @@ export const useSettingsPostInit = ({
     setCloudSyncWebdavUsername(settings["cloud_sync_webdav_username"] || "");
     setCloudSyncWebdavPassword(settings["cloud_sync_webdav_password"] || "");
     setCloudSyncWebdavBasePath(settings["cloud_sync_webdav_base_path"] || "tiez-sync");
-    setFileServerAutoClose(settings["file_transfer_auto_close"] === "true");
-    setFileTransferAutoOpen(settings["file_transfer_auto_open"] === "true");
-    setFileTransferAutoCopy(settings["file_transfer_auto_copy"] === "true");
-    if (settings["file_server_port"]) setFileServerPort(settings["file_server_port"]);
+    const fileServerAutoCloseValue =
+      settings["app.file_transfer_auto_close"] ?? settings["file_transfer_auto_close"];
+    const fileTransferAutoOpenValue =
+      settings["app.file_transfer_auto_open"] ?? settings["file_transfer_auto_open"];
+    const fileTransferAutoCopyValue =
+      settings["app.file_transfer_auto_copy"] ?? settings["file_transfer_auto_copy"];
+    const fileServerPortValue = settings["app.file_server_port"] ?? settings["file_server_port"];
+
+    setFileServerAutoClose(fileServerAutoCloseValue === "true");
+    setFileTransferAutoOpen(fileTransferAutoOpenValue === "true");
+    setFileTransferAutoCopy(fileTransferAutoCopyValue === "true");
+    if (fileServerPortValue) setFileServerPort(fileServerPortValue);
     if (settings["app.sequential_hotkey"]) setSequentialHotkey(settings["app.sequential_hotkey"]);
     if (settings["app.rich_paste_hotkey"]) setRichPasteHotkey(settings["app.rich_paste_hotkey"]);
     if (settings["app.search_hotkey"] !== undefined) setSearchHotkey(settings["app.search_hotkey"]);

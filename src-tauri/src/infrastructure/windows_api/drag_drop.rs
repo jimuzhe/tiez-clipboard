@@ -1,4 +1,5 @@
 use std::{
+    cell::RefCell,
     cell::UnsafeCell,
     ffi::{c_void, OsString},
     os::windows::ffi::OsStringExt,
@@ -71,6 +72,7 @@ struct FileDescriptorW {
 
 #[derive(Default)]
 pub struct DragDropController {
+    hwnds: Vec<HWND>,
     drop_targets: Vec<IDropTarget>,
 }
 
@@ -97,9 +99,18 @@ impl DragDropController {
         if unsafe { RevokeDragDrop(hwnd) } != Err(DRAGDROP_E_INVALIDHWND.into())
             && unsafe { RegisterDragDrop(hwnd, &drop_target) }.is_ok()
         {
+            self.hwnds.push(hwnd);
             self.drop_targets.push(drop_target);
         }
         true
+    }
+}
+
+impl Drop for DragDropController {
+    fn drop(&mut self) {
+        for hwnd in self.hwnds.iter().copied() {
+            let _ = unsafe { RevokeDragDrop(hwnd) };
+        }
     }
 }
 
@@ -554,10 +565,15 @@ impl IDropTarget_Impl for EmojiDropTarget_Impl {
 }
 
 pub fn register_emoji_drag_drop(app_handle: AppHandle) {
+    thread_local! {
+        static DRAG_DROP_CONTROLLER: RefCell<Option<DragDropController>> = const { RefCell::new(None) };
+    }
     if let Some(window) = app_handle.get_webview_window("main") {
         if let Ok(hwnd) = window.hwnd() {
             let controller = DragDropController::new(hwnd, app_handle);
-            std::mem::forget(controller);
+            DRAG_DROP_CONTROLLER.with(|holder| {
+                *holder.borrow_mut() = Some(controller);
+            });
         }
     }
 }

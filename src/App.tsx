@@ -11,6 +11,7 @@ import { useAppState } from "./features/app/hooks/useAppState";
 import { useSettingsPanelProps } from "./features/settings/hooks/useSettingsPanelProps";
 import { useDebounce } from "./shared/hooks/useDebounce";
 import { useHistoryFetch } from "./shared/hooks/useHistoryFetch";
+import { HISTORY_PAGE_SIZE } from "./features/app/constants/pagination";
 import { useHotkeyConfig } from "./shared/hooks/useHotkeyConfig";
 import { useInputFocus } from "./shared/hooks/useInputFocus";
 import { useSearchScroll } from "./shared/hooks/useSearchScroll";
@@ -276,7 +277,7 @@ const App = () => {
   const tagColors = useTagColors();
   const virtualListRef = useRef<VirtualClipboardListHandle | null>(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
-  const PAGE_SIZE = 200;
+  const PAGE_SIZE = HISTORY_PAGE_SIZE;
   const { fetchHistory, loadMoreHistory } = useHistoryFetch({
     debouncedSearch,
     typeFilter,
@@ -612,6 +613,7 @@ const App = () => {
     settingsLoaded,
     deduplicate,
     saveAppSetting,
+    saveSetting,
     captureFiles,
     captureRichText,
     fileTransferAutoCopy,
@@ -798,42 +800,78 @@ const App = () => {
     state: appState
   });
 
+  const appHeaderProps = {
+    t,
+    showSettings,
+    setShowSettings,
+    showTagManager: effectiveShowTagManager,
+    setShowTagManager,
+    tagManagerEnabled,
+    showEmojiPanel: effectiveShowEmojiPanel,
+    setShowEmojiPanel,
+    emojiPanelEnabled,
+    chatMode,
+    setChatMode,
+    fileServerEnabled,
+    isWindowPinned,
+    setIsWindowPinned,
+    clearHistory,
+    showSearchBox,
+    search,
+    setSearch,
+    setIsComposing,
+    searchInputRef,
+    showTagFilter,
+    setShowTagFilter,
+    allTags,
+    searchIsFocused,
+    setSearchIsFocused,
+    setEditingTagsId,
+    theme,
+    colorMode,
+    typeFilter,
+    setTypeFilter
+  };
+
+  const appMainContentProps = {
+    t,
+    theme,
+    showSettings,
+    showTagManager: effectiveShowTagManager,
+    tagManagerEnabled,
+    showEmojiPanel: effectiveShowEmojiPanel,
+    chatMode,
+    localIp,
+    actualPort,
+    settingsPanelProps,
+    emojiFavorites,
+    setEmojiFavorites,
+    emojiPanelTab,
+    setEmojiPanelTab,
+    saveSetting,
+    filteredHistory,
+    search,
+    pinnedItems,
+    unpinnedItems,
+    compactMode,
+    selectedIndex,
+    isKeyboardMode,
+    virtualListRef,
+    handlePinnedReorder,
+    renderItemContent,
+    loadMoreHistory,
+    handleListScroll,
+    hasMore: effectiveHasMore,
+    isLoadingMore,
+    showScrollTop: showScrollTopVisible,
+    onScrollTop: handleScrollTop
+  };
+
   return (
     <div
       className="app-container"
     >
-      <AppHeader
-        t={t}
-        showSettings={showSettings}
-        setShowSettings={setShowSettings}
-        showTagManager={effectiveShowTagManager}
-        setShowTagManager={setShowTagManager}
-        tagManagerEnabled={tagManagerEnabled}
-        showEmojiPanel={effectiveShowEmojiPanel}
-        setShowEmojiPanel={setShowEmojiPanel}
-        emojiPanelEnabled={emojiPanelEnabled}
-        chatMode={chatMode}
-        setChatMode={setChatMode}
-        fileServerEnabled={fileServerEnabled}
-        isWindowPinned={isWindowPinned}
-        setIsWindowPinned={setIsWindowPinned}
-        clearHistory={clearHistory}
-        showSearchBox={showSearchBox}
-        search={search}
-        setSearch={setSearch}
-        setIsComposing={setIsComposing}
-        searchInputRef={searchInputRef}
-        showTagFilter={showTagFilter}
-        setShowTagFilter={setShowTagFilter}
-        allTags={allTags}
-        searchIsFocused={searchIsFocused}
-        setSearchIsFocused={setSearchIsFocused}
-        setEditingTagsId={setEditingTagsId}
-        theme={theme}
-        colorMode={colorMode}
-        typeFilter={typeFilter}
-        setTypeFilter={setTypeFilter}
-      />
+      <AppHeader {...appHeaderProps} />
 
       <AnnouncementSystem
         announcements={announcements}
@@ -845,39 +883,7 @@ const App = () => {
         style={{ overflowY: (showSettings || effectiveShowTagManager) ? 'auto' : 'hidden' }}
         onWheel={handleMainWheel}
       >
-        <AppMainContent
-          t={t}
-          theme={theme}
-          showSettings={showSettings}
-          showTagManager={effectiveShowTagManager}
-          tagManagerEnabled={tagManagerEnabled}
-          showEmojiPanel={effectiveShowEmojiPanel}
-          chatMode={chatMode}
-          localIp={localIp}
-          actualPort={actualPort}
-          settingsPanelProps={settingsPanelProps}
-          emojiFavorites={emojiFavorites}
-          setEmojiFavorites={setEmojiFavorites}
-          emojiPanelTab={emojiPanelTab}
-          setEmojiPanelTab={setEmojiPanelTab}
-          saveSetting={saveSetting}
-          filteredHistory={filteredHistory}
-          search={search}
-          pinnedItems={pinnedItems}
-          unpinnedItems={unpinnedItems}
-          compactMode={compactMode}
-          selectedIndex={selectedIndex}
-          isKeyboardMode={isKeyboardMode}
-          virtualListRef={virtualListRef}
-          handlePinnedReorder={handlePinnedReorder}
-          renderItemContent={renderItemContent}
-          loadMoreHistory={loadMoreHistory}
-          handleListScroll={handleListScroll}
-          hasMore={effectiveHasMore}
-          isLoadingMore={isLoadingMore}
-          showScrollTop={showScrollTopVisible}
-          onScrollTop={handleScrollTop}
-        />
+        <AppMainContent {...appMainContentProps} />
       </main>
 
       <ToastContainer toasts={toasts} />

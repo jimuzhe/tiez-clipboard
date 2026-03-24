@@ -1,170 +1,41 @@
 use crate::app_state::SettingsState;
 use crate::database::DbState;
 use crate::infrastructure::repository::settings_repo::SettingsRepository;
-use crate::app::commands::hotkey_cmd::parse_hotkey_list;
+use crate::app::commands::hotkey_cmd::sync_hotkeys_from_settings;
 use std::sync::atomic::Ordering;
 use tauri::{AppHandle, Manager, State};
 use crate::error::{AppResult, AppError};
 
-#[tauri::command]
-pub fn set_sequential_mode(app_handle: AppHandle, state: State<'_, crate::app_state::SettingsState>, enabled: bool) {
-    state.sequential_mode.store(enabled, Ordering::Relaxed);
-    let db_state = app_handle.state::<DbState>();
-    let _ = db_state.settings_repo.set("app.sequential_mode", &enabled.to_string());
+const KEY_APP_FILE_TRANSFER_AUTO_CLOSE: &str = "app.file_transfer_auto_close";
+const KEY_APP_FILE_TRANSFER_AUTO_OPEN: &str = "app.file_transfer_auto_open";
+const KEY_APP_FILE_TRANSFER_AUTO_COPY: &str = "app.file_transfer_auto_copy";
+const LEGACY_KEY_FILE_TRANSFER_AUTO_CLOSE: &str = "file_transfer_auto_close";
+const LEGACY_KEY_FILE_TRANSFER_AUTO_OPEN: &str = "file_transfer_auto_open";
+const LEGACY_KEY_FILE_TRANSFER_AUTO_COPY: &str = "file_transfer_auto_copy";
+
+fn save_bool_setting(db_state: &DbState, key: &str, enabled: bool) -> AppResult<()> {
+    db_state
+        .settings_repo
+        .set(key, &enabled.to_string())
+        .map_err(AppError::from)
 }
 
-#[tauri::command]
-pub fn set_sequential_hotkey(
-    app_handle: AppHandle,
-    state: State<'_, SettingsState>,
-    hotkey: String,
+fn save_bool_setting_with_legacy(
+    db_state: &DbState,
+    key: &str,
+    legacy_key: &str,
+    enabled: bool,
 ) -> AppResult<()> {
-    use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut};
-
-    let _ = app_handle.global_shortcut().unregister_all();
-
-    if let Ok(mut guard) = state.sequential_paste_hotkey.lock() {
-        *guard = hotkey.clone();
-    }
-
-    let normalized = hotkey.replace("Win", "Super");
-    if let Ok(shortcut) = normalized.parse::<Shortcut>() {
-        let _ = app_handle.global_shortcut().register(shortcut);
-    }
-
-    let main_hotkey = {
-        let db_state = app_handle.state::<DbState>();
-        db_state.settings_repo.get("app.hotkey")
-            .unwrap_or(Some("Win+V".to_string()))
-            .unwrap_or("Win+V".to_string())
-    };
-
-    for main_item in parse_hotkey_list(&main_hotkey) {
-        let main_normalized = main_item.replace("Win", "Super");
-        if let Ok(shortcut) = main_normalized.parse::<Shortcut>() {
-            let _ = app_handle.global_shortcut().register(shortcut);
-        }
-    }
-
-    let db_state = app_handle.state::<DbState>();
-    db_state.settings_repo.set("app.sequential_hotkey", &hotkey).map_err(AppError::from)
+    save_bool_setting(db_state, key, enabled)?;
+    db_state
+        .settings_repo
+        .set(legacy_key, &enabled.to_string())
+        .map_err(AppError::from)?;
+    Ok(())
 }
 
-#[tauri::command]
-pub fn set_rich_paste_hotkey(
-    app_handle: AppHandle,
-    state: State<'_, SettingsState>,
-    hotkey: String,
-) -> AppResult<()> {
-    use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut};
-
-    let _ = app_handle.global_shortcut().unregister_all();
-
-    if let Ok(mut guard) = state.rich_paste_hotkey.lock() {
-        *guard = hotkey.clone();
-    }
-
-    let normalized = hotkey.replace("Win", "Super");
-    if let Ok(shortcut) = normalized.parse::<Shortcut>() {
-        let _ = app_handle.global_shortcut().register(shortcut);
-    }
-
-    let main_hotkey = {
-        let db_state = app_handle.state::<DbState>();
-        db_state.settings_repo.get("app.hotkey")
-            .unwrap_or(Some("Alt+C".to_string()))
-            .unwrap_or("Alt+C".to_string())
-    };
-
-    for main_item in parse_hotkey_list(&main_hotkey) {
-        let main_normalized = main_item.replace("Win", "Super");
-        if let Ok(shortcut) = main_normalized.parse::<Shortcut>() {
-            let _ = app_handle.global_shortcut().register(shortcut);
-        }
-    }
-
-    let seq_hotkey = state.sequential_paste_hotkey.lock().unwrap().clone();
-    if !seq_hotkey.is_empty() {
-        let seq_normalized = seq_hotkey.replace("Win", "Super");
-        if let Ok(shortcut) = seq_normalized.parse::<Shortcut>() {
-            let _ = app_handle.global_shortcut().register(shortcut);
-        }
-    }
-
-    let db_state = app_handle.state::<DbState>();
-    db_state.settings_repo.set("app.rich_paste_hotkey", &hotkey).map_err(AppError::from)
-}
-
-#[tauri::command]
-pub fn set_search_hotkey(
-    app_handle: AppHandle,
-    state: State<'_, SettingsState>,
-    hotkey: String,
-) -> AppResult<()> {
-    use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut};
-
-    let _ = app_handle.global_shortcut().unregister_all();
-
-    if let Ok(mut guard) = state.search_hotkey.lock() {
-        *guard = hotkey.clone();
-    }
-
-    if !hotkey.is_empty() {
-        let normalized = hotkey.replace("Win", "Super");
-        if let Ok(shortcut) = normalized.parse::<Shortcut>() {
-            let _ = app_handle.global_shortcut().register(shortcut);
-        }
-    }
-
-    let main_hotkey = {
-        let db_state = app_handle.state::<DbState>();
-        db_state.settings_repo.get("app.hotkey")
-            .unwrap_or(Some("Alt+C".to_string()))
-            .unwrap_or("Alt+C".to_string())
-    };
-
-    for main_item in parse_hotkey_list(&main_hotkey) {
-        let main_normalized = main_item.replace("Win", "Super");
-        if let Ok(shortcut) = main_normalized.parse::<Shortcut>() {
-            let _ = app_handle.global_shortcut().register(shortcut);
-        }
-    }
-
-    let seq_hotkey = state.sequential_paste_hotkey.lock().unwrap().clone();
-    if !seq_hotkey.is_empty() {
-        let seq_normalized = seq_hotkey.replace("Win", "Super");
-        if let Ok(shortcut) = seq_normalized.parse::<Shortcut>() {
-            let _ = app_handle.global_shortcut().register(shortcut);
-        }
-    }
-
-    let rich_hotkey = state.rich_paste_hotkey.lock().unwrap().clone();
-    if !rich_hotkey.is_empty() {
-        let rich_normalized = rich_hotkey.replace("Win", "Super");
-        if let Ok(shortcut) = rich_normalized.parse::<Shortcut>() {
-            let _ = app_handle.global_shortcut().register(shortcut);
-        }
-    }
-
-    let db_state = app_handle.state::<DbState>();
-    db_state.settings_repo.set("app.search_hotkey", &hotkey).map_err(AppError::from)
-}
-
-#[tauri::command]
-pub fn set_deduplication(app_handle: AppHandle, state: State<'_, crate::app_state::SettingsState>, enabled: bool) {
-    state.deduplicate.store(enabled, Ordering::Relaxed);
-    let db_state = app_handle.state::<DbState>();
-    let _ = db_state.settings_repo.set("app.deduplicate", &enabled.to_string());
-}
-
-#[tauri::command]
-pub fn save_setting(
-    db_state: State<'_, DbState>,
-    settings_state: State<'_, crate::app_state::SettingsState>,
-    key: String,
-    value: String,
-) -> AppResult<()> {
-    match key.as_str() {
+fn apply_setting_state_update(settings_state: &crate::app_state::SettingsState, key: &str, value: &str) {
+    match key {
         "app.arrow_key_selection" => {
             settings_state.arrow_key_selection.store(value == "true", Ordering::Relaxed);
         },
@@ -186,6 +57,12 @@ pub fn save_setting(
         "app.capture_rich_text" => {
             settings_state.capture_rich_text.store(value == "true", Ordering::Relaxed);
         },
+        "app.file_transfer_auto_close" | "file_transfer_auto_close" => {
+            settings_state.file_server_auto_close.store(value == "true", Ordering::Relaxed);
+        },
+        "app.file_transfer_auto_copy" | "file_transfer_auto_copy" => {
+            settings_state.auto_copy_file.store(value == "true", Ordering::Relaxed);
+        },
         "app.silent_start" => {
             settings_state.silent_start.store(value != "false", Ordering::Relaxed);
         },
@@ -206,8 +83,96 @@ pub fn save_setting(
         },
         _ => {}
     }
+}
 
-    db_state.settings_repo.set(&key, &value).map_err(AppError::from)
+fn persist_setting_with_legacy(db_state: &DbState, key: &str, value: &str) -> AppResult<()> {
+    db_state.settings_repo.set(key, value).map_err(AppError::from)?;
+
+    if key == KEY_APP_FILE_TRANSFER_AUTO_CLOSE {
+        let _ = db_state.settings_repo.set(LEGACY_KEY_FILE_TRANSFER_AUTO_CLOSE, value);
+    } else if key == KEY_APP_FILE_TRANSFER_AUTO_OPEN {
+        let _ = db_state.settings_repo.set(LEGACY_KEY_FILE_TRANSFER_AUTO_OPEN, value);
+    } else if key == KEY_APP_FILE_TRANSFER_AUTO_COPY {
+        let _ = db_state.settings_repo.set(LEGACY_KEY_FILE_TRANSFER_AUTO_COPY, value);
+    } else if key == "app.file_transfer_path" {
+        let _ = db_state.settings_repo.set("file_transfer_path", value);
+    } else if key == "app.file_server_port" {
+        let _ = db_state.settings_repo.set("file_server_port", value);
+    } else if key == "app.file_server_enabled" {
+        let _ = db_state.settings_repo.set("file_server_enabled", value);
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
+pub fn set_sequential_mode(app_handle: AppHandle, state: State<'_, crate::app_state::SettingsState>, enabled: bool) {
+    state.sequential_mode.store(enabled, Ordering::Relaxed);
+    let db_state = app_handle.state::<DbState>();
+    let _ = db_state.settings_repo.set("app.sequential_mode", &enabled.to_string());
+}
+
+#[tauri::command]
+pub fn set_sequential_hotkey(
+    app_handle: AppHandle,
+    state: State<'_, SettingsState>,
+    hotkey: String,
+) -> AppResult<()> {
+    if let Ok(mut guard) = state.sequential_paste_hotkey.lock() {
+        *guard = hotkey.clone();
+    }
+
+    let db_state = app_handle.state::<DbState>();
+    db_state.settings_repo.set("app.sequential_hotkey", &hotkey).map_err(AppError::from)?;
+    sync_hotkeys_from_settings(&app_handle)
+}
+
+#[tauri::command]
+pub fn set_rich_paste_hotkey(
+    app_handle: AppHandle,
+    state: State<'_, SettingsState>,
+    hotkey: String,
+) -> AppResult<()> {
+    if let Ok(mut guard) = state.rich_paste_hotkey.lock() {
+        *guard = hotkey.clone();
+    }
+
+    let db_state = app_handle.state::<DbState>();
+    db_state.settings_repo.set("app.rich_paste_hotkey", &hotkey).map_err(AppError::from)?;
+    sync_hotkeys_from_settings(&app_handle)
+}
+
+#[tauri::command]
+pub fn set_search_hotkey(
+    app_handle: AppHandle,
+    state: State<'_, SettingsState>,
+    hotkey: String,
+) -> AppResult<()> {
+    if let Ok(mut guard) = state.search_hotkey.lock() {
+        *guard = hotkey.clone();
+    }
+
+    let db_state = app_handle.state::<DbState>();
+    db_state.settings_repo.set("app.search_hotkey", &hotkey).map_err(AppError::from)?;
+    sync_hotkeys_from_settings(&app_handle)
+}
+
+#[tauri::command]
+pub fn set_deduplication(app_handle: AppHandle, state: State<'_, crate::app_state::SettingsState>, enabled: bool) {
+    state.deduplicate.store(enabled, Ordering::Relaxed);
+    let db_state = app_handle.state::<DbState>();
+    let _ = db_state.settings_repo.set("app.deduplicate", &enabled.to_string());
+}
+
+#[tauri::command]
+pub fn save_setting(
+    db_state: State<'_, DbState>,
+    settings_state: State<'_, crate::app_state::SettingsState>,
+    key: String,
+    value: String,
+) -> AppResult<()> {
+    apply_setting_state_update(&settings_state, &key, &value);
+    persist_setting_with_legacy(&db_state, &key, &value)
 }
 
 #[tauri::command]
@@ -250,7 +215,12 @@ pub fn set_file_server_auto_close(
     enabled: bool,
 ) -> AppResult<()> {
     state.file_server_auto_close.store(enabled, Ordering::Relaxed);
-    db_state.settings_repo.set("file_transfer_auto_close", &enabled.to_string()).map_err(AppError::from)
+    save_bool_setting_with_legacy(
+        &db_state,
+        KEY_APP_FILE_TRANSFER_AUTO_CLOSE,
+        LEGACY_KEY_FILE_TRANSFER_AUTO_CLOSE,
+        enabled,
+    )
 }
 
 #[tauri::command]
@@ -258,7 +228,12 @@ pub fn set_file_transfer_auto_open(
     db_state: State<'_, DbState>,
     enabled: bool,
 ) -> AppResult<()> {
-    db_state.settings_repo.set("file_transfer_auto_open", &enabled.to_string()).map_err(AppError::from)
+    save_bool_setting_with_legacy(
+        &db_state,
+        KEY_APP_FILE_TRANSFER_AUTO_OPEN,
+        LEGACY_KEY_FILE_TRANSFER_AUTO_OPEN,
+        enabled,
+    )
 }
 
 #[tauri::command]
@@ -277,7 +252,7 @@ pub fn set_persistence(
     enabled: bool,
 ) -> AppResult<()> {
     state.persistent.store(enabled, Ordering::Relaxed);
-    db_state.settings_repo.set("app.persistent", &enabled.to_string()).map_err(AppError::from)
+    save_bool_setting(&db_state, "app.persistent", enabled)
 }
 
 #[tauri::command]
@@ -287,7 +262,7 @@ pub fn set_capture_files(
     enabled: bool,
 ) -> AppResult<()> {
     state.capture_files.store(enabled, Ordering::Relaxed);
-    db_state.settings_repo.set("app.capture_files", &enabled.to_string()).map_err(AppError::from)
+    save_bool_setting(&db_state, "app.capture_files", enabled)
 }
 
 #[tauri::command]
@@ -297,7 +272,7 @@ pub fn set_capture_rich_text(
     enabled: bool,
 ) -> AppResult<()> {
     state.capture_rich_text.store(enabled, Ordering::Relaxed);
-    db_state.settings_repo.set("app.capture_rich_text", &enabled.to_string()).map_err(AppError::from)
+    save_bool_setting(&db_state, "app.capture_rich_text", enabled)
 }
 
 #[tauri::command]
@@ -307,7 +282,12 @@ pub fn set_auto_copy_file(
     enabled: bool,
 ) -> AppResult<()> {
     state.auto_copy_file.store(enabled, Ordering::Relaxed);
-    db_state.settings_repo.set("file_transfer_auto_copy", if enabled { "true" } else { "false" }).map_err(AppError::from)
+    save_bool_setting_with_legacy(
+        &db_state,
+        KEY_APP_FILE_TRANSFER_AUTO_COPY,
+        LEGACY_KEY_FILE_TRANSFER_AUTO_COPY,
+        enabled,
+    )
 }
 
 #[tauri::command]
@@ -317,7 +297,7 @@ pub fn set_silent_start(
     enabled: bool,
 ) -> AppResult<()> {
     state.silent_start.store(enabled, Ordering::Relaxed);
-    db_state.settings_repo.set("app.silent_start", &enabled.to_string()).map_err(AppError::from)
+    save_bool_setting(&db_state, "app.silent_start", enabled)
 }
 
 #[tauri::command]
@@ -327,7 +307,7 @@ pub fn set_delete_after_paste(
     enabled: bool,
 ) -> AppResult<()> {
     state.delete_after_paste.store(enabled, Ordering::Relaxed);
-    db_state.settings_repo.set("app.delete_after_paste", &enabled.to_string()).map_err(AppError::from)
+    save_bool_setting(&db_state, "app.delete_after_paste", enabled)
 }
 
 #[tauri::command]
@@ -337,7 +317,7 @@ pub fn set_privacy_protection(
     enabled: bool,
 ) -> AppResult<()> {
     state.privacy_protection.store(enabled, Ordering::Relaxed);
-    db_state.settings_repo.set("app.privacy_protection", &enabled.to_string()).map_err(AppError::from)
+    save_bool_setting(&db_state, "app.privacy_protection", enabled)
 }
 
 #[tauri::command]
@@ -371,7 +351,7 @@ pub fn set_sound_enabled(
     enabled: bool,
 ) -> AppResult<()> {
     state.sound_enabled.store(enabled, Ordering::Relaxed);
-    db_state.settings_repo.set("app.sound_enabled", &enabled.to_string()).map_err(AppError::from)
+    save_bool_setting(&db_state, "app.sound_enabled", enabled)
 }
 
 #[tauri::command]
@@ -411,7 +391,6 @@ pub fn reset_settings(
     settings_state: State<'_, crate::app_state::SettingsState>,
 ) -> AppResult<()> {
     use crate::database::{seed_defaults};
-    use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut};
 
     state.settings_repo.clear().map_err(AppError::from)?;
     {
@@ -432,24 +411,7 @@ pub fn reset_settings(
     { let mut guard = settings_state.sequential_paste_hotkey.lock().unwrap(); *guard = seq_hotkey.clone(); }
     { let mut guard = settings_state.rich_paste_hotkey.lock().unwrap(); *guard = rich_hotkey.clone(); }
     { let mut guard = settings_state.search_hotkey.lock().unwrap(); *guard = search_hotkey.clone(); }
-    { let mut guard = crate::global_state::HOTKEY_STRING.lock().unwrap(); *guard = main_hotkey.clone(); }
-
-    let _ = app.global_shortcut().unregister_all();
-
-    for main_item in parse_hotkey_list(&main_hotkey) {
-        if let Ok(shortcut) = main_item.replace("Win", "Super").parse::<Shortcut>() { let _ = app.global_shortcut().register(shortcut); }
-    }
-    if !seq_hotkey.is_empty() {
-        if let Ok(shortcut) = seq_hotkey.replace("Win", "Super").parse::<Shortcut>() { let _ = app.global_shortcut().register(shortcut); }
-    }
-    if !rich_hotkey.is_empty() {
-        if let Ok(shortcut) = rich_hotkey.replace("Win", "Super").parse::<Shortcut>() { let _ = app.global_shortcut().register(shortcut); }
-    }
-    if !search_hotkey.is_empty() {
-        if let Ok(shortcut) = search_hotkey.replace("Win", "Super").parse::<Shortcut>() { let _ = app.global_shortcut().register(shortcut); }
-    }
-
-    Ok(())
+    sync_hotkeys_from_settings(&app)
 }
 
 #[tauri::command]
@@ -461,7 +423,7 @@ pub fn set_tray_visible(
     state.hide_tray_icon.store(!visible, Ordering::Relaxed);
     if let Some(tray) = app_handle.tray_by_id("main_tray") { let _ = tray.set_visible(visible); }
     let db_state = app_handle.state::<DbState>();
-    db_state.settings_repo.set("app.hide_tray_icon", &(!visible).to_string()).map_err(AppError::from)
+    save_bool_setting(&db_state, "app.hide_tray_icon", !visible)
 }
 
 #[tauri::command]
@@ -472,7 +434,7 @@ pub fn set_edge_docking(
 ) -> AppResult<()> {
     state.edge_docking.store(enabled, Ordering::Relaxed);
     let db_state = app_handle.state::<DbState>();
-    db_state.settings_repo.set("app.edge_docking", &enabled.to_string()).map_err(AppError::from)
+    save_bool_setting(&db_state, "app.edge_docking", enabled)
 }
 
 #[tauri::command]
@@ -483,5 +445,5 @@ pub fn set_follow_mouse(
 ) -> AppResult<()> {
     state.follow_mouse.store(enabled, Ordering::Relaxed);
     let db_state = app_handle.state::<DbState>();
-    db_state.settings_repo.set("app.follow_mouse", &enabled.to_string()).map_err(AppError::from)
+    save_bool_setting(&db_state, "app.follow_mouse", enabled)
 }

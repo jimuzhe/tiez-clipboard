@@ -419,9 +419,36 @@ pub fn render_index(theme: &str, logo_base64: &str) -> String {
         const deviceName = "Mobile";
         const TIEZ_LOGO = "{logo_base64}";
         const pendingUploads = new Map(); // filename -> [elements]
+        const MAX_CHAT_MESSAGES = 300;
 
         function scrollToBottom() {{
             chatBox.scrollTop = chatBox.scrollHeight;
+        }}
+        function releaseMessageResources(el) {{
+            if (!el) return;
+            const objectUrl = el.dataset ? el.dataset.objectUrl : '';
+            if (objectUrl) {{
+                URL.revokeObjectURL(objectUrl);
+                delete el.dataset.objectUrl;
+            }}
+        }}
+        function trimChatMessages() {{
+            while (chatBox.childElementCount > MAX_CHAT_MESSAGES) {{
+                const first = chatBox.firstElementChild;
+                releaseMessageResources(first);
+                if (first) first.remove();
+            }}
+        }}
+        function appendMessage(el) {{
+            chatBox.appendChild(el);
+            trimChatMessages();
+            scrollToBottom();
+        }}
+        function releaseAllMessageResources() {{
+            const messages = chatBox.querySelectorAll('.message');
+            for (const message of messages) {{
+                releaseMessageResources(message);
+            }}
         }}
 
         function syncViewportMetrics() {{
@@ -516,6 +543,9 @@ pub fn render_index(theme: &str, logo_base64: &str) -> String {
                 div.querySelector('.bubble').style.cursor = 'pointer';
                 div.querySelector('.bubble').onclick = () => window.location.href = downloadUrl;
             }}
+            if (typeof content === 'string' && content.startsWith('blob:')) {{
+                div.dataset.objectUrl = content;
+            }}
             
             return div;
         }}
@@ -587,25 +617,31 @@ pub fn render_index(theme: &str, logo_base64: &str) -> String {
                     const pending = takePendingUpload(maybeName);
                     if (pending) {{
                         const replacement = createMessageElement('sent', msg.content, 'You', msg.msg_type, msg.file_path);
+                        releaseMessageResources(pending);
                         pending.replaceWith(replacement);
+                        trimChatMessages();
                         scrollToBottom();
                         return;
                     }}
                 }}
                 if (msg.direction === 'out') {{
                     const el = createMessageElement('received', msg.content, msg.sender_name, msg.msg_type, msg.file_path);
-                    chatBox.appendChild(el);
-                    scrollToBottom();
+                    appendMessage(el);
                 }} else if (msg.direction === 'in') {{
                     const el = createMessageElement('sent', msg.content, 'You', msg.msg_type, msg.file_path);
-                    chatBox.appendChild(el);
-                    scrollToBottom();
+                    appendMessage(el);
                 }}
             }};
             
             socket.onclose = () => setTimeout(connectWS, 3000);
         }}
         connectWS();
+        window.addEventListener('beforeunload', () => {{
+            releaseAllMessageResources();
+            if (socket) {{
+                socket.close();
+            }}
+        }});
 
         sendBtn.onclick = async () => {{
             const text = textInput.value.trim();
@@ -648,8 +684,7 @@ pub fn render_index(theme: &str, logo_base64: &str) -> String {
             progressWrapper.className = 'progress-wrapper';
             progressWrapper.innerHTML = `<div style="font-size:10px">0%</div><div class="progress-bar"><div class="progress-inner"></div></div>`;
             el.querySelector('.bubble').appendChild(progressWrapper);
-            chatBox.appendChild(el);
-            scrollToBottom();
+            appendMessage(el);
 
             const CHUNK_SIZE = 1024 * 512; // 512KB
             const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
@@ -688,6 +723,8 @@ pub fn render_index(theme: &str, logo_base64: &str) -> String {
                     const idx = list.indexOf(el);
                     if (idx >= 0) {{ list.splice(idx, 1); }}
                     if (list.length === 0) pendingUploads.delete(file.name);
+                    releaseMessageResources(el);
+                    el.remove();
                     break;
                 }}
             }}
@@ -709,8 +746,7 @@ pub fn render_index(theme: &str, logo_base64: &str) -> String {
                  setTimeout(() => {{
                      const fileCount = files.length;
                      const replyEl = createMessageElement('received', `ACK: <b>${{fileCount}}</b> FILES SAVED.`, 'System', 'pc');
-                     chatBox.appendChild(replyEl);
-                     scrollToBottom();
+                    appendMessage(replyEl);
                  }}, 800);
             }}
         }});

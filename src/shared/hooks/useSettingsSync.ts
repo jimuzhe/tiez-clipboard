@@ -1,10 +1,10 @@
 import { useEffect } from "react";
-import { invoke } from "@tauri-apps/api/core";
 
 interface UseSettingsSyncOptions {
   settingsLoaded: boolean;
   deduplicate: boolean;
   saveAppSetting: (type: string, value: string) => void;
+  saveSetting: (key: string, value: string) => void;
   captureFiles: boolean;
   captureRichText: boolean;
   fileTransferAutoCopy: boolean;
@@ -21,6 +21,7 @@ export const useSettingsSync = ({
   settingsLoaded,
   deduplicate,
   saveAppSetting,
+  saveSetting,
   captureFiles,
   captureRichText,
   fileTransferAutoCopy,
@@ -34,46 +35,46 @@ export const useSettingsSync = ({
 }: UseSettingsSyncOptions) => {
   useEffect(() => {
     if (settingsLoaded) {
-      invoke("set_deduplication", { enabled: deduplicate });
+      saveSetting("app.deduplicate", String(deduplicate));
       saveAppSetting("deduplicate", String(deduplicate));
     }
-  }, [deduplicate, saveAppSetting, settingsLoaded]);
+  }, [deduplicate, saveAppSetting, saveSetting, settingsLoaded]);
 
   useEffect(() => {
     if (settingsLoaded) {
-      invoke("set_capture_files", { enabled: captureFiles });
+      saveSetting("app.capture_files", String(captureFiles));
     }
-  }, [captureFiles, settingsLoaded]);
+  }, [captureFiles, saveSetting, settingsLoaded]);
 
   useEffect(() => {
     if (settingsLoaded) {
-      invoke("set_capture_rich_text", { enabled: captureRichText });
+      saveSetting("app.capture_rich_text", String(captureRichText));
     }
-  }, [captureRichText, settingsLoaded]);
+  }, [captureRichText, saveSetting, settingsLoaded]);
 
   useEffect(() => {
     if (settingsLoaded) {
-      invoke("set_auto_copy_file", { enabled: fileTransferAutoCopy });
+      saveSetting("app.file_transfer_auto_copy", String(fileTransferAutoCopy));
     }
-  }, [fileTransferAutoCopy, settingsLoaded]);
+  }, [fileTransferAutoCopy, saveSetting, settingsLoaded]);
 
   useEffect(() => {
     if (settingsLoaded) {
-      invoke("set_file_server_auto_close", { enabled: fileServerAutoClose }).catch(console.error);
+      saveSetting("app.file_transfer_auto_close", String(fileServerAutoClose));
     }
-  }, [fileServerAutoClose, settingsLoaded]);
+  }, [fileServerAutoClose, saveSetting, settingsLoaded]);
 
   useEffect(() => {
     if (settingsLoaded) {
-      invoke("set_file_transfer_auto_open", { enabled: fileTransferAutoOpen }).catch(console.error);
+      saveSetting("app.file_transfer_auto_open", String(fileTransferAutoOpen));
     }
-  }, [fileTransferAutoOpen, settingsLoaded]);
+  }, [fileTransferAutoOpen, saveSetting, settingsLoaded]);
 
   useEffect(() => {
     if (settingsLoaded) {
-      invoke("set_persistence", { enabled: persistent });
+      saveSetting("app.persistent", String(persistent));
     }
-  }, [persistent, settingsLoaded]);
+  }, [persistent, saveSetting, settingsLoaded]);
 
   useEffect(() => {
     if (settingsLoaded) {
@@ -82,10 +83,10 @@ export const useSettingsSync = ({
   }, [saveAppSetting, settingsLoaded, soundVolume]);
 
   useEffect(() => {
-    invoke("set_arrow_key_selection", { enabled: arrowKeySelection }).catch(console.error);
+    saveSetting("app.arrow_key_selection", String(arrowKeySelection));
     if (!arrowKeySelection) {
       setIsKeyboardMode(false);
       setSelectedIndex(0);
     }
-  }, [arrowKeySelection, setIsKeyboardMode, setSelectedIndex]);
+  }, [arrowKeySelection, saveSetting, setIsKeyboardMode, setSelectedIndex]);
 };

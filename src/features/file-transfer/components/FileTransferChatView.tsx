@@ -25,6 +25,8 @@ import type {
     FileTransferDevice
 } from "../types";
 
+const MAX_UI_MESSAGES = 800;
+
 // File Transfer Chat View Component
 const FileTransferChatView = ({
     t,
@@ -46,6 +48,11 @@ const FileTransferChatView = ({
     const [isDragging, setIsDragging] = useState(false);
     const lastDropSignatureRef = useRef("");
     const lastDropHandledAtRef = useRef(0);
+
+    const trimMessages = (items: FileTransferMessage[]) =>
+        items.length > MAX_UI_MESSAGES
+            ? items.slice(items.length - MAX_UI_MESSAGES)
+            : items;
 
     const URL_REGEX = /((https?:\/\/|www\.)[^\s<]+|(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+(?:[a-z]{2,})(?:\/[^\s<]*)?)/gi;
 
@@ -183,14 +190,12 @@ const FileTransferChatView = ({
     const fetchMessages = async () => {
         try {
             const msgs = await invoke<FileTransferMessage[]>("get_chat_history");
-            setMessages(msgs);
+            setMessages(trimMessages(msgs));
         } catch (e) { }
     };
 
     useEffect(() => {
-        console.log("FileTransferChatView Mounted - initializing listeners (Dual Mode)");
         const appWindow = getCurrentWindow();
-        console.log("[DEBUG] appWindow label:", appWindow.label);
         fetchMessages();
         invoke<string>("get_app_logo").then(setAppLogo).catch(console.error);
 
@@ -211,23 +216,17 @@ const FileTransferChatView = ({
 
         // Define handlers to be reused
         const handleDragDrop = (event: { payload: unknown }) => {
-            console.log("[DRAG] Drop event received:", event);
-            console.log("[DRAG] Event payload type:", typeof event.payload);
-            console.log("[DRAG] Event payload:", JSON.stringify(event.payload, null, 2));
             setIsDragging(false);
 
             const paths = resolveDropPaths(event.payload);
             const signature = paths.slice().sort().join("|");
             const now = Date.now();
 
-            console.log("[DRAG] Parsed paths:", paths);
-
             if (
                 signature &&
                 signature === lastDropSignatureRef.current &&
                 now - lastDropHandledAtRef.current < 1500
             ) {
-                console.log("[DRAG] Duplicate drop event ignored");
                 return;
             }
 
@@ -250,7 +249,7 @@ const FileTransferChatView = ({
                 });
 
                 if (tempMessages.length > 0) {
-                    setMessages(prev => [...prev, ...tempMessages]);
+                    setMessages(prev => trimMessages([...prev, ...tempMessages]));
                     setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
                 }
 
@@ -261,65 +260,36 @@ const FileTransferChatView = ({
             }
         };
 
-        const handleDragEnter = (event: { payload: unknown }) => {
-            console.log("[DRAG] Enter event received:", event);
+        const handleDragEnter = (_event: { payload: unknown }) => {
             setIsDragging(true);
         };
 
-        const handleDragLeave = (event: { payload: unknown }) => {
-            console.log("[DRAG] Leave event received:", event);
+        const handleDragLeave = (_event: { payload: unknown }) => {
             setIsDragging(false);
         };
 
-        // Listen to BOTH v1 and v2 events just to be safe
-        console.log("[DEBUG] Registering drag-drop event listeners...");
-
-        // v1 event names (some versions still use these)
-        const unlistenV1Drop = appWindow.listen("tauri://file-drop", (e) => {
-            console.log("[v1] file-drop received");
-            handleDragDrop(e);
-        });
-        const unlistenV1Hover = appWindow.listen("tauri://file-drop-hover", (e) => {
-            console.log("[v1] file-drop-hover received");
-            handleDragEnter(e);
-        });
-        const unlistenV1Cancel = appWindow.listen("tauri://file-drop-cancelled", (e) => {
-            console.log("[v1] file-drop-cancelled received");
-            handleDragLeave(e);
-        });
-
-        // v2 event names
-        const unlistenV2Drop = appWindow.listen("tauri://drag-drop", (e) => {
-            console.log("[v2] drag-drop received");
-            handleDragDrop(e);
-        });
-        const unlistenV2Enter = appWindow.listen("tauri://drag-enter", (e) => {
-            console.log("[v2] drag-enter received");
-            handleDragEnter(e);
-        });
-        const unlistenV2Leave = appWindow.listen("tauri://drag-leave", (e) => {
-            console.log("[v2] drag-leave received");
-            handleDragLeave(e);
-        });
-
-        console.log("[DEBUG] All drag-drop listeners registered successfully");
+        const dragListeners = [
+            appWindow.listen("tauri://drag-drop", (e) => handleDragDrop(e)),
+            appWindow.listen("tauri://drag-enter", (e) => handleDragEnter(e)),
+            appWindow.listen("tauri://drag-leave", (e) => handleDragLeave(e))
+        ];
 
         const unlistenDevices = listen<FileTransferDevice[]>("online-devices-updated", (event) => {
             setOnlineDevices(event.payload || []);
         });
 
-        const unlistenNewMsg = listen<FileTransferMessage>("new-chat-message", () => {
-            fetchMessages();
+        const unlistenNewMsg = listen<FileTransferMessage>("new-chat-message", (event) => {
+            if (event.payload) {
+                setMessages(prev => trimMessages([...prev, event.payload]));
+            } else {
+                fetchMessages();
+            }
         });
 
         return () => {
-
-            unlistenV1Drop.then(f => f());
-            unlistenV1Hover.then(f => f());
-            unlistenV1Cancel.then(f => f());
-            unlistenV2Drop.then(f => f());
-            unlistenV2Enter.then(f => f());
-            unlistenV2Leave.then(f => f());
+            dragListeners.forEach((unlisten) => {
+                unlisten.then((off) => off());
+            });
             unlistenDevices.then(f => f());
             unlistenNewMsg.then(f => f());
         };
@@ -740,7 +710,7 @@ const FileTransferChatView = ({
                                     });
                                 });
 
-                                setMessages(prev => [...prev, ...tempMessages]);
+                                setMessages(prev => trimMessages([...prev, ...tempMessages]));
                                 setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
 
                                 const sendPromises = paths.map(path =>

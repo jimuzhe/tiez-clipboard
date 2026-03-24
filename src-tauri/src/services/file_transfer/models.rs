@@ -80,7 +80,14 @@ impl Default for UploadSessions {
     }
 }
 
-pub struct SharedFileState(pub Mutex<HashMap<String, String>>);
+#[derive(Clone)]
+pub struct SharedFileTokenEntry {
+    pub path: String,
+    pub created_at: i64,
+    pub last_access_at: i64,
+}
+
+pub struct SharedFileState(pub Mutex<HashMap<String, SharedFileTokenEntry>>);
 
 pub struct ServerInfo {
     pub port: std::sync::atomic::AtomicU16,
