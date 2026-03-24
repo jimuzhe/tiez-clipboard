@@ -464,7 +464,6 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
                         />
                         <ThemedSelect
                             theme={props.theme}
-                            colorMode={props.colorMode}
                             options={pasteMethodOptions}
                             value={props.pasteMethod}
                             width="160px"

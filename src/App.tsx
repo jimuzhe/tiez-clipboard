@@ -701,7 +701,6 @@ const App = () => {
     setSearchIsFocused,
     setEditingTagsId,
     theme,
-    colorMode,
     typeFilter,
     setTypeFilter
   };

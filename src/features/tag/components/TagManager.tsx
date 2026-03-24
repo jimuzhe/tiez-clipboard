@@ -795,68 +795,6 @@ export default function TagManager({ t, theme }: TagManagerProps) {
                     color: #fff !important;
                 }
 
-                /* Modern Theme Polishes for Confirm Dialog */
-                .theme-mica .confirm-dialog,
-                .theme-acrylic .confirm-dialog {
-                    background: rgba(255, 255, 255, 0.8) !important;
-                    backdrop-filter: blur(20px);
-                    padding: 24px !important;
-                    border-radius: 16px !important;
-                    box-shadow: 0 10px 40px rgba(0,0,0,0.2) !important;
-                    border: 1px solid rgba(255,255,255,0.4) !important;
-                    animation: modal-pop-modern 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
-                }
-                
-                @keyframes modal-pop-modern {
-                    0% { transform: scale(0.95); opacity: 0; }
-                    100% { transform: scale(1); opacity: 1; }
-                }
-
-                .theme-mica .confirm-dialog h3,
-                .theme-acrylic .confirm-dialog h3 {
-                    background: transparent !important;
-                    color: var(--text-primary) !important;
-                    font-size: 18px !important;
-                    font-weight: 700 !important;
-                    text-transform: none !important;
-                    padding: 0 !important;
-                }
-
-                .theme-mica .confirm-dialog-button,
-                .theme-acrylic .confirm-dialog-button {
-                    border-radius: 10px !important;
-                    border: none !important;
-                    box-shadow: none !important;
-                    font-weight: 600 !important;
-                    background: rgba(0,0,0,0.05) !important;
-                }
-                .theme-mica .confirm-dialog-button:active,
-                .theme-acrylic .confirm-dialog-button:active {
-                    transform: scale(0.95);
-                }
-
-                .theme-mica .confirm-dialog-button.primary,
-                .theme-acrylic .confirm-dialog-button.primary {
-                    background: var(--accent-color) !important;
-                }
-
-                /* Dark Mode Adaptation */
-                .dark-mode .modal-overlay .confirm-dialog {
-                    background: #1f1f1f !important;
-                    border-color: #000 !important;
-                }
-                .dark-mode .modal-overlay .confirm-dialog h3 {
-                    color: #fff !important;
-                }
-                .dark-mode .modal-overlay .confirm-dialog p {
-                    color: #d1d1d1 !important;
-                }
-                .dark-mode .theme-mica .confirm-dialog,
-                .dark-mode .theme-acrylic .confirm-dialog {
-                    background: rgba(30,30,30,0.8) !important;
-                    border-color: rgba(255,255,255,0.1) !important;
-                }
-
                 .modal-input-field input {
                     width: 100%; background: var(--bg-input);
                     border: 2px solid var(--border-dark);
@@ -895,36 +833,6 @@ export default function TagManager({ t, theme }: TagManagerProps) {
                 }
                 .modal-buttons button:active { transform: translate(2px, 2px); box-shadow: 0 0 0; }
                 .btn-save { background: var(--accent-color); color: white; }
-                
-                /* Modern Theme Polishes */
-                .theme-mica, .theme-acrylic { background: transparent !important; }
-                .theme-mica .tag-sidebar, .theme-acrylic .tag-sidebar { border-right: 1px solid rgba(128,128,128,0.1); background: transparent; }
-                .theme-mica .sidebar-header, .theme-acrylic .sidebar-header { background: transparent; color: var(--text-primary); border-bottom: 1px solid rgba(128,128,128,0.1); margin: 0; padding: 8px 12px; }
-                
-                .theme-mica .tag-item.active, .theme-acrylic .tag-item.active { background: var(--accent-color); color: white; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-radius: 6px; }
-
-                /* Modern theme rounded inputs & buttons */
-                .theme-mica .tag-search-box, .theme-acrylic .tag-search-box {
-                    border-radius: 10px;
-                    margin: 6px;
-                    border: 1px solid rgba(128,128,128,0.2);
-                    background: rgba(255,255,255,0.35);
-                }
-                .theme-mica .tag-search-box input, .theme-acrylic .tag-search-box input {
-                    border-radius: 8px;
-                    padding: 6px 8px;
-                }
-                .theme-mica .collapse-toggle, .theme-acrylic .collapse-toggle,
-                .theme-mica .sort-btn, .theme-acrylic .sort-btn,
-                .theme-mica .toggle-btn, .theme-acrylic .toggle-btn,
-                .theme-mica .add-item-btn, .theme-acrylic .add-item-btn,
-                .theme-mica .card-action-btn, .theme-acrylic .card-action-btn,
-                .theme-mica .del-btn, .theme-acrylic .del-btn {
-                    border-radius: 8px;
-                }
-                
-                .theme-mica .themed-card, .theme-acrylic .themed-card { border-radius: 12px; border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.45); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-                .dark-mode .theme-mica .themed-card, .dark-mode .theme-acrylic .themed-card { background: rgba(45,45,45,0.6); border-color: rgba(255,255,255,0.1); }
                 
                 .custom-scrollbar::-webkit-scrollbar { width: 3px; }
                 .custom-scrollbar::-webkit-scrollbar-thumb { background: var(--border-dark); border-radius: 10px; }

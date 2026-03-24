@@ -10,7 +10,6 @@ export interface ThemedSelectOption {
 
 interface ThemedSelectProps {
   theme: string;
-  colorMode: string;
   options: ThemedSelectOption[];
   value: string;
   onChange: (value: string) => void | Promise<void>;
@@ -21,7 +20,6 @@ interface ThemedSelectProps {
 
 const ThemedSelect = ({
   theme,
-  colorMode,
   options,
   value,
   onChange,
@@ -31,9 +29,6 @@ const ThemedSelect = ({
 }: ThemedSelectProps) => {
   const selected = options.find((option) => option.value === value) ?? null;
   const isMacosTheme = theme === "macos";
-  const isDarkMode =
-    colorMode === "dark" ||
-    (colorMode === "system" && document.documentElement.classList.contains("dark-mode"));
 
   if (!isMacosTheme) {
     return (
@@ -73,34 +68,26 @@ const ThemedSelect = ({
           control: (base, state) => ({
             ...base,
             minHeight: "34px",
-            borderRadius: "10px",
-            border: state.isFocused
-              ? "1px solid rgba(10, 132, 255, 0.6)"
-              : isDarkMode
-                ? "1px solid rgba(255,255,255,0.16)"
-                : "1px solid rgba(60,60,67,0.24)",
-            background: isDarkMode ? "rgba(58,60,68,0.7)" : "rgba(255,255,255,0.9)",
-            boxShadow: state.isFocused
-              ? "0 0 0 3px rgba(10,132,255,0.2)"
-              : isDarkMode
-                ? "inset 0 1px 0 rgba(255,255,255,0.08)"
-                : "inset 0 1px 0 rgba(255,255,255,0.72)",
+            borderRadius: "var(--select-control-radius)",
+            border: state.isFocused ? "var(--select-control-focus-border)" : "var(--select-control-border)",
+            background: "var(--select-control-bg)",
+            boxShadow: state.isFocused ? "var(--select-control-focus-shadow)" : "var(--select-control-shadow)",
             cursor: "pointer",
             fontSize: "12px"
           }),
           singleValue: (base) => ({
             ...base,
-            color: isDarkMode ? "#f5f5f7" : "var(--text-primary)",
+            color: "var(--select-single-value-color)",
             fontWeight: 600
           }),
           placeholder: (base) => ({
             ...base,
-            color: isDarkMode ? "rgba(245,245,247,0.62)" : "rgba(29,29,31,0.5)",
+            color: "var(--select-placeholder-color)",
             fontWeight: 500
           }),
           dropdownIndicator: (base) => ({
             ...base,
-            color: isDarkMode ? "#f5f5f7" : "#323a45",
+            color: "var(--select-indicator-color)",
             padding: "0 8px"
           }),
           indicatorSeparator: () => ({
@@ -115,26 +102,24 @@ const ThemedSelect = ({
             marginTop: "4px",
             borderRadius: "10px",
             overflow: "hidden",
-            border: isDarkMode
-              ? "1px solid rgba(255,255,255,0.14)"
-              : "1px solid rgba(60,60,67,0.2)",
-            background: isDarkMode ? "rgba(62,64,74,0.98)" : "rgba(255,255,255,0.98)",
-            boxShadow: isDarkMode
-              ? "0 8px 20px rgba(0,0,0,0.35)"
-              : "0 8px 20px rgba(15,18,26,0.16)"
+            border: "var(--select-menu-border)",
+            background: "var(--select-menu-bg)",
+            boxShadow: "var(--select-menu-shadow)"
           }),
           option: (base, state) => ({
             ...base,
             fontSize: "12px",
             cursor: "pointer",
             background: state.isSelected
-              ? "rgba(10,132,255,0.34)"
+              ? "var(--select-option-selected-bg)"
               : state.isFocused
-                ? isDarkMode
-                  ? "rgba(255,255,255,0.08)"
-                  : "rgba(10,132,255,0.12)"
+                ? "var(--select-option-focus-bg)"
                 : "transparent",
-            color: isDarkMode ? "#f5f5f7" : "var(--text-primary)"
+            color: state.isSelected
+              ? "var(--select-option-selected-color)"
+              : state.isFocused
+                ? "var(--select-option-focus-color)"
+                : "var(--select-option-color)"
           })
         }}
       />

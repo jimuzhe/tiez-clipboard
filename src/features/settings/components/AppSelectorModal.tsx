@@ -7,14 +7,12 @@ import type { InstalledAppOption } from "../../app/types";
 interface AppSelectorModalProps {
     show: string | null;
     installedApps: InstalledAppOption[];
-    theme: string;
-    colorMode: string;
     t: (key: string) => string;
     onClose: () => void;
     onSave: (type: string, val: string) => void;
 }
 
-const AppSelectorModal = ({ show, installedApps, theme, colorMode, t, onClose, onSave }: AppSelectorModalProps) => (
+const AppSelectorModal = ({ show, installedApps, t, onClose, onSave }: AppSelectorModalProps) => (
     <AnimatePresence>
         {show && (
             <div className="modal-overlay" onClick={onClose}>
@@ -45,8 +43,6 @@ const AppSelectorModal = ({ show, installedApps, theme, colorMode, t, onClose, o
                         <AppSelector
                             type={show}
                             installedApps={installedApps}
-                            theme={theme}
-                            colorMode={colorMode}
                             onSelect={(val) => {
                                 if (show) onSave(show, val);
                                 onClose();

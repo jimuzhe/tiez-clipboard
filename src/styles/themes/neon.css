@@ -76,34 +76,3 @@ body.theme-neon {
   box-shadow: none !important;
 }
 
-@media (prefers-color-scheme: dark) {
-  body:not(.light-mode).theme-neon {
-    --bg-body: #040612;
-    --bg-window: #070d1d;
-    --bg-content: #070d1d;
-    --bg-toolbar: #0b1430;
-    --bg-panel: #101733;
-    --bg-input: #0b1330;
-    --bg-element: #0f1630;
-    --bg-button: #161f45;
-    --text-primary: #eaf4ff;
-    --text-secondary: #9ab8ff;
-    --border-dark: #345ac4;
-    --shadow-color: rgba(14, 88, 255, 0.55);
-  }
-}
-
-body.dark-mode.theme-neon {
-  --bg-body: #040612;
-  --bg-window: #070d1d;
-  --bg-content: #070d1d;
-  --bg-toolbar: #0b1430;
-  --bg-panel: #101733;
-  --bg-input: #0b1330;
-  --bg-element: #0f1630;
-  --bg-button: #161f45;
-  --text-primary: #eaf4ff;
-  --text-secondary: #9ab8ff;
-  --border-dark: #345ac4;
-  --shadow-color: rgba(14, 88, 255, 0.55);
-}

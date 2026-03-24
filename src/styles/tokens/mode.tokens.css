@@ -1,0 +1,121 @@
+:root.light-mode,
+body.light-mode {
+  --bg-body: #dcdcdc;
+  --bg-window: #e8e8e8;
+  --bg-content: #dcdcdc;
+  --bg-toolbar: #dcdcdc;
+  --bg-panel: #f3f3f3;
+  --bg-element: #f3f3f3;
+  --bg-button: #e0e0e0;
+  --bg-input: #ffffff;
+  --text-primary: #373737;
+  --text-secondary: #707070;
+  --border-dark: #373737;
+  --border-light: #f3f3f3;
+  --shadow-color: #373737;
+}
+
+:root.dark-mode,
+body.dark-mode {
+  --bg-body: #181818;
+  --bg-window: #1f1f1f;
+  --bg-content: #181818;
+  --bg-toolbar: #1f1f1f;
+  --bg-panel: #262626;
+  --bg-element: #2c2c2c;
+  --bg-button: #383838;
+  --bg-input: #202020;
+  --text-primary: #ededed;
+  --text-secondary: #a0a0a0;
+  --border-dark: #000000;
+  --border-light: #333333;
+  --shadow-color: #000000;
+
+  --surface-dialog-bg: rgba(30, 30, 30, 0.8);
+  --surface-dialog-border: rgba(255, 255, 255, 0.1);
+  --surface-confirm-bg: rgba(30, 30, 30, 0.85);
+  --surface-confirm-border: rgba(255, 255, 255, 0.1);
+  --surface-confirm-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  --surface-settings-group-bg: rgba(30, 30, 30, 0.4);
+  --surface-settings-group-border: rgba(255, 255, 255, 0.05);
+  --surface-settings-group-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  --surface-settings-header-border: rgba(255, 255, 255, 0.05);
+  --surface-history-selected-bg: rgba(45, 45, 45, 0.8);
+  --surface-tags-dropdown-bg: rgba(255, 255, 255, 0.18);
+  --surface-tags-dropdown-border: rgba(255, 255, 255, 0.1);
+
+  --control-confirm-btn-bg: rgba(255, 255, 255, 0.1);
+  --control-confirm-btn-border: rgba(255, 255, 255, 0.1);
+  --control-confirm-btn-hover-bg: rgba(255, 255, 255, 0.15);
+  --control-confirm-btn-text: #ededed;
+  --control-segment-active-bg: rgba(255, 255, 255, 0.15);
+  --control-segment-active-text: #fff;
+
+  --scrollbar-thumb-bg: rgba(255, 255, 255, 0.2);
+  --scrollbar-thumb-hover-bg: rgba(255, 255, 255, 0.4);
+
+  --announcement-overlay-bg: rgba(0, 0, 0, 0.6);
+  --announcement-overlay-image: radial-gradient(rgba(255, 255, 255, 0.2) 10%, transparent 10%);
+  --announcement-modal-border: 3px solid #000000;
+  --announcement-modal-shadow: 8px 8px 0 0 #000000;
+  --announcement-header-bg: #2c2c2c;
+  --announcement-header-border: 3px solid #000000;
+  --announcement-header-text: #ededed;
+  --announcement-icon-bg: #383838;
+  --announcement-icon-border: 2px solid #000000;
+  --announcement-icon-color: #ededed;
+  --announcement-body-bg: var(--bg-window);
+  --announcement-footer-bg: #2c2c2c;
+  --announcement-footer-border: 3px solid #000000;
+  --announcement-btn-border: 2px solid #000000;
+  --announcement-btn-shadow: 2px 2px 0 0 #000000;
+  --announcement-btn-hover-shadow: 3px 3px 0 0 #000000;
+  --announcement-btn-text: #ededed;
+  --announcement-btn-secondary-bg: #383838;
+  --announcement-btn-secondary-text: #a0a0a0;
+  --announcement-btn-secondary-hover-bg: #484848;
+  --announcement-btn-secondary-hover-text: #ffffff;
+  --announcement-ticker-bg: #1e1e1e;
+  --announcement-ticker-border: 3px solid #000000;
+  --announcement-ticker-text: #ededed;
+  --announcement-ticker-icon-bg: #2c2c2c;
+  --announcement-ticker-icon-border: 3px solid #000000;
+  --announcement-ticker-close-bg: #2c2c2c;
+  --announcement-ticker-close-border: 3px solid #000000;
+  --announcement-ticker-close-hover-bg: #383838;
+  --announcement-ticker-count-bg: #2c2c2c;
+  --announcement-ticker-count-border: 3px solid #000000;
+
+  --select-control-bg: #202020;
+  --select-menu-bg: #1f1f1f;
+  --select-menu-border: 2px solid #111111;
+  --select-menu-shadow: 4px 4px 0 #000000;
+  --select-option-color: #eaeaea;
+  --select-group-heading-color: #b0b0b0;
+  --select-group-heading-border: 1px solid rgba(255, 255, 255, 0.08);
+  --select-placeholder-color: #cfcfcf;
+  --select-input-color: #eaeaea;
+  --select-single-value-color: #eaeaea;
+  --emoji-drag-overlay-bg: rgba(0, 0, 0, 0.35);
+  --emoji-drag-overlay-text: #ffffff;
+  --emoji-fav-add-bg: rgba(255, 255, 255, 0.08);
+  --utility-drag-handle-hover-bg: rgba(255, 255, 255, 0.05);
+  --utility-rich-text-td-border: rgba(255, 255, 255, 0.1);
+  --utility-segmented-control-bg: rgba(0, 0, 0, 0.2);
+  --utility-segmented-control-shadow: inset 2px 2px 4px rgba(0, 0, 0, 0.4);
+  --utility-toast-border: #000000;
+  --compact-popover-retro-bg: #1f1f1f;
+  --compact-popover-retro-border: #555555;
+  --compact-popover-retro-shadow: 4px 4px 0 0 #000000;
+  --compact-popover-retro-color: #ededed;
+  --compact-popover-retro-divider: #555555;
+  --compact-popover-retro-meta: #a0a0a0;
+  --compact-popover-retro-meta-strong: #cccccc;
+  --compact-btn-bg: color-mix(in srgb, var(--bg-button) 84%, transparent);
+  --compact-btn-border: 1px solid color-mix(in srgb, var(--border-dark) 52%, transparent);
+  --compact-btn-shadow: 0 2px 8px color-mix(in srgb, var(--shadow-color) 56%, transparent);
+  --compact-btn-hover-bg: color-mix(in srgb, var(--bg-input) 86%, transparent);
+  --compact-btn-active-bg: color-mix(in srgb, var(--accent-color) 30%, transparent);
+  --compact-btn-active-border: 1px solid color-mix(in srgb, var(--accent-color) 62%, transparent);
+  --compact-btn-active-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-color) 40%, transparent), 0 2px 12px color-mix(in srgb, var(--accent-color) 25%, transparent);
+}

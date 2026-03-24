@@ -1,0 +1,66 @@
+:is(body.theme-mica, body.theme-acrylic) .queue-bar {
+  background: var(--surface-shell-queue-bg) !important;
+  border-color: var(--surface-shell-queue-border);
+  box-shadow: var(--surface-shell-queue-shadow);
+}
+
+:is(body.theme-mica, body.theme-acrylic) #root {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background: var(--surface-shell-root-bg) !important;
+}
+
+:is(body.theme-mica, body.theme-acrylic) #root {
+  position: relative;
+  overflow: hidden;
+  background: var(--surface-shell-root-bg) !important;
+  backdrop-filter: blur(28px) saturate(185%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(185%) !important;
+  box-shadow: var(--surface-shell-root-shadow) !important;
+}
+
+:is(body.theme-mica, body.theme-acrylic) #root::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: 8px;
+  background: var(--surface-shell-texture-image);
+}
+
+:is(body.theme-mica, body.theme-acrylic) #root>* {
+  position: relative;
+  z-index: 1;
+}
+
+:is(body.theme-mica, body.theme-acrylic):not(.has-custom-bg)::before {
+  background-image: var(--surface-shell-body-image);
+  opacity: var(--surface-shell-body-opacity);
+}
+
+body.windows-10:is(.theme-mica, .theme-acrylic) #root {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+body.compact-preview:is(.theme-mica, .theme-acrylic) #root,
+body:is(.theme-mica, .theme-acrylic).compact-preview #root {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+body.compact-preview:is(.theme-mica, .theme-acrylic) #root::before,
+body:is(.theme-mica, .theme-acrylic).compact-preview #root::before {
+  content: none !important;
+  display: none !important;
+  background: none !important;
+}
+
+body.compact-preview:is(.theme-mica, .theme-acrylic) #root>*,
+body:is(.theme-mica, .theme-acrylic).compact-preview #root>* {
+  position: static !important;
+  z-index: auto !important;
+}

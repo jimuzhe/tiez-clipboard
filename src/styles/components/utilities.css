@@ -4,51 +4,24 @@
   padding: 4px;
 }
 
-.dark-mode .drag-handle:hover{
-  background: rgba(255, 255, 255, 0.05);
+.drag-handle:hover{
+  background: var(--utility-drag-handle-hover-bg);
 }
 
-.dark-mode .rich-text-preview td{
-  border-color: rgba(255, 255, 255, 0.1);
+.rich-text-preview td{
+  border-color: var(--utility-rich-text-td-border);
 }
 
-:root.dark-mode .ai-profile-card{
-  border-bottom-color: rgba(255, 255, 255, 0.1);
+.segmented-control{
+  background: var(--utility-segmented-control-bg);
+  box-shadow: var(--utility-segmented-control-shadow);
 }
 
-:root.dark-mode .ai-profile-sub{
-  background: rgba(255, 255, 255, 0.1);
+.segment-btn.active{
+  background: var(--utility-segment-active-bg);
+  color: var(--utility-segment-active-text);
 }
 
-.dark-mode .segmented-control{
-  background: rgba(0, 0, 0, 0.2);
-  box-shadow: inset 2px 2px 4px rgba(0, 0, 0, 0.4);
-}
-
-.dark-mode .segment-btn.active{
-  background: var(--accent-color);
-  color: #fff;
-}
-
-:root.dark-mode .wt-input{
-  background-color: #202020;
-  color: #ededed;
-}
-
-:root.dark-mode .wt-chat-box{
-  scrollbar-color: #ededed transparent;
-}
-
-:root.dark-mode .wt-chat-box::-webkit-scrollbar-thumb{
-  background: #ededed;
-  border-color: #202020;
-}
-
-:root.dark-mode .wt-expand-btn{
-  color: #ededed;
-}
-
-.dark-mode .toast-item{
-  background: var(--bg-panel);
-  border-color: #000;
+.toast-item{
+  border-color: var(--utility-toast-border);
 }

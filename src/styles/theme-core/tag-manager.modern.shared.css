@@ -1,0 +1,101 @@
+.themed-tag-manager:is(.theme-mica, .theme-acrylic) .confirm-dialog {
+  background: var(--modern-tag-dialog-bg) !important;
+  backdrop-filter: blur(20px);
+  border-radius: var(--surface-dialog-radius) !important;
+  box-shadow: var(--surface-dialog-shadow) !important;
+  border: 1px solid var(--modern-tag-dialog-border) !important;
+  animation: tag-manager-modal-pop-modern 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+
+@keyframes tag-manager-modal-pop-modern {
+  0% {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.themed-tag-manager:is(.theme-mica, .theme-acrylic) .confirm-dialog h3 {
+  background: transparent !important;
+  color: var(--modern-tag-dialog-text) !important;
+  font-size: 18px !important;
+  font-weight: 700 !important;
+  text-transform: none !important;
+  padding: 0 !important;
+}
+
+.themed-tag-manager:is(.theme-mica, .theme-acrylic) .confirm-dialog-button {
+  border-radius: 10px !important;
+  border: none !important;
+  box-shadow: none !important;
+  font-weight: 600 !important;
+  background: var(--control-confirm-btn-bg) !important;
+}
+
+.themed-tag-manager:is(.theme-mica, .theme-acrylic) .confirm-dialog-button:active {
+  transform: scale(0.95);
+}
+
+.themed-tag-manager:is(.theme-mica, .theme-acrylic) .confirm-dialog-button.primary {
+  background: var(--accent-color) !important;
+}
+
+.themed-tag-manager:is(.theme-mica, .theme-acrylic) .confirm-dialog p {
+  color: var(--modern-tag-dialog-subtext) !important;
+}
+
+.themed-tag-manager:is(.theme-mica, .theme-acrylic) {
+  background: transparent !important;
+}
+
+.themed-tag-manager:is(.theme-mica, .theme-acrylic) .tag-sidebar {
+  border-right: 1px solid rgba(128, 128, 128, 0.1);
+  background: transparent;
+}
+
+.themed-tag-manager:is(.theme-mica, .theme-acrylic) .sidebar-header {
+  background: transparent;
+  color: var(--text-primary);
+  border-bottom: 1px solid rgba(128, 128, 128, 0.1);
+  margin: 0;
+  padding: 8px 12px;
+}
+
+.themed-tag-manager:is(.theme-mica, .theme-acrylic) .tag-item.active {
+  background: var(--accent-color);
+  color: white;
+  border: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-radius: 6px;
+}
+
+.themed-tag-manager:is(.theme-mica, .theme-acrylic) .tag-search-box {
+  border-radius: 10px;
+  margin: 6px;
+  border: 1px solid rgba(128, 128, 128, 0.2);
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.themed-tag-manager:is(.theme-mica, .theme-acrylic) .tag-search-box input {
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+
+.themed-tag-manager:is(.theme-mica, .theme-acrylic) .collapse-toggle,
+.themed-tag-manager:is(.theme-mica, .theme-acrylic) .sort-btn,
+.themed-tag-manager:is(.theme-mica, .theme-acrylic) .toggle-btn,
+.themed-tag-manager:is(.theme-mica, .theme-acrylic) .add-item-btn,
+.themed-tag-manager:is(.theme-mica, .theme-acrylic) .card-action-btn,
+.themed-tag-manager:is(.theme-mica, .theme-acrylic) .del-btn {
+  border-radius: 8px;
+}
+
+.themed-tag-manager:is(.theme-mica, .theme-acrylic) .themed-card {
+  border-radius: 12px;
+  border: 1px solid var(--modern-tag-card-border);
+  background: var(--modern-tag-card-bg);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}

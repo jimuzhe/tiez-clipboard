@@ -10,8 +10,8 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.2);
-    background-image: radial-gradient(var(--text-secondary) 10%, transparent 10%);
+    background: var(--announcement-overlay-bg);
+    background-image: var(--announcement-overlay-image);
     background-size: 4px 4px;
     backdrop-filter: none;
     z-index: 9999;
@@ -22,12 +22,12 @@
 
 /* Modal Window */
 .announcement-modal {
-    background: var(--bg-window, #e8e8e8);
-    border: 3px solid var(--border-dark, #373737);
+    background: var(--announcement-modal-bg);
+    border: var(--announcement-modal-border);
     border-radius: 4px;
     width: 85%;
     max-width: 380px;
-    box-shadow: 8px 8px 0 0 var(--shadow-color, #373737);
+    box-shadow: var(--announcement-modal-shadow);
     overflow: hidden;
     color: var(--text-primary, #373737);
     position: relative;
@@ -40,8 +40,8 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    border-bottom: 3px solid var(--border-dark, #373737);
-    background: var(--bg-toolbar, #dcdcdc);
+    border-bottom: var(--announcement-header-border);
+    background: var(--announcement-header-bg);
     min-height: 40px;
 }
 
@@ -51,11 +51,11 @@
     justify-content: center;
     width: 28px;
     height: 28px;
-    border: 2px solid var(--border-dark, #373737);
-    background: #fff;
+    border: var(--announcement-icon-border);
+    background: var(--announcement-icon-bg);
     border-radius: 2px;
     flex-shrink: 0;
-    color: #000;
+    color: var(--announcement-icon-color);
 }
 
 .announcement-icon-wrapper.info {
@@ -77,13 +77,14 @@
     flex: 1;
     text-transform: uppercase;
     letter-spacing: 1px;
+    color: var(--announcement-header-text);
 }
 
 .announcement-body {
     padding: 16px;
     font-size: 13px;
     line-height: 1.5;
-    background: var(--bg-element, #f3f3f3);
+    background: var(--announcement-body-bg);
 }
 
 .announcement-footer {
@@ -91,14 +92,14 @@
     display: flex;
     justify-content: flex-end;
     gap: 8px;
-    background: var(--bg-toolbar, #dcdcdc);
-    border-top: 3px solid var(--border-dark, #373737);
+    background: var(--announcement-footer-bg);
+    border-top: var(--announcement-footer-border);
 }
 
 /* Buttons */
 .announcement-btn {
     padding: 6px 12px;
-    border: 2px solid var(--border-dark, #373737);
+    border: var(--announcement-btn-border);
     font-size: 12px;
     font-weight: 700;
     cursor: pointer;
@@ -109,20 +110,20 @@
 }
 
 .announcement-btn.secondary {
-    background: var(--bg-button, #e0e0e0);
-    color: var(--text-primary, #373737);
-    box-shadow: 2px 2px 0 0 var(--shadow-color, #373737);
+    background: var(--announcement-btn-secondary-bg);
+    color: var(--announcement-btn-secondary-text);
+    box-shadow: var(--announcement-btn-shadow);
 }
 
 .announcement-btn.primary {
     background: var(--accent-color, #487bdb);
     color: white;
-    box-shadow: 2px 2px 0 0 var(--shadow-color, #373737);
+    box-shadow: var(--announcement-btn-shadow);
 }
 
 .announcement-btn:hover {
     transform: translate(-1px, -1px);
-    box-shadow: 3px 3px 0 0 var(--shadow-color, #373737);
+    box-shadow: var(--announcement-btn-hover-shadow);
 }
 
 .announcement-btn:active {
@@ -132,14 +133,14 @@
 
 /* Ticker Base (Retro) */
 .announcement-ticker {
-    background: var(--bg-element, #f3f3f3);
-    border-bottom: 3px solid var(--border-dark, #373737);
+    background: var(--announcement-ticker-bg);
+    border-bottom: var(--announcement-ticker-border);
     height: 36px;
     overflow: hidden;
     position: relative;
     display: flex;
     align-items: center;
-    color: var(--text-primary);
+    color: var(--announcement-ticker-text);
     font-family: var(--font-mono, monospace);
     font-size: 12px;
     font-weight: 700;
@@ -149,13 +150,14 @@
 .ticker-icon {
     width: 36px;
     height: 100%;
-    border-right: 3px solid var(--border-dark, #373737);
+    border-right: var(--announcement-ticker-icon-border);
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--bg-toolbar);
+    background: var(--announcement-ticker-icon-bg);
     z-index: 2;
     flex-shrink: 0;
+    color: var(--announcement-ticker-icon-color);
 }
 
 .ticker-content-wrapper {
@@ -254,11 +256,11 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--bg-toolbar);
-    border-left: 3px solid var(--border-dark, #373737);
+    background: var(--announcement-ticker-close-bg);
+    border-left: var(--announcement-ticker-close-border);
     cursor: pointer;
     z-index: 10;
-    color: var(--text-secondary);
+    color: var(--announcement-ticker-close-color);
 }
 
 .ticker-count {
@@ -270,135 +272,16 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--bg-toolbar);
-    border-left: 3px solid var(--border-dark, #373737);
-    color: var(--text-secondary);
+    background: var(--announcement-ticker-count-bg);
+    border-left: var(--announcement-ticker-count-border);
+    color: var(--announcement-ticker-count-color);
     font-size: 11px;
     z-index: 9;
 }
 
 .ticker-fixed-close:hover {
-    background: var(--bg-button);
-    color: #ef4444;
-}
-
-
-/* =========================================
-   DARK MODE (Base Retro)
-   ========================================= */
-@media (prefers-color-scheme: dark) {
-    .announcement-overlay {
-        background: rgba(0, 0, 0, 0.6);
-        background-image: radial-gradient(rgba(255, 255, 255, 0.2) 10%, transparent 10%);
-    }
-
-    .announcement-modal {
-        border: 3px solid #000;
-        box-shadow: 8px 8px 0 0 #000;
-    }
-
-    .announcement-header {
-        border-bottom-color: #000;
-        background: #2c2c2c;
-    }
-
-    .announcement-header h3 {
-        color: #ededed;
-    }
-
-    .announcement-icon-wrapper {
-        background: #383838;
-        border-color: #000;
-        color: #ededed;
-    }
-
-    .announcement-icon-wrapper.info {
-        color: #60a5fa;
-    }
-
-    .announcement-icon-wrapper.warning {
-        color: #fbbf24;
-    }
-
-    .announcement-icon-wrapper.update {
-        color: #34d399;
-    }
-
-    .announcement-body {
-        background: var(--bg-window);
-    }
-
-    .announcement-footer {
-        background: #2c2c2c;
-        border-top-color: #000;
-    }
-
-    .announcement-btn {
-        border-color: #000;
-        box-shadow: 2px 2px 0 0 #000;
-        color: #ededed;
-    }
-
-    .announcement-btn:hover {
-        box-shadow: 3px 3px 0 0 #000;
-    }
-
-    .announcement-btn.secondary {
-        background: #383838;
-        color: #a0a0a0;
-    }
-
-    .announcement-btn.secondary:hover {
-        background: #484848;
-        color: #fff;
-    }
-
-    .announcement-ticker {
-        background: #1e1e1e;
-        border-color: #000;
-        color: #ededed;
-    }
-
-    .ticker-icon {
-        border-color: #000;
-        background: #2c2c2c;
-    }
-
-    .ticker-fixed-close {
-        border-color: #000;
-        background: #2c2c2c;
-    }
-
-    .ticker-fixed-close:hover {
-        background: #383838;
-    }
-}
-
-/* Force dark mode for Manual Toggles (Retro)
-   Selector logic: html.dark-mode body:not(.theme-mica):not(.theme-acrylic) */
-.dark-mode body:not(.theme-mica):not(.theme-acrylic) .announcement-overlay {
-    background: rgba(0, 0, 0, 0.6);
-    background-image: radial-gradient(rgba(255, 255, 255, 0.2) 10%, transparent 10%);
-}
-
-.dark-mode body:not(.theme-mica):not(.theme-acrylic) .announcement-modal {
-    border-color: #000;
-    box-shadow: 8px 8px 0 0 #000;
-}
-
-.dark-mode body:not(.theme-mica):not(.theme-acrylic) .announcement-ticker {
-    background: #1e1e1e;
-    /* Dark background for retro dark mode */
-    border-color: #000;
-    color: #ededed;
-}
-
-/* Force light mode for Manual Toggles (Retro) */
-.light-mode body:not(.theme-mica):not(.theme-acrylic) .announcement-ticker {
-    background: #f3f3f3;
-    /* Light background for retro light mode */
-    border-color: #373737;
-    color: #373737;
+    background: var(--announcement-ticker-close-hover-bg);
+    color: var(--announcement-ticker-close-hover-color);
 }
 
 
@@ -417,26 +300,25 @@
 
 .theme-mica .announcement-modal,
 .theme-acrylic .announcement-modal {
-    background: #ffffff;
-    /* Solid */
-    border: 1px solid rgba(0, 0, 0, 0.1);
+    background: var(--announcement-modal-bg);
+    border: var(--announcement-modal-border);
     border-radius: 12px;
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
-    color: #333;
+    box-shadow: var(--announcement-modal-shadow);
+    color: var(--announcement-header-text);
     backdrop-filter: none;
 }
 
 .theme-mica .announcement-header,
 .theme-acrylic .announcement-header {
-    background: transparent;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    background: var(--announcement-header-bg);
+    border-bottom: var(--announcement-header-border);
     padding: 16px 20px;
 }
 
 .theme-mica .announcement-icon-wrapper,
 .theme-acrylic .announcement-icon-wrapper {
-    background: transparent;
-    border: none;
+    background: var(--announcement-icon-bg);
+    border: var(--announcement-icon-border);
     border-radius: 8px;
 }
 
@@ -466,23 +348,23 @@
 
 .theme-mica .announcement-body,
 .theme-acrylic .announcement-body {
-    background: transparent;
+    background: var(--announcement-body-bg);
     padding: 24px 20px;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 .theme-mica .announcement-footer,
 .theme-acrylic .announcement-footer {
-    background: transparent;
-    border-top: 1px solid rgba(0, 0, 0, 0.05);
+    background: var(--announcement-footer-bg);
+    border-top: var(--announcement-footer-border);
     padding: 16px 20px;
 }
 
 .theme-mica .announcement-btn,
 .theme-acrylic .announcement-btn {
-    border: 1px solid transparent;
+    border: var(--announcement-btn-border);
     border-radius: 6px;
-    box-shadow: none;
+    box-shadow: var(--announcement-btn-shadow);
     font-family: inherit;
     font-weight: 600;
     text-transform: none;
@@ -491,20 +373,20 @@
 .theme-mica .announcement-btn:hover,
 .theme-acrylic .announcement-btn:hover {
     transform: none;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--announcement-btn-hover-shadow);
 }
 
 .theme-mica .announcement-btn.secondary,
 .theme-acrylic .announcement-btn.secondary {
-    background: #f5f5f5;
-    /* Solid light gray */
-    color: #555;
-    box-shadow: none;
+    background: var(--announcement-btn-secondary-bg);
+    color: var(--announcement-btn-secondary-text);
+    box-shadow: var(--announcement-btn-shadow);
 }
 
 .theme-mica .announcement-btn.secondary:hover,
 .theme-acrylic .announcement-btn.secondary:hover {
-    background: #e5e5e5;
+    background: var(--announcement-btn-secondary-hover-bg);
+    color: var(--announcement-btn-secondary-hover-text);
 }
 
 .theme-mica .announcement-btn.primary,
@@ -515,181 +397,36 @@
 /* Modern Ticker - Solid */
 .theme-mica .announcement-ticker,
 .theme-acrylic .announcement-ticker {
-    background: #ffffff;
-    /* Solid */
+    background: var(--announcement-ticker-bg);
     backdrop-filter: none;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    border-bottom: var(--announcement-ticker-border);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    color: #1a1a1a;
-    /* Darker for better contrast */
+    color: var(--announcement-ticker-text);
 }
 
 .theme-mica .ticker-icon,
 .theme-acrylic .ticker-icon {
-    background: transparent;
-    border-right: none;
-    color: #666;
+    background: var(--announcement-ticker-icon-bg);
+    border-right: var(--announcement-ticker-icon-border);
+    color: var(--announcement-ticker-icon-color);
 }
 
 .theme-mica .ticker-fixed-close,
 .theme-acrylic .ticker-fixed-close {
-    background: transparent;
-    border-left: none;
-    /* Removed border */
-    color: #888;
+    background: var(--announcement-ticker-close-bg);
+    border-left: var(--announcement-ticker-close-border);
+    color: var(--announcement-ticker-close-color);
 }
 
 .theme-mica .ticker-count,
 .theme-acrylic .ticker-count {
-    background: transparent;
-    border-left: none;
-    color: #888;
+    background: var(--announcement-ticker-count-bg);
+    border-left: var(--announcement-ticker-count-border);
+    color: var(--announcement-ticker-count-color);
 }
 
 .theme-mica .ticker-fixed-close:hover,
 .theme-acrylic .ticker-fixed-close:hover {
-    background: #f0f0f0;
-    color: #333;
-}
-
-/* =========================================
-   MODERN THEME - DARK MODE SUPPORT
-   (Applies via System Pref OR Manual Toggle)
-   ========================================= */
-
-/* Helper to group the complex selectors */
-@media (prefers-color-scheme: dark) {
-
-    .theme-mica .announcement-modal,
-    .theme-acrylic .announcement-modal {
-        background: #1e1e1e;
-        /* Solid Dark */
-        border-color: rgba(255, 255, 255, 0.1);
-        color: #eee;
-        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
-    }
-
-    .theme-mica .announcement-header,
-    .theme-acrylic .announcement-header,
-    .theme-mica .announcement-footer,
-    .theme-acrylic .announcement-footer {
-        border-color: rgba(255, 255, 255, 0.1);
-    }
-
-    .theme-mica .announcement-header h3,
-    .theme-acrylic .announcement-header h3 {
-        color: #fff;
-    }
-
-    .theme-mica .announcement-ticker,
-    .theme-acrylic .announcement-ticker {
-        background: #1e1e1e;
-        /* Solid Dark */
-        border-color: rgba(255, 255, 255, 0.1);
-        color: #e8e8e8;
-        /* Brighter for better visibility */
-    }
-
-    .theme-mica .ticker-icon,
-    .theme-acrylic .ticker-icon {
-        color: #aaa;
-    }
-
-.theme-mica .ticker-fixed-close,
-.theme-acrylic .ticker-fixed-close {
-    border-left: none;
-    color: #aaa;
-}
-
-.theme-mica .ticker-count,
-.theme-acrylic .ticker-count {
-    border-left: none;
-    color: #aaa;
-}
-
-    .theme-mica .ticker-fixed-close:hover,
-    .theme-acrylic .ticker-fixed-close:hover {
-        background: #2c2c2c;
-        color: #fff;
-    }
-
-    .theme-mica .announcement-btn.secondary,
-    .theme-acrylic .announcement-btn.secondary {
-        background: #2c2c2c;
-        color: #ccc;
-    }
-
-    .theme-mica .announcement-btn.secondary:hover,
-    .theme-acrylic .announcement-btn.secondary:hover {
-        background: #383838;
-        color: #fff;
-    }
-}
-
-/* Manual Dark Toggle duplicates for Modern Theme 
-   Correct Selector: .dark-mode (on html) .theme-mica (on body)
-*/
-.dark-mode .theme-mica .announcement-modal,
-.dark-mode .theme-acrylic .announcement-modal {
-    background: #1e1e1e;
-    /* Solid Dark */
-    border-color: rgba(255, 255, 255, 0.1);
-    color: #eee;
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
-}
-
-.dark-mode .theme-mica .announcement-header,
-.dark-mode .theme-acrylic .announcement-header,
-.dark-mode .theme-mica .announcement-footer,
-.dark-mode .theme-acrylic .announcement-footer {
-    border-color: rgba(255, 255, 255, 0.1);
-}
-
-.dark-mode .theme-mica .announcement-header h3,
-.dark-mode .theme-acrylic .announcement-header h3 {
-    color: #fff;
-}
-
-.dark-mode .theme-mica .announcement-ticker,
-.dark-mode .theme-acrylic .announcement-ticker {
-    background: #1e1e1e;
-    /* Solid Dark */
-    border-color: rgba(255, 255, 255, 0.1);
-    color: #e8e8e8;
-    /* Brighter for better visibility */
-}
-
-.dark-mode .theme-mica .ticker-icon,
-.dark-mode .theme-acrylic .ticker-icon {
-    color: #aaa;
-}
-
-.dark-mode .theme-mica .ticker-fixed-close,
-.dark-mode .theme-acrylic .ticker-fixed-close {
-    border-left: none;
-    color: #aaa;
-}
-
-.dark-mode .theme-mica .ticker-count,
-.dark-mode .theme-acrylic .ticker-count {
-    border-left: none;
-    color: #aaa;
-}
-
-.dark-mode .theme-mica .ticker-fixed-close:hover,
-.dark-mode .theme-acrylic .ticker-fixed-close:hover {
-    background: #2c2c2c;
-    color: #fff;
-}
-
-.dark-mode .theme-mica .announcement-btn.secondary,
-.dark-mode .theme-acrylic .announcement-btn.secondary {
-    background: #2c2c2c;
-    color: #ccc;
-}
-
-.dark-mode .theme-mica .announcement-btn.secondary:hover,
-.dark-mode .theme-acrylic .announcement-btn.secondary:hover {
-    background: #383838;
-    color: #fff;
+    background: var(--announcement-ticker-close-hover-bg);
+    color: var(--announcement-ticker-close-hover-color);
 }

@@ -16,6 +16,7 @@ import { getConciseTime } from "../../../shared/lib/utils";
 import type { Locale } from "../../../shared/types";
 import { toTauriLocalImageSrc } from "../../../shared/lib/localImageSrc";
 import { getRichTextSnapshotDataUrl } from "../../../shared/lib/richTextSnapshot";
+import { applyModeClass, applyThemeClass } from "../../../shared/lib/themeRuntime";
 
 type PreviewPayload = {
     contentType: string;
@@ -63,11 +64,6 @@ const resolveRichImageSrc = (payload: string): string | null => {
 
 const COMPACT_PREVIEW_DEBUG = false;
 const RICH_PREVIEW_DEBUG = import.meta.env.DEV;
-const clearThemeClasses = (element: HTMLElement) => {
-    Array.from(element.classList)
-        .filter(className => className.startsWith("theme-"))
-        .forEach(className => element.classList.remove(className));
-};
 const compactPreviewLog = (...args: unknown[]) => {
     if (!COMPACT_PREVIEW_DEBUG) return;
     const ts = new Date().toISOString();
@@ -113,20 +109,8 @@ const applyTheme = (payload: PreviewPayload) => {
     const root = document.documentElement;
     const body = document.body;
 
-    clearThemeClasses(root);
-    clearThemeClasses(body);
-    root.classList.add(`theme-${theme}`);
-    body.classList.add(`theme-${theme}`);
-
-    root.classList.remove("light-mode", "dark-mode");
-    body.classList.remove("light-mode", "dark-mode");
-    if (colorMode === "dark") {
-        root.classList.add("dark-mode");
-        body.classList.add("dark-mode");
-    } else {
-        root.classList.add("light-mode");
-        body.classList.add("light-mode");
-    }
+    applyThemeClass(root, body, theme);
+    applyModeClass(root, body, colorMode === "dark" ? "dark" : "light");
 
     body.classList.add("compact-preview");
 

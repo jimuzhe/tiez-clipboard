@@ -39,7 +39,6 @@ interface AppHeaderProps {
   setSearchIsFocused: (val: boolean) => void;
   setEditingTagsId: (val: number | null) => void;
   theme: string;
-  colorMode: string;
   typeFilter: string | null;
   setTypeFilter: (val: string | null) => void;
 }
@@ -69,7 +68,6 @@ const AppHeader = ({
   setSearchIsFocused,
   setEditingTagsId,
   theme,
-  colorMode,
   typeFilter,
   setTypeFilter
 }: AppHeaderProps) => {
@@ -198,7 +196,7 @@ const AppHeader = ({
                       setSearchIsFocused(false);
                     }, 200);
                   }}
-                  style={{ color: colorMode === 'dark' ? '#ffffff' : undefined }}
+                  style={{ color: 'var(--search-input-text, var(--text-primary))' }}
                 />
                 {showTagFilter && searchIsFocused && allTags.length > 0 && (
                   <div className="tags-dropdown">
