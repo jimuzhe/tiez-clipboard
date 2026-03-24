@@ -2,7 +2,6 @@ use rusqlite::Connection;
 use std::collections::HashSet;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
-use std::time::{SystemTime, UNIX_EPOCH};
 use crate::domain::models::ClipboardEntry;
 use crate::infrastructure::encryption;
 use crate::database::{
@@ -16,17 +15,6 @@ use urlencoding::decode;
 
 const RICH_IMAGE_FALLBACK_PREFIX: &str = "<!--TIEZ_RICH_IMAGE:";
 const RICH_IMAGE_FALLBACK_SUFFIX: &str = "-->";
-
-fn now_ms() -> i64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_millis() as i64
-}
-
-fn is_syncable_content_type(content_type: &str) -> bool {
-    matches!(content_type, "text" | "code" | "url" | "rich_text" | "image")
-}
 
 
 pub trait ClipboardRepository {
@@ -149,46 +137,6 @@ impl SqliteClipboardRepository {
             )
             .map_err(|e| e.to_string())?;
         }
-        Ok(())
-    }
-
-    fn upsert_tombstone_with_conn(
-        &self,
-        conn: &Connection,
-        content_type: &str,
-        content_hash: i64,
-        deleted_at: i64,
-    ) -> Result<(), String> {
-        if !is_syncable_content_type(content_type) || content_hash == 0 {
-            return Ok(());
-        }
-
-        conn.execute(
-            "INSERT INTO cloud_sync_tombstones (content_type, content_hash, deleted_at)
-             VALUES (?1, ?2, ?3)
-             ON CONFLICT(content_type, content_hash)
-             DO UPDATE SET deleted_at = MAX(cloud_sync_tombstones.deleted_at, excluded.deleted_at)",
-            params![content_type, content_hash, deleted_at],
-        )
-        .map_err(|e| e.to_string())?;
-        Ok(())
-    }
-
-    fn clear_tombstone_with_conn(
-        &self,
-        conn: &Connection,
-        content_type: &str,
-        content_hash: i64,
-    ) -> Result<(), String> {
-        if !is_syncable_content_type(content_type) || content_hash == 0 {
-            return Ok(());
-        }
-
-        conn.execute(
-            "DELETE FROM cloud_sync_tombstones WHERE content_type = ?1 AND content_hash = ?2",
-            params![content_type, content_hash],
-        )
-        .map_err(|e| e.to_string())?;
         Ok(())
     }
 
@@ -324,9 +272,6 @@ impl SqliteClipboardRepository {
                 calc_text_hash(&final_content) as i64
         };
 
-        // Re-adding an item should clear an older delete tombstone for the same fingerprint.
-        let _ = self.clear_tombstone_with_conn(conn, &entry.content_type, calculated_hash);
-
         let (content, preview, content_hash, html_content) = if should_encrypt {
             let encrypted_content = self.maybe_encrypt_text(&final_content);
             let encrypted_preview = self.maybe_encrypt_text(&entry.preview);
@@ -412,21 +357,18 @@ impl SqliteClipboardRepository {
     }
 
     pub fn delete_with_conn(&self, conn: &Connection, id: i64, data_dir: Option<&std::path::Path>) -> Result<(), String> {
-        let mut tombstone: Option<(String, i64)> = None;
         // Check for external files to delete
         if let Some(dir) = data_dir {
              let attachments_dir = dir.join("attachments");
              let mut stmt = conn
-                 .prepare("SELECT content, html_content, is_external, content_type, content_hash FROM clipboard_history WHERE id = ?")
+                 .prepare("SELECT content, html_content, is_external FROM clipboard_history WHERE id = ?")
                  .map_err(|e| e.to_string())?;
              
              if let Ok(entry) = stmt.query_row([id], |row| {
                  let content_raw: String = row.get(0)?;
                  let html_raw: Option<String> = row.get(1).ok();
                  let is_ext: i32 = row.get(2)?;
-                 let content_type: String = row.get(3)?;
-                 let content_hash: i64 = row.get(4)?;
-                 Ok((content_raw, html_raw, is_ext == 1, content_type, content_hash))
+                 Ok((content_raw, html_raw, is_ext == 1))
              }) {
                  let files_to_remove = self.collect_attachment_paths_for_cleanup(
                      &entry.0,
@@ -439,23 +381,7 @@ impl SqliteClipboardRepository {
                          let _ = std::fs::remove_file(path);
                      }
                  }
-                 tombstone = Some((entry.3, entry.4));
              }
-        } else {
-            let mut stmt = conn
-                .prepare("SELECT content_type, content_hash FROM clipboard_history WHERE id = ?")
-                .map_err(|e| e.to_string())?;
-            if let Ok(entry) = stmt.query_row([id], |row| {
-                let content_type: String = row.get(0)?;
-                let content_hash: i64 = row.get(1)?;
-                Ok((content_type, content_hash))
-            }) {
-                tombstone = Some(entry);
-            }
-        }
-
-        if let Some((content_type, content_hash)) = tombstone {
-            let _ = self.upsert_tombstone_with_conn(conn, &content_type, content_hash, now_ms());
         }
 
         conn.execute("DELETE FROM clipboard_history WHERE id = ?", [id]).map_err(|e| e.to_string())?;

@@ -15,10 +15,6 @@ export const useSettingsPanelReset = ({
         general: true,
         clipboard: true,
         appearance: true,
-        sync: true,
-        cloud_sync: true,
-        ai: true,
-        file_transfer: true,
         default_apps: true,
         data: true
       });

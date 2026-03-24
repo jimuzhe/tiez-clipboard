@@ -6,32 +6,11 @@ use std::sync::atomic::Ordering;
 use tauri::{AppHandle, Manager, State};
 use crate::error::{AppResult, AppError};
 
-const KEY_APP_FILE_TRANSFER_AUTO_CLOSE: &str = "app.file_transfer_auto_close";
-const KEY_APP_FILE_TRANSFER_AUTO_OPEN: &str = "app.file_transfer_auto_open";
-const KEY_APP_FILE_TRANSFER_AUTO_COPY: &str = "app.file_transfer_auto_copy";
-const LEGACY_KEY_FILE_TRANSFER_AUTO_CLOSE: &str = "file_transfer_auto_close";
-const LEGACY_KEY_FILE_TRANSFER_AUTO_OPEN: &str = "file_transfer_auto_open";
-const LEGACY_KEY_FILE_TRANSFER_AUTO_COPY: &str = "file_transfer_auto_copy";
-
 fn save_bool_setting(db_state: &DbState, key: &str, enabled: bool) -> AppResult<()> {
     db_state
         .settings_repo
         .set(key, &enabled.to_string())
         .map_err(AppError::from)
-}
-
-fn save_bool_setting_with_legacy(
-    db_state: &DbState,
-    key: &str,
-    legacy_key: &str,
-    enabled: bool,
-) -> AppResult<()> {
-    save_bool_setting(db_state, key, enabled)?;
-    db_state
-        .settings_repo
-        .set(legacy_key, &enabled.to_string())
-        .map_err(AppError::from)?;
-    Ok(())
 }
 
 fn apply_setting_state_update(settings_state: &crate::app_state::SettingsState, key: &str, value: &str) {
@@ -57,12 +36,6 @@ fn apply_setting_state_update(settings_state: &crate::app_state::SettingsState, 
         "app.capture_rich_text" => {
             settings_state.capture_rich_text.store(value == "true", Ordering::Relaxed);
         },
-        "app.file_transfer_auto_close" | "file_transfer_auto_close" => {
-            settings_state.file_server_auto_close.store(value == "true", Ordering::Relaxed);
-        },
-        "app.file_transfer_auto_copy" | "file_transfer_auto_copy" => {
-            settings_state.auto_copy_file.store(value == "true", Ordering::Relaxed);
-        },
         "app.silent_start" => {
             settings_state.silent_start.store(value != "false", Ordering::Relaxed);
         },
@@ -87,20 +60,6 @@ fn apply_setting_state_update(settings_state: &crate::app_state::SettingsState, 
 
 fn persist_setting_with_legacy(db_state: &DbState, key: &str, value: &str) -> AppResult<()> {
     db_state.settings_repo.set(key, value).map_err(AppError::from)?;
-
-    if key == KEY_APP_FILE_TRANSFER_AUTO_CLOSE {
-        let _ = db_state.settings_repo.set(LEGACY_KEY_FILE_TRANSFER_AUTO_CLOSE, value);
-    } else if key == KEY_APP_FILE_TRANSFER_AUTO_OPEN {
-        let _ = db_state.settings_repo.set(LEGACY_KEY_FILE_TRANSFER_AUTO_OPEN, value);
-    } else if key == KEY_APP_FILE_TRANSFER_AUTO_COPY {
-        let _ = db_state.settings_repo.set(LEGACY_KEY_FILE_TRANSFER_AUTO_COPY, value);
-    } else if key == "app.file_transfer_path" {
-        let _ = db_state.settings_repo.set("file_transfer_path", value);
-    } else if key == "app.file_server_port" {
-        let _ = db_state.settings_repo.set("file_server_port", value);
-    } else if key == "app.file_server_enabled" {
-        let _ = db_state.settings_repo.set("file_server_enabled", value);
-    }
 
     Ok(())
 }
@@ -209,34 +168,6 @@ pub fn get_settings(
 }
 
 #[tauri::command]
-pub fn set_file_server_auto_close(
-    state: State<'_, crate::app_state::SettingsState>,
-    db_state: State<'_, DbState>,
-    enabled: bool,
-) -> AppResult<()> {
-    state.file_server_auto_close.store(enabled, Ordering::Relaxed);
-    save_bool_setting_with_legacy(
-        &db_state,
-        KEY_APP_FILE_TRANSFER_AUTO_CLOSE,
-        LEGACY_KEY_FILE_TRANSFER_AUTO_CLOSE,
-        enabled,
-    )
-}
-
-#[tauri::command]
-pub fn set_file_transfer_auto_open(
-    db_state: State<'_, DbState>,
-    enabled: bool,
-) -> AppResult<()> {
-    save_bool_setting_with_legacy(
-        &db_state,
-        KEY_APP_FILE_TRANSFER_AUTO_OPEN,
-        LEGACY_KEY_FILE_TRANSFER_AUTO_OPEN,
-        enabled,
-    )
-}
-
-#[tauri::command]
 pub fn set_arrow_key_selection(
     state: State<'_, crate::app_state::SettingsState>,
     enabled: bool,
@@ -273,21 +204,6 @@ pub fn set_capture_rich_text(
 ) -> AppResult<()> {
     state.capture_rich_text.store(enabled, Ordering::Relaxed);
     save_bool_setting(&db_state, "app.capture_rich_text", enabled)
-}
-
-#[tauri::command]
-pub fn set_auto_copy_file(
-    state: State<'_, crate::app_state::SettingsState>,
-    db_state: State<'_, DbState>,
-    enabled: bool,
-) -> AppResult<()> {
-    state.auto_copy_file.store(enabled, Ordering::Relaxed);
-    save_bool_setting_with_legacy(
-        &db_state,
-        KEY_APP_FILE_TRANSFER_AUTO_COPY,
-        LEGACY_KEY_FILE_TRANSFER_AUTO_COPY,
-        enabled,
-    )
 }
 
 #[tauri::command]
@@ -352,36 +268,6 @@ pub fn set_sound_enabled(
 ) -> AppResult<()> {
     state.sound_enabled.store(enabled, Ordering::Relaxed);
     save_bool_setting(&db_state, "app.sound_enabled", enabled)
-}
-
-#[tauri::command]
-pub fn get_mqtt_status() -> bool {
-    crate::services::mqtt_sub::get_mqtt_status()
-}
-
-#[tauri::command]
-pub fn get_mqtt_running() -> bool {
-    crate::services::mqtt_sub::get_mqtt_running()
-}
-
-#[tauri::command]
-pub fn restart_mqtt_client(app_handle: AppHandle) {
-    crate::services::mqtt_sub::restart_mqtt_client(app_handle)
-}
-
-#[tauri::command]
-pub fn get_cloud_sync_status() -> crate::services::cloud_sync::CloudSyncStatus {
-    crate::services::cloud_sync::get_cloud_sync_status()
-}
-
-#[tauri::command]
-pub fn restart_cloud_sync_client(app_handle: AppHandle) {
-    crate::services::cloud_sync::restart_cloud_sync_client(app_handle);
-}
-
-#[tauri::command]
-pub async fn cloud_sync_now(app_handle: AppHandle) -> AppResult<crate::services::cloud_sync::CloudSyncStatus> {
-    crate::services::cloud_sync::cloud_sync_now(app_handle).await
 }
 
 #[tauri::command]

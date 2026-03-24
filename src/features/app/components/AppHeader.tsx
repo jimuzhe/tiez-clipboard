@@ -2,7 +2,6 @@ import type { RefObject } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ChevronLeft,
-  MessageSquare,
   Pin,
   PinOff,
   Search,
@@ -25,9 +24,6 @@ interface AppHeaderProps {
   showEmojiPanel: boolean;
   setShowEmojiPanel: (val: boolean) => void;
   emojiPanelEnabled: boolean;
-  chatMode: boolean;
-  setChatMode: (val: boolean) => void;
-  fileServerEnabled: boolean;
   isWindowPinned: boolean;
   setIsWindowPinned: (val: boolean) => void;
   clearHistory: () => void;
@@ -58,9 +54,6 @@ const AppHeader = ({
   showEmojiPanel,
   setShowEmojiPanel,
   emojiPanelEnabled,
-  chatMode,
-  setChatMode,
-  fileServerEnabled,
   isWindowPinned,
   setIsWindowPinned,
   clearHistory,
@@ -99,8 +92,7 @@ const AppHeader = ({
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
         {(showSettings || showTagManager || showEmojiPanel) && (
           <button className="btn-icon" onClick={() => {
-            if (chatMode) setChatMode(false);
-            else if (showEmojiPanel) setShowEmojiPanel(false);
+            if (showEmojiPanel) setShowEmojiPanel(false);
             else if (showTagManager) setShowTagManager(false);
             else setShowSettings(false);
           }}>
@@ -150,26 +142,6 @@ const AppHeader = ({
               <SettingsIcon size={16} />
             </button>
           </>
-        )}
-        {fileServerEnabled && (
-          <button
-            className={`btn-icon ${chatMode && showSettings ? 'active' : ''}`}
-            title="Chat"
-            onClick={() => {
-              if (showTagManager) setShowTagManager(false);
-              if (!showSettings) {
-                setShowSettings(true);
-                setChatMode(true);
-              } else {
-                setChatMode(!chatMode);
-              }
-            }}
-          >
-            <div style={{ position: 'relative' }}>
-              <MessageSquare size={16} />
-              {/* Keep the indicator/badge if needed, though not present in original code */}
-            </div>
-          </button>
         )}
         <button className="btn-icon" title={t('hide')} onClick={async () => {
           invoke("hide_window_cmd").catch(console.error);

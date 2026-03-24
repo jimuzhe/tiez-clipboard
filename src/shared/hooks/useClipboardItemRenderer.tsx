@@ -19,10 +19,6 @@ interface UseClipboardItemRendererOptions {
   t: (key: string) => string;
   compactMode: boolean;
   richTextSnapshotPreview: boolean;
-  processingAiId: number | null;
-  aiEnabled: boolean;
-  aiOptionsOpenId: number | null;
-  setAiOptionsOpenId: Dispatch<SetStateAction<number | null>>;
   copyToClipboard: (
     id: number,
     content: string,
@@ -38,7 +34,6 @@ interface UseClipboardItemRendererOptions {
   setEditingTagsId: Dispatch<SetStateAction<number | null>>;
   setTagInput: Dispatch<SetStateAction<string>>;
   handleUpdateTags: (id: number, tags: string[]) => void;
-  handleAIAction: (id: number, content: string, actionType: string) => void;
 }
 
 type RenderItemContent = (
@@ -62,10 +57,6 @@ export const useClipboardItemRenderer = ({
   t,
   compactMode,
   richTextSnapshotPreview,
-  processingAiId,
-  aiEnabled,
-  aiOptionsOpenId,
-  setAiOptionsOpenId,
   copyToClipboard,
   setSelectedIndex,
   setRevealedIds,
@@ -74,8 +65,7 @@ export const useClipboardItemRenderer = ({
   deleteEntry,
   setEditingTagsId,
   setTagInput,
-  handleUpdateTags,
-  handleAIAction
+  handleUpdateTags
 }: UseClipboardItemRendererOptions): { renderItemContent: RenderItemContent } => {
   const renderItemContent = useCallback(
     (item: ClipboardEntry, index: number, dragControls?: DragControls, disableLayout?: boolean) => {
@@ -144,20 +134,6 @@ export const useClipboardItemRenderer = ({
           onTagDelete={(tag) => {
             handleUpdateTags(item.id, item.tags ? item.tags.filter((t) => t !== tag) : []);
           }}
-          isAIProcessing={processingAiId === item.id}
-          aiEnabled={aiEnabled}
-          aiOptionsOpen={aiOptionsOpenId === item.id}
-          onAIOptionsToggle={() =>
-            setAiOptionsOpenId((prev) => (prev === item.id ? null : item.id))
-          }
-          onAIAction={(actionType) => handleAIAction(item.id, item.content, actionType)}
-          onInputSubmit={(input) =>
-            handleAIAction(
-              item.id,
-              `这是我之前的原始意图：\n"${item.content}"\n\n这是我补充的信息：\n"${input}"\n\n请结合以上信息完成任务。`,
-              "task"
-            )
-          }
           dragControls={dragControls}
           disableLayout={disableLayout}
         />
@@ -177,10 +153,6 @@ export const useClipboardItemRenderer = ({
       t,
       compactMode,
       richTextSnapshotPreview,
-      processingAiId,
-      aiEnabled,
-      aiOptionsOpenId,
-      setAiOptionsOpenId,
       copyToClipboard,
       setSelectedIndex,
       setRevealedIds,
@@ -189,12 +161,10 @@ export const useClipboardItemRenderer = ({
       deleteEntry,
       setEditingTagsId,
       setTagInput,
-      handleUpdateTags,
-      handleAIAction
+      handleUpdateTags
     ]
   );
 
   return { renderItemContent };
 };
-
 

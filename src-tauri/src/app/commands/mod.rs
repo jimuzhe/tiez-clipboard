@@ -1,6 +1,5 @@
 pub mod history_cmd;
 pub mod settings_cmd;
-pub mod ai_cmd;
 pub mod tag_color_cmd;
 pub mod system_cmd;
 pub mod ui_cmd;
@@ -13,7 +12,6 @@ pub mod file_cmd;
 // though tauri usually expects them to be referenced via module path in generate_handler!
 pub use history_cmd::*;
 pub use settings_cmd::*;
-pub use ai_cmd::*;
 pub use tag_color_cmd::*;
 pub use system_cmd::*;
 pub use ui_cmd::*;

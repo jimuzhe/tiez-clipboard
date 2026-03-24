@@ -13,10 +13,7 @@ export interface ClipboardItemProps {
   theme: string;
   language: Locale;
   t: (key: string) => string;
-  isAIProcessing?: boolean;
-  aiEnabled?: boolean;
   tagColors?: Record<string, string>;
-  aiOptionsOpen?: boolean;
   richTextSnapshotPreview?: boolean;
 
   onSelect: () => void;
@@ -29,9 +26,6 @@ export interface ClipboardItemProps {
   onTagInput: (val: string) => void;
   onTagAdd: () => void;
   onTagDelete: (tag: string) => void;
-  onAIAction?: (type: string) => void;
-  onAIOptionsToggle?: () => void;
-  onInputSubmit?: (val: string) => void;
   dragControls?: DragControls;
   id?: string;
   disableLayout?: boolean;

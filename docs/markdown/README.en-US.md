@@ -27,16 +27,16 @@ A lightweight cross-platform clipboard manager focused on speed, practical daily
 
 ## Overview
 
-**TieZ** is a cross-platform clipboard manager built with [Tauri 2](https://tauri.app/), available on **Windows** and **macOS**. It stays in the system tray, opens instantly with a global shortcut, and helps you manage clipboard history, rich text, tags, device sync, LAN transfer, and AI-assisted actions in one place.
+**TieZ** is a cross-platform clipboard manager built with [Tauri 2](https://tauri.app/), available on **Windows** and **macOS**. It stays in the system tray, opens instantly with a global shortcut, and helps you manage clipboard history, rich text, tags, and everyday copy/paste workflow in one place.
 
 ## Highlights
 
 | Highlight | Description |
 | --- | --- |
 | Fast | Open instantly with `Alt+V` and keep common actions close |
-| Complete | Text, images, rich text, tags, emoji, AI, sync, and file transfer |
+| Complete | Text, images, rich text, tags, and emoji |
 | Practical | Designed as a daily background utility, not a demo app |
-| Flexible | Themes, hotkeys, persistence, and sync behavior are configurable |
+| Flexible | Themes, hotkeys, and persistence behavior are configurable |
 
 ## Features
 
@@ -82,7 +82,6 @@ A lightweight cross-platform clipboard manager focused on speed, practical daily
 
 - Global shortcut to summon the interface
 - Open content in an external editor or handler
-- Automatic sync-back when edited externally
 - Sequential paste mode
 - Click / Enter to paste
 - Optional auto-pin after paste
@@ -96,10 +95,6 @@ A lightweight cross-platform clipboard manager focused on speed, practical daily
 
 ### 7. Networking and Multi-Device
 
-- WebDAV cloud sync
-- Tombstone sync mechanism for cross-device deletions
-- Seamless verification code sync
-- Custom MQTT transport protocol selection (WS / WSS)
 - Conflict handling across multiple devices
 
 ### 8. System Personalization

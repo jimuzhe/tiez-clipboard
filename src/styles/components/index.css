@@ -1,5 +1,4 @@
 @import "./Announcement.css";
-@import "./ai.css";
 @import "./buttons.css";
 @import "./clipboard.css";
 @import "./clipboard-item.css";
@@ -7,7 +6,6 @@
 @import "./compact-preview.css";
 @import "./empty-state.css";
 @import "./emoji.css";
-@import "./file-transfer.css";
 @import "./layout.css";
 @import "./modal.css";
 @import "./queue-bar.css";

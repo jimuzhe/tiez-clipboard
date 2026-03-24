@@ -20,12 +20,8 @@ interface UseSettingsPanelPropsOptions {
   updateSearchHotkey: (key: string) => void;
   saveAppSetting: (key: string, val: string) => void;
   saveSetting: (key: string, val: string) => void;
-  saveMqtt: (key: string, val: string) => void;
-  saveCloudSync: (key: string, val: string) => void;
-  fetchEffectiveTransferPath: () => void;
   handleResetSettings: () => void;
   toggleGroup: (group: string) => void;
-  onOpenChat?: () => void;
   state: AppState;
 }
 
@@ -44,12 +40,8 @@ export const useSettingsPanelProps = ({
   updateSearchHotkey,
   saveAppSetting,
   saveSetting,
-  saveMqtt,
-  saveCloudSync,
-  fetchEffectiveTransferPath,
   handleResetSettings,
   toggleGroup,
-  onOpenChat,
   state
 }: UseSettingsPanelPropsOptions): SettingsPanelProps => {
   return {
@@ -68,11 +60,7 @@ export const useSettingsPanelProps = ({
     updateSearchHotkey,
     saveAppSetting,
     saveSetting,
-    saveMqtt,
-    saveCloudSync,
-    fetchEffectiveTransferPath,
     handleResetSettings,
-    toggleGroup,
-    onOpenChat
+    toggleGroup
   } as SettingsPanelProps;
 };
