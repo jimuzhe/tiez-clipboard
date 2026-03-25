@@ -29,15 +29,18 @@ pub fn toggle_autostart(enable: bool, app_id: &str) -> Result<(), String> {
 
         let exe_path = current_exe.to_string_lossy();
 
+        // Create a valid .desktop file for GNOME autostart
         let desktop_content = format!(
             "[Desktop Entry]\n\
-             Type=Application\n\
-             Name=TieZ\n\
-             Exec={}\n\
-             Icon={}\n\
-             Terminal=false\n\
-             Categories=Utility;\n",
-            exe_path, app_id
+Type=Application\n\
+Name=TieZ\n\
+Exec={}\n\
+Icon=tiez\n\
+Terminal=false\n\
+Categories=Utility;\n\
+X-GNOME-Autostart-enabled=true\n\
+X-GNOME-Autostart-Delay=0\n",
+            exe_path
         );
 
         fs::write(&desktop_file, desktop_content)
@@ -58,7 +61,28 @@ pub fn set_autostart(enabled: bool) -> Result<(), String> {
 
 pub fn is_autostart_enabled() -> bool {
     let autostart_path = get_autostart_path("tiez");
-    autostart_path.exists()
+
+    if !autostart_path.exists() {
+        return false;
+    }
+
+    // Read and parse the desktop file to check for disabled state
+    if let Ok(content) = fs::read_to_string(&autostart_path) {
+        // Check for Hidden=true (desktop file spec)
+        if content.lines().any(|line| line.trim() == "Hidden=true") {
+            return false;
+        }
+
+        // Check for GNOME-specific disabled flag
+        if content.lines().any(|line| line.trim() == "X-GNOME-Autostart-enabled=false") {
+            return false;
+        }
+
+        // File exists and not explicitly disabled
+        return true;
+    }
+
+    false
 }
 
 pub fn get_autostart_path(app_id: &str) -> PathBuf {
