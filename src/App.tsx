@@ -501,6 +501,19 @@ const App = () => {
   ]);
 
   useEffect(() => {
+    const unlisten = listen("open-settings", () => {
+      setShowSettings(true);
+      setShowTagManager(false);
+      setChatMode(false);
+      setShowEmojiPanel(false);
+    });
+
+    return () => {
+      unlisten.then((off) => off());
+    };
+  }, [setShowSettings, setShowTagManager, setChatMode, setShowEmojiPanel]);
+
+  useEffect(() => {
     if (!emojiPanelEnabled && showEmojiPanel) {
       setShowEmojiPanel(false);
     }

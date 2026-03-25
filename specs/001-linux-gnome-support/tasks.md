@@ -196,17 +196,10 @@
 - [x] T025 [P] [US3] Implement toggle_autostart() using XDG autostart spec in src-tauri/src/infrastructure/linux_api/desktop_integration.rs
 - [x] T026 [US3] Update src-tauri/src/app/commands/system_cmd.rs open_folder command to use xdg-open on Linux
 - [x] T027 [US3] Update src-tauri/src/services/file_transfer/mod.rs register_received_file to use xdg-open for auto-open on Linux
-- [ ] T028 [US3] Test file opening manually per quickstart.md section 3.5
-- [ ] T029 [US3] Test autostart manually per quickstart.md section 3.6
+- [x] T028 [US3] Test file opening manually per quickstart.md section 3.5
+- [x] T029 [US3] Test autostart manually per quickstart.md section 3.6
 
 **Checkpoint**: Files open with system default applications, autostart works via XDG specification
-
-### Known Issues (Linux) - Discovered During Testing
-
-- [ ] T017A [US1] Fix paste not working when window is pinned (pin icon clicked)
-- [ ] T017B [US1] Fix window not staying on top when pinned (other windows can cover it)
-- [x] T017C [US1] Fix window disappearing when moved while not pinned
-- [ ] T017D [US1] Extend draggable area to entire title bar (including button area)
 
 
 ---
@@ -242,18 +235,24 @@
 
 | Scenario ID | Test Date | Result (Pass/Fail) | Notes |
 |-------------|-----------|-------------------|-------|
-| US4-AC1 | | | |
-| US4-AC2 | | | |
+| US4-AC1 | 2026年3月25日 | Pass | None |
+| US4-AC2 | 2026年3月25日 | Pass | None |
 
 ### Implementation for User Story 4
 
-- [ ] T030 [US4] Verify Tauri tray-icon feature is enabled in src-tauri/Cargo.toml (already present via tray-icon feature)
-- [ ] T031 [US4] Test tray icon visibility on Ubuntu with AppIndicator extension
-- [ ] T032 [US4] Verify tray context menu shows Show/Hide, Settings, and Quit options
+- [x] T030 [US4] Verify Tauri tray-icon feature is enabled in src-tauri/Cargo.toml (already present via tray-icon feature)
+- [x] T031 [US4] Test tray icon visibility on Ubuntu with AppIndicator extension
+- [x] T032 [US4] Verify tray context menu shows Show/Hide, Settings, and Quit options
 
 **Checkpoint**: System tray icon works on Ubuntu with AppIndicator extension
 
 ---
+### Known Issues (Linux) - Discovered During Testing
+
+- [ ] T017A [US1] Fix paste not working when window is pinned (pin icon clicked)
+- [ ] T017B [US1] Fix window not staying on top when pinned (other windows can cover it)
+- [x] T017C [US1] Fix window disappearing when moved while not pinned
+- [ ] T017D [US1] Extend draggable area to entire title bar (including button area)
 
 ## Phase 7: Polish & Cross-Cutting Concerns
 
