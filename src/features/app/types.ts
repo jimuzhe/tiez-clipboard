@@ -107,18 +107,12 @@ export interface AppState {
   setEmojiPanelEnabled: StateSetter<boolean>;
   emojiPanelTab: "emoji" | "favorites";
   setEmojiPanelTab: StateSetter<"emoji" | "favorites">;
-  showHotkeyHint: boolean;
-  setShowHotkeyHint: StateSetter<boolean>;
-  showAutoCloseHint: boolean;
-  setShowAutoCloseHint: StateSetter<boolean>;
   language: Locale;
   setLanguage: StateSetter<Locale>;
   settingsLoaded: boolean;
   setSettingsLoaded: StateSetter<boolean>;
   isWindowPinned: boolean;
   setIsWindowPinned: StateSetter<boolean>;
-  winClipboardDisabled: boolean;
-  setWinClipboardDisabled: StateSetter<boolean>;
   registryWinVEnabled: boolean;
   setRegistryWinVEnabled: StateSetter<boolean>;
   showSearchBox: boolean;

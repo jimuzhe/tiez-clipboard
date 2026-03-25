@@ -1,9 +1,10 @@
-import React from "react";
+import React, { Suspense, lazy } from "react";
 import ReactDOM from "react-dom/client";
-import App from "./App";
-import CompactPreviewWindow from "./features/clipboard/components/CompactPreviewWindow";
 import "./index.css";
 import "./styles/components/index.css";
+
+const App = lazy(() => import("./App"));
+const CompactPreviewWindow = lazy(() => import("./features/clipboard/components/CompactPreviewWindow"));
 
 const themeCssLoaders = import.meta.glob("./styles/themes/*.css");
 
@@ -29,6 +30,8 @@ const isCompactPreview = params.get("window") === "compact-preview";
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
-    {isCompactPreview ? <CompactPreviewWindow /> : <App />}
+    <Suspense fallback={null}>
+      {isCompactPreview ? <CompactPreviewWindow /> : <App />}
+    </Suspense>
   </React.StrictMode>,
 );

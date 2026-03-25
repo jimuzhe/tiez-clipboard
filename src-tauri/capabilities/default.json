@@ -33,9 +33,6 @@
     "core:window:allow-set-ignore-cursor-events",
     "core:window:allow-set-focusable",
     "core:path:default",
-    "fs:default",
-    "fs:read-all",
-    "sql:default",
     "dialog:default",
     "dialog:allow-open",
     "window-state:default"

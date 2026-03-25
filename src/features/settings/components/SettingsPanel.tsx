@@ -48,7 +48,6 @@ interface SettingsPanelProps {
     privacyProtectionCustomRules: string;
     setPrivacyProtectionCustomRules: (val: string) => void;
     hotkey: string;
-    winClipboardDisabled: boolean;
     registryWinVEnabled: boolean;
     setRegistryWinVEnabled: (val: boolean) => void;
     showSearchBox: boolean;
@@ -107,14 +106,12 @@ interface SettingsPanelProps {
     setIsRecordingSearch: (val: boolean) => void;
     updateSearchHotkey: (key: string) => void;
     setPrivacyProtection: (val: boolean) => void;
-    setShowHotkeyHint: (val: boolean) => void;
     setIsRecording: (val: boolean) => void;
     isRecording: boolean;
     mainHotkeys: string[];
     updateHotkey: (key: string) => void;
     addMainHotkey: (key: string, options?: { skipAvailabilityCheck?: boolean }) => Promise<boolean>;
     removeMainHotkey: (key: string) => Promise<boolean>;
-    setWinClipboardDisabled: (val: boolean) => void;
     setTheme: (val: string) => void;
     setColorMode: (val: string) => void;
     setLanguage: (val: Locale) => void;

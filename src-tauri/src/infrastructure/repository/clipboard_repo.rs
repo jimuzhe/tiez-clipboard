@@ -389,12 +389,6 @@ impl SqliteClipboardRepository {
         Ok(())
     }
 
-    pub fn delete_metadata_with_conn(&self, conn: &Connection, id: i64) -> Result<(), String> {
-        conn.execute("DELETE FROM clipboard_history WHERE id = ?", params![id]).map_err(|e| e.to_string())?;
-        let _ = conn.execute("DELETE FROM entry_tags WHERE entry_id = ?", params![id]);
-        Ok(())
-    }
-
     pub fn find_by_content_with_conn(&self, conn: &Connection, content: &str, content_type: Option<&str>) -> Result<Option<i64>, String> {
         if content_type == Some("image") {
             if let Some(hash) = calc_image_hash(content) {

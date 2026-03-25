@@ -23,12 +23,6 @@ pub fn get_file_size(path: String) -> AppResult<FileSize> {
     })
 }
 
-#[tauri::command]
-pub async fn save_file_copy(source_path: String, target_path: String) -> AppResult<()> {
-    std::fs::copy(source_path, target_path).map_err(AppError::from)?;
-    Ok(())
-}
-
 fn normalize_image_ext(ext: &str) -> Option<&'static str> {
     match ext.to_lowercase().as_str() {
         "png" => Some("png"),

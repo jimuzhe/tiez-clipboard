@@ -64,12 +64,9 @@ export const useAppState = (): AppState => {
   const [clipboardTagFontSize, setClipboardTagFontSize] = useState(10);
   const [emojiPanelEnabled, setEmojiPanelEnabled] = useState(false);
   const [emojiPanelTab, setEmojiPanelTab] = useState<"emoji" | "favorites">("emoji");
-  const [showHotkeyHint, setShowHotkeyHint] = useState(false);
-  const [showAutoCloseHint, setShowAutoCloseHint] = useState(false);
   const [language, setLanguage] = useState<Locale>("zh");
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [isWindowPinned, setIsWindowPinned] = useState(false);
-  const [winClipboardDisabled, setWinClipboardDisabled] = useState(false);
   const [registryWinVEnabled, setRegistryWinVEnabled] = useState(false);
   const [showSearchBox, setShowSearchBox] = useState(true);
   const [scrollTopButtonEnabled, setScrollTopButtonEnabled] = useState(true);
@@ -192,18 +189,12 @@ export const useAppState = (): AppState => {
     setEmojiPanelEnabled,
     emojiPanelTab,
     setEmojiPanelTab,
-    showHotkeyHint,
-    setShowHotkeyHint,
-    showAutoCloseHint,
-    setShowAutoCloseHint,
     language,
     setLanguage,
     settingsLoaded,
     setSettingsLoaded,
     isWindowPinned,
     setIsWindowPinned,
-    winClipboardDisabled,
-    setWinClipboardDisabled,
     registryWinVEnabled,
     setRegistryWinVEnabled,
     showSearchBox,

@@ -12,16 +12,6 @@ pub fn get_data_path(state: State<'_, AppDataDir>) -> AppResult<String> {
 }
 
 #[tauri::command]
-pub fn open_folder(path: String) -> AppResult<()> {
-    use std::process::Command;
-    Command::new("explorer")
-        .arg(path)
-        .spawn()
-        .map_err(|e| AppError::Internal(format!("Failed to open folder: {}", e)))?;
-    Ok(())
-}
-
-#[tauri::command]
 pub fn open_data_folder(state: State<'_, AppDataDir>) -> AppResult<()> {
     let path = state.0.lock().unwrap();
     let path_str = path.to_string_lossy().to_string();
@@ -31,27 +21,6 @@ pub fn open_data_folder(state: State<'_, AppDataDir>) -> AppResult<()> {
         .arg(path_str)
         .spawn()
         .map_err(|e| AppError::Internal(format!("Failed to open data folder: {}", e)))?;
-    Ok(())
-}
-
-#[tauri::command]
-pub fn open_file_with_default_app(file_path: String) -> AppResult<()> {
-    use std::process::Command;
-    Command::new("explorer")
-        .arg(&file_path)
-        .spawn()
-        .map_err(|e| AppError::Internal(format!("Failed to open file: {}", e)))?;
-    Ok(())
-}
-
-#[tauri::command]
-pub fn open_file_location(file_path: String) -> AppResult<()> {
-    use std::process::Command;
-    Command::new("explorer")
-        .arg("/select,")
-        .arg(&file_path)
-        .spawn()
-        .map_err(|e| AppError::Internal(format!("Failed to open file location: {}", e)))?;
     Ok(())
 }
 
@@ -132,28 +101,6 @@ pub fn set_windows_clipboard_history(enabled: bool) -> AppResult<()> {
     
     if needs_restart { restart_explorer().ok(); }
     Ok(())
-}
-
-#[tauri::command]
-pub fn get_windows_clipboard_history() -> AppResult<bool> {
-    use winreg::enums::*;
-    use winreg::RegKey;
-    let hkcu = RegKey::predef(HKEY_CURRENT_USER);
-    
-    let v_disabled = match hkcu.open_subkey("Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced") {
-        Ok(key) => key.get_value::<String, _>("DisabledHotkeys").unwrap_or_default().to_uppercase().contains('V'),
-        Err(_) => false,
-    };
-    let history_enabled = match hkcu.open_subkey("Software\\Microsoft\\Clipboard") {
-        Ok(key) => key.get_value::<u32, _>("EnableClipboardHistory").unwrap_or(1) != 0,
-        Err(_) => true,
-    };
-    Ok(history_enabled && !v_disabled)
-}
-
-#[tauri::command]
-pub fn set_win_clipboard_disabled(_disabled: bool) -> AppResult<()> {
-    set_windows_clipboard_history(!_disabled)
 }
 
 #[tauri::command]
@@ -247,11 +194,6 @@ pub fn restart_explorer() -> AppResult<()> {
     use std::os::windows::process::CommandExt;
     let _ = Command::new("cmd").args(["/C", "taskkill /F /IM explorer.exe & start explorer.exe"]).creation_flags(0x08000000).spawn();
     Ok(())
-}
-
-#[tauri::command]
-pub fn quit(app: AppHandle) {
-    app.exit(0);
 }
 
 #[tauri::command]

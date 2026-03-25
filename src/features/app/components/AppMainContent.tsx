@@ -1,16 +1,19 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ComponentProps, RefObject, ReactNode } from "react";
 import { motion, Reorder, useDragControls } from "framer-motion";
 import type { DragControls } from "framer-motion";
 import { ArrowUp, Clipboard } from "lucide-react";
-import SettingsPanel from "../../settings/components/SettingsPanel";
-import TagManager from "../../tag/components/TagManager";
-import EmojiPanel from "../../emoji/components/EmojiPanel";
 import { VirtualClipboardList } from "../../clipboard/components/VirtualClipboardList";
 import type { ClipboardEntry } from "../../../shared/types";
 import type { VirtualClipboardListHandle } from "../../clipboard/types";
 
-type SettingsPanelProps = ComponentProps<typeof SettingsPanel>;
+const SettingsPanel = lazy(() => import("../../settings/components/SettingsPanel"));
+const TagManager = lazy(() => import("../../tag/components/TagManager"));
+const EmojiPanel = lazy(() => import("../../emoji/components/EmojiPanel"));
+
+type SettingsPanelProps = ComponentProps<
+  typeof import("../../settings/components/SettingsPanel").default
+>;
 type RenderItem = (
   item: ClipboardEntry,
   index: number,
@@ -185,7 +188,9 @@ const AppMainContent = ({
         animate={{ opacity: 1, x: 0 }}
         style={{ height: "100%" }}
       >
-        <TagManager t={t} theme={theme} />
+        <Suspense fallback={<div style={{ height: "100%" }} />}>
+          <TagManager t={t} theme={theme} />
+        </Suspense>
       </motion.div>
     );
   }
@@ -197,14 +202,16 @@ const AppMainContent = ({
         animate={{ opacity: 1, x: 0 }}
         style={{ height: "100%", overflow: "hidden" }}
       >
-        <EmojiPanel
-          t={t}
-          favorites={emojiFavorites}
-          setFavorites={setEmojiFavorites}
-          activeTab={emojiPanelTab}
-          setActiveTab={setEmojiPanelTab}
-          saveSetting={saveSetting}
-        />
+        <Suspense fallback={<div style={{ height: "100%" }} />}>
+          <EmojiPanel
+            t={t}
+            favorites={emojiFavorites}
+            setFavorites={setEmojiFavorites}
+            activeTab={emojiPanelTab}
+            setActiveTab={setEmojiPanelTab}
+            saveSetting={saveSetting}
+          />
+        </Suspense>
       </motion.div>
     );
   }
@@ -217,7 +224,9 @@ const AppMainContent = ({
         className="settings-view"
         style={{ display: "flex", flexDirection: "column", gap: "12px" }}
       >
-        <SettingsPanel {...settingsPanelProps} />
+        <Suspense fallback={<div style={{ minHeight: "240px" }} />}>
+          <SettingsPanel {...settingsPanelProps} />
+        </Suspense>
       </motion.div>
     );
   }

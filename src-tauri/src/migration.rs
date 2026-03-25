@@ -194,22 +194,6 @@ pub fn cleanup_old_start_menu() {
     }
 }
 
-/// Helper function to manually enable autostart via registry
-pub fn enable_autostart_manually(app_name: &str, exe_path: &str) -> std::io::Result<()> {
-    #[cfg(windows)]
-    {
-        use winreg::enums::*;
-        use winreg::RegKey;
-        let hkcu = RegKey::predef(HKEY_CURRENT_USER);
-        let path = "Software\\Microsoft\\Windows\\CurrentVersion\\Run";
-        let (key, _) = hkcu.create_subkey(path)?;
-        key.set_value(app_name, &exe_path)?;
-        Ok(())
-    }
-    #[cfg(not(windows))]
-    Ok(())
-}
-
 /// v0.2.8 Rename Migration: Clean up old installation directory
 pub fn cleanup_old_install_folder(custom_path: Option<PathBuf>) {
     #[cfg(windows)]

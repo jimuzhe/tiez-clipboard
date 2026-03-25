@@ -176,7 +176,6 @@ const App = () => {
     setSettingsLoaded,
     isWindowPinned,
     setIsWindowPinned,
-    setWinClipboardDisabled,
     setRegistryWinVEnabled,
     showSearchBox,
     setShowSearchBox,
@@ -430,7 +429,6 @@ const App = () => {
     setDataPath,
     setInstalledApps,
     setAutoStart,
-    setWinClipboardDisabled,
     setDefaultApps
   });
 
