@@ -225,9 +225,69 @@ pub fn start_clipboard_monitor(app_handle: AppHandle) {
 
         let mut handled = false;
 
-        // --- Core processing logic (same as before) ---
+        // --- Core processing logic ---
 
-        // 1. Check Files
+        // On Linux, check image BEFORE files because browsers may put both
+        // image data AND file:// URIs on clipboard when copying images.
+        // We want the actual image data, not the temp file path.
+        #[cfg(target_os = "linux")]
+        {
+            // 1. Check Image (Linux priority: Image first)
+            let settings = app.state::<SettingsState>();
+            let rich_text_enabled = settings.capture_rich_text.load(Ordering::Relaxed);
+            let has_text = clipboard
+                .get_text()
+                .map(|t| !t.trim().is_empty())
+                .unwrap_or(false);
+            let has_rich_html = if rich_text_enabled && has_text {
+                unsafe {
+                    crate::infrastructure::windows_api::win_clipboard::get_clipboard_raw_format("HTML Format")
+                        .and_then(|raw| parse_cf_html(&raw))
+                        .map(|html| !html.trim().is_empty())
+                        .unwrap_or(false)
+                }
+            } else {
+                false
+            };
+
+            if !has_rich_html {
+                unsafe {
+                    if let Some(image) = crate::infrastructure::windows_api::win_clipboard::get_clipboard_image() {
+                        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+                        use std::hash::{Hash, Hasher};
+                        image.bytes.hash(&mut hasher);
+                        let hash = hasher.finish();
+
+                        if hash != monitor_state.last_image_hash {
+                            let last_app_hash = crate::LAST_APP_SET_HASH.load(Ordering::SeqCst);
+                            let last_app_time = crate::LAST_APP_SET_TIMESTAMP.load(Ordering::SeqCst);
+                            let now_secs = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
+                            let last_app_hash_alt = crate::LAST_APP_SET_HASH_ALT.load(Ordering::SeqCst);
+
+                            if last_app_hash != 0 && (last_app_hash == hash || last_app_hash_alt == hash) && (now_secs - last_app_time) < 10 {
+                                crate::LAST_APP_SET_HASH.store(0, Ordering::SeqCst);
+                                crate::LAST_APP_SET_HASH_ALT.store(0, Ordering::SeqCst);
+                            } else {
+                                if let Some(img_buf) = image::RgbaImage::from_raw(image.width as u32, image.height as u32, image.bytes) {
+                                    let mut bytes: Vec<u8> = Vec::new();
+                                    let mut cursor = std::io::Cursor::new(&mut bytes);
+                                    if img_buf.write_to(&mut cursor, image::ImageFormat::Png).is_ok() {
+                                        let b64 = base64::engine::general_purpose::STANDARD.encode(bytes);
+                                        process_new_entry(&app, ClipboardData::Image { data_url: format!("data:image/png;base64,{}", b64) }, None, Some(source_snapshot.clone()));
+                                        handled = true;
+                                    }
+                                }
+                            }
+                            monitor_state.last_image_hash = hash;
+                        } else {
+                            handled = true;
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. Check Files (or 1. on Windows)
         unsafe {
             if let Some(files) = crate::infrastructure::windows_api::win_clipboard::get_clipboard_files() {
                 let content = files.join("\n");

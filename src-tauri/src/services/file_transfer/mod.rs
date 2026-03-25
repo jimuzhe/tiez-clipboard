@@ -312,6 +312,7 @@ pub async fn register_received_file(app_handle: &AppHandle, final_path: std::pat
             let parent = final_path.parent().unwrap_or(std::path::Path::new("."));
             #[cfg(target_os = "windows")] let _ = std::process::Command::new("explorer").arg(parent).spawn();
             #[cfg(target_os = "macos")] let _ = std::process::Command::new("open").arg(parent).spawn();
+            #[cfg(target_os = "linux")] let _ = std::process::Command::new("xdg-open").arg(parent).spawn();
         }
     }
 }

@@ -35,9 +35,8 @@
         "enable": true,
         "scope": [
           "$HOME/**",
-          "C:/**",
-          "D:/**",
-          "E:/**"
+          "$RESOURCE/**",
+          "/**"
         ]
       },
       "capabilities": [
@@ -82,13 +81,10 @@
                   "path": "$HOME/**"
                 },
                 {
-                  "path": "C:/**"
+                  "path": "$RESOURCE/**"
                 },
                 {
-                  "path": "D:/**"
-                },
-                {
-                  "path": "E:/**"
+                  "path": "/**"
                 }
               ]
             },
@@ -99,13 +95,10 @@
                   "path": "$HOME/**"
                 },
                 {
-                  "path": "C:/**"
+                  "path": "$RESOURCE/**"
                 },
                 {
-                  "path": "D:/**"
-                },
-                {
-                  "path": "E:/**"
+                  "path": "/**"
                 }
               ]
             },
