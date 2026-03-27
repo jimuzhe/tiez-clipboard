@@ -20,6 +20,9 @@ interface UseClipboardItemRendererOptions {
   compactMode: boolean;
   showSourceAppIcon: boolean;
   richTextSnapshotPreview: boolean;
+  sensitiveMaskPrefixVisible: number;
+  sensitiveMaskSuffixVisible: number;
+  sensitiveMaskEmailDomain: boolean;
   processingAiId: number | null;
   aiEnabled: boolean;
   aiOptionsOpenId: number | null;
@@ -63,6 +66,9 @@ export const useClipboardItemRenderer = ({
   compactMode,
   showSourceAppIcon,
   richTextSnapshotPreview,
+  sensitiveMaskPrefixVisible,
+  sensitiveMaskSuffixVisible,
+  sensitiveMaskEmailDomain,
   processingAiId,
   aiEnabled,
   aiOptionsOpenId,
@@ -106,6 +112,9 @@ export const useClipboardItemRenderer = ({
           compactMode={compactMode}
           showSourceAppIcon={showSourceAppIcon}
           richTextSnapshotPreview={richTextSnapshotPreview}
+          sensitiveMaskPrefixVisible={sensitiveMaskPrefixVisible}
+          sensitiveMaskSuffixVisible={sensitiveMaskSuffixVisible}
+          sensitiveMaskEmailDomain={sensitiveMaskEmailDomain}
           onSelect={() => setSelectedIndex(index)}
           onCopy={(withFormat) =>
             copyToClipboard(item.id, item.content, item.content_type, withFormat)
@@ -180,6 +189,9 @@ export const useClipboardItemRenderer = ({
       compactMode,
       showSourceAppIcon,
       richTextSnapshotPreview,
+      sensitiveMaskPrefixVisible,
+      sensitiveMaskSuffixVisible,
+      sensitiveMaskEmailDomain,
       processingAiId,
       aiEnabled,
       aiOptionsOpenId,

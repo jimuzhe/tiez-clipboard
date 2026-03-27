@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "test": "vitest run",
     "test:e2e": "playwright test",
     "test:mqtt:stress": "node tests/mqtt/mqtt_stress_publish.js",
     "test:file:stress": "node tests/file_transfer/file_transfer_stress.js",
@@ -51,7 +52,8 @@
     "node-fetch": "^2.6.7",
     "playwright": "^1.40.0",
     "typescript": "~5.8.3",
-    "vite": "^7.0.4"
+    "vite": "^7.0.4",
+    "vitest": "4.0.18"
   },
   "overrides": {
     "react": "$react",

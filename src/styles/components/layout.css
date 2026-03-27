@@ -90,6 +90,16 @@ select.search-input option {
   color: var(--text-primary);
 }
 
+/* Hide number input spinner arrows */
+.search-input[type="number"]::-webkit-inner-spin-button,
+.search-input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.search-input[type="number"] {
+  -moz-appearance: textfield;
+}
+
 .search-input:focus {
   background: var(--bg-input);
   border-color: var(--input-focus-border-color);

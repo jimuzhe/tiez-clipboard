@@ -19,6 +19,9 @@ export interface ClipboardItemProps {
   tagColors?: Record<string, string>;
   aiOptionsOpen?: boolean;
   richTextSnapshotPreview?: boolean;
+  sensitiveMaskPrefixVisible?: number;
+  sensitiveMaskSuffixVisible?: number;
+  sensitiveMaskEmailDomain?: boolean;
 
   onSelect: () => void;
   onCopy: (withFormat?: boolean) => void;
