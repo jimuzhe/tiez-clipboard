@@ -73,22 +73,78 @@ pub fn calc_image_hash(base64_data: &str) -> Option<i64> {
 }
 
 pub fn init_db(path: &str) -> Result<Connection> {
-    let conn = Connection::open(path)?;
-    
-    // Performance and space pragmas
-    conn.execute_batch("
-        PRAGMA journal_mode = WAL;
-        PRAGMA synchronous = NORMAL;
-        PRAGMA auto_vacuum = FULL;
-    ")?;
-    
-    // Run migrations
-    crate::infrastructure::repository::migrations::run_migrations(&conn)?;
+    fn init_db_once(path: &str) -> Result<Connection> {
+        let conn = Connection::open(path)?;
+        conn.execute_batch("
+            PRAGMA journal_mode = WAL;
+            PRAGMA synchronous = NORMAL;
+            PRAGMA auto_vacuum = FULL;
+        ")?;
+        crate::infrastructure::repository::migrations::run_migrations(&conn)?;
+        seed_defaults(&conn)?;
+        Ok(conn)
+    }
 
-    // Initialize default settings
-    seed_defaults(&conn)?;
+    fn is_disk_io_error(err: &rusqlite::Error) -> bool {
+        err.to_string().to_ascii_lowercase().contains("disk i/o error")
+    }
 
-    Ok(conn)
+    fn quarantine_corrupted_db(path: &str) {
+        use std::time::{SystemTime, UNIX_EPOCH};
+        let db_path = std::path::PathBuf::from(path);
+        if !db_path.exists() {
+            return;
+        }
+        let ts = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+        let base = db_path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("clipboard");
+        let ext = db_path.extension().and_then(|s| s.to_str()).unwrap_or("db");
+        let mut backup = db_path.clone();
+        backup.set_file_name(format!("{base}.corrupt-{ts}.{ext}"));
+        let _ = std::fs::rename(&db_path, &backup);
+
+        let mut wal_path = db_path.clone();
+        wal_path.set_file_name(format!(
+            "{}-wal",
+            db_path.file_name().and_then(|s| s.to_str()).unwrap_or("clipboard.db")
+        ));
+        if wal_path.exists() {
+            let mut wal_backup = backup.clone();
+            wal_backup.set_file_name(format!(
+                "{}-wal",
+                backup.file_name().and_then(|s| s.to_str()).unwrap_or("clipboard.corrupt.db")
+            ));
+            let _ = std::fs::rename(&wal_path, &wal_backup);
+        }
+
+        let mut shm_path = db_path.clone();
+        shm_path.set_file_name(format!(
+            "{}-shm",
+            db_path.file_name().and_then(|s| s.to_str()).unwrap_or("clipboard.db")
+        ));
+        if shm_path.exists() {
+            let mut shm_backup = backup.clone();
+            shm_backup.set_file_name(format!(
+                "{}-shm",
+                backup.file_name().and_then(|s| s.to_str()).unwrap_or("clipboard.corrupt.db")
+            ));
+            let _ = std::fs::rename(&shm_path, &shm_backup);
+        }
+    }
+
+    match init_db_once(path) {
+        Ok(conn) => Ok(conn),
+        Err(err) if is_disk_io_error(&err) => {
+            quarantine_corrupted_db(path);
+            init_db_once(path)
+        }
+        Err(err) => Err(err),
+    }
 }
 
 // save_entry removed (migrated to repository)

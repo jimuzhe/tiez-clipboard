@@ -141,8 +141,20 @@ fn resolve_data_dir(app: &App) -> Result<std::path::PathBuf, Box<dyn std::error:
         }
     }
 
-    std::fs::create_dir_all(&app_dir)?;
-    Ok(app_dir)
+    match std::fs::create_dir_all(&app_dir) {
+        Ok(_) => Ok(app_dir),
+        Err(err) => {
+            if cfg!(debug_assertions) {
+                if let Ok(cwd) = std::env::current_dir() {
+                    let fallback = cwd.join(".tiez-dev-data");
+                    if std::fs::create_dir_all(&fallback).is_ok() {
+                        return Ok(fallback);
+                    }
+                }
+            }
+            Err(Box::new(err))
+        }
+    }
 }
 
 fn apply_startup_resets(repo: &impl SettingsRepository) {
