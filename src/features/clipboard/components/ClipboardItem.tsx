@@ -32,7 +32,6 @@ import type { ClipboardItemProps } from "../types";
 import { getConciseTime, getTagColor } from "../../../shared/lib/utils";
 import HtmlContent from "../../../shared/components/HtmlContent";
 import { toTauriLocalImageSrc } from "../../../shared/lib/localImageSrc";
-import { getRichTextSnapshotDataUrl } from "../../../shared/lib/richTextSnapshot";
 import { getSourceAppIcon, peekSourceAppIcon } from "../../../shared/lib/sourceAppIcon";
 
 const COMPACT_PREVIEW_LABEL = "compact-preview";
@@ -628,48 +627,64 @@ const ClipboardItem = ({
     const [localTagInput, setLocalTagInput] = useState(tagInput);
     const [snapshotFailed, setSnapshotFailed] = useState(false);
     const [richImageFallbackFailed, setRichImageFallbackFailed] = useState(false);
+    const [richTextSnapshotSrc, setRichTextSnapshotSrc] = useState<string | null>(null);
     const [sourceAppIcon, setSourceAppIcon] = useState<string | null>(() => peekSourceAppIcon(item.source_app_path) ?? null);
     const isComposing = useRef(false);
     const richSnapshotImgRef = useRef<HTMLImageElement | null>(null);
     const richSnapshotFallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const hoverAnchorRef = useRef<CompactPreviewAnchor | null>(null);
-    const richTextFallback = item.content_type === "rich_text" && item.html_content
-        ? (() => {
-            const { cleanHtml, imagePayload } = extractRichImageFallback(item.html_content);
-            return {
-                cleanHtml: cleanHtml || item.html_content,
-                imageSrc: resolveRichImageSrc(imagePayload)
-            };
-        })()
-        : null;
+    const richTextFallback = useMemo(() => {
+        if (item.content_type !== "rich_text" || !item.html_content) return null;
+        const { cleanHtml, imagePayload } = extractRichImageFallback(item.html_content);
+        return {
+            cleanHtml: cleanHtml || item.html_content,
+            imageSrc: resolveRichImageSrc(imagePayload)
+        };
+    }, [item.content_type, item.html_content]);
     const richTextCleanHtml = richTextFallback?.cleanHtml || item.html_content || "";
     const richTextSnapshotDisplayMaxHeight = compactMode ? 40 : 64;
     const richTextSnapshotRenderMaxHeight = compactMode ? 100 : 200;
-    const richTextSnapshotSrc = useMemo(() => {
-        if (!richTextSnapshotPreview) return null;
-        if (item.content_type !== "rich_text" || !item.html_content) return null;
-        if (!richTextCleanHtml) return null;
-        return getRichTextSnapshotDataUrl(richTextCleanHtml, {
-            width: compactMode ? 360 : 560,
-            // Keep source snapshot height bounded so list-item preview does not over-shrink text.
-            maxHeight: richTextSnapshotRenderMaxHeight
-        });
-    }, [
-        richTextSnapshotPreview,
-        item.content_type,
-        item.html_content,
-        richTextCleanHtml,
-        compactMode,
-        richTextSnapshotRenderMaxHeight
-    ]);
     const snapshotPreviewEnabled = !!richTextSnapshotPreview;
-    const effectiveRichTextSnapshotSrc = snapshotPreviewEnabled && !snapshotFailed ? richTextSnapshotSrc : null;
     const useRichImageFallback = snapshotPreviewEnabled && !richImageFallbackFailed && !!richTextFallback?.imageSrc;
+    const shouldGenerateSnapshot =
+        snapshotPreviewEnabled &&
+        !snapshotFailed &&
+        item.content_type === "rich_text" &&
+        !!item.html_content &&
+        !!richTextCleanHtml &&
+        !useRichImageFallback;
+    useEffect(() => {
+        if (!shouldGenerateSnapshot) {
+            setRichTextSnapshotSrc(null);
+            return;
+        }
+        let cancelled = false;
+        import("../../../shared/lib/richTextSnapshot")
+            .then(({ getRichTextSnapshotDataUrl }) => {
+                if (cancelled) return;
+                const snapshot = getRichTextSnapshotDataUrl(richTextCleanHtml, {
+                    width: compactMode ? 360 : 560,
+                    maxHeight: richTextSnapshotRenderMaxHeight
+                });
+                if (!cancelled) {
+                    setRichTextSnapshotSrc(snapshot);
+                }
+            })
+            .catch(() => {
+                if (!cancelled) {
+                    setRichTextSnapshotSrc(null);
+                }
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [shouldGenerateSnapshot, richTextCleanHtml, compactMode, richTextSnapshotRenderMaxHeight]);
+    const effectiveRichTextSnapshotSrc = shouldGenerateSnapshot ? richTextSnapshotSrc : null;
     const richTextPreviewSrc = useRichImageFallback
         ? (richTextFallback?.imageSrc || null)
         : effectiveRichTextSnapshotSrc;
-    const useSnapshotPreviewImage = snapshotPreviewEnabled && !useRichImageFallback && !!effectiveRichTextSnapshotSrc;
+    const useSnapshotPreviewImage = shouldGenerateSnapshot && !!effectiveRichTextSnapshotSrc;
 
     useEffect(() => {
         let cancelled = false;
@@ -945,9 +960,9 @@ const ClipboardItem = ({
             data-test-clipboard-item
             layout={!disableLayout}
             initial={false}
-            animate={{ marginBottom: 0 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            transition={{ duration: 0.1 }}
+            animate={disableLayout ? undefined : { marginBottom: 0 }}
+            exit={disableLayout ? undefined : { opacity: 0, scale: 0.95 }}
+            transition={disableLayout ? undefined : { duration: 0.1 }}
             className={`history-item ${isSelected ? "selected" : ""} ${compactMode ? "compact" : ""} ${item.is_pinned ? "pinned" : ""} ${className || ''}`}
             onMouseDown={(e) => {
                 if (!windowPinned) return;

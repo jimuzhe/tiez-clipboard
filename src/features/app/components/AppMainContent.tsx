@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ComponentProps, RefObject, ReactNode } from "react";
-import { motion, Reorder, useDragControls } from "framer-motion";
+import { Reorder, useDragControls } from "framer-motion";
 import type { DragControls } from "framer-motion";
 import { ArrowUp, Clipboard } from "lucide-react";
 import { VirtualClipboardList } from "../../clipboard/components/VirtualClipboardList";
@@ -183,25 +183,17 @@ const AppMainContent = ({
 
   if (showTagManager && tagManagerEnabled) {
     return (
-      <motion.div
-        initial={{ opacity: 0, x: 20 }}
-        animate={{ opacity: 1, x: 0 }}
-        style={{ height: "100%" }}
-      >
+      <div style={{ height: "100%" }}>
         <Suspense fallback={<div style={{ height: "100%" }} />}>
           <TagManager t={t} theme={theme} />
         </Suspense>
-      </motion.div>
+      </div>
     );
   }
 
   if (showEmojiPanel) {
     return (
-      <motion.div
-        initial={{ opacity: 0, x: 20 }}
-        animate={{ opacity: 1, x: 0 }}
-        style={{ height: "100%", overflow: "hidden" }}
-      >
+      <div style={{ height: "100%", overflow: "hidden" }}>
         <Suspense fallback={<div style={{ height: "100%" }} />}>
           <EmojiPanel
             t={t}
@@ -212,22 +204,20 @@ const AppMainContent = ({
             saveSetting={saveSetting}
           />
         </Suspense>
-      </motion.div>
+      </div>
     );
   }
 
   if (showSettings) {
     return (
-      <motion.div
-        initial={{ opacity: 0, x: 20 }}
-        animate={{ opacity: 1, x: 0 }}
+      <div
         className="settings-view"
         style={{ display: "flex", flexDirection: "column", gap: "12px" }}
       >
         <Suspense fallback={<div style={{ minHeight: "240px" }} />}>
           <SettingsPanel {...settingsPanelProps} />
         </Suspense>
-      </motion.div>
+      </div>
     );
   }
 
