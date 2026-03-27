@@ -18,15 +18,6 @@ body.theme-macos {
   --border-dark: rgba(60, 60, 67, 0.24);
   --border-light: rgba(255, 255, 255, 0.64);
   --shadow-color: rgba(15, 18, 26, 0.16);
-  --hotkey-delete-btn-radius: 6px;
-  --hotkey-delete-btn-border: 1px solid #cfd5dd;
-  --hotkey-delete-btn-border-hover: rgba(10, 132, 255, 0.34);
-  --hotkey-delete-btn-bg: rgba(255, 255, 255, 0.94);
-  --hotkey-delete-btn-bg-hover: rgba(255, 255, 255, 0.99);
-  --hotkey-delete-btn-color: #2d3440;
-  --hotkey-delete-btn-color-hover: var(--accent-color);
-  --hotkey-delete-btn-shadow: 0 0 0 1px rgba(255, 255, 255, 0.82) inset;
-  --hotkey-delete-btn-shadow-active: 0 0 0 1px rgba(10, 132, 255, 0.2) inset;
 }
 
 .theme-macos #root {
@@ -201,10 +192,10 @@ body.theme-macos:not(.hide-app-border) {
 
 .theme-macos .history-item .item-actions .btn-icon,
 .theme-macos .history-item.compact .item-actions .btn-icon {
-  width: 22px !important;
-  height: 22px !important;
-  padding: 3px !important;
-  border-radius: 7px !important;
+  width: 18px !important;
+  height: 18px !important;
+  padding: 2px !important;
+  border-radius: 4px !important;
   background: var(--macos-history-action-btn-bg) !important;
   border: 1px solid var(--macos-history-action-btn-border) !important;
   color: var(--macos-history-action-btn-text) !important;
@@ -364,29 +355,6 @@ body.theme-macos:not(.hide-app-border) {
   outline-offset: 2px !important;
 }
 
-.theme-macos .hotkey-delete-btn {
-  width: 24px !important;
-  height: 24px !important;
-  box-shadow: var(--hotkey-delete-btn-shadow) !important;
-  transform: none !important;
-}
-
-.theme-macos .hotkey-delete-btn:hover {
-  box-shadow: var(--macos-hotkey-hover-shadow) !important;
-}
-
-.theme-macos .hotkey-delete-btn:active {
-  box-shadow: var(--hotkey-delete-btn-shadow-active) !important;
-  background: var(--macos-hotkey-active-bg) !important;
-  border-color: var(--macos-hotkey-active-border) !important;
-}
-
-.theme-macos .hotkey-delete-icon {
-  width: 12px !important;
-  height: 12px !important;
-  stroke-width: 2.6 !important;
-}
-
 .theme-macos .settings-view input[type="range"] {
   height: 8px !important;
   background: transparent !important;
@@ -446,6 +414,65 @@ body.theme-macos:not(.hide-app-border) {
 .theme-macos .settings-view input[type="range"]:focus-visible::-webkit-slider-thumb,
 .theme-macos .settings-view input[type="range"]:focus-visible::-moz-range-thumb {
   box-shadow: var(--macos-range-thumb-focus-shadow);
+}
+
+.theme-macos .modal-overlay {
+  background: rgba(20, 22, 28, 0.24) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.theme-macos .app-selector-modal {
+  border-radius: 16px !important;
+  border: 1px solid var(--macos-tag-dialog-border) !important;
+  background: var(--macos-tag-dialog-bg) !important;
+  box-shadow: var(--macos-tag-dialog-shadow) !important;
+  padding: 18px !important;
+}
+
+.theme-macos .app-selector-modal .modal-title {
+  background: transparent !important;
+  color: var(--text-primary) !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  font-size: 18px !important;
+  font-weight: 700 !important;
+  padding: 0 !important;
+}
+
+.theme-macos .app-selector-close-btn {
+  color: var(--text-secondary) !important;
+}
+
+.theme-macos .app-selector-close-btn:hover {
+  color: var(--accent-color) !important;
+}
+
+.theme-macos .app-selector-modal .selector-container {
+  border: 1px solid var(--macos-tag-search-border) !important;
+  border-radius: 12px !important;
+  padding: 6px !important;
+  background: var(--macos-tag-search-bg) !important;
+  box-shadow: none !important;
+}
+
+.theme-macos .app-selector-action-btn {
+  border-radius: 10px !important;
+  border: 1px solid var(--macos-dialog-button-border) !important;
+  box-shadow: none !important;
+  text-transform: none !important;
+  font-weight: 600 !important;
+}
+
+.theme-macos .app-selector-action-btn-browse {
+  background: var(--macos-dialog-button-bg) !important;
+  color: var(--macos-dialog-button-text) !important;
+}
+
+.theme-macos .app-selector-action-btn-cancel {
+  background: var(--macos-dialog-button-primary-bg) !important;
+  color: var(--macos-dialog-button-primary-text) !important;
+  border-color: var(--macos-dialog-button-primary-border) !important;
 }
 
 

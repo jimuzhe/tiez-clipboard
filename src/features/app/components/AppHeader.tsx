@@ -110,7 +110,7 @@ const AppHeader = ({
       <div style={{ display: 'flex', gap: '4px' }}>
         {/* Pin Button - Always visible but single instance */}
         <button
-          className={`btn-icon ${isWindowPinned ? 'active' : ''}`}
+          className={`btn-icon btn-icon-scalable btn-icon-size-header ${isWindowPinned ? 'active' : ''}`}
           title={t('pin')}
           onClick={() => {
             const newVal = !isWindowPinned;
@@ -123,25 +123,25 @@ const AppHeader = ({
 
         {!showSettings && !showTagManager && !showEmojiPanel && (
           <>
-            <button className="btn-icon" title={t('clear_history')} onClick={clearHistory}>
+            <button className="btn-icon btn-icon-scalable btn-icon-size-header" title={t('clear_history')} onClick={clearHistory}>
               <Trash2 size={16} />
             </button>
             {tagManagerEnabled && (
-              <button className="btn-icon" title={t('tag_manager') || '标签管理'} onClick={() => setShowTagManager(true)}>
+              <button className="btn-icon btn-icon-scalable btn-icon-size-header" title={t('tag_manager') || '标签管理'} onClick={() => setShowTagManager(true)}>
                 <Tag size={16} />
               </button>
             )}
             {emojiPanelEnabled && (
-              <button className="btn-icon" title={t('emoji_panel') || '表情包'} onClick={() => setShowEmojiPanel(true)}>
+              <button className="btn-icon btn-icon-scalable btn-icon-size-header" title={t('emoji_panel') || '表情包'} onClick={() => setShowEmojiPanel(true)}>
                 <Smile size={16} />
               </button>
             )}
-            <button className="btn-icon" title={t('settings')} onClick={() => setShowSettings(true)}>
+            <button className="btn-icon btn-icon-scalable btn-icon-size-header" title={t('settings')} onClick={() => setShowSettings(true)}>
               <SettingsIcon size={16} />
             </button>
           </>
         )}
-        <button className="btn-icon" title={t('hide')} onClick={async () => {
+        <button className="btn-icon btn-icon-scalable btn-icon-size-header" title={t('hide')} onClick={async () => {
           invoke("hide_window_cmd").catch(console.error);
         }}>
           <X size={16} />

@@ -55,13 +55,11 @@ const buildRangeStyle = (value: number, min: number, max: number) =>
 const themeCssModules = import.meta.glob("../../../../styles/themes/*.css");
 const hiddenThemeIds = new Set(["dark", "index"]);
 const preferredThemeOrder = ["retro", "mica", "acrylic"];
-const themeIdAliases: Record<string, string[]> = {};
 const discoveredThemeIds = Object.keys(themeCssModules)
     .map(path => path.split("/").pop()?.replace(".css", "") ?? "")
     .filter(id => id && !hiddenThemeIds.has(id));
-const normalizedThemeIds = discoveredThemeIds.flatMap(id => themeIdAliases[id] ?? [id]);
-const availableThemeIds = Array.from(new Set([...preferredThemeOrder, ...normalizedThemeIds]))
-    .filter(id => preferredThemeOrder.includes(id) || normalizedThemeIds.includes(id))
+const availableThemeIds = Array.from(new Set([...preferredThemeOrder, ...discoveredThemeIds]))
+    .filter(id => preferredThemeOrder.includes(id) || discoveredThemeIds.includes(id))
     .sort((a, b) => {
         const ai = preferredThemeOrder.indexOf(a);
         const bi = preferredThemeOrder.indexOf(b);

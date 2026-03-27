@@ -231,7 +231,7 @@ body.dark-mode:is(.theme-mica, .theme-acrylic) {
   --compact-btn-active-border: 1px solid color-mix(in srgb, var(--accent-color) 72%, transparent);
 }
 
-:is(.theme-macos, .theme-scifi, .theme-neon, .theme-retro) {
+:is(.theme-macos, .theme-scifi, .theme-retro) {
   --surface-overlay-bg: rgba(0, 0, 0, 0.45);
   --surface-overlay-blur: 0px;
   --surface-dialog-radius: 12px;
@@ -394,14 +394,6 @@ body.dark-mode.theme-macos {
   --text-secondary: #a8abb4;
   --border-dark: rgba(255, 255, 255, 0.14);
   --shadow-color: rgba(0, 0, 0, 0.5);
-  --hotkey-delete-btn-border: 1px solid rgba(173, 179, 191, 0.74);
-  --hotkey-delete-btn-border-hover: rgba(112, 191, 255, 0.5);
-  --hotkey-delete-btn-bg: rgba(74, 76, 86, 0.9);
-  --hotkey-delete-btn-bg-hover: rgba(86, 89, 99, 0.95);
-  --hotkey-delete-btn-color: #f5f5f7;
-  --hotkey-delete-btn-color-hover: #7fc2ff;
-  --hotkey-delete-btn-shadow: 0 0 0 1px rgba(255, 255, 255, 0.07) inset;
-  --hotkey-delete-btn-shadow-active: 0 0 0 1px rgba(112, 191, 255, 0.2) inset;
   --macos-root-bg: linear-gradient(180deg, rgba(40, 42, 49, 0.76) 0%, rgba(29, 31, 36, 0.78) 100%);
   --macos-root-border: rgba(255, 255, 255, 0.12);
   --macos-root-shadow: 0 12px 30px rgba(0, 0, 0, 0.38), 0 1px 0 rgba(255, 255, 255, 0.08) inset;
@@ -542,24 +534,4 @@ body.dark-mode.theme-macos {
   --select-option-selected-color: #f5f5f7;
   --select-group-heading-color: #b0b0b0;
   --select-group-heading-border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-body.dark-mode.theme-neon {
-  --bg-body: #040612;
-  --bg-window: #070d1d;
-  --bg-content: #070d1d;
-  --bg-toolbar: #0b1430;
-  --bg-panel: #101733;
-  --bg-input: #0b1330;
-  --bg-element: #0f1630;
-  --bg-button: #161f45;
-  --text-primary: #eaf4ff;
-  --text-secondary: #9ab8ff;
-  --border-dark: #345ac4;
-  --shadow-color: rgba(14, 88, 255, 0.55);
-}
-
-body.light-mode.theme-scifi {
-  --text-primary: #d9f9ff;
-  --text-secondary: #7ac4d7;
 }

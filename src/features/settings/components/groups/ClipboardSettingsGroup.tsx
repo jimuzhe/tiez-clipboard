@@ -464,11 +464,9 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
                             hintKey="paste_method"
                         />
                         <ThemedSelect
-                            theme={props.theme}
                             options={pasteMethodOptions}
                             value={props.pasteMethod}
-                            width="160px"
-                            nativeStyle={{ borderRadius: '0', padding: '6px', width: '110px', background: 'var(--bg-input)', border: '2px solid var(--border-dark)', color: 'var(--text-primary)', fontSize: '12px' }}
+                            width="124px"
                             onChange={applyPasteMethod}
                         />
                     </div>
@@ -716,12 +714,12 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
                                     {(!isWinVHotkey(item) || !props.registryWinVEnabled) && (
                                         <button
                                             type="button"
-                                            className="hotkey-delete-btn"
+                                            className="btn-icon btn-icon-scalable btn-icon-size-hotkey"
                                             onClick={() => props.removeMainHotkey(item)}
                                             aria-label={`${props.t('delete')} ${item}`}
                                             title={`${props.t('delete')} ${item}`}
                                         >
-                                            <X className="hotkey-delete-icon" size={14} strokeWidth={2.6} />
+                                            <X size={14} strokeWidth={2.6} />
                                         </button>
                                     )}
                                 </div>

@@ -1,5 +1,4 @@
 import Select from "react-select";
-import type { CSSProperties } from "react";
 import type { SingleValue } from "react-select";
 
 export interface ThemedSelectOption {
@@ -9,45 +8,21 @@ export interface ThemedSelectOption {
 }
 
 interface ThemedSelectProps {
-  theme: string;
   options: ThemedSelectOption[];
   value: string;
   onChange: (value: string) => void | Promise<void>;
   width?: string;
-  nativeStyle?: CSSProperties;
   placeholder?: string;
 }
 
 const ThemedSelect = ({
-  theme,
   options,
   value,
   onChange,
   width = "160px",
-  nativeStyle,
   placeholder
 }: ThemedSelectProps) => {
   const selected = options.find((option) => option.value === value) ?? null;
-  const isMacosTheme = theme === "macos";
-
-  if (!isMacosTheme) {
-    return (
-      <select
-        className="search-input"
-        style={nativeStyle}
-        value={value}
-        onChange={(e) => {
-          void onChange(e.target.value);
-        }}
-      >
-        {options.map((option) => (
-          <option key={option.value} value={option.value} disabled={option.disabled}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    );
-  }
 
   return (
     <div style={{ width }}>
@@ -68,6 +43,7 @@ const ThemedSelect = ({
           control: (base, state) => ({
             ...base,
             minHeight: "34px",
+            width: "100%",
             borderRadius: "var(--select-control-radius)",
             border: state.isFocused ? "var(--select-control-focus-border)" : "var(--select-control-border)",
             background: "var(--select-control-bg)",
