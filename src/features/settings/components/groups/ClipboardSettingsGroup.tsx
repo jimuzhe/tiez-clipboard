@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { ComponentType, ReactNode } from "react";
+import type { ComponentType, CSSProperties, ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { ask, message } from "@tauri-apps/plugin-dialog";
 import { ChevronDown, ChevronRight, X } from "lucide-react";
@@ -9,6 +9,7 @@ interface LabelWithHintProps {
     label: string;
     hint?: string | ReactNode;
     hintKey: string;
+    labelStyle?: CSSProperties;
 }
 
 interface ClipboardSettingsGroupProps {
@@ -587,7 +588,7 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
                             >
                                 {props.privacyKindsOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
                             </button>
-                            <span style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-primary)' }}>{props.t('privacy_protection_kinds')}</span>
+                            <span className="item-label" style={{ fontWeight: 400 }}>{props.t('privacy_protection_kinds')}</span>
                         </div>
                         {props.privacyKindsOpen && (
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginLeft: '30px' }}>
@@ -635,6 +636,7 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
                                 label={props.t('privacy_protection_custom_rules')}
                                 hint={props.t('privacy_protection_custom_rules_hint')}
                                 hintKey="privacy_protection_custom_rules"
+                                labelStyle={{ fontWeight: 400 }}
                             />
                         </div>
                         {props.privacyRulesOpen && (

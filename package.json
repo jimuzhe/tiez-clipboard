@@ -7,6 +7,7 @@
     "dev": "vite",
     "test:e2e": "playwright test",
     "build": "tsc && vite build",
+    "i18n:check": "node scripts/i18n-check.mjs",
     "preview": "vite preview",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
