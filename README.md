@@ -6,20 +6,23 @@
 
 包括：
 
+- 更精简的项目
+  - 移除了对`MacOS`的支持，因为没有测试条件
+  - 移除了所有联网功能（包括云同步，MQTT，ai助手），因为个人不需要
+  - 移除了一些冗余代码
 - 更易扩展的主题支持
   - 尽可能减少主题设置在代码中的硬编码，以便于后续的主题定制
   - 增加`macos`，由AI辅助设计的MacOS风格新主题
-  - 扩展主题能定制的控件的范围
-
+  - 增加`scifi`, 由AI辅助设计的科幻风格新主题；这两套主题使用同一个base框架
+  - 扩展主题能定制的控件的范围：例如，现在下拉栏的风格会随主题改变了
 - 简单且有用的新功能
   - 新增右键图片时粘贴`base64`编码的支持
   - 新增对多个呼出快捷键的支持
-
 - 若干问题修复与可维护性优化
   - 修复`tauri:dev`模式不可用的问题，加快开发速度
   - 修复上游在合并pr时因未删除冗余代码，导致拖拽功能偶现失效的问题
 
-本 fork 主要基于个人需求进行维护，后续更新频率不作保证。由于我目前没有 macOS 设备，macOS 平台的可用性也暂未经过完整验证。
+本 fork 主要基于个人需求进行维护，后续更新频率不作保证。
 
 如需查看当前仓库文档，可参考 [README.en-US](docs/markdown/README.en-US.md) 与 [README.zh-CN](docs/markdown/README.zh-CN.md)
 
@@ -28,3 +31,4 @@
 - [English README](https://github.com/jimuzhe/tiez-clipboard/blob/master/README.md)
 - [中文 README](https://github.com/jimuzhe/tiez-clipboard/blob/master/README.zh-CN.md)
 - [上游仓库](https://github.com/jimuzhe/tiez-clipboard)
+
