@@ -238,6 +238,76 @@ body.dark-mode:is(.theme-mica, .theme-acrylic) {
   --surface-confirm-radius: 8px;
 }
 
+:root.theme-scifi,
+body.theme-scifi {
+  --font-main: "Orbitron", "Rajdhani", "Segoe UI", "Microsoft YaHei", sans-serif;
+  --font-mono: "JetBrains Mono", "Cascadia Code", "Consolas", monospace;
+  --bg-body: #050810;
+  --bg-window: #080e1e;
+  --bg-content: #080e1e;
+  --bg-toolbar: #0d1530;
+  --bg-panel: rgba(14, 24, 50, 0.9);
+  --bg-input: rgba(9, 16, 35, 0.92);
+  --bg-element: rgba(18, 30, 58, 0.88);
+  --bg-button: rgba(24, 39, 80, 0.86);
+  --text-primary: #dcfbff;
+  --text-secondary: #7fc5df;
+  --accent-color: #2de9ff;
+  --accent-hover: #74f4ff;
+  --border-dark: rgba(45, 233, 255, 0.38);
+  --border-light: rgba(118, 255, 246, 0.25);
+  --shadow-color: rgba(13, 190, 255, 0.36);
+  --select-control-bg: color-mix(in srgb, var(--bg-input) 90%, transparent);
+  --select-control-border: 1px solid color-mix(in srgb, var(--border-dark) 82%, transparent);
+  --select-control-focus-border: 1px solid color-mix(in srgb, var(--accent-color) 76%, white);
+  --select-control-focus-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-color) 24%, transparent), 0 0 18px color-mix(in srgb, var(--accent-color) 22%, transparent);
+  --select-control-radius: 10px;
+  --select-menu-bg: color-mix(in srgb, var(--bg-panel) 96%, transparent);
+  --select-menu-border: 1px solid color-mix(in srgb, var(--border-light) 72%, transparent);
+  --select-menu-shadow: 0 16px 32px color-mix(in srgb, var(--shadow-color) 38%, transparent), 0 0 18px color-mix(in srgb, var(--accent-color) 16%, transparent);
+  --select-option-focus-bg: color-mix(in srgb, var(--accent-color) 14%, var(--bg-element));
+  --select-option-focus-color: var(--text-primary);
+  --select-option-selected-bg: color-mix(in srgb, var(--accent-color) 44%, #5e74ff);
+  --select-option-selected-color: #ffffff;
+  --select-placeholder-color: color-mix(in srgb, var(--text-secondary) 90%, transparent);
+  --select-single-value-color: var(--text-primary);
+  --select-indicator-color: color-mix(in srgb, var(--accent-color) 72%, white);
+  --select-option-color: var(--text-primary);
+}
+
+body.light-mode.theme-scifi {
+  --bg-body: #eaf3ff;
+  --bg-window: #f5faff;
+  --bg-content: #f5faff;
+  --bg-toolbar: #ecf5ff;
+  --bg-panel: rgba(238, 248, 255, 0.86);
+  --bg-input: rgba(255, 255, 255, 0.97);
+  --bg-element: rgba(235, 246, 255, 0.96);
+  --bg-button: rgba(222, 239, 255, 0.95);
+  --text-primary: #0a2746;
+  --text-secondary: #3f6d95;
+  --accent-color: #2de9b8;
+  --accent-hover: #71ffd9;
+  --border-dark: rgba(45, 233, 184, 0.4);
+  --border-light: rgba(128, 255, 219, 0.36);
+  --shadow-color: rgba(15, 180, 140, 0.24);
+  --select-control-bg: rgba(252, 255, 255, 0.96);
+  --select-control-border: 1px solid rgba(45, 233, 184, 0.42);
+  --select-control-focus-border: 1px solid rgba(45, 233, 184, 0.82);
+  --select-control-focus-shadow: 0 0 0 2px rgba(45, 233, 184, 0.2), 0 0 14px rgba(58, 250, 200, 0.18);
+  --select-menu-bg: rgba(250, 253, 255, 0.98);
+  --select-menu-border: 1px solid rgba(84, 230, 192, 0.42);
+  --select-menu-shadow: 0 14px 28px rgba(16, 154, 124, 0.16), 0 0 14px rgba(63, 242, 202, 0.16);
+  --select-option-focus-bg: rgba(45, 233, 184, 0.14);
+  --select-option-focus-color: #0b2947;
+  --select-option-selected-bg: linear-gradient(135deg, rgba(45, 233, 184, 0.86), rgba(86, 248, 211, 0.82));
+  --select-option-selected-color: #ffffff;
+  --select-placeholder-color: #4a749d;
+  --select-single-value-color: #0b2947;
+  --select-indicator-color: rgba(25, 186, 145, 0.92);
+  --select-option-color: #0b2947;
+}
+
 .theme-macos {
   --macos-root-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.88) 0%, rgba(245, 247, 250, 0.82) 100%);
   --macos-root-border: var(--border-dark);

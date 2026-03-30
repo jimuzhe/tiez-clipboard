@@ -229,6 +229,35 @@ body.theme-macos:not(.hide-app-border) {
   overflow: visible !important;
 }
 
+.theme-macos .compact-popover-portal.compact-preview-window {
+  border-radius: 12px !important;
+  background: var(--macos-history-bg) !important;
+  border: 1px solid var(--macos-history-border) !important;
+  box-shadow: var(--macos-history-shadow) !important;
+}
+
+body.dark-mode.theme-macos .compact-popover-portal.compact-preview-window,
+body.dark-mode.theme-macos .compact-popover-portal.compact-preview-window.retro {
+  border-radius: 12px !important;
+  background: var(--macos-history-bg) !important;
+  border: 1px solid var(--macos-history-border) !important;
+  box-shadow: var(--macos-history-shadow) !important;
+  color: var(--text-primary) !important;
+}
+
+body.dark-mode.theme-macos .compact-popover-portal.compact-preview-window .popover-divider,
+body.dark-mode.theme-macos .compact-popover-portal.compact-preview-window.retro .popover-divider {
+  display: none !important;
+}
+
+body.light-mode.theme-macos .compact-popover-portal .rich-text-preview {
+  color-scheme: light !important;
+}
+
+body.dark-mode.theme-macos .compact-popover-portal .rich-text-preview {
+  color-scheme: dark !important;
+}
+
 .theme-macos .history-item:hover {
   transform: none !important;
   box-shadow: var(--macos-history-hover-shadow) !important;
