@@ -34,7 +34,7 @@ const SettingsFooter = ({
         }}>
             {/* Feedback Card */}
             <div
-                className="settings-group"
+                className="settings-group settings-footer-action"
                 style={{
                     cursor: 'pointer',
                     transition: 'all 0.2s',
@@ -52,9 +52,9 @@ const SettingsFooter = ({
                     setTimeout(() => setEmailCopied(false), 2000);
                 }}
             >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div className="settings-footer-action-content" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <MessageSquare size={16} />
-                    <span style={{ fontSize: '13px', fontWeight: 600 }}>
+                    <span className="settings-footer-action-label" style={{ fontSize: '13px', fontWeight: 600 }}>
                         {emailCopied ? t('email_copied') : t('feedback')}
                     </span>
                 </div>
@@ -62,7 +62,7 @@ const SettingsFooter = ({
 
             {/* Reset Card */}
             <div
-                className="settings-group"
+                className="settings-group settings-footer-action"
                 style={{
                     cursor: 'pointer',
                     transition: 'all 0.2s',
@@ -76,9 +76,9 @@ const SettingsFooter = ({
                 }}
                 onClick={() => onResetSettings()}
             >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div className="settings-footer-action-content" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <RotateCcw size={16} />
-                    <span style={{ fontSize: '13px', fontWeight: 600 }}>{t('reset_defaults')}</span>
+                    <span className="settings-footer-action-label" style={{ fontSize: '13px', fontWeight: 600 }}>{t('reset_defaults')}</span>
                 </div>
             </div>
         </div>

@@ -12,6 +12,36 @@
   transition: all 0.1s;
 }
 
+.btn-icon-scalable {
+  width: var(--btn-control-size, auto);
+  height: var(--btn-control-size, auto);
+  padding: var(--btn-control-padding, 6px);
+  border-radius: var(--btn-control-radius, 4px);
+  flex-shrink: 0;
+}
+
+.btn-icon-scalable svg {
+  width: var(--btn-control-icon-size, 16px);
+  height: var(--btn-control-icon-size, 16px);
+  stroke-width: var(--btn-control-icon-stroke, 2);
+}
+
+.btn-icon-size-header {
+  --btn-control-size: 32px;
+  --btn-control-padding: 6px;
+  --btn-control-radius: 6px;
+  --btn-control-icon-size: 16px;
+  --btn-control-icon-stroke: 2;
+}
+
+.btn-icon-size-hotkey {
+  --btn-control-size: 24px;
+  --btn-control-padding: 0;
+  --btn-control-radius: 6px;
+  --btn-control-icon-size: 12px;
+  --btn-control-icon-stroke: 2.6;
+}
+
 .btn-icon:hover{
   transform: translateY(-1px);
   transform: translateY(-1px);

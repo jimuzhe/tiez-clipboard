@@ -160,8 +160,8 @@
   inset: 4px;
   border: 2px dashed var(--accent-color);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.6);
-  color: var(--text-primary);
+  background: var(--emoji-drag-overlay-bg);
+  color: var(--emoji-drag-overlay-text);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -169,19 +169,6 @@
   font-weight: 700;
   letter-spacing: 1px;
   pointer-events: none;
-}
-
-@media (prefers-color-scheme: dark){
-  :root:not(.light-mode) .emoji-content.dragging::after{
-    background: rgba(0, 0, 0, 0.35);
-    color: #fff;
-  }
-}
-
-:root.dark-mode .emoji-content.dragging::after,
-body.dark-mode .emoji-content.dragging::after{
-  background: rgba(0, 0, 0, 0.35);
-  color: #fff;
 }
 
 .emoji-fav-card{
@@ -253,7 +240,7 @@ body.dark-mode .emoji-content.dragging::after{
 
 .emoji-fav-add .emoji-fav-preview{
   border: 2px dashed var(--border-dark);
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.55));
+  background: var(--emoji-fav-add-bg);
   color: var(--text-primary);
   display: flex;
   flex-direction: column;
@@ -273,17 +260,6 @@ body.dark-mode .emoji-content.dragging::after{
 
 .emoji-fav-add .emoji-fav-preview span{
   display: inline;
-}
-
-@media (prefers-color-scheme: dark){
-  :root:not(.light-mode) .emoji-fav-add .emoji-fav-preview{
-    background: rgba(255, 255, 255, 0.08);
-  }
-}
-
-:root.dark-mode .emoji-fav-add .emoji-fav-preview,
-body.dark-mode .emoji-fav-add .emoji-fav-preview{
-  background: rgba(255, 255, 255, 0.08);
 }
 
 @media (max-width: 520px){

@@ -1,17 +1,19 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ComponentProps, RefObject, ReactNode } from "react";
-import { motion, Reorder, useDragControls } from "framer-motion";
+import { Reorder, useDragControls } from "framer-motion";
 import type { DragControls } from "framer-motion";
 import { ArrowUp, Clipboard } from "lucide-react";
-import FileTransferChatView from "../../file-transfer/components/FileTransferChatView";
-import SettingsPanel from "../../settings/components/SettingsPanel";
-import TagManager from "../../tag/components/TagManager";
-import EmojiPanel from "../../emoji/components/EmojiPanel";
 import { VirtualClipboardList } from "../../clipboard/components/VirtualClipboardList";
 import type { ClipboardEntry } from "../../../shared/types";
 import type { VirtualClipboardListHandle } from "../../clipboard/types";
 
-type SettingsPanelProps = ComponentProps<typeof SettingsPanel>;
+const SettingsPanel = lazy(() => import("../../settings/components/SettingsPanel"));
+const TagManager = lazy(() => import("../../tag/components/TagManager"));
+const EmojiPanel = lazy(() => import("../../emoji/components/EmojiPanel"));
+
+type SettingsPanelProps = ComponentProps<
+  typeof import("../../settings/components/SettingsPanel").default
+>;
 type RenderItem = (
   item: ClipboardEntry,
   index: number,
@@ -26,9 +28,6 @@ interface AppMainContentProps {
   showTagManager: boolean;
   tagManagerEnabled: boolean;
   showEmojiPanel: boolean;
-  chatMode: boolean;
-  localIp: string;
-  actualPort: string;
   settingsPanelProps: SettingsPanelProps;
   emojiFavorites: string[];
   setEmojiFavorites: (val: string[] | ((prev: string[]) => string[])) => void;
@@ -95,9 +94,6 @@ const AppMainContent = ({
   showTagManager,
   tagManagerEnabled,
   showEmojiPanel,
-  chatMode,
-  localIp,
-  actualPort,
   settingsPanelProps,
   emojiFavorites,
   setEmojiFavorites,
@@ -187,57 +183,41 @@ const AppMainContent = ({
 
   if (showTagManager && tagManagerEnabled) {
     return (
-      <motion.div
-        initial={{ opacity: 0, x: 20 }}
-        animate={{ opacity: 1, x: 0 }}
-        style={{ height: "100%" }}
-      >
-        <TagManager t={t} theme={theme} />
-      </motion.div>
+      <div style={{ height: "100%" }}>
+        <Suspense fallback={<div style={{ height: "100%" }} />}>
+          <TagManager t={t} theme={theme} />
+        </Suspense>
+      </div>
     );
   }
 
   if (showEmojiPanel) {
     return (
-      <motion.div
-        initial={{ opacity: 0, x: 20 }}
-        animate={{ opacity: 1, x: 0 }}
-        style={{ height: "100%", overflow: "hidden" }}
-      >
-        <EmojiPanel
-          t={t}
-          favorites={emojiFavorites}
-          setFavorites={setEmojiFavorites}
-          activeTab={emojiPanelTab}
-          setActiveTab={setEmojiPanelTab}
-          saveSetting={saveSetting}
-        />
-      </motion.div>
+      <div style={{ height: "100%", overflow: "hidden" }}>
+        <Suspense fallback={<div style={{ height: "100%" }} />}>
+          <EmojiPanel
+            t={t}
+            favorites={emojiFavorites}
+            setFavorites={setEmojiFavorites}
+            activeTab={emojiPanelTab}
+            setActiveTab={setEmojiPanelTab}
+            saveSetting={saveSetting}
+          />
+        </Suspense>
+      </div>
     );
   }
 
   if (showSettings) {
-    if (chatMode) {
-      return (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          style={{ height: "100%", overflow: "hidden" }}
-        >
-          <FileTransferChatView t={t} localIp={localIp} actualPort={actualPort} />
-        </motion.div>
-      );
-    }
-
     return (
-      <motion.div
-        initial={{ opacity: 0, x: 20 }}
-        animate={{ opacity: 1, x: 0 }}
+      <div
         className="settings-view"
         style={{ display: "flex", flexDirection: "column", gap: "12px" }}
       >
-        <SettingsPanel {...settingsPanelProps} />
-      </motion.div>
+        <Suspense fallback={<div style={{ minHeight: "240px" }} />}>
+          <SettingsPanel {...settingsPanelProps} />
+        </Suspense>
+      </div>
     );
   }
 

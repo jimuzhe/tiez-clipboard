@@ -97,32 +97,23 @@
 .theme-mica .search-input.dropdown-open,
 .theme-acrylic .search-input.dropdown-open {
     border-radius: 10px !important;
-    border: 1px solid rgba(128, 128, 128, 0.2) !important;
+    border: 1px solid var(--search-input-dropdown-open-border) !important;
     box-shadow: none !important;
-    background: rgba(255, 255, 255, 0.75) !important;
+    background: var(--search-input-dropdown-open-bg) !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
 }
 
 .theme-mica .tags-dropdown,
 .theme-acrylic .tags-dropdown {
-    background: rgba(255, 255, 255, 0.75) !important;
-    border: 1px solid rgba(128, 128, 128, 0.2) !important;
+    background: var(--surface-tags-dropdown-bg) !important;
+    border: 1px solid var(--surface-tags-dropdown-border) !important;
     box-shadow: none !important;
     border-radius: 10px !important;
     padding: 10px 12px 12px 12px;
     margin-top: 4px;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
-}
-
-/* 深色模式同步颜色 */
-:root.dark-mode .theme-mica .tags-dropdown,
-:root.dark-mode .theme-acrylic .tags-dropdown,
-:root.dark-mode .theme-mica .search-input.dropdown-open,
-:root.dark-mode .theme-acrylic .search-input.dropdown-open {
-    background: rgba(255, 255, 255, 0.18) !important;
-    border-color: rgba(255, 255, 255, 0.1) !important;
 }
 
 .theme-mica .tag-chip,
@@ -137,12 +128,12 @@
 }
 
 /* --- Global Fix for Search Input Accessibility in Dark Mode --- */
-:root.dark-mode .search-input {
-    color: #ffffff !important;
+:is(.theme-mica, .theme-acrylic) .search-input {
+    color: var(--search-input-text) !important;
 }
 
-:root.dark-mode .search-input::placeholder {
-    color: rgba(255, 255, 255, 0.5) !important;
+:is(.theme-mica, .theme-acrylic) .search-input::placeholder {
+    color: var(--search-input-placeholder) !important;
 }
 
 /* Interactions */

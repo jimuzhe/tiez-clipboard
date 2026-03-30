@@ -39,6 +39,38 @@
   background: var(--bg-input);
 }
 
+.app-selector-modal-header{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.app-selector-close-btn{
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.app-selector-modal-actions{
+  display: flex;
+  gap: 12px;
+}
+
+.app-selector-action-btn{
+  flex: 1;
+  height: 36px;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.app-selector-action-btn-cancel{
+  background: #ff4d4f;
+  color: #fff;
+  border: 2px solid #333;
+}
+
 /* Confirmation Dialog Styles */
 .confirm-dialog{
   background: var(--bg-panel);

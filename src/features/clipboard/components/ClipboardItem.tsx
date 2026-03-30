@@ -18,8 +18,6 @@ import {
     File,
     Plus,
     Video,
-    Sparkles,
-    Loader2,
     FileArchive,
     Music,
     FileCode,
@@ -29,12 +27,11 @@ import {
     FileQuestion,
     GripVertical
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import type { ClipboardItemProps } from "../types";
 import { getConciseTime, getTagColor } from "../../../shared/lib/utils";
 import HtmlContent from "../../../shared/components/HtmlContent";
 import { toTauriLocalImageSrc } from "../../../shared/lib/localImageSrc";
-import { getRichTextSnapshotDataUrl } from "../../../shared/lib/richTextSnapshot";
 import { getSourceAppIcon, peekSourceAppIcon } from "../../../shared/lib/sourceAppIcon";
 
 const COMPACT_PREVIEW_LABEL = "compact-preview";
@@ -608,7 +605,6 @@ const ClipboardItem = ({
     theme,
     language,
     t,
-    isAIProcessing,
     onSelect,
     onCopy,
     onToggleReveal,
@@ -619,11 +615,6 @@ const ClipboardItem = ({
     onTagInput,
     onTagAdd,
     onTagDelete,
-    onAIAction,
-    onInputSubmit,
-    aiEnabled,
-    aiOptionsOpen,
-    onAIOptionsToggle,
     tagColors,
     richTextSnapshotPreview = false,
     dragControls,
@@ -634,51 +625,66 @@ const ClipboardItem = ({
 }: ClipboardItemProps & { compactMode?: boolean, className?: string }) => {
     const tagInputRef = useRef<HTMLInputElement>(null);
     const [localTagInput, setLocalTagInput] = useState(tagInput);
-    const [localAiOptionsOpen, setLocalAiOptionsOpen] = useState(!!aiOptionsOpen);
     const [snapshotFailed, setSnapshotFailed] = useState(false);
     const [richImageFallbackFailed, setRichImageFallbackFailed] = useState(false);
+    const [richTextSnapshotSrc, setRichTextSnapshotSrc] = useState<string | null>(null);
     const [sourceAppIcon, setSourceAppIcon] = useState<string | null>(() => peekSourceAppIcon(item.source_app_path) ?? null);
     const isComposing = useRef(false);
     const richSnapshotImgRef = useRef<HTMLImageElement | null>(null);
     const richSnapshotFallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const hoverAnchorRef = useRef<CompactPreviewAnchor | null>(null);
-    const richTextFallback = item.content_type === "rich_text" && item.html_content
-        ? (() => {
-            const { cleanHtml, imagePayload } = extractRichImageFallback(item.html_content);
-            return {
-                cleanHtml: cleanHtml || item.html_content,
-                imageSrc: resolveRichImageSrc(imagePayload)
-            };
-        })()
-        : null;
+    const richTextFallback = useMemo(() => {
+        if (item.content_type !== "rich_text" || !item.html_content) return null;
+        const { cleanHtml, imagePayload } = extractRichImageFallback(item.html_content);
+        return {
+            cleanHtml: cleanHtml || item.html_content,
+            imageSrc: resolveRichImageSrc(imagePayload)
+        };
+    }, [item.content_type, item.html_content]);
     const richTextCleanHtml = richTextFallback?.cleanHtml || item.html_content || "";
     const richTextSnapshotDisplayMaxHeight = compactMode ? 40 : 64;
     const richTextSnapshotRenderMaxHeight = compactMode ? 100 : 200;
-    const richTextSnapshotSrc = useMemo(() => {
-        if (!richTextSnapshotPreview) return null;
-        if (item.content_type !== "rich_text" || !item.html_content) return null;
-        if (!richTextCleanHtml) return null;
-        return getRichTextSnapshotDataUrl(richTextCleanHtml, {
-            width: compactMode ? 360 : 560,
-            // Keep source snapshot height bounded so list-item preview does not over-shrink text.
-            maxHeight: richTextSnapshotRenderMaxHeight
-        });
-    }, [
-        richTextSnapshotPreview,
-        item.content_type,
-        item.html_content,
-        richTextCleanHtml,
-        compactMode,
-        richTextSnapshotRenderMaxHeight
-    ]);
     const snapshotPreviewEnabled = !!richTextSnapshotPreview;
-    const effectiveRichTextSnapshotSrc = snapshotPreviewEnabled && !snapshotFailed ? richTextSnapshotSrc : null;
     const useRichImageFallback = snapshotPreviewEnabled && !richImageFallbackFailed && !!richTextFallback?.imageSrc;
+    const shouldGenerateSnapshot =
+        snapshotPreviewEnabled &&
+        !snapshotFailed &&
+        item.content_type === "rich_text" &&
+        !!item.html_content &&
+        !!richTextCleanHtml &&
+        !useRichImageFallback;
+    useEffect(() => {
+        if (!shouldGenerateSnapshot) {
+            setRichTextSnapshotSrc(null);
+            return;
+        }
+        let cancelled = false;
+        import("../../../shared/lib/richTextSnapshot")
+            .then(({ getRichTextSnapshotDataUrl }) => {
+                if (cancelled) return;
+                const snapshot = getRichTextSnapshotDataUrl(richTextCleanHtml, {
+                    width: compactMode ? 360 : 560,
+                    maxHeight: richTextSnapshotRenderMaxHeight
+                });
+                if (!cancelled) {
+                    setRichTextSnapshotSrc(snapshot);
+                }
+            })
+            .catch(() => {
+                if (!cancelled) {
+                    setRichTextSnapshotSrc(null);
+                }
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [shouldGenerateSnapshot, richTextCleanHtml, compactMode, richTextSnapshotRenderMaxHeight]);
+    const effectiveRichTextSnapshotSrc = shouldGenerateSnapshot ? richTextSnapshotSrc : null;
     const richTextPreviewSrc = useRichImageFallback
         ? (richTextFallback?.imageSrc || null)
         : effectiveRichTextSnapshotSrc;
-    const useSnapshotPreviewImage = snapshotPreviewEnabled && !useRichImageFallback && !!effectiveRichTextSnapshotSrc;
+    const useSnapshotPreviewImage = shouldGenerateSnapshot && !!effectiveRichTextSnapshotSrc;
 
     useEffect(() => {
         let cancelled = false;
@@ -847,10 +853,6 @@ const ClipboardItem = ({
     }, [tagInput]);
 
     useEffect(() => {
-        setLocalAiOptionsOpen(!!aiOptionsOpen);
-    }, [aiOptionsOpen]);
-
-    useEffect(() => {
         setSnapshotFailed(false);
         setRichImageFallbackFailed(false);
     }, [item.id, item.html_content, richTextSnapshotPreview, compactMode]);
@@ -885,11 +887,6 @@ const ClipboardItem = ({
         };
     }, [useSnapshotPreviewImage, effectiveRichTextSnapshotSrc, item.id]);
 
-    const showAIOptions = localAiOptionsOpen;
-    const inlineAiVariants = {
-        open: { opacity: 1, height: "auto", marginTop: 8, marginBottom: 8 },
-        collapsed: { opacity: 0, height: 0, marginTop: 0, marginBottom: 0 }
-    };
     useEffect(() => {
         if (isEditingTags && tagInputRef.current) {
             tagInputRef.current.focus();
@@ -963,9 +960,9 @@ const ClipboardItem = ({
             data-test-clipboard-item
             layout={!disableLayout}
             initial={false}
-            animate={{ marginBottom: 0 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            transition={{ duration: 0.1 }}
+            animate={disableLayout ? undefined : { marginBottom: 0 }}
+            exit={disableLayout ? undefined : { opacity: 0, scale: 0.95 }}
+            transition={disableLayout ? undefined : { duration: 0.1 }}
             className={`history-item ${isSelected ? "selected" : ""} ${compactMode ? "compact" : ""} ${item.is_pinned ? "pinned" : ""} ${className || ''}`}
             onMouseDown={(e) => {
                 if (!windowPinned) return;
@@ -1008,8 +1005,6 @@ const ClipboardItem = ({
             }}
             onMouseEnter={(e) => {
                 if (!compactMode) return;
-                // Don't show preview if AI options are open to avoid interference
-                if (showAIOptions) return;
                 compactPreviewLog("mouseenter schedule preview", { itemId: item.id });
                 hoverAnchorRef.current = {
                     clientX: e.clientX,
@@ -1024,8 +1019,6 @@ const ClipboardItem = ({
 
                 // Set a delay to show
                 hoverTimerRef.current = setTimeout(() => {
-                    // Double-check AI options are still closed before showing
-                    if (showAIOptions) return;
                     if (!target.isConnected) return;
                     const anchor = hoverAnchorRef.current;
                     if (!anchor) return;
@@ -1106,25 +1099,6 @@ const ClipboardItem = ({
                         >
                             <Tag size={12} />
                         </button>
-                        {item.content_type === 'text' && aiEnabled && (
-                            <button
-                                className={`btn-icon ai-btn ${isAIProcessing || showAIOptions ? 'active' : ''}`}
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (!isAIProcessing) {
-                                        // Close preview window when opening AI options
-                                        if (!showAIOptions) {
-                                            hideCompactPreview();
-                                        }
-                                        setLocalAiOptionsOpen(prev => !prev);
-                                        onAIOptionsToggle?.();
-                                    }
-                                }}
-                                title={t('ai_assistant')}
-                            >
-                                {isAIProcessing ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
-                            </button>
-                        )}
                         <button className="btn-icon" onClick={onDelete} title={t('delete')}>
                             <X size={12} />
                         </button>
@@ -1198,36 +1172,6 @@ const ClipboardItem = ({
                     </div>
                 ) : item.content_type === "file" ? (
                     renderFilePreview()
-                ) : isAIProcessing ? (
-                    <div className="ai-skeleton-wrapper">
-                        <div className="ai-skeleton-line" style={{ width: '90%' }}></div>
-                        <div className="ai-skeleton-line" style={{ width: '75%' }}></div>
-                        <div className="ai-skeleton-line" style={{ width: '85%' }}></div>
-                    </div>
-                ) : item.isInputting ? (
-                    <div className="ai-input-wrapper">
-                        <input
-                            autoFocus
-                            className="search-input"
-                            onMouseDown={() => invoke('activate_window_focus').catch(console.error)}
-                            onFocus={() => invoke('activate_window_focus').catch(console.error)}
-                            style={{ width: '100%', fontSize: '12px', padding: '8px', border: '1px solid var(--accent-color)' }}
-                            placeholder={item.content}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                    e.preventDefault();
-                                    const val = e.currentTarget.value.trim();
-                                    if (onInputSubmit) {
-                                        onInputSubmit(val);
-                                    }
-                                }
-                            }}
-                            onClick={(e) => e.stopPropagation()}
-                        />
-                        <div style={{ fontSize: '10px', opacity: 0.6, marginTop: '4px' }}>
-                            {language === 'zh' ? '输入补充信息后按回车提交' : 'Press Enter to submit supplementary info'}
-                        </div>
-                    </div>
                 ) : item.content_type === "rich_text" && item.html_content && !isSensitiveHidden ? (
                     richTextPreviewSrc ? (
                         <img
@@ -1308,82 +1252,6 @@ const ClipboardItem = ({
                         : item.preview
                 )}
             </div>
-
-            {/* AI Options - Compact Mode: Dropdown Panel, Normal Mode: Inline */}
-            <AnimatePresence>
-                {showAIOptions && (
-                    <motion.div
-                        className={compactMode ? "ai-options-dropdown" : ""}
-                        initial={compactMode ? { opacity: 0, y: -10 } : "collapsed"}
-                        animate={compactMode ? { opacity: 1, y: 0 } : "open"}
-                        exit={compactMode ? { opacity: 0, y: -10 } : "collapsed"}
-                        variants={compactMode ? undefined : inlineAiVariants}
-                        transition={compactMode ? { duration: 0.16 } : { duration: 0.18 }}
-                        style={compactMode ? {
-                            position: 'absolute',
-                            top: '100%',
-                            right: '4px',
-                            zIndex: 100000,
-                            marginTop: '4px',
-                            background: 'var(--bg-element)',
-                            border: '2px solid var(--border-dark)',
-                            borderRadius: '4px',
-                            boxShadow: '4px 4px 0 0 var(--shadow-color)',
-                            padding: '6px',
-                            minWidth: '140px',
-                            maxHeight: '200px',
-                            overflowY: 'auto'
-                        } : { overflow: 'hidden' }}
-                    >
-                        <div style={compactMode ? {
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '4px'
-                        } : {
-                            padding: '8px 10px',
-                            background: 'rgba(72, 123, 219, 0.05)',
-                            border: '1.5px dashed var(--accent-color)',
-                            borderRadius: '4px',
-                            display: 'flex',
-                            flexWrap: 'wrap',
-                            gap: '6px',
-                            alignItems: 'center'
-                        }}>
-                            {['task', 'mouthpiece', 'translate'].map(actionType => (
-                                <button
-                                    key={actionType}
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        onAIAction?.(actionType);
-                                        onAIOptionsToggle?.();
-                                    }}
-                                    className="btn-icon"
-                                    style={compactMode ? {
-                                        width: '100%',
-                                        fontSize: '11px',
-                                        height: '32px',
-                                        boxShadow: '2px 2px 0 0 var(--shadow-color)',
-                                        textTransform: 'none',
-                                        justifyContent: 'flex-start',
-                                        paddingLeft: '10px'
-                                    } : {
-                                        flex: 1,
-                                        minWidth: '90px',
-                                        fontSize: '11px',
-                                        height: '32px',
-                                        padding: '0 12px',
-                                        boxShadow: '2px 2px 0 0 var(--shadow-color)',
-                                        textTransform: 'none',
-                                        whiteSpace: 'nowrap'
-                                    }}
-                                >
-                                    {t(`ai_${actionType}`)}
-                                </button>
-                            ))}
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
 
             {(item.tags?.length > 0 || isEditingTags) && (
                 <div
@@ -1503,14 +1371,9 @@ export default memo(ClipboardItem, (prevProps, nextProps) => {
         prevProps.item.tags === nextProps.item.tags &&
         prevProps.isRevealed === nextProps.isRevealed &&
         prevProps.isEditingTags === nextProps.isEditingTags &&
-        prevProps.isAIProcessing === nextProps.isAIProcessing &&
-        prevProps.aiOptionsOpen === nextProps.aiOptionsOpen &&
-        prevProps.aiEnabled === nextProps.aiEnabled &&
         prevProps.richTextSnapshotPreview === nextProps.richTextSnapshotPreview &&
         prevProps.compactMode === nextProps.compactMode &&
         prevProps.theme === nextProps.theme &&
         prevProps.language === nextProps.language &&
         prevProps.tagInput === nextProps.tagInput;
 });
-
-

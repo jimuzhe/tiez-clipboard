@@ -18,22 +18,13 @@ body.theme-macos {
   --border-dark: rgba(60, 60, 67, 0.24);
   --border-light: rgba(255, 255, 255, 0.64);
   --shadow-color: rgba(15, 18, 26, 0.16);
-  --hotkey-delete-btn-radius: 6px;
-  --hotkey-delete-btn-border: 1px solid #cfd5dd;
-  --hotkey-delete-btn-border-hover: rgba(10, 132, 255, 0.34);
-  --hotkey-delete-btn-bg: rgba(255, 255, 255, 0.94);
-  --hotkey-delete-btn-bg-hover: rgba(255, 255, 255, 0.99);
-  --hotkey-delete-btn-color: #2d3440;
-  --hotkey-delete-btn-color-hover: var(--accent-color);
-  --hotkey-delete-btn-shadow: 0 0 0 1px rgba(255, 255, 255, 0.82) inset;
-  --hotkey-delete-btn-shadow-active: 0 0 0 1px rgba(10, 132, 255, 0.2) inset;
 }
 
 .theme-macos #root {
   border: 1px solid var(--border-dark) !important;
   border-radius: var(--radius-window) !important;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.88) 0%, rgba(245, 247, 250, 0.82) 100%) !important;
-  box-shadow: 0 8px 24px rgba(15, 18, 26, 0.18), 0 1px 0 rgba(255, 255, 255, 0.72) inset !important;
+  background: var(--macos-root-bg) !important;
+  box-shadow: var(--macos-root-shadow) !important;
   backdrop-filter: blur(18px) saturate(128%);
   -webkit-backdrop-filter: blur(18px) saturate(128%);
 }
@@ -41,7 +32,7 @@ body.theme-macos {
 body.theme-macos:not(.hide-app-border) #root {
   border-radius: 0 !important;
   border-color: transparent !important;
-  box-shadow: 0 8px 24px rgba(15, 18, 26, 0.18) !important;
+  box-shadow: var(--macos-root-borderless-shadow) !important;
 }
 
 :root.theme-macos:not(.hide-app-border),
@@ -50,8 +41,8 @@ body.theme-macos:not(.hide-app-border) {
 }
 
 .theme-macos header {
-  background: rgba(255, 255, 255, 0.56) !important;
-  border-bottom: 1px solid rgba(60, 60, 67, 0.2) !important;
+  background: var(--macos-header-bg) !important;
+  border-bottom: 1px solid var(--macos-header-border) !important;
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
 }
@@ -64,20 +55,19 @@ body.theme-macos:not(.hide-app-border) {
   letter-spacing: 0 !important;
 }
 
-.theme-macos .settings-group,
-.theme-macos .file-transfer-panel {
-  background: rgba(255, 255, 255, 0.62) !important;
-  border: 1px solid rgba(60, 60, 67, 0.16) !important;
+.theme-macos .settings-group {
+  background: var(--macos-settings-bg) !important;
+  border: 1px solid var(--macos-settings-border) !important;
   border-radius: 14px !important;
-  box-shadow: 0 6px 18px rgba(16, 21, 34, 0.08) !important;
+  box-shadow: var(--macos-settings-shadow) !important;
   overflow: hidden !important;
   transition: background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.22s ease !important;
 }
 
 .theme-macos .settings-group .group-header {
   border-radius: 12px !important;
-  background: rgba(255, 255, 255, 0.68) !important;
-  border: 1px solid rgba(60, 60, 67, 0.14) !important;
+  background: var(--macos-settings-header-bg) !important;
+  border: 1px solid var(--macos-settings-header-border) !important;
   padding: 10px 12px !important;
   transition: background-color 0.18s ease, border-bottom-color 0.18s ease, padding 0.18s ease !important;
 }
@@ -87,8 +77,8 @@ body.theme-macos:not(.hide-app-border) {
   border-top: none !important;
   border-left: none !important;
   border-right: none !important;
-  border-bottom: 1px solid rgba(60, 60, 67, 0.12) !important;
-  background: rgba(255, 255, 255, 0.56) !important;
+  border-bottom: 1px solid var(--macos-settings-open-header-border) !important;
+  background: var(--macos-settings-open-header-bg) !important;
   padding: 12px 14px !important;
 }
 
@@ -126,30 +116,30 @@ body.theme-macos:not(.hide-app-border) {
 
 .theme-macos .data-panel {
   border-radius: 10px !important;
-  border: 1px solid rgba(60, 60, 67, 0.2) !important;
-  background: rgba(255, 255, 255, 0.82) !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;
+  border: 1px solid var(--macos-data-border) !important;
+  background: var(--macos-data-bg) !important;
+  box-shadow: var(--macos-data-shadow) !important;
 }
 
 .theme-macos .search-input,
 .theme-macos .setting-input {
-  border: 1px solid rgba(60, 60, 67, 0.24) !important;
+  border: 1px solid var(--macos-input-border) !important;
   border-radius: 10px !important;
-  background: rgba(255, 255, 255, 0.9) !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72) !important;
+  background: var(--macos-input-bg) !important;
+  box-shadow: var(--macos-input-shadow) !important;
 }
 
 .theme-macos .search-input:focus,
 .theme-macos .setting-input:focus {
   border-color: rgba(10, 132, 255, 0.6) !important;
-  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.2) !important;
+  box-shadow: var(--macos-input-focus-shadow) !important;
 }
 
 .theme-macos select.search-input {
   -webkit-appearance: none;
   appearance: none;
   padding-right: 30px !important;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 20 20'%3E%3Cpath d='M5.5 7.5L10 12l4.5-4.5' fill='none' stroke='%23323a45' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-image: var(--macos-select-arrow);
   background-repeat: no-repeat;
   background-position: right 10px center;
   background-size: 14px 14px;
@@ -161,13 +151,13 @@ body.theme-macos:not(.hide-app-border) {
 }
 
 .theme-macos select.search-input option {
-  background: rgba(255, 255, 255, 0.98);
-  color: var(--text-primary);
+  background: var(--macos-select-option-bg);
+  color: var(--macos-select-option-text);
 }
 
 .theme-macos select.search-input option:checked {
-  background: rgba(10, 132, 255, 0.2);
-  color: #0b223d;
+  background: var(--macos-select-option-checked-bg);
+  color: var(--macos-select-option-checked-text);
 }
 
 .theme-macos .btn-icon {
@@ -176,15 +166,15 @@ body.theme-macos:not(.hide-app-border) {
 }
 
 .theme-macos .btn-icon.active {
-  background: #0a84ff !important;
-  border-color: rgba(8, 111, 229, 0.9) !important;
-  color: #ffffff !important;
-  box-shadow: 0 4px 10px rgba(10, 132, 255, 0.26) !important;
+  background: var(--macos-btn-active-bg) !important;
+  border-color: var(--macos-btn-active-border) !important;
+  color: var(--macos-btn-active-text) !important;
+  box-shadow: var(--macos-btn-active-shadow) !important;
 }
 
 .theme-macos .btn-icon:hover:not(.active) {
-  background: rgba(10, 132, 255, 0.08) !important;
-  border-color: rgba(10, 132, 255, 0.24) !important;
+  background: var(--macos-btn-hover-bg) !important;
+  border-color: var(--macos-btn-hover-border) !important;
 }
 
 .theme-macos .history-item .item-actions {
@@ -193,69 +183,98 @@ body.theme-macos:not(.hide-app-border) {
   gap: 4px !important;
   padding: 3px !important;
   border-radius: 10px !important;
-  background: rgba(255, 255, 255, 0.66) !important;
-  border: 1px solid rgba(60, 60, 67, 0.18) !important;
-  box-shadow: 0 2px 8px rgba(15, 18, 26, 0.12) !important;
+  background: var(--macos-history-actions-bg) !important;
+  border: 1px solid var(--macos-history-actions-border) !important;
+  box-shadow: var(--macos-history-actions-shadow) !important;
   backdrop-filter: blur(10px) saturate(130%) !important;
   -webkit-backdrop-filter: blur(10px) saturate(130%) !important;
 }
 
 .theme-macos .history-item .item-actions .btn-icon,
 .theme-macos .history-item.compact .item-actions .btn-icon {
-  width: 22px !important;
-  height: 22px !important;
-  padding: 3px !important;
-  border-radius: 7px !important;
-  background: rgba(255, 255, 255, 0.82) !important;
-  border: 1px solid rgba(60, 60, 67, 0.2) !important;
-  color: var(--text-primary) !important;
-  box-shadow: 0 1px 3px rgba(15, 18, 26, 0.12) !important;
+  width: 18px !important;
+  height: 18px !important;
+  padding: 2px !important;
+  border-radius: 4px !important;
+  background: var(--macos-history-action-btn-bg) !important;
+  border: 1px solid var(--macos-history-action-btn-border) !important;
+  color: var(--macos-history-action-btn-text) !important;
+  box-shadow: var(--macos-history-action-btn-shadow) !important;
   transform: none !important;
 }
 
 .theme-macos .history-item .item-actions .btn-icon:hover,
 .theme-macos .history-item.compact .item-actions .btn-icon:hover {
-  background: rgba(255, 255, 255, 0.95) !important;
-  border-color: rgba(10, 132, 255, 0.32) !important;
-  color: var(--accent-color) !important;
-  box-shadow: 0 2px 6px rgba(10, 132, 255, 0.16) !important;
+  background: var(--macos-history-action-btn-hover-bg) !important;
+  border-color: var(--macos-history-action-btn-hover-border) !important;
+  color: var(--macos-history-action-btn-hover-text) !important;
+  box-shadow: var(--macos-history-action-btn-hover-shadow) !important;
   transform: none !important;
 }
 
 .theme-macos .history-item .item-actions .btn-icon.active,
 .theme-macos .history-item.compact .item-actions .btn-icon.active {
-  background: rgba(10, 132, 255, 0.15) !important;
-  border-color: rgba(10, 132, 255, 0.42) !important;
-  color: #0a84ff !important;
-  box-shadow: 0 0 0 1px rgba(10, 132, 255, 0.22) inset !important;
+  background: var(--macos-history-action-btn-active-bg) !important;
+  border-color: var(--macos-history-action-btn-active-border) !important;
+  color: var(--macos-history-action-btn-active-text) !important;
+  box-shadow: var(--macos-history-action-btn-active-shadow) !important;
 }
 
 .theme-macos .history-item,
 .theme-macos .history-item.compact {
   border-radius: 12px !important;
-  border: 1px solid rgba(60, 60, 67, 0.22) !important;
-  background: rgba(255, 255, 255, 0.76) !important;
-  box-shadow: 0 2px 8px rgba(15, 18, 26, 0.06) !important;
+  border: 1px solid var(--macos-history-border) !important;
+  background: var(--macos-history-bg) !important;
+  box-shadow: var(--macos-history-shadow) !important;
   overflow: visible !important;
+}
+
+.theme-macos .compact-popover-portal.compact-preview-window {
+  border-radius: 12px !important;
+  background: var(--macos-history-bg) !important;
+  border: 1px solid var(--macos-history-border) !important;
+  box-shadow: var(--macos-history-shadow) !important;
+}
+
+body.dark-mode.theme-macos .compact-popover-portal.compact-preview-window,
+body.dark-mode.theme-macos .compact-popover-portal.compact-preview-window.retro {
+  border-radius: 12px !important;
+  background: var(--macos-history-bg) !important;
+  border: 1px solid var(--macos-history-border) !important;
+  box-shadow: var(--macos-history-shadow) !important;
+  color: var(--text-primary) !important;
+}
+
+body.dark-mode.theme-macos .compact-popover-portal.compact-preview-window .popover-divider,
+body.dark-mode.theme-macos .compact-popover-portal.compact-preview-window.retro .popover-divider {
+  display: none !important;
+}
+
+body.light-mode.theme-macos .compact-popover-portal .rich-text-preview {
+  color-scheme: light !important;
+}
+
+body.dark-mode.theme-macos .compact-popover-portal .rich-text-preview {
+  color-scheme: dark !important;
 }
 
 .theme-macos .history-item:hover {
   transform: none !important;
-  box-shadow: 0 4px 12px rgba(15, 18, 26, 0.1) !important;
-  background: rgba(255, 255, 255, 0.9) !important;
+  box-shadow: var(--macos-history-hover-shadow) !important;
+  background: var(--macos-history-hover-bg) !important;
 }
 
 .theme-macos .history-item:active {
   transform: none !important;
-  box-shadow: 0 2px 8px rgba(15, 18, 26, 0.08) !important;
+  box-shadow: var(--macos-history-active-shadow) !important;
 }
 
 .theme-macos .history-item.selected {
-  background: rgba(10, 132, 255, 0.12) !important;
-  border-color: rgba(10, 132, 255, 0.34) !important;
+  background: var(--macos-history-selected-bg) !important;
+  border-color: var(--macos-history-selected-border) !important;
   border-radius: 12px !important;
   outline: none !important;
-  box-shadow: 0 0 0 1px rgba(10, 132, 255, 0.3) inset, 0 3px 10px rgba(10, 132, 255, 0.14) !important;
+  box-shadow: var(--macos-history-selected-shadow) !important;
 }
 
 .theme-macos .image-preview,
@@ -267,7 +286,7 @@ body.theme-macos:not(.hide-app-border) {
 
 .theme-macos .tag-chip {
   border-radius: 999px !important;
-  border: 1px solid rgba(60, 60, 67, 0.24) !important;
+  border: 1px solid var(--macos-tag-chip-border) !important;
   box-shadow: none !important;
 }
 
@@ -280,8 +299,8 @@ body.theme-macos:not(.hide-app-border) {
   width: 100% !important;
   height: 100% !important;
   border-radius: 999px !important;
-  background: rgba(120, 120, 128, 0.34) !important;
-  box-shadow: inset 0 0 0 1px rgba(120, 120, 128, 0.16) !important;
+  background: var(--macos-toggle-bg) !important;
+  box-shadow: var(--macos-toggle-shadow) !important;
   transform: none !important;
   transition: background-color 0.2s ease, box-shadow 0.2s ease !important;
 }
@@ -299,14 +318,14 @@ body.theme-macos:not(.hide-app-border) {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: #ffffff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.24), 0 0 0 0.5px rgba(0, 0, 0, 0.08);
+  background: var(--macos-toggle-thumb-bg);
+  box-shadow: var(--macos-toggle-thumb-shadow);
   transition: transform 0.2s ease;
 }
 
 .theme-macos .switch input:checked+.toggle {
   background: var(--accent-color) !important;
-  box-shadow: inset 0 0 0 1px rgba(10, 132, 255, 0.36) !important;
+  box-shadow: var(--macos-toggle-active-shadow) !important;
 }
 
 .theme-macos .switch input:checked+.toggle::before {
@@ -314,7 +333,7 @@ body.theme-macos:not(.hide-app-border) {
 }
 
 .theme-macos .switch input:focus-visible+.toggle {
-  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.26), inset 0 0 0 1px rgba(10, 132, 255, 0.3) !important;
+  box-shadow: var(--macos-toggle-focus-shadow) !important;
 }
 
 .theme-macos .switch input:disabled+.toggle {
@@ -330,8 +349,8 @@ body.theme-macos:not(.hide-app-border) {
 }
 
 .theme-macos .key-group.recording {
-  background: rgba(10, 132, 255, 0.1) !important;
-  box-shadow: 0 0 0 1px rgba(10, 132, 255, 0.22) inset !important;
+  background: var(--macos-key-recording-bg) !important;
+  box-shadow: var(--macos-key-recording-shadow) !important;
 }
 
 .theme-macos .key-cap {
@@ -339,12 +358,12 @@ body.theme-macos:not(.hide-app-border) {
   height: 2em !important;
   padding: 0 0.65em !important;
   margin: 0 !important;
-  border: 1px solid rgba(60, 60, 67, 0.26) !important;
+  border: 1px solid var(--macos-key-cap-border) !important;
   border-bottom-width: 1px !important;
   border-radius: 8px !important;
-  background: rgba(255, 255, 255, 0.88) !important;
-  color: var(--text-primary) !important;
-  box-shadow: 0 1px 2px rgba(15, 18, 26, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+  background: var(--macos-key-cap-bg) !important;
+  color: var(--macos-key-cap-text) !important;
+  box-shadow: var(--macos-key-cap-shadow) !important;
   font-weight: 700 !important;
   font-size: 11px !important;
   letter-spacing: 0.02em !important;
@@ -355,37 +374,14 @@ body.theme-macos:not(.hide-app-border) {
 .theme-macos .key-group:active .key-cap,
 .theme-macos .key-group.recording .key-cap {
   transform: none !important;
-  background: rgba(10, 132, 255, 0.14) !important;
-  border-color: rgba(10, 132, 255, 0.36) !important;
-  box-shadow: 0 0 0 1px rgba(10, 132, 255, 0.2) inset !important;
+  background: var(--macos-key-cap-active-bg) !important;
+  border-color: var(--macos-key-cap-active-border) !important;
+  box-shadow: var(--macos-key-cap-active-shadow) !important;
 }
 
 .theme-macos .key-group:focus-visible {
-  outline: 2px solid rgba(10, 132, 255, 0.5) !important;
+  outline: var(--macos-key-group-outline) !important;
   outline-offset: 2px !important;
-}
-
-.theme-macos .hotkey-delete-btn {
-  width: 24px !important;
-  height: 24px !important;
-  box-shadow: var(--hotkey-delete-btn-shadow) !important;
-  transform: none !important;
-}
-
-.theme-macos .hotkey-delete-btn:hover {
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.9) inset, 0 0 0 1px #d4d8df !important;
-}
-
-.theme-macos .hotkey-delete-btn:active {
-  box-shadow: var(--hotkey-delete-btn-shadow-active) !important;
-  background: rgba(10, 132, 255, 0.12) !important;
-  border-color: rgba(10, 132, 255, 0.42) !important;
-}
-
-.theme-macos .hotkey-delete-icon {
-  width: 12px !important;
-  height: 12px !important;
-  stroke-width: 2.6 !important;
 }
 
 .theme-macos .settings-view input[type="range"] {
@@ -401,9 +397,9 @@ body.theme-macos:not(.hide-app-border) {
   border-radius: 999px;
   background:
     linear-gradient(var(--accent-color), var(--accent-color)) 0/ var(--range-progress, 0%) 100% no-repeat,
-    rgba(255, 255, 255, 0.62);
-  border: 1px solid rgba(60, 60, 67, 0.22);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    var(--macos-range-track-bg);
+  border: 1px solid var(--macos-range-track-border);
+  box-shadow: var(--macos-range-track-shadow);
 }
 
 .theme-macos .settings-view input[type="range"]::-webkit-slider-thumb {
@@ -412,17 +408,17 @@ body.theme-macos:not(.hide-app-border) {
   height: 18px;
   margin-top: -6px;
   border-radius: 50%;
-  background: #ffffff;
-  border: 1px solid rgba(60, 60, 67, 0.28);
-  box-shadow: 0 2px 6px rgba(15, 18, 26, 0.2);
+  background: var(--macos-range-thumb-bg);
+  border: 1px solid var(--macos-range-thumb-border);
+  box-shadow: var(--macos-range-thumb-shadow);
 }
 
 .theme-macos .settings-view input[type="range"]::-moz-range-track {
   height: 8px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.62);
-  border: 1px solid rgba(60, 60, 67, 0.22);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  background: var(--macos-range-track-bg);
+  border: 1px solid var(--macos-range-track-border);
+  box-shadow: var(--macos-range-track-shadow);
 }
 
 .theme-macos .settings-view input[type="range"]::-moz-range-progress {
@@ -435,9 +431,9 @@ body.theme-macos:not(.hide-app-border) {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: #ffffff;
-  border: 1px solid rgba(60, 60, 67, 0.28);
-  box-shadow: 0 2px 6px rgba(15, 18, 26, 0.2);
+  background: var(--macos-range-thumb-bg);
+  border: 1px solid var(--macos-range-thumb-border);
+  box-shadow: var(--macos-range-thumb-shadow);
 }
 
 .theme-macos .settings-view input[type="range"]:focus-visible {
@@ -446,78 +442,68 @@ body.theme-macos:not(.hide-app-border) {
 
 .theme-macos .settings-view input[type="range"]:focus-visible::-webkit-slider-thumb,
 .theme-macos .settings-view input[type="range"]:focus-visible::-moz-range-thumb {
-  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.24), 0 2px 6px rgba(15, 18, 26, 0.2);
+  box-shadow: var(--macos-range-thumb-focus-shadow);
 }
 
-.theme-macos .modal-content,
-.theme-macos .confirm-dialog {
-  border-radius: 12px !important;
-  border: 1px solid rgba(60, 60, 67, 0.2) !important;
-  background: rgba(255, 255, 255, 0.94) !important;
-  box-shadow: 0 14px 32px rgba(16, 21, 34, 0.2) !important;
-  backdrop-filter: blur(20px) saturate(126%);
-  -webkit-backdrop-filter: blur(20px) saturate(126%);
+.theme-macos .modal-overlay {
+  background: rgba(20, 22, 28, 0.24) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
-.confirm-dialog.theme-macos {
-  border-radius: 12px !important;
-  border: 1px solid rgba(60, 60, 67, 0.2) !important;
-  background: rgba(255, 255, 255, 0.94) !important;
-  box-shadow: 0 14px 32px rgba(16, 21, 34, 0.2) !important;
-  backdrop-filter: blur(20px) saturate(126%) !important;
-  -webkit-backdrop-filter: blur(20px) saturate(126%) !important;
+.theme-macos .app-selector-modal {
+  border-radius: 16px !important;
+  border: 1px solid var(--macos-tag-dialog-border) !important;
+  background: var(--macos-tag-dialog-bg) !important;
+  box-shadow: var(--macos-tag-dialog-shadow) !important;
+  padding: 18px !important;
 }
 
-.theme-macos .confirm-dialog-title,
-.confirm-dialog.theme-macos .confirm-dialog-title {
+.theme-macos .app-selector-modal .modal-title {
   background: transparent !important;
   color: var(--text-primary) !important;
   text-transform: none !important;
   letter-spacing: 0 !important;
+  font-size: 18px !important;
+  font-weight: 700 !important;
   padding: 0 !important;
 }
 
-.theme-macos .confirm-dialog-message,
-.confirm-dialog.theme-macos .confirm-dialog-message {
+.theme-macos .app-selector-close-btn {
   color: var(--text-secondary) !important;
-  opacity: 1 !important;
 }
 
-.theme-macos .confirm-dialog-button,
-.confirm-dialog.theme-macos .confirm-dialog-button {
+.theme-macos .app-selector-close-btn:hover {
+  color: var(--accent-color) !important;
+}
+
+.theme-macos .app-selector-modal .selector-container {
+  border: 1px solid var(--macos-tag-search-border) !important;
+  border-radius: 12px !important;
+  padding: 6px !important;
+  background: var(--macos-tag-search-bg) !important;
+  box-shadow: none !important;
+}
+
+.theme-macos .app-selector-action-btn {
   border-radius: 10px !important;
-  border: 1px solid rgba(60, 60, 67, 0.22) !important;
+  border: 1px solid var(--macos-dialog-button-border) !important;
   box-shadow: none !important;
-  font-weight: 600 !important;
   text-transform: none !important;
-  background: rgba(255, 255, 255, 0.78) !important;
-  color: var(--text-primary) !important;
+  font-weight: 600 !important;
 }
 
-.theme-macos .confirm-dialog-button:hover,
-.confirm-dialog.theme-macos .confirm-dialog-button:hover {
-  transform: none !important;
-  background: rgba(255, 255, 255, 0.95) !important;
-  border-color: rgba(10, 132, 255, 0.32) !important;
+.theme-macos .app-selector-action-btn-browse {
+  background: var(--macos-dialog-button-bg) !important;
+  color: var(--macos-dialog-button-text) !important;
 }
 
-.theme-macos .confirm-dialog-button:active,
-.confirm-dialog.theme-macos .confirm-dialog-button:active {
-  transform: scale(0.97) !important;
-  box-shadow: none !important;
+.theme-macos .app-selector-action-btn-cancel {
+  background: var(--macos-dialog-button-primary-bg) !important;
+  color: var(--macos-dialog-button-primary-text) !important;
+  border-color: var(--macos-dialog-button-primary-border) !important;
 }
 
-.theme-macos .confirm-dialog-button.primary,
-.confirm-dialog.theme-macos .confirm-dialog-button.primary {
-  background: var(--accent-color) !important;
-  border-color: rgba(8, 111, 229, 0.92) !important;
-  color: #ffffff !important;
-}
-
-.theme-macos .confirm-dialog-button.primary:hover,
-.confirm-dialog.theme-macos .confirm-dialog-button.primary:hover {
-  background: var(--accent-hover) !important;
-}
 
 .themed-tag-manager.theme-macos {
   background: transparent !important;
@@ -526,8 +512,8 @@ body.theme-macos:not(.hide-app-border) {
 }
 
 .themed-tag-manager.theme-macos .tag-sidebar {
-  border-right: 1px solid rgba(60, 60, 67, 0.16) !important;
-  background: rgba(255, 255, 255, 0.48) !important;
+  border-right: 1px solid var(--macos-tag-sidebar-border) !important;
+  background: var(--macos-tag-sidebar-bg) !important;
   backdrop-filter: blur(14px) saturate(120%);
   -webkit-backdrop-filter: blur(14px) saturate(120%);
 }
@@ -535,7 +521,7 @@ body.theme-macos:not(.hide-app-border) {
 .themed-tag-manager.theme-macos .sidebar-header {
   background: transparent !important;
   color: var(--text-primary) !important;
-  border-bottom: 1px solid rgba(60, 60, 67, 0.14) !important;
+  border-bottom: 1px solid var(--macos-settings-header-border) !important;
   margin: 0 !important;
   padding: 10px 12px !important;
   min-height: 38px !important;
@@ -549,8 +535,8 @@ body.theme-macos:not(.hide-app-border) {
 }
 
 .themed-tag-manager.theme-macos .tag-search-box {
-  border-bottom: 1px solid rgba(60, 60, 67, 0.12) !important;
-  background: rgba(255, 255, 255, 0.42) !important;
+  border-bottom: 1px solid var(--macos-tag-sort-border) !important;
+  background: var(--macos-tag-search-bg) !important;
 }
 
 .themed-tag-manager.theme-macos .tag-search-box input::placeholder {
@@ -558,9 +544,9 @@ body.theme-macos:not(.hide-app-border) {
 }
 
 .themed-tag-manager.theme-macos .tag-item.active {
-  background: rgba(10, 132, 255, 0.12) !important;
+  background: var(--macos-tag-item-active-bg) !important;
   color: var(--text-primary) !important;
-  border: 1px solid rgba(10, 132, 255, 0.32) !important;
+  border: 1px solid var(--macos-tag-item-active-border) !important;
   box-shadow: none !important;
   border-radius: 9px !important;
 }
@@ -575,7 +561,7 @@ body.theme-macos:not(.hide-app-border) {
 }
 
 .themed-tag-manager.theme-macos .tag-item:hover:not(.active) {
-  background: rgba(10, 132, 255, 0.06) !important;
+  background: var(--macos-tag-item-hover-bg) !important;
   border-radius: 9px !important;
 }
 
@@ -597,8 +583,8 @@ body.theme-macos:not(.hide-app-border) {
 .themed-tag-manager.theme-macos .tag-search-box {
   border-radius: 10px;
   margin: 6px;
-  border: 1px solid rgba(128, 128, 128, 0.2);
-  background: rgba(255, 255, 255, 0.35);
+  border: 1px solid var(--macos-tag-search-border);
+  background: var(--macos-tag-search-bg);
 }
 
 .themed-tag-manager.theme-macos .tag-search-box input {
@@ -617,21 +603,21 @@ body.theme-macos:not(.hide-app-border) {
 
 .themed-tag-manager.theme-macos .themed-card {
   border-radius: 12px !important;
-  border: 1px solid rgba(60, 60, 67, 0.16) !important;
-  background: rgba(255, 255, 255, 0.72) !important;
-  box-shadow: 0 3px 10px rgba(15, 18, 26, 0.08) !important;
+  border: 1px solid var(--macos-tag-card-border) !important;
+  background: var(--macos-tag-card-bg) !important;
+  box-shadow: var(--macos-tag-card-shadow) !important;
 }
 
 .themed-tag-manager.theme-macos .themed-card:hover {
   transform: none !important;
-  background: rgba(255, 255, 255, 0.9) !important;
-  box-shadow: 0 6px 14px rgba(15, 18, 26, 0.12) !important;
+  background: var(--macos-tag-card-hover-bg) !important;
+  box-shadow: var(--macos-tag-card-hover-shadow) !important;
 }
 
 .themed-tag-manager.theme-macos .content-toolbar {
   height: 44px !important;
-  border-bottom: 1px solid rgba(60, 60, 67, 0.16) !important;
-  background: rgba(255, 255, 255, 0.5) !important;
+  border-bottom: 1px solid var(--macos-tag-toolbar-border) !important;
+  background: var(--macos-tag-toolbar-bg) !important;
   backdrop-filter: blur(14px) saturate(120%);
   -webkit-backdrop-filter: blur(14px) saturate(120%);
 }
@@ -647,30 +633,31 @@ body.theme-macos:not(.hide-app-border) {
 }
 
 .themed-tag-manager.theme-macos .sort-group {
-  border-left: 1px solid rgba(60, 60, 67, 0.12) !important;
+  border-left: 1px solid var(--macos-tag-sort-border) !important;
 }
 
 .themed-tag-manager.theme-macos .btn-icon,
 .themed-tag-manager.theme-macos .toggle-btn,
 .themed-tag-manager.theme-macos .add-item-btn {
   border-radius: 10px !important;
-  border: 1px solid rgba(60, 60, 67, 0.18) !important;
-  background: rgba(255, 255, 255, 0.78) !important;
+  border: 1px solid var(--macos-tag-btn-border) !important;
+  background: var(--macos-tag-btn-bg) !important;
+  color: var(--macos-tag-btn-text) !important;
   box-shadow: none !important;
 }
 
 .themed-tag-manager.theme-macos .btn-icon:hover,
 .themed-tag-manager.theme-macos .toggle-btn:hover,
 .themed-tag-manager.theme-macos .add-item-btn:hover {
-  background: rgba(255, 255, 255, 0.94) !important;
-  border-color: rgba(10, 132, 255, 0.3) !important;
+  background: var(--macos-tag-btn-hover-bg) !important;
+  border-color: var(--macos-tag-btn-hover-border) !important;
 }
 
 .themed-tag-manager.theme-macos .toggle-btn.active,
 .themed-tag-manager.theme-macos .add-item-btn.active {
-  background: rgba(10, 132, 255, 0.14) !important;
-  border-color: rgba(10, 132, 255, 0.38) !important;
-  color: var(--accent-color) !important;
+  background: var(--macos-btn-active-bg) !important;
+  border-color: var(--macos-btn-active-border) !important;
+  color: var(--macos-btn-active-text) !important;
 }
 
 .themed-tag-manager.theme-macos .card-action-btn,
@@ -680,18 +667,18 @@ body.theme-macos:not(.hide-app-border) {
 
 .themed-tag-manager.theme-macos .card-action-btn:hover,
 .themed-tag-manager.theme-macos .del-btn:hover {
-  background: rgba(10, 132, 255, 0.08) !important;
+  background: var(--macos-btn-hover-bg) !important;
   color: var(--accent-color) !important;
 }
 
 .themed-tag-manager.theme-macos .confirm-dialog {
-  background: rgba(255, 255, 255, 0.95) !important;
+  background: var(--macos-tag-dialog-bg) !important;
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   padding: 24px !important;
   border-radius: 16px !important;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2) !important;
-  border: 1px solid rgba(255, 255, 255, 0.66) !important;
+  box-shadow: var(--macos-tag-dialog-shadow) !important;
+  border: 1px solid var(--macos-tag-dialog-border) !important;
 }
 
 .themed-tag-manager.theme-macos .confirm-dialog h3 {
@@ -705,14 +692,14 @@ body.theme-macos:not(.hide-app-border) {
 
 .themed-tag-manager.theme-macos .modal-input-field .modal-textarea {
   border-radius: 10px !important;
-  border: 1px solid rgba(60, 60, 67, 0.22) !important;
-  background: rgba(255, 255, 255, 0.98) !important;
-  color: var(--text-primary) !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.88) !important;
+  border: 1px solid var(--macos-tag-textarea-border) !important;
+  background: var(--macos-tag-textarea-bg) !important;
+  color: var(--macos-tag-textarea-text) !important;
+  box-shadow: var(--macos-tag-textarea-shadow) !important;
 }
 
 .themed-tag-manager.theme-macos .modal-input-field .modal-textarea::placeholder {
-  color: color-mix(in srgb, var(--text-secondary) 72%, transparent) !important;
+  color: var(--macos-tag-textarea-placeholder) !important;
 }
 
 .themed-tag-manager.theme-macos .modal-input-field .modal-textarea:focus {
@@ -725,8 +712,9 @@ body.theme-macos:not(.hide-app-border) {
   border: none !important;
   box-shadow: none !important;
   font-weight: 600 !important;
-  background: rgba(255, 255, 255, 0.9) !important;
-  border: 1px solid rgba(60, 60, 67, 0.14) !important;
+  background: var(--macos-dialog-button-bg) !important;
+  border: 1px solid var(--macos-dialog-button-border) !important;
+  color: var(--macos-dialog-button-text) !important;
 }
 
 .themed-tag-manager.theme-macos .confirm-dialog-button:active {
@@ -734,537 +722,7 @@ body.theme-macos:not(.hide-app-border) {
 }
 
 .themed-tag-manager.theme-macos .confirm-dialog-button.primary {
-  background: var(--accent-color) !important;
-}
-
-@media (prefers-color-scheme: dark) {
-  body:not(.light-mode).theme-macos {
-    --bg-body: #141518;
-    --bg-window: #1b1c20;
-    --bg-content: #1b1c20;
-    --bg-toolbar: #1f2024;
-    --bg-panel: rgba(44, 45, 52, 0.72);
-    --bg-input: rgba(52, 54, 62, 0.78);
-    --bg-element: rgba(56, 59, 68, 0.72);
-    --bg-button: rgba(61, 64, 74, 0.72);
-    --text-primary: #f5f5f7;
-    --text-secondary: #a8abb4;
-    --border-dark: rgba(255, 255, 255, 0.14);
-    --shadow-color: rgba(0, 0, 0, 0.5);
-    --hotkey-delete-btn-border: 1px solid rgba(173, 179, 191, 0.74);
-    --hotkey-delete-btn-border-hover: rgba(112, 191, 255, 0.5);
-    --hotkey-delete-btn-bg: rgba(74, 76, 86, 0.9);
-    --hotkey-delete-btn-bg-hover: rgba(86, 89, 99, 0.95);
-    --hotkey-delete-btn-color: #f5f5f7;
-    --hotkey-delete-btn-color-hover: #7fc2ff;
-    --hotkey-delete-btn-shadow: 0 0 0 1px rgba(255, 255, 255, 0.07) inset;
-    --hotkey-delete-btn-shadow-active: 0 0 0 1px rgba(112, 191, 255, 0.2) inset;
-  }
-
-  body:not(.light-mode).theme-macos #root {
-    background: linear-gradient(180deg, rgba(40, 42, 49, 0.76) 0%, rgba(29, 31, 36, 0.78) 100%) !important;
-    border-color: rgba(255, 255, 255, 0.12) !important;
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.38), 0 1px 0 rgba(255, 255, 255, 0.08) inset !important;
-  }
-
-  body:not(.light-mode).theme-macos:not(.hide-app-border) #root {
-    border-radius: 0 !important;
-    border-color: transparent !important;
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.38) !important;
-  }
-
-  body:not(.light-mode).theme-macos header {
-    background: rgba(44, 46, 54, 0.56) !important;
-    border-bottom-color: rgba(255, 255, 255, 0.12) !important;
-  }
-
-  body:not(.light-mode).theme-macos .settings-group,
-  body:not(.light-mode).theme-macos .file-transfer-panel,
-  body:not(.light-mode).theme-macos .data-panel {
-    background: rgba(48, 50, 58, 0.6) !important;
-    border-color: rgba(255, 255, 255, 0.12) !important;
-    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.22) !important;
-  }
-
-  body:not(.light-mode).theme-macos .settings-group .group-header {
-    background: rgba(62, 64, 74, 0.58) !important;
-    border-color: rgba(255, 255, 255, 0.12) !important;
-  }
-
-  body:not(.light-mode).theme-macos .settings-group:not(.collapsed) .group-header {
-    border-top: none !important;
-    border-left: none !important;
-    border-right: none !important;
-    border-bottom-color: rgba(255, 255, 255, 0.1) !important;
-    background: rgba(62, 64, 74, 0.5) !important;
-  }
-
-  body:not(.light-mode).theme-macos .search-input,
-  body:not(.light-mode).theme-macos .setting-input {
-    background: rgba(58, 60, 68, 0.7) !important;
-    border-color: rgba(255, 255, 255, 0.16) !important;
-    color: #f5f5f7 !important;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
-  }
-
-  body:not(.light-mode).theme-macos select.search-input {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 20 20'%3E%3Cpath d='M5.5 7.5L10 12l4.5-4.5' fill='none' stroke='%23f5f5f7' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  }
-
-  body:not(.light-mode).theme-macos select.search-input option {
-    background: rgba(62, 64, 74, 0.98);
-    color: #f5f5f7;
-  }
-
-  body:not(.light-mode).theme-macos select.search-input option:checked {
-    background: rgba(10, 132, 255, 0.34);
-    color: #f5f5f7;
-  }
-
-  body:not(.light-mode).theme-macos .history-item,
-  body:not(.light-mode).theme-macos .history-item.compact {
-    background: rgba(56, 58, 67, 0.66) !important;
-    border-color: rgba(255, 255, 255, 0.14) !important;
-    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2) !important;
-  }
-
-  body:not(.light-mode).theme-macos .history-item:hover {
-    background: rgba(62, 64, 74, 0.78) !important;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.24) !important;
-  }
-
-  body:not(.light-mode).theme-macos .history-item .item-actions {
-    background: rgba(62, 64, 74, 0.72) !important;
-    border-color: rgba(255, 255, 255, 0.14) !important;
-    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25) !important;
-  }
-
-  body:not(.light-mode).theme-macos .history-item .item-actions .btn-icon,
-  body:not(.light-mode).theme-macos .history-item.compact .item-actions .btn-icon {
-    background: rgba(74, 76, 86, 0.84) !important;
-    border-color: rgba(255, 255, 255, 0.16) !important;
-    color: #f5f5f7 !important;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3) !important;
-  }
-
-  body:not(.light-mode).theme-macos .history-item .item-actions .btn-icon:hover,
-  body:not(.light-mode).theme-macos .history-item.compact .item-actions .btn-icon:hover {
-    background: rgba(86, 89, 99, 0.9) !important;
-    border-color: rgba(112, 191, 255, 0.5) !important;
-    color: #7fc2ff !important;
-  }
-
-  body:not(.light-mode).theme-macos .history-item .item-actions .btn-icon.active,
-  body:not(.light-mode).theme-macos .history-item.compact .item-actions .btn-icon.active {
-    background: rgba(10, 132, 255, 0.28) !important;
-    border-color: rgba(112, 191, 255, 0.62) !important;
-    color: #a9d7ff !important;
-  }
-
-  body:not(.light-mode).theme-macos .toggle {
-    background: rgba(120, 120, 128, 0.46) !important;
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
-  }
-
-  body:not(.light-mode).theme-macos .key-group.recording {
-    background: rgba(10, 132, 255, 0.2) !important;
-    box-shadow: 0 0 0 1px rgba(112, 191, 255, 0.38) inset !important;
-  }
-
-  body:not(.light-mode).theme-macos .key-cap {
-    background: rgba(74, 76, 86, 0.84) !important;
-    border-color: rgba(255, 255, 255, 0.2) !important;
-    color: #f5f5f7 !important;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
-  }
-
-  body:not(.light-mode).theme-macos .key-group:active .key-cap,
-  body:not(.light-mode).theme-macos .key-group.recording .key-cap {
-    background: rgba(10, 132, 255, 0.28) !important;
-    border-color: rgba(112, 191, 255, 0.58) !important;
-    box-shadow: 0 0 0 1px rgba(112, 191, 255, 0.2) inset !important;
-  }
-
-  body:not(.light-mode).theme-macos .hotkey-delete-btn {
-    box-shadow: var(--hotkey-delete-btn-shadow) !important;
-  }
-
-  body:not(.light-mode).theme-macos .hotkey-delete-btn:hover {
-    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1) inset, 0 0 0 1px rgba(16, 18, 24, 0.88) !important;
-  }
-
-  body:not(.light-mode).theme-macos .hotkey-delete-btn:active {
-    box-shadow: var(--hotkey-delete-btn-shadow-active) !important;
-    background: rgba(10, 132, 255, 0.28) !important;
-    border-color: rgba(112, 191, 255, 0.62) !important;
-  }
-
-  body:not(.light-mode).theme-macos .settings-view input[type="range"]::-webkit-slider-runnable-track {
-    background:
-      linear-gradient(var(--accent-color), var(--accent-color)) 0/ var(--range-progress, 0%) 100% no-repeat,
-      rgba(255, 255, 255, 0.14);
-    border-color: rgba(255, 255, 255, 0.12);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  }
-
-  body:not(.light-mode).theme-macos .settings-view input[type="range"]::-moz-range-track {
-    background: rgba(255, 255, 255, 0.14);
-    border-color: rgba(255, 255, 255, 0.12);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  }
-
-  body:not(.light-mode).theme-macos .settings-view input[type="range"]::-moz-range-progress {
-    background: var(--accent-color);
-  }
-
-  body:not(.light-mode).theme-macos .settings-view input[type="range"]::-webkit-slider-thumb,
-  body:not(.light-mode).theme-macos .settings-view input[type="range"]::-moz-range-thumb {
-    background: rgba(244, 245, 247, 0.96);
-    border-color: rgba(255, 255, 255, 0.5);
-    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.5);
-  }
-
-  body:not(.light-mode).theme-macos .modal-content,
-  body:not(.light-mode).theme-macos .confirm-dialog {
-    background: rgba(44, 46, 54, 0.8) !important;
-    border-color: rgba(255, 255, 255, 0.12) !important;
-    box-shadow: 0 18px 34px rgba(0, 0, 0, 0.4) !important;
-  }
-
-  body:not(.light-mode) .confirm-dialog.theme-macos {
-    background: rgba(44, 46, 54, 0.8) !important;
-    border-color: rgba(255, 255, 255, 0.12) !important;
-    box-shadow: 0 18px 34px rgba(0, 0, 0, 0.4) !important;
-  }
-
-  body:not(.light-mode).theme-macos .confirm-dialog-button,
-  body:not(.light-mode) .confirm-dialog.theme-macos .confirm-dialog-button {
-    background: rgba(74, 76, 86, 0.82) !important;
-    border-color: rgba(255, 255, 255, 0.18) !important;
-    color: #f5f5f7 !important;
-  }
-
-  body:not(.light-mode).theme-macos .confirm-dialog-button:hover,
-  body:not(.light-mode) .confirm-dialog.theme-macos .confirm-dialog-button:hover {
-    background: rgba(86, 89, 99, 0.9) !important;
-    border-color: rgba(112, 191, 255, 0.5) !important;
-  }
-
-  body:not(.light-mode).theme-macos .confirm-dialog-button.primary,
-  body:not(.light-mode) .confirm-dialog.theme-macos .confirm-dialog-button.primary {
-    background: rgba(10, 132, 255, 0.85) !important;
-    border-color: rgba(112, 191, 255, 0.62) !important;
-    color: #ffffff !important;
-  }
-
-  body:not(.light-mode) .themed-tag-manager.theme-macos .themed-card {
-    background: rgba(56, 58, 67, 0.66) !important;
-    border-color: rgba(255, 255, 255, 0.14) !important;
-    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.24) !important;
-  }
-
-  body:not(.light-mode) .themed-tag-manager.theme-macos .themed-card:hover {
-    background: rgba(64, 66, 76, 0.78) !important;
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3) !important;
-  }
-
-  body:not(.light-mode) .themed-tag-manager.theme-macos .modal-input-field .modal-textarea {
-    background: rgba(58, 60, 68, 0.74) !important;
-    border-color: rgba(255, 255, 255, 0.18) !important;
-    color: #f5f5f7 !important;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
-  }
-
-  body:not(.light-mode) .themed-tag-manager.theme-macos .modal-input-field .modal-textarea::placeholder {
-    color: rgba(245, 245, 247, 0.45) !important;
-  }
-
-  body:not(.light-mode) .themed-tag-manager.theme-macos .tag-sidebar,
-  body:not(.light-mode) .themed-tag-manager.theme-macos .content-toolbar {
-    background: rgba(44, 46, 54, 0.54) !important;
-    border-color: rgba(255, 255, 255, 0.12) !important;
-  }
-
-  body:not(.light-mode) .themed-tag-manager.theme-macos .tag-item.active {
-    background: rgba(10, 132, 255, 0.2) !important;
-    border-color: rgba(112, 191, 255, 0.44) !important;
-  }
-
-  body:not(.light-mode) .themed-tag-manager.theme-macos .btn-icon,
-  body:not(.light-mode) .themed-tag-manager.theme-macos .toggle-btn,
-  body:not(.light-mode) .themed-tag-manager.theme-macos .add-item-btn {
-    background: rgba(74, 76, 86, 0.84) !important;
-    border-color: rgba(255, 255, 255, 0.16) !important;
-    color: #f5f5f7 !important;
-  }
-
-  body:not(.light-mode) .themed-tag-manager.theme-macos .confirm-dialog {
-    background: rgba(30, 30, 30, 0.8) !important;
-    border-color: rgba(255, 255, 255, 0.1) !important;
-  }
-}
-
-body.dark-mode.theme-macos {
-  --bg-body: #141518;
-  --bg-window: #1b1c20;
-  --bg-content: #1b1c20;
-  --bg-toolbar: #1f2024;
-  --bg-panel: rgba(44, 45, 52, 0.72);
-  --bg-input: rgba(52, 54, 62, 0.78);
-  --bg-element: rgba(56, 59, 68, 0.72);
-  --bg-button: rgba(61, 64, 74, 0.72);
-  --text-primary: #f5f5f7;
-  --text-secondary: #a8abb4;
-  --border-dark: rgba(255, 255, 255, 0.14);
-  --shadow-color: rgba(0, 0, 0, 0.5);
-  --hotkey-delete-btn-border: 1px solid rgba(173, 179, 191, 0.74);
-  --hotkey-delete-btn-border-hover: rgba(112, 191, 255, 0.5);
-  --hotkey-delete-btn-bg: rgba(74, 76, 86, 0.9);
-  --hotkey-delete-btn-bg-hover: rgba(86, 89, 99, 0.95);
-  --hotkey-delete-btn-color: #f5f5f7;
-  --hotkey-delete-btn-color-hover: #7fc2ff;
-  --hotkey-delete-btn-shadow: 0 0 0 1px rgba(255, 255, 255, 0.07) inset;
-  --hotkey-delete-btn-shadow-active: 0 0 0 1px rgba(112, 191, 255, 0.2) inset;
-}
-
-body.dark-mode.theme-macos #root {
-  background: linear-gradient(180deg, rgba(40, 42, 49, 0.76) 0%, rgba(29, 31, 36, 0.78) 100%) !important;
-  border-color: rgba(255, 255, 255, 0.12) !important;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.38), 0 1px 0 rgba(255, 255, 255, 0.08) inset !important;
-}
-
-body.dark-mode.theme-macos:not(.hide-app-border) #root {
-  border-radius: 0 !important;
-  border-color: transparent !important;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.38) !important;
-}
-
-body.dark-mode.theme-macos header {
-  background: rgba(44, 46, 54, 0.56) !important;
-  border-bottom-color: rgba(255, 255, 255, 0.12) !important;
-}
-
-body.dark-mode.theme-macos .settings-group,
-body.dark-mode.theme-macos .file-transfer-panel,
-body.dark-mode.theme-macos .data-panel {
-  background: rgba(48, 50, 58, 0.6) !important;
-  border-color: rgba(255, 255, 255, 0.12) !important;
-  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.22) !important;
-}
-
-body.dark-mode.theme-macos .settings-group .group-header {
-  background: rgba(62, 64, 74, 0.58) !important;
-  border-color: rgba(255, 255, 255, 0.12) !important;
-}
-
-body.dark-mode.theme-macos .settings-group:not(.collapsed) .group-header {
-  border-top: none !important;
-  border-left: none !important;
-  border-right: none !important;
-  border-bottom-color: rgba(255, 255, 255, 0.1) !important;
-  background: rgba(62, 64, 74, 0.5) !important;
-}
-
-body.dark-mode.theme-macos .search-input,
-body.dark-mode.theme-macos .setting-input {
-  background: rgba(58, 60, 68, 0.7) !important;
-  border-color: rgba(255, 255, 255, 0.16) !important;
-  color: #f5f5f7 !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
-}
-
-body.dark-mode.theme-macos select.search-input {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 20 20'%3E%3Cpath d='M5.5 7.5L10 12l4.5-4.5' fill='none' stroke='%23f5f5f7' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-}
-
-body.dark-mode.theme-macos select.search-input option {
-  background: rgba(62, 64, 74, 0.98);
-  color: #f5f5f7;
-}
-
-body.dark-mode.theme-macos select.search-input option:checked {
-  background: rgba(10, 132, 255, 0.34);
-  color: #f5f5f7;
-}
-
-body.dark-mode.theme-macos .history-item,
-body.dark-mode.theme-macos .history-item.compact {
-  background: rgba(56, 58, 67, 0.66) !important;
-  border-color: rgba(255, 255, 255, 0.14) !important;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2) !important;
-}
-
-body.dark-mode.theme-macos .history-item:hover {
-  background: rgba(62, 64, 74, 0.78) !important;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.24) !important;
-}
-
-body.dark-mode.theme-macos .history-item .item-actions {
-  background: rgba(62, 64, 74, 0.72) !important;
-  border-color: rgba(255, 255, 255, 0.14) !important;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25) !important;
-}
-
-body.dark-mode.theme-macos .history-item .item-actions .btn-icon,
-body.dark-mode.theme-macos .history-item.compact .item-actions .btn-icon {
-  background: rgba(74, 76, 86, 0.84) !important;
-  border-color: rgba(255, 255, 255, 0.16) !important;
-  color: #f5f5f7 !important;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3) !important;
-}
-
-body.dark-mode.theme-macos .history-item .item-actions .btn-icon:hover,
-body.dark-mode.theme-macos .history-item.compact .item-actions .btn-icon:hover {
-  background: rgba(86, 89, 99, 0.9) !important;
-  border-color: rgba(112, 191, 255, 0.5) !important;
-  color: #7fc2ff !important;
-}
-
-body.dark-mode.theme-macos .history-item .item-actions .btn-icon.active,
-body.dark-mode.theme-macos .history-item.compact .item-actions .btn-icon.active {
-  background: rgba(10, 132, 255, 0.28) !important;
-  border-color: rgba(112, 191, 255, 0.62) !important;
-  color: #a9d7ff !important;
-}
-
-body.dark-mode.theme-macos .toggle {
-  background: rgba(120, 120, 128, 0.46) !important;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
-}
-
-body.dark-mode.theme-macos .key-group.recording {
-  background: rgba(10, 132, 255, 0.2) !important;
-  box-shadow: 0 0 0 1px rgba(112, 191, 255, 0.38) inset !important;
-}
-
-body.dark-mode.theme-macos .key-cap {
-  background: rgba(74, 76, 86, 0.84) !important;
-  border-color: rgba(255, 255, 255, 0.2) !important;
-  color: #f5f5f7 !important;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
-}
-
-body.dark-mode.theme-macos .key-group:active .key-cap,
-body.dark-mode.theme-macos .key-group.recording .key-cap {
-  background: rgba(10, 132, 255, 0.28) !important;
-  border-color: rgba(112, 191, 255, 0.58) !important;
-  box-shadow: 0 0 0 1px rgba(112, 191, 255, 0.2) inset !important;
-}
-
-body.dark-mode.theme-macos .hotkey-delete-btn {
-  box-shadow: var(--hotkey-delete-btn-shadow) !important;
-}
-
-body.dark-mode.theme-macos .hotkey-delete-btn:hover {
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1) inset, 0 0 0 1px rgba(16, 18, 24, 0.88) !important;
-}
-
-body.dark-mode.theme-macos .hotkey-delete-btn:active {
-  box-shadow: var(--hotkey-delete-btn-shadow-active) !important;
-  background: rgba(10, 132, 255, 0.28) !important;
-  border-color: rgba(112, 191, 255, 0.62) !important;
-}
-
-body.dark-mode.theme-macos .settings-view input[type="range"]::-webkit-slider-runnable-track {
-  background:
-    linear-gradient(var(--accent-color), var(--accent-color)) 0/ var(--range-progress, 0%) 100% no-repeat,
-    rgba(255, 255, 255, 0.14);
-  border-color: rgba(255, 255, 255, 0.12);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
-}
-
-body.dark-mode.theme-macos .settings-view input[type="range"]::-moz-range-track {
-  background: rgba(255, 255, 255, 0.14);
-  border-color: rgba(255, 255, 255, 0.12);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
-}
-
-body.dark-mode.theme-macos .settings-view input[type="range"]::-moz-range-progress {
-  background: var(--accent-color);
-}
-
-body.dark-mode.theme-macos .settings-view input[type="range"]::-webkit-slider-thumb,
-body.dark-mode.theme-macos .settings-view input[type="range"]::-moz-range-thumb {
-  background: rgba(244, 245, 247, 0.96);
-  border-color: rgba(255, 255, 255, 0.5);
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.5);
-}
-
-body.dark-mode.theme-macos .modal-content,
-body.dark-mode.theme-macos .confirm-dialog {
-  background: rgba(44, 46, 54, 0.8) !important;
-  border-color: rgba(255, 255, 255, 0.12) !important;
-  box-shadow: 0 18px 34px rgba(0, 0, 0, 0.4) !important;
-}
-
-body.dark-mode .confirm-dialog.theme-macos {
-  background: rgba(44, 46, 54, 0.8) !important;
-  border-color: rgba(255, 255, 255, 0.12) !important;
-  box-shadow: 0 18px 34px rgba(0, 0, 0, 0.4) !important;
-}
-
-body.dark-mode.theme-macos .confirm-dialog-button,
-body.dark-mode .confirm-dialog.theme-macos .confirm-dialog-button {
-  background: rgba(74, 76, 86, 0.82) !important;
-  border-color: rgba(255, 255, 255, 0.18) !important;
-  color: #f5f5f7 !important;
-}
-
-body.dark-mode.theme-macos .confirm-dialog-button:hover,
-body.dark-mode .confirm-dialog.theme-macos .confirm-dialog-button:hover {
-  background: rgba(86, 89, 99, 0.9) !important;
-  border-color: rgba(112, 191, 255, 0.5) !important;
-}
-
-body.dark-mode.theme-macos .confirm-dialog-button.primary,
-body.dark-mode .confirm-dialog.theme-macos .confirm-dialog-button.primary {
-  background: rgba(10, 132, 255, 0.85) !important;
-  border-color: rgba(112, 191, 255, 0.62) !important;
-  color: #ffffff !important;
-}
-
-body.dark-mode .themed-tag-manager.theme-macos .themed-card {
-  background: rgba(56, 58, 67, 0.66) !important;
-  border-color: rgba(255, 255, 255, 0.14) !important;
-  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.24) !important;
-}
-
-body.dark-mode .themed-tag-manager.theme-macos .themed-card:hover {
-  background: rgba(64, 66, 76, 0.78) !important;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3) !important;
-}
-
-body.dark-mode .themed-tag-manager.theme-macos .modal-input-field .modal-textarea {
-  background: rgba(58, 60, 68, 0.74) !important;
-  border-color: rgba(255, 255, 255, 0.18) !important;
-  color: #f5f5f7 !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
-}
-
-body.dark-mode .themed-tag-manager.theme-macos .modal-input-field .modal-textarea::placeholder {
-  color: rgba(245, 245, 247, 0.45) !important;
-}
-
-body.dark-mode .themed-tag-manager.theme-macos .tag-sidebar,
-body.dark-mode .themed-tag-manager.theme-macos .content-toolbar {
-  background: rgba(44, 46, 54, 0.54) !important;
-  border-color: rgba(255, 255, 255, 0.12) !important;
-}
-
-body.dark-mode .themed-tag-manager.theme-macos .tag-item.active {
-  background: rgba(10, 132, 255, 0.2) !important;
-  border-color: rgba(112, 191, 255, 0.44) !important;
-}
-
-body.dark-mode .themed-tag-manager.theme-macos .btn-icon,
-body.dark-mode .themed-tag-manager.theme-macos .toggle-btn,
-body.dark-mode .themed-tag-manager.theme-macos .add-item-btn {
-  background: rgba(74, 76, 86, 0.84) !important;
-  border-color: rgba(255, 255, 255, 0.16) !important;
-  color: #f5f5f7 !important;
-}
-
-body.dark-mode .themed-tag-manager.theme-macos .confirm-dialog {
-  background: rgba(30, 30, 30, 0.8) !important;
-  border-color: rgba(255, 255, 255, 0.1) !important;
+  background: var(--macos-dialog-button-primary-bg) !important;
+  border-color: var(--macos-dialog-button-primary-border) !important;
+  color: var(--macos-dialog-button-primary-text) !important;
 }

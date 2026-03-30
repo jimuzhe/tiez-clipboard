@@ -16,25 +16,17 @@ use crate::global_state::*;
 use crate::app::setup;
 
 fn main() {
-    // 显式安装 rustls 的 crypto provider，防止 rumqttc 因缺少 provider 而 panic
-    let _ = rustls::crypto::ring::default_provider().install_default();
-
     let _ = dotenvy::dotenv();
 
     let mut builder = tauri::Builder::default()
-        .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_sql::Builder::default().build())
         .plugin(tauri_plugin_global_shortcut::Builder::new().with_handler(|app, shortcut, event| {
             if event.state() == tauri_plugin_global_shortcut::ShortcutState::Pressed {
                 setup::handle_global_shortcut(app, shortcut);
             }
         }).build())
-        .plugin(tauri_plugin_window_state::Builder::default().build())
-        .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, Some(vec!["--minimized"])))
-        .plugin(tauri_plugin_http::init());
+        .plugin(tauri_plugin_window_state::Builder::default().build());
 
     if !cfg!(debug_assertions) {
         builder = builder.plugin(tauri_plugin_single_instance::init(|_app, _args, _cwd| {}));
@@ -80,52 +72,36 @@ fn main() {
             app::commands::set_ignore_blur,
             app::commands::set_window_pinned,
             app::commands::get_settings,
-            app::commands::set_file_server_auto_close,
             app::commands::set_persistence,
             app::commands::set_capture_files,
             app::commands::set_capture_rich_text,
-            app::commands::set_auto_copy_file,
             app::commands::set_silent_start,
             app::commands::set_delete_after_paste,
             app::commands::set_privacy_protection,
             app::commands::set_privacy_protection_kinds,
             app::commands::set_privacy_protection_custom_rules,
             app::commands::reset_settings,
-            app::commands::get_mqtt_status,
-            app::commands::get_mqtt_running,
-            app::commands::restart_mqtt_client,
-            app::commands::get_cloud_sync_status,
-            app::commands::restart_cloud_sync_client,
-            app::commands::cloud_sync_now,
             app::commands::set_sound_enabled,
-            app::commands::set_file_transfer_auto_open,
             app::commands::set_arrow_key_selection,
             app::commands::set_tray_visible,
             app::commands::set_edge_docking,
             app::commands::set_follow_mouse,
 
             app::commands::get_data_path,
-            app::commands::open_folder,
             app::commands::open_data_folder,
-            app::commands::open_file_with_default_app,
-            app::commands::open_file_location,
             app::commands::set_data_path,
             app::commands::toggle_autostart,
             app::commands::is_autostart_enabled,
             app::commands::set_windows_clipboard_history,
-            app::commands::get_windows_clipboard_history,
-            app::commands::set_win_clipboard_disabled,
             app::commands::trigger_registry_win_v_optimization,
             app::commands::is_registry_win_v_optimized,
             app::commands::restart_explorer,
             app::commands::restart_as_admin,
             app::commands::check_is_admin,
-            app::commands::quit,
             app::commands::relaunch,
 
             app::commands::set_theme,
             app::commands::get_platform_info,
-            app::commands::send_system_notification,
             app::commands::register_hotkey,
             app::commands::test_hotkey_available,
             app::commands::download_and_install_update,
@@ -141,17 +117,6 @@ fn main() {
             app::commands::save_emoji_favorite_data_url,
             app::commands::save_emoji_favorite_url,
             app::commands::get_file_size,
-            app::commands::save_file_copy,
-            
-            services::file_transfer::send_chat_message,
-            services::file_transfer::get_chat_history,
-            services::file_transfer::send_file_to_client,
-            services::file_transfer::get_app_logo,
-            services::file_transfer::get_local_ip_addr,
-            services::file_transfer::get_available_ips,
-            services::file_transfer::get_file_server_status,
-            services::file_transfer::toggle_file_server,
-            services::file_transfer::get_active_file_transfer_path,
             
             services::paste_queue::get_paste_queue,
             services::paste_queue::set_paste_queue,
@@ -159,9 +124,6 @@ fn main() {
             
             app::commands::get_tag_colors,
             app::commands::set_tag_color,
-            
-            app::commands::call_ai,
-            app::commands::check_ai_connectivity,
             
             infrastructure::windows_api::apps::get_system_default_app,
             infrastructure::windows_api::apps::get_executable_icon,

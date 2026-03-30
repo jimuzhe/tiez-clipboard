@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { applyModeClass, applyThemeClass, resolveThemeMode } from "../lib/themeRuntime";
 
 type PlatformInfo = {
   platform: string;
@@ -18,12 +19,6 @@ const ensureThemeCssLoaded = async (theme: string) => {
   if (!loader) return;
   await loader();
   loadedThemes.add(theme);
-};
-
-const clearThemeClasses = (element: HTMLElement) => {
-  Array.from(element.classList)
-    .filter(className => className.startsWith("theme-"))
-    .forEach(className => element.classList.remove(className));
 };
 
 interface UseSettingsApplyOptions {
@@ -57,36 +52,25 @@ export const useSettingsApply = ({
 
     const applyExplicitMode = (mode: "light" | "dark") => {
       if (disposed) return;
-      root.classList.remove("light-mode", "dark-mode");
-      body.classList.remove("light-mode", "dark-mode");
-      if (mode === "dark") {
-        root.classList.add("dark-mode");
-        body.classList.add("dark-mode");
-      } else {
-        root.classList.add("light-mode");
-        body.classList.add("light-mode");
-      }
+      applyModeClass(root, body, mode);
     };
 
     const applySystemMode = async () => {
       try {
         const current = await getCurrentWindow().theme();
         if (disposed) return;
-        applyExplicitMode(current === "dark" ? "dark" : "light");
+        applyExplicitMode(resolveThemeMode("system", current === "dark"));
       } catch {
         if (disposed) return;
         const isDark =
           window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
-        applyExplicitMode(isDark ? "dark" : "light");
+        applyExplicitMode(resolveThemeMode("system", isDark));
       }
     };
 
     ensureThemeCssLoaded(theme).catch(console.error);
 
-    clearThemeClasses(root);
-    clearThemeClasses(body);
-    root.classList.add(`theme-${theme}`);
-    body.classList.add(`theme-${theme}`);
+    applyThemeClass(root, body, theme);
     invoke<PlatformInfo>("get_platform_info")
       .then((info) => {
         if (disposed) return;
@@ -131,10 +115,9 @@ export const useSettingsApply = ({
         if (disposed) return;
 
         if (colorMode === "system") {
-          const next = event?.payload === "dark" ? "dark" : "light";
-          applyExplicitMode(next);
+          applyExplicitMode(resolveThemeMode("system", event?.payload === "dark"));
         } else {
-          applyExplicitMode(colorMode === "dark" ? "dark" : "light");
+          applyExplicitMode(resolveThemeMode(colorMode as "light" | "dark" | "system", false));
         }
 
         // Native mica/acrylic may be refreshed by the OS when system theme changes.
@@ -156,7 +139,7 @@ export const useSettingsApply = ({
     if (colorMode === "system") {
       if (window.matchMedia) {
         const media = window.matchMedia("(prefers-color-scheme: dark)");
-        const onChange = () => applyExplicitMode(media.matches ? "dark" : "light");
+        const onChange = () => applyExplicitMode(resolveThemeMode("system", media.matches));
         if (media.addEventListener) {
           media.addEventListener("change", onChange);
           cleanupMedia = () => media.removeEventListener("change", onChange);

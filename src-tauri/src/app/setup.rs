@@ -141,8 +141,20 @@ fn resolve_data_dir(app: &App) -> Result<std::path::PathBuf, Box<dyn std::error:
         }
     }
 
-    std::fs::create_dir_all(&app_dir)?;
-    Ok(app_dir)
+    match std::fs::create_dir_all(&app_dir) {
+        Ok(_) => Ok(app_dir),
+        Err(err) => {
+            if cfg!(debug_assertions) {
+                if let Ok(cwd) = std::env::current_dir() {
+                    let fallback = cwd.join(".tiez-dev-data");
+                    if std::fs::create_dir_all(&fallback).is_ok() {
+                        return Ok(fallback);
+                    }
+                }
+            }
+            Err(Box::new(err))
+        }
+    }
 }
 
 fn apply_startup_resets(repo: &impl SettingsRepository) {
@@ -159,7 +171,6 @@ pub struct StartupSettings {
     pub capture_files: bool,
     pub capture_rich_text: bool,
     pub deduplicate: bool,
-    pub auto_copy_file: bool,
     pub silent_start: bool,
     pub delete_after_paste: bool,
     pub privacy_protection: bool,
@@ -178,29 +189,15 @@ pub struct StartupSettings {
     pub window_height: Option<u32>,
     pub main_hotkey: String,
     pub arrow_key_selection: bool,
-    pub auto_close_server: bool,
 }
 
 fn load_settings(repo: &impl SettingsRepository) -> StartupSettings {
-    let read_bool_with_legacy = |key: &str, legacy_key: &str, default: bool| {
-        if let Ok(Some(value)) = repo.get(key) {
-            return value == "true";
-        }
-        if let Ok(Some(legacy_value)) = repo.get(legacy_key) {
-            let normalized = legacy_value == "true";
-            let _ = repo.set(key, &normalized.to_string());
-            return normalized;
-        }
-        default
-    };
-
     StartupSettings {
         theme: repo.get("app.theme").unwrap_or(Some("retro".to_string())).unwrap_or("retro".to_string()),
         persistent: repo.get("app.persistent").unwrap_or(Some("true".to_string())).map(|v| v == "true").unwrap_or(true),
         capture_files: repo.get("app.capture_files").unwrap_or(Some("true".to_string())).map(|v| v == "true").unwrap_or(true),
         capture_rich_text: repo.get("app.capture_rich_text").unwrap_or(Some("false".to_string())).map(|v| v == "true").unwrap_or(false),
         deduplicate: repo.get("app.deduplicate").unwrap_or(Some("true".to_string())).map(|v| v == "true").unwrap_or(true),
-        auto_copy_file: read_bool_with_legacy("app.file_transfer_auto_copy", "file_transfer_auto_copy", false),
         silent_start: repo.get("app.silent_start").unwrap_or(Some("true".to_string())).map(|v| v == "true").unwrap_or(true),
         delete_after_paste: repo.get("app.delete_after_paste").unwrap_or(Some("false".to_string())).map(|v| v == "true").unwrap_or(false),
         privacy_protection: repo.get("app.privacy_protection").unwrap_or(Some("true".to_string())).map(|v| v == "true").unwrap_or(true),
@@ -227,7 +224,6 @@ fn load_settings(repo: &impl SettingsRepository) -> StartupSettings {
             .and_then(|v| v.parse::<u32>().ok()),
         main_hotkey: repo.get("app.hotkey").unwrap_or(Some("Win+V".to_string())).unwrap_or("Win+V".to_string()),
         arrow_key_selection: repo.get("app.arrow_key_selection").unwrap_or(Some("false".to_string())).map(|v| v == "true").unwrap_or(false),
-        auto_close_server: read_bool_with_legacy("app.file_transfer_auto_close", "file_transfer_auto_close", false),
     }
 }
 
@@ -240,11 +236,9 @@ fn setup_state(app: &App, conn_arc: std::sync::Arc<std::sync::Mutex<rusqlite::Co
     app.manage(SettingsState {
         deduplicate: AtomicBool::new(s.deduplicate),
         persistent: AtomicBool::new(s.persistent),
-        file_server_auto_close: AtomicBool::new(s.auto_close_server),
         theme: std::sync::Mutex::new(s.theme.clone()),
         capture_files: AtomicBool::new(s.capture_files),
         capture_rich_text: AtomicBool::new(s.capture_rich_text),
-        auto_copy_file: AtomicBool::new(s.auto_copy_file),
         silent_start: AtomicBool::new(s.silent_start),
         delete_after_paste: AtomicBool::new(s.delete_after_paste),
         privacy_protection: AtomicBool::new(s.privacy_protection),
@@ -265,13 +259,6 @@ fn setup_state(app: &App, conn_arc: std::sync::Arc<std::sync::Mutex<rusqlite::Co
     
     app.manage(SessionHistory(std::sync::Mutex::new(std::collections::VecDeque::new())));
     app.manage(AppDataDir(std::sync::Mutex::new(app_dir)));
-    app.manage(crate::services::file_transfer::ChatState::default());
-    app.manage(crate::services::file_transfer::SharedFileState(std::sync::Mutex::new(std::collections::HashMap::new())));
-    app.manage(crate::services::file_transfer::ServerInfo { port: std::sync::atomic::AtomicU16::new(0), ip: std::sync::Mutex::new(String::new()) });
-    app.manage(crate::services::file_transfer::UploadSessions::default());
-    app.manage(crate::services::file_transfer::ServerActivityState::default());
-    app.manage(crate::services::file_transfer::WsBroadcaster(std::sync::Mutex::new(None)));
-    app.manage(crate::services::file_transfer::OnlineDevices(std::sync::Mutex::new(std::collections::HashMap::new())));
     app.manage(PasteQueue::default());
 }
 
@@ -320,64 +307,16 @@ fn setup_main_window(app: &App, s: &StartupSettings) {
     }
 }
 
-fn read_file_server_enabled(repo: &impl SettingsRepository) -> bool {
-    if let Ok(Some(value)) = repo.get("app.file_server_enabled") {
-        return value == "true";
-    }
-    let legacy = repo
-        .get("file_server_enabled")
-        .unwrap_or(Some("false".to_string()))
-        == Some("true".to_string());
-    let _ = repo.set("app.file_server_enabled", if legacy { "true" } else { "false" });
-    legacy
-}
-
-fn sync_file_server_port(repo: &impl SettingsRepository) -> Option<u16> {
-    let port = repo
-        .get("app.file_server_port")
-        .unwrap_or(None)
-        .and_then(|x| x.parse::<u16>().ok())
-        .or_else(|| {
-            repo.get("file_server_port")
-                .unwrap_or(None)
-                .and_then(|x| x.parse::<u16>().ok())
-        });
-
-    if let Some(value) = port {
-        let _ = repo.set("app.file_server_port", &value.to_string());
-    }
-
-    repo.get("app.file_server_port")
-        .unwrap_or(None)
-        .and_then(|x| x.parse::<u16>().ok())
-}
-
 fn start_core_background_services(app_handle: &AppHandle) {
     crate::infrastructure::windows_api::window_tracker::start_window_tracking(app_handle.clone());
     crate::services::clipboard::start_clipboard_monitor(app_handle.clone());
-    crate::services::mqtt_sub::start_mqtt_client(app_handle.clone());
-    crate::services::cloud_sync::start_cloud_sync_client(app_handle.clone());
     start_edge_docking_monitor(app_handle.clone());
-}
-
-fn start_file_server_if_needed(app_handle: &AppHandle, repo: &impl SettingsRepository) {
-    let file_server_enabled = read_file_server_enabled(repo);
-    if !file_server_enabled {
-        return;
-    }
-
-    let port = sync_file_server_port(repo);
-    let h = app_handle.clone();
-    tauri::async_runtime::spawn(async move {
-        let _ = crate::services::file_transfer::toggle_file_server(h, true, port).await;
-    });
 }
 
 fn start_services(app: &App, _s: &StartupSettings, app_handle: AppHandle) {
     start_core_background_services(&app_handle);
 
     let db_state = app.state::<DbState>();
-    start_file_server_if_needed(&app_handle, &db_state.settings_repo);
 
     init_announcement_ping(app, &db_state.settings_repo);
 

@@ -21,7 +21,7 @@
 
 本 fork 主要基于个人需求进行维护，后续更新频率不作保证。由于我目前没有 macOS 设备，macOS 平台的可用性也暂未经过完整验证。
 
-如果有精力继续维护，则暂定的路线图为[路线图](docs/markdown/RoadMap.md)；暂未定的内容为[愿景](docs/markdown/Wish.md)
+如需查看当前仓库文档，可参考 [README.en-US](docs/markdown/README.en-US.md) 与 [README.zh-CN](docs/markdown/README.zh-CN.md)
 
 如需查看上游仓库文档：
 

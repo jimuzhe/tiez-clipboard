@@ -22,7 +22,6 @@ import { useSettingsSync } from "./shared/hooks/useSettingsSync";
 import { useTagColors } from "./shared/hooks/useTagColors";
 import { useClipboardEvents } from "./shared/hooks/useClipboardEvents";
 import { useClipboardActions } from "./shared/hooks/useClipboardActions";
-import { useMqttListener } from "./shared/hooks/useMqttListener";
 import { useSoundEffects } from "./shared/hooks/useSoundEffects";
 import { useWindowPinnedListener } from "./shared/hooks/useWindowPinnedListener";
 import { useCustomBackground } from "./shared/hooks/useCustomBackground";
@@ -33,7 +32,6 @@ import { useNavigationSync } from "./shared/hooks/useNavigationSync";
 import { useContextMenuBlock } from "./shared/hooks/useContextMenuBlock";
 import { useSettingsPanelReset } from "./shared/hooks/useSettingsPanelReset";
 import { useTagManagerRefresh } from "./shared/hooks/useTagManagerRefresh";
-import { useAiActions } from "./shared/hooks/useAiActions";
 import { matchesHotkey } from "./shared/hooks/useHotkeyMatching";
 import { usePinnedSort } from "./shared/hooks/usePinnedSort";
 import { useFilteredHistory } from "./shared/hooks/useFilteredHistory";
@@ -105,8 +103,6 @@ const App = () => {
     setShowEmojiPanel,
     emojiFavorites,
     setEmojiFavorites,
-    aiOptionsOpenId,
-    setAiOptionsOpenId,
     editingTagsId,
     setEditingTagsId,
     revealedIds,
@@ -123,8 +119,6 @@ const App = () => {
     appSettings,
     setAppSettings,
     setDefaultApps,
-    chatMode,
-    setChatMode,
     setInstalledApps,
     setDataPath,
     hotkey,
@@ -182,7 +176,6 @@ const App = () => {
     setSettingsLoaded,
     isWindowPinned,
     setIsWindowPinned,
-    setWinClipboardDisabled,
     setRegistryWinVEnabled,
     showSearchBox,
     setShowSearchBox,
@@ -209,44 +202,6 @@ const App = () => {
     setHasMore,
     currentOffset,
     setCurrentOffset,
-    mqttEnabled,
-    setMqttEnabled,
-    setMqttServer,
-    setMqttPort,
-    setMqttUser,
-    setMqttPass,
-    setMqttTopic,
-    setMqttProtocol,
-    setMqttWsPath,
-    mqttNotificationEnabled,
-    setMqttNotificationEnabled,
-    cloudSyncEnabled,
-    setCloudSyncEnabled,
-    setCloudSyncAuto,
-    setCloudSyncProvider,
-    setCloudSyncServer,
-    setCloudSyncApiKey,
-    setCloudSyncIntervalSec,
-    setCloudSyncSnapshotIntervalMin,
-    setCloudSyncWebdavUrl,
-    setCloudSyncWebdavUsername,
-    setCloudSyncWebdavPassword,
-    setCloudSyncWebdavBasePath,
-    fileServerEnabled,
-    setFileServerEnabled,
-    setFileServerPort,
-    localIp,
-    setLocalIp,
-    setAvailableIps,
-    actualPort,
-    setActualPort,
-    setFileTransferPath,
-    setFileTransferAutoOpen,
-    setFileTransferAutoCopy,
-    setFileServerAutoClose,
-    fileTransferAutoOpen,
-    fileTransferAutoCopy,
-    fileServerAutoClose,
     soundEnabled,
     setSoundEnabled,
     soundVolume,
@@ -254,17 +209,6 @@ const App = () => {
     pasteSoundEnabled,
     setPasteSoundEnabled,
     setPasteMethod,
-    aiEnabled,
-    setAiEnabled,
-    setAiTargetLang,
-    setAiThinkingBudget,
-    aiProfiles,
-    setAiProfiles,
-    setAiAssignedProfileTask,
-    setAiAssignedProfileMouthpiece,
-    setAiAssignedProfileTranslate,
-    processingAiId,
-    setProcessingAiId,
     typeFilter,
     setTypeFilter
   } = appState;
@@ -387,12 +331,6 @@ const App = () => {
 
   useSoundEffects({ soundEnabled, soundVolume, pasteSoundEnabled });
 
-  const fetchEffectiveTransferPath = useCallback(() => {
-    invoke<string>("get_active_file_transfer_path")
-      .then(setFileTransferPath)
-      .catch(console.error);
-  }, [setFileTransferPath]);
-
   const { announcements, dismissAnnouncement } = useAnnouncements();
 
   const tagManagerSizeRef = useRef<{ width: number; height: number } | null>(null);
@@ -438,31 +376,7 @@ const App = () => {
     setShowSearchBox,
     setScrollTopButtonEnabled,
     setArrowKeySelection,
-    setMqttEnabled,
-    setMqttServer,
     setRegistryWinVEnabled,
-    setMqttPort,
-    setMqttUser,
-    setMqttPass,
-    setMqttTopic,
-    setMqttProtocol,
-    setMqttWsPath,
-    setMqttNotificationEnabled,
-    setCloudSyncEnabled,
-    setCloudSyncAuto,
-    setCloudSyncProvider,
-    setCloudSyncServer,
-    setCloudSyncApiKey,
-    setCloudSyncIntervalSec,
-    setCloudSyncSnapshotIntervalMin,
-    setCloudSyncWebdavUrl,
-    setCloudSyncWebdavUsername,
-    setCloudSyncWebdavPassword,
-    setCloudSyncWebdavBasePath,
-    setFileServerAutoClose,
-    setFileTransferAutoOpen,
-    setFileTransferAutoCopy,
-    setFileServerPort,
     setSequentialHotkey,
     setRichPasteHotkey,
     setSearchHotkey,
@@ -471,14 +385,7 @@ const App = () => {
     setSoundVolume,
     setPasteSoundEnabled,
     setPasteMethod,
-    setAiEnabled,
-    setAiTargetLang,
-    setAiThinkingBudget,
     setIsWindowPinned,
-    setAiProfiles,
-    setAiAssignedProfileTask,
-    setAiAssignedProfileMouthpiece,
-    setAiAssignedProfileTranslate,
     setSettingsLoaded
   });
 
@@ -486,7 +393,6 @@ const App = () => {
     const unlisten = listen("focus-search-input", () => {
       setShowSettings(false);
       setShowTagManager(false);
-      setChatMode(false);
       setShowEmojiPanel(false);
       setShowSearchBox(true);
       setSearchIsFocused(true);
@@ -501,7 +407,6 @@ const App = () => {
   }, [
     setShowSettings,
     setShowTagManager,
-    setChatMode,
     setShowEmojiPanel,
     setShowSearchBox,
     setSearchIsFocused,
@@ -521,16 +426,10 @@ const App = () => {
   }, [tagManagerEnabled, showTagManager, setShowTagManager]);
 
   useAppBootstrap({
-    fetchEffectiveTransferPath,
     setDataPath,
     setInstalledApps,
     setAutoStart,
-    setWinClipboardDisabled,
-    setDefaultApps,
-    setFileServerEnabled,
-    setActualPort,
-    setLocalIp,
-    setAvailableIps
+    setDefaultApps
   });
 
   useWindowPinnedListener({
@@ -566,8 +465,6 @@ const App = () => {
       fetchHistory(true);
     }
   });
-
-  useMqttListener({ enabled: mqttNotificationEnabled, t });
 
   useEffect(() => {
     fetchHistory();
@@ -616,9 +513,6 @@ const App = () => {
     saveSetting,
     captureFiles,
     captureRichText,
-    fileTransferAutoCopy,
-    fileServerAutoClose,
-    fileTransferAutoOpen,
     persistent,
     soundVolume,
     arrowKeySelection,
@@ -658,7 +552,7 @@ const App = () => {
       pushToast
     });
 
-  useNavigationSync({ showSettings, showTagManager: effectiveShowTagManager, chatMode, showEmojiPanel: effectiveShowEmojiPanel });
+  useNavigationSync({ showSettings, showTagManager: effectiveShowTagManager, showEmojiPanel: effectiveShowEmojiPanel });
 
   const { copyToClipboard, openContent, deleteEntry, togglePin, handleUpdateTags } =
     useClipboardActions({
@@ -671,23 +565,12 @@ const App = () => {
       virtualListRef
     });
 
-  const { saveMqtt, saveCloudSync, clearHistory, handleResetSettings } = useAppActions({
+  const { clearHistory, handleResetSettings } = useAppActions({
     t,
-    mqttEnabled,
-    cloudSyncEnabled,
     openConfirm,
     closeConfirm,
     pushToast,
     fetchHistory
-  });
-
-  const { handleAIAction } = useAiActions({
-    aiProfiles,
-    language,
-    pushToast,
-    setShowSettings,
-    setProcessingAiId,
-    setHistory
   });
 
   /* 
@@ -736,7 +619,7 @@ const App = () => {
     setIsKeyboardMode,
     showSettings,
     showTagManager: effectiveShowTagManager,
-    chatMode,
+    chatMode: false,
     editingTagsId,
     arrowKeySelection,
     richPasteHotkey,
@@ -760,10 +643,6 @@ const App = () => {
     t,
     compactMode,
     richTextSnapshotPreview,
-    processingAiId,
-    aiEnabled,
-    aiOptionsOpenId,
-    setAiOptionsOpenId,
     copyToClipboard,
     setSelectedIndex,
     setRevealedIds,
@@ -772,8 +651,7 @@ const App = () => {
     deleteEntry,
     setEditingTagsId,
     setTagInput,
-    handleUpdateTags,
-    handleAIAction
+    handleUpdateTags
   });
 
   const settingsPanelProps = useSettingsPanelProps({
@@ -791,12 +669,8 @@ const App = () => {
     updateSearchHotkey,
     saveAppSetting,
     saveSetting,
-    saveMqtt,
-    saveCloudSync,
-    fetchEffectiveTransferPath,
     handleResetSettings,
     toggleGroup,
-    onOpenChat: () => setChatMode(true),
     state: appState
   });
 
@@ -810,9 +684,6 @@ const App = () => {
     showEmojiPanel: effectiveShowEmojiPanel,
     setShowEmojiPanel,
     emojiPanelEnabled,
-    chatMode,
-    setChatMode,
-    fileServerEnabled,
     isWindowPinned,
     setIsWindowPinned,
     clearHistory,
@@ -828,7 +699,6 @@ const App = () => {
     setSearchIsFocused,
     setEditingTagsId,
     theme,
-    colorMode,
     typeFilter,
     setTypeFilter
   };
@@ -840,9 +710,6 @@ const App = () => {
     showTagManager: effectiveShowTagManager,
     tagManagerEnabled,
     showEmojiPanel: effectiveShowEmojiPanel,
-    chatMode,
-    localIp,
-    actualPort,
     settingsPanelProps,
     emojiFavorites,
     setEmojiFavorites,

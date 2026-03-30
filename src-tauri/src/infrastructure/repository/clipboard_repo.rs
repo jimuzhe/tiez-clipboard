@@ -1,8 +1,7 @@
 use rusqlite::Connection;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
-use std::time::{SystemTime, UNIX_EPOCH};
 use crate::domain::models::ClipboardEntry;
 use crate::infrastructure::encryption;
 use crate::database::{
@@ -17,15 +16,57 @@ use urlencoding::decode;
 const RICH_IMAGE_FALLBACK_PREFIX: &str = "<!--TIEZ_RICH_IMAGE:";
 const RICH_IMAGE_FALLBACK_SUFFIX: &str = "-->";
 
-fn now_ms() -> i64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_millis() as i64
+struct SimpleLruCache<T: Clone> {
+    map: HashMap<String, T>,
+    order: VecDeque<String>,
+    capacity: usize,
 }
 
-fn is_syncable_content_type(content_type: &str) -> bool {
-    matches!(content_type, "text" | "code" | "url" | "rich_text" | "image")
+impl<T: Clone> SimpleLruCache<T> {
+    fn new(capacity: usize) -> Self {
+        Self {
+            map: HashMap::new(),
+            order: VecDeque::new(),
+            capacity: capacity.max(1),
+        }
+    }
+
+    fn get(&mut self, key: &str) -> Option<T> {
+        if !self.map.contains_key(key) {
+            return None;
+        }
+        self.touch(key);
+        self.map.get(key).cloned()
+    }
+
+    fn put(&mut self, key: String, value: T) {
+        if self.map.contains_key(&key) {
+            self.map.insert(key.clone(), value);
+            self.touch(&key);
+            return;
+        }
+        self.map.insert(key.clone(), value);
+        self.order.push_back(key);
+        while self.map.len() > self.capacity {
+            if let Some(oldest) = self.order.pop_front() {
+                self.map.remove(&oldest);
+            } else {
+                break;
+            }
+        }
+    }
+
+    fn clear(&mut self) {
+        self.map.clear();
+        self.order.clear();
+    }
+
+    fn touch(&mut self, key: &str) {
+        if let Some(pos) = self.order.iter().position(|k| k == key) {
+            self.order.remove(pos);
+        }
+        self.order.push_back(key.to_string());
+    }
 }
 
 
@@ -50,12 +91,32 @@ pub trait ClipboardRepository {
 
 pub struct SqliteClipboardRepository {
     conn: Arc<Mutex<Connection>>,
+    history_cache: Arc<Mutex<SimpleLruCache<Vec<ClipboardEntry>>>>,
+    search_cache: Arc<Mutex<SimpleLruCache<Vec<ClipboardEntry>>>>,
+    content_cache: Arc<Mutex<SimpleLruCache<(String, String, Option<String>)>>>,
 }
 
 
 impl SqliteClipboardRepository {
     pub fn new(conn: Arc<Mutex<Connection>>) -> Self {
-        Self { conn }
+        Self {
+            conn,
+            history_cache: Arc::new(Mutex::new(SimpleLruCache::new(64))),
+            search_cache: Arc::new(Mutex::new(SimpleLruCache::new(64))),
+            content_cache: Arc::new(Mutex::new(SimpleLruCache::new(256))),
+        }
+    }
+
+    fn invalidate_caches(&self) {
+        if let Ok(mut history) = self.history_cache.lock() {
+            history.clear();
+        }
+        if let Ok(mut search) = self.search_cache.lock() {
+            search.clear();
+        }
+        if let Ok(mut content) = self.content_cache.lock() {
+            content.clear();
+        }
     }
 
     pub fn encrypt_entry_with_conn(&self, conn: &Connection, id: i64) -> Result<(), String> {
@@ -149,46 +210,6 @@ impl SqliteClipboardRepository {
             )
             .map_err(|e| e.to_string())?;
         }
-        Ok(())
-    }
-
-    fn upsert_tombstone_with_conn(
-        &self,
-        conn: &Connection,
-        content_type: &str,
-        content_hash: i64,
-        deleted_at: i64,
-    ) -> Result<(), String> {
-        if !is_syncable_content_type(content_type) || content_hash == 0 {
-            return Ok(());
-        }
-
-        conn.execute(
-            "INSERT INTO cloud_sync_tombstones (content_type, content_hash, deleted_at)
-             VALUES (?1, ?2, ?3)
-             ON CONFLICT(content_type, content_hash)
-             DO UPDATE SET deleted_at = MAX(cloud_sync_tombstones.deleted_at, excluded.deleted_at)",
-            params![content_type, content_hash, deleted_at],
-        )
-        .map_err(|e| e.to_string())?;
-        Ok(())
-    }
-
-    fn clear_tombstone_with_conn(
-        &self,
-        conn: &Connection,
-        content_type: &str,
-        content_hash: i64,
-    ) -> Result<(), String> {
-        if !is_syncable_content_type(content_type) || content_hash == 0 {
-            return Ok(());
-        }
-
-        conn.execute(
-            "DELETE FROM cloud_sync_tombstones WHERE content_type = ?1 AND content_hash = ?2",
-            params![content_type, content_hash],
-        )
-        .map_err(|e| e.to_string())?;
         Ok(())
     }
 
@@ -324,9 +345,6 @@ impl SqliteClipboardRepository {
                 calc_text_hash(&final_content) as i64
         };
 
-        // Re-adding an item should clear an older delete tombstone for the same fingerprint.
-        let _ = self.clear_tombstone_with_conn(conn, &entry.content_type, calculated_hash);
-
         let (content, preview, content_hash, html_content) = if should_encrypt {
             let encrypted_content = self.maybe_encrypt_text(&final_content);
             let encrypted_preview = self.maybe_encrypt_text(&entry.preview);
@@ -383,6 +401,7 @@ impl SqliteClipboardRepository {
                 ],
             ).map_err(|e| e.to_string())?;
             self.sync_entry_tags_with_conn(conn, entry.id, &cleaned_tags)?;
+            self.invalidate_caches();
             Ok(entry.id)
         } else {
             // Insert new entry
@@ -407,26 +426,24 @@ impl SqliteClipboardRepository {
 
             let new_id = conn.last_insert_rowid();
             self.sync_entry_tags_with_conn(conn, new_id, &cleaned_tags)?;
+            self.invalidate_caches();
             Ok(new_id)
         }
     }
 
     pub fn delete_with_conn(&self, conn: &Connection, id: i64, data_dir: Option<&std::path::Path>) -> Result<(), String> {
-        let mut tombstone: Option<(String, i64)> = None;
         // Check for external files to delete
         if let Some(dir) = data_dir {
              let attachments_dir = dir.join("attachments");
              let mut stmt = conn
-                 .prepare("SELECT content, html_content, is_external, content_type, content_hash FROM clipboard_history WHERE id = ?")
+                 .prepare("SELECT content, html_content, is_external FROM clipboard_history WHERE id = ?")
                  .map_err(|e| e.to_string())?;
              
              if let Ok(entry) = stmt.query_row([id], |row| {
                  let content_raw: String = row.get(0)?;
                  let html_raw: Option<String> = row.get(1).ok();
                  let is_ext: i32 = row.get(2)?;
-                 let content_type: String = row.get(3)?;
-                 let content_hash: i64 = row.get(4)?;
-                 Ok((content_raw, html_raw, is_ext == 1, content_type, content_hash))
+                 Ok((content_raw, html_raw, is_ext == 1))
              }) {
                  let files_to_remove = self.collect_attachment_paths_for_cleanup(
                      &entry.0,
@@ -439,33 +456,12 @@ impl SqliteClipboardRepository {
                          let _ = std::fs::remove_file(path);
                      }
                  }
-                 tombstone = Some((entry.3, entry.4));
              }
-        } else {
-            let mut stmt = conn
-                .prepare("SELECT content_type, content_hash FROM clipboard_history WHERE id = ?")
-                .map_err(|e| e.to_string())?;
-            if let Ok(entry) = stmt.query_row([id], |row| {
-                let content_type: String = row.get(0)?;
-                let content_hash: i64 = row.get(1)?;
-                Ok((content_type, content_hash))
-            }) {
-                tombstone = Some(entry);
-            }
-        }
-
-        if let Some((content_type, content_hash)) = tombstone {
-            let _ = self.upsert_tombstone_with_conn(conn, &content_type, content_hash, now_ms());
         }
 
         conn.execute("DELETE FROM clipboard_history WHERE id = ?", [id]).map_err(|e| e.to_string())?;
         let _ = conn.execute("DELETE FROM entry_tags WHERE entry_id = ?", params![id]);
-        Ok(())
-    }
-
-    pub fn delete_metadata_with_conn(&self, conn: &Connection, id: i64) -> Result<(), String> {
-        conn.execute("DELETE FROM clipboard_history WHERE id = ?", params![id]).map_err(|e| e.to_string())?;
-        let _ = conn.execute("DELETE FROM entry_tags WHERE entry_id = ?", params![id]);
+        self.invalidate_caches();
         Ok(())
     }
 
@@ -570,6 +566,7 @@ impl SqliteClipboardRepository {
                 params![id],
             ).map_err(|e| e.to_string())?;
         }
+        self.invalidate_caches();
         Ok(())
     }
 
@@ -580,6 +577,7 @@ impl SqliteClipboardRepository {
                 params![order, id],
             ).map_err(|e| e.to_string())?;
         }
+        self.invalidate_caches();
         Ok(())
     }
 
@@ -662,6 +660,7 @@ impl SqliteClipboardRepository {
                     params![content, preview, hash, new_type, id],
                 ).map_err(|e| e.to_string())?;
             }
+            self.invalidate_caches();
             return Ok(());
         }
         if should_encrypt {
@@ -677,6 +676,7 @@ impl SqliteClipboardRepository {
                 params![content, preview, id],
             ).map_err(|e| e.to_string())?;
         }
+        self.invalidate_caches();
         Ok(())
     }
 
@@ -698,6 +698,12 @@ impl SqliteClipboardRepository {
         conn: &Connection,
         id: i64,
     ) -> Result<Option<(String, String, Option<String>)>, String> {
+        let cache_key = id.to_string();
+        if let Ok(mut cache) = self.content_cache.lock() {
+            if let Some(cached) = cache.get(&cache_key) {
+                return Ok(Some(cached));
+            }
+        }
         let mut stmt = conn.prepare(
             "SELECT content, content_type, html_content FROM clipboard_history WHERE id = ?",
         ).map_err(|e| e.to_string())?;
@@ -707,7 +713,11 @@ impl SqliteClipboardRepository {
             let content_type: String = row.get(1).map_err(|e| e.to_string())?;
             let html_raw: Option<String> = row.get(2).map_err(|e| e.to_string()).unwrap_or(None);
             let html_content = html_raw.map(|v| self.maybe_decrypt_text(&v));
-            Ok(Some((self.maybe_decrypt_text(&content), content_type, html_content)))
+            let value = (self.maybe_decrypt_text(&content), content_type, html_content);
+            if let Ok(mut cache) = self.content_cache.lock() {
+                cache.put(cache_key, value.clone());
+            }
+            Ok(Some(value))
         } else {
             Ok(None)
         }
@@ -721,6 +731,12 @@ impl ClipboardRepository for SqliteClipboardRepository {
     }
 
     fn get_history(&self, limit: i32, offset: i32, content_type: Option<&str>) -> Result<Vec<ClipboardEntry>, String> {
+        let cache_key = format!("{}:{}:{}", content_type.unwrap_or("*"), limit, offset);
+        if let Ok(mut cache) = self.history_cache.lock() {
+            if let Some(cached) = cache.get(&cache_key) {
+                return Ok(cached);
+            }
+        }
         let conn = self.conn.lock().map_err(|e| e.to_string())?;
         let map_row = |row: &rusqlite::Row| {
             let tags_str: String = row.get(8).unwrap_or_else(|_| "[]".to_string());
@@ -819,14 +835,22 @@ impl ClipboardRepository for SqliteClipboardRepository {
 
             history.push(entry);
         }
+        if let Ok(mut cache) = self.history_cache.lock() {
+            cache.put(cache_key, history.clone());
+        }
         Ok(history)
     }
 
     fn search(&self, query: &str, limit: i32) -> Result<Vec<ClipboardEntry>, String> {
-        let conn = self.conn.lock().map_err(|e| e.to_string())?;
-        
         let term = query.trim().to_lowercase();
         if term.is_empty() { return Ok(Vec::new()); }
+        let cache_key = format!("{}:{}", term, limit);
+        if let Ok(mut cache) = self.search_cache.lock() {
+            if let Some(cached) = cache.get(&cache_key) {
+                return Ok(cached);
+            }
+        }
+        let conn = self.conn.lock().map_err(|e| e.to_string())?;
 
         #[cfg(feature = "portable")]
         {
@@ -865,6 +889,9 @@ impl ClipboardRepository for SqliteClipboardRepository {
             let mut results = Vec::new();
             for row in rows {
                 results.push(row.map_err(|e| e.to_string())?);
+            }
+            if let Ok(mut cache) = self.search_cache.lock() {
+                cache.put(cache_key, results.clone());
             }
             Ok(results)
         }
@@ -1039,6 +1066,9 @@ impl ClipboardRepository for SqliteClipboardRepository {
             if results.len() > limit as usize {
                 results.truncate(limit as usize);
             }
+            if let Ok(mut cache) = self.search_cache.lock() {
+                cache.put(cache_key, results.clone());
+            }
             Ok(results)
         }
     }
@@ -1083,6 +1113,7 @@ impl ClipboardRepository for SqliteClipboardRepository {
             "UPDATE clipboard_history SET use_count = use_count + 1 WHERE id = ?",
             params![id],
         ).map_err(|e| e.to_string())?;
+        self.invalidate_caches();
         Ok(())
     }
 
@@ -1092,6 +1123,7 @@ impl ClipboardRepository for SqliteClipboardRepository {
             "UPDATE clipboard_history SET timestamp = ? WHERE id = ?",
             params![timestamp, id],
         ).map_err(|e| e.to_string())?;
+        self.invalidate_caches();
         Ok(())
     }
 
@@ -1124,20 +1156,15 @@ impl ClipboardRepository for SqliteClipboardRepository {
     }
 
     fn get_entry_content(&self, id: i64) -> Result<Option<String>, String> {
-        let conn = self.conn.lock().map_err(|e| e.to_string())?;
-        let mut stmt = conn.prepare("SELECT content FROM clipboard_history WHERE id = ?").map_err(|e| e.to_string())?;
-        let mut rows = stmt.query(params![id]).map_err(|e| e.to_string())?;
-        if let Some(row) = rows.next().map_err(|e| e.to_string())? {
-            let content: String = row.get(0).map_err(|e| e.to_string())?;
-            Ok(Some(self.maybe_decrypt_text(&content)))
-        } else {
-            Ok(None)
-        }
+        Ok(self
+            .get_entry_content_with_html(id)?
+            .map(|(content, _, _)| content))
     }
 
     fn get_entry_content_full(&self, id: i64) -> Result<Option<(String, String)>, String> {
-        let conn = self.conn.lock().map_err(|e| e.to_string())?;
-        self.get_entry_content_full_with_conn(&conn, id)
+        Ok(self
+            .get_entry_content_with_html(id)?
+            .map(|(content, content_type, _)| (content, content_type)))
     }
 
     fn get_entry_content_with_html(&self, id: i64) -> Result<Option<(String, String, Option<String>)>, String> {

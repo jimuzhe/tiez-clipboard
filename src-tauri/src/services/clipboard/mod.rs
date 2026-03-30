@@ -575,10 +575,3 @@ pub fn process_new_entry(
     let pipeline = ClipboardPipeline::new();
     pipeline.execute(&mut ctx);
 }
-
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-}

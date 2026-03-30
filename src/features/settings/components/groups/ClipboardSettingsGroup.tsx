@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { ComponentType, ReactNode } from "react";
+import type { ComponentType, CSSProperties, ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { ask, message } from "@tauri-apps/plugin-dialog";
 import { ChevronDown, ChevronRight, X } from "lucide-react";
@@ -9,6 +9,7 @@ interface LabelWithHintProps {
     label: string;
     hint?: string | ReactNode;
     hintKey: string;
+    labelStyle?: CSSProperties;
 }
 
 interface ClipboardSettingsGroupProps {
@@ -463,12 +464,9 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
                             hintKey="paste_method"
                         />
                         <ThemedSelect
-                            theme={props.theme}
-                            colorMode={props.colorMode}
                             options={pasteMethodOptions}
                             value={props.pasteMethod}
-                            width="160px"
-                            nativeStyle={{ borderRadius: '0', padding: '6px', width: '110px', background: 'var(--bg-input)', border: '2px solid var(--border-dark)', color: 'var(--text-primary)', fontSize: '12px' }}
+                            width="124px"
                             onChange={applyPasteMethod}
                         />
                     </div>
@@ -588,7 +586,7 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
                             >
                                 {props.privacyKindsOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
                             </button>
-                            <span style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-primary)' }}>{props.t('privacy_protection_kinds')}</span>
+                            <span className="item-label" style={{ fontWeight: 400 }}>{props.t('privacy_protection_kinds')}</span>
                         </div>
                         {props.privacyKindsOpen && (
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginLeft: '30px' }}>
@@ -636,6 +634,7 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
                                 label={props.t('privacy_protection_custom_rules')}
                                 hint={props.t('privacy_protection_custom_rules_hint')}
                                 hintKey="privacy_protection_custom_rules"
+                                labelStyle={{ fontWeight: 400 }}
                             />
                         </div>
                         {props.privacyRulesOpen && (
@@ -715,12 +714,12 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
                                     {(!isWinVHotkey(item) || !props.registryWinVEnabled) && (
                                         <button
                                             type="button"
-                                            className="hotkey-delete-btn"
+                                            className="btn-icon btn-icon-scalable btn-icon-size-hotkey"
                                             onClick={() => props.removeMainHotkey(item)}
                                             aria-label={`${props.t('delete')} ${item}`}
                                             title={`${props.t('delete')} ${item}`}
                                         >
-                                            <X className="hotkey-delete-icon" size={14} strokeWidth={2.6} />
+                                            <X size={14} strokeWidth={2.6} />
                                         </button>
                                     )}
                                 </div>

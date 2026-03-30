@@ -2,7 +2,6 @@ import type { RefObject } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ChevronLeft,
-  MessageSquare,
   Pin,
   PinOff,
   Search,
@@ -25,9 +24,6 @@ interface AppHeaderProps {
   showEmojiPanel: boolean;
   setShowEmojiPanel: (val: boolean) => void;
   emojiPanelEnabled: boolean;
-  chatMode: boolean;
-  setChatMode: (val: boolean) => void;
-  fileServerEnabled: boolean;
   isWindowPinned: boolean;
   setIsWindowPinned: (val: boolean) => void;
   clearHistory: () => void;
@@ -43,7 +39,6 @@ interface AppHeaderProps {
   setSearchIsFocused: (val: boolean) => void;
   setEditingTagsId: (val: number | null) => void;
   theme: string;
-  colorMode: string;
   typeFilter: string | null;
   setTypeFilter: (val: string | null) => void;
 }
@@ -58,9 +53,6 @@ const AppHeader = ({
   showEmojiPanel,
   setShowEmojiPanel,
   emojiPanelEnabled,
-  chatMode,
-  setChatMode,
-  fileServerEnabled,
   isWindowPinned,
   setIsWindowPinned,
   clearHistory,
@@ -76,7 +68,6 @@ const AppHeader = ({
   setSearchIsFocused,
   setEditingTagsId,
   theme,
-  colorMode,
   typeFilter,
   setTypeFilter
 }: AppHeaderProps) => {
@@ -99,8 +90,7 @@ const AppHeader = ({
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
         {(showSettings || showTagManager || showEmojiPanel) && (
           <button className="btn-icon" onClick={() => {
-            if (chatMode) setChatMode(false);
-            else if (showEmojiPanel) setShowEmojiPanel(false);
+            if (showEmojiPanel) setShowEmojiPanel(false);
             else if (showTagManager) setShowTagManager(false);
             else setShowSettings(false);
           }}>
@@ -120,7 +110,7 @@ const AppHeader = ({
       <div style={{ display: 'flex', gap: '4px' }}>
         {/* Pin Button - Always visible but single instance */}
         <button
-          className={`btn-icon ${isWindowPinned ? 'active' : ''}`}
+          className={`btn-icon btn-icon-scalable btn-icon-size-header ${isWindowPinned ? 'active' : ''}`}
           title={t('pin')}
           onClick={() => {
             const newVal = !isWindowPinned;
@@ -133,45 +123,25 @@ const AppHeader = ({
 
         {!showSettings && !showTagManager && !showEmojiPanel && (
           <>
-            <button className="btn-icon" title={t('clear_history')} onClick={clearHistory}>
+            <button className="btn-icon btn-icon-scalable btn-icon-size-header" title={t('clear_history')} onClick={clearHistory}>
               <Trash2 size={16} />
             </button>
             {tagManagerEnabled && (
-              <button className="btn-icon" title={t('tag_manager') || '标签管理'} onClick={() => setShowTagManager(true)}>
+              <button className="btn-icon btn-icon-scalable btn-icon-size-header" title={t('tag_manager') || '标签管理'} onClick={() => setShowTagManager(true)}>
                 <Tag size={16} />
               </button>
             )}
             {emojiPanelEnabled && (
-              <button className="btn-icon" title={t('emoji_panel') || '表情包'} onClick={() => setShowEmojiPanel(true)}>
+              <button className="btn-icon btn-icon-scalable btn-icon-size-header" title={t('emoji_panel') || '表情包'} onClick={() => setShowEmojiPanel(true)}>
                 <Smile size={16} />
               </button>
             )}
-            <button className="btn-icon" title={t('settings')} onClick={() => setShowSettings(true)}>
+            <button className="btn-icon btn-icon-scalable btn-icon-size-header" title={t('settings')} onClick={() => setShowSettings(true)}>
               <SettingsIcon size={16} />
             </button>
           </>
         )}
-        {fileServerEnabled && (
-          <button
-            className={`btn-icon ${chatMode && showSettings ? 'active' : ''}`}
-            title="Chat"
-            onClick={() => {
-              if (showTagManager) setShowTagManager(false);
-              if (!showSettings) {
-                setShowSettings(true);
-                setChatMode(true);
-              } else {
-                setChatMode(!chatMode);
-              }
-            }}
-          >
-            <div style={{ position: 'relative' }}>
-              <MessageSquare size={16} />
-              {/* Keep the indicator/badge if needed, though not present in original code */}
-            </div>
-          </button>
-        )}
-        <button className="btn-icon" title={t('hide')} onClick={async () => {
+        <button className="btn-icon btn-icon-scalable btn-icon-size-header" title={t('hide')} onClick={async () => {
           invoke("hide_window_cmd").catch(console.error);
         }}>
           <X size={16} />
@@ -226,7 +196,7 @@ const AppHeader = ({
                       setSearchIsFocused(false);
                     }, 200);
                   }}
-                  style={{ color: colorMode === 'dark' ? '#ffffff' : undefined }}
+                  style={{ color: 'var(--search-input-text, var(--text-primary))' }}
                 />
                 {showTagFilter && searchIsFocused && allTags.length > 0 && (
                   <div className="tags-dropdown">

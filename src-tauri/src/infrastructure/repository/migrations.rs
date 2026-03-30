@@ -135,36 +135,6 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
         conn.execute("INSERT INTO schema_migrations (version) VALUES (6)", [])?;
     }
 
-    // Migration 7: Cloud sync tombstones for deletion propagation
-    if current_version < 7 {
-        conn.execute_batch(
-            "
-            CREATE TABLE IF NOT EXISTS cloud_sync_tombstones (
-                content_type TEXT NOT NULL,
-                content_hash INTEGER NOT NULL,
-                deleted_at INTEGER NOT NULL,
-                PRIMARY KEY (content_type, content_hash)
-            );
-            CREATE INDEX IF NOT EXISTS idx_cloud_sync_tombstones_deleted_at
-                ON cloud_sync_tombstones (deleted_at);
-            ",
-        )?;
-        conn.execute("INSERT INTO schema_migrations (version) VALUES (7)", [])?;
-    }
-
-    // Migration 8: Local incremental sync index (for delta diff against last uploaded state)
-    if current_version < 8 {
-        conn.execute_batch(
-            "
-            CREATE TABLE IF NOT EXISTS cloud_sync_local_index (
-                sync_key TEXT PRIMARY KEY,
-                digest TEXT NOT NULL
-            );
-            ",
-        )?;
-        conn.execute("INSERT INTO schema_migrations (version) VALUES (8)", [])?;
-    }
-
     // Migration 9: Persist source executable path for real app icon rendering
     if current_version < 9 {
         if !has_column(conn, "clipboard_history", "source_app_path")? {

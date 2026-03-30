@@ -56,27 +56,15 @@
     position: fixed;
     width: 320px;
     max-width: 80vw;
-    background: var(--bg-element);
-    /* Remove retro 2px border and offset shadow */
-    border: 1px solid var(--border-color, rgba(0, 0, 0, 0.1));
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-    /* Softer modern shadow */
+    background: var(--compact-popover-bg);
+    border: 1px solid var(--compact-popover-border);
+    box-shadow: var(--compact-popover-shadow);
     border-radius: var(--radius-window, 8px);
-    /* Use theme radius or default 8px */
     padding: 12px;
     z-index: 99999;
     line-height: 1.5;
     pointer-events: auto;
-}
-
-/* Explicit standard dark mode fix (non-retro) */
-.compact-popover-portal.dark-mode {
-    background: #2c2c2c;
-    /* fallback or specific dark surface */
-    background: var(--bg-element);
-    /* should work if var is correct, but let's be explicit */
-    border-color: #444;
-    color: #ededed;
+    color: var(--compact-popover-color);
 }
 
 
@@ -208,11 +196,6 @@
     border: none;
 }
 
-.dark-mode .history-item.compact .item-actions {
-    background: transparent !important;
-    border-color: transparent;
-}
-
 .history-item.compact:hover .item-actions {
     opacity: 1;
     visibility: visible;
@@ -222,21 +205,7 @@
 /* Button Icons - Default/Modern Style */
 .history-item.compact {
     --compact-btn-size: 20px;
-    --compact-btn-radius: 6px;
-    --compact-btn-bg: var(--bg-button);
-    --compact-btn-color: var(--text-primary);
-    --compact-btn-border: 1px solid color-mix(in srgb, var(--border-dark) 28%, transparent);
-    --compact-btn-shadow: 0 2px 8px color-mix(in srgb, var(--shadow-color) 28%, transparent);
-    --compact-btn-backdrop: blur(10px);
-    --compact-btn-hover-bg: var(--bg-input);
-    --compact-btn-hover-color: var(--accent-color);
-    --compact-btn-hover-shadow: 0 4px 12px color-mix(in srgb, var(--shadow-color) 34%, transparent);
-    --compact-btn-hover-transform: translateY(-1px);
-    --compact-btn-active-bg: color-mix(in srgb, var(--accent-color) 20%, transparent);
     --compact-btn-active-color: var(--accent-color);
-    --compact-btn-active-border: 1px solid color-mix(in srgb, var(--accent-color) 50%, transparent);
-    --compact-btn-active-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-color) 30%, transparent), 0 2px 8px color-mix(in srgb, var(--accent-color) 22%, transparent);
-    --compact-btn-active-hover-transform: translateY(-1px);
 }
 
 .history-item.compact .item-actions .btn-icon {
@@ -253,33 +222,12 @@
     transition: all 0.2s ease;
 }
 
-/* Dark Mode - Glass effect */
-.dark-mode .history-item.compact .item-actions .btn-icon {
-    --compact-btn-bg: color-mix(in srgb, var(--bg-button) 84%, transparent);
-    --compact-btn-border: 1px solid color-mix(in srgb, var(--border-dark) 52%, transparent);
-    --compact-btn-color: var(--text-primary);
-    --compact-btn-shadow: 0 2px 8px color-mix(in srgb, var(--shadow-color) 56%, transparent);
-}
-
 /* Modern/Mica Theme - Enhanced glass effect */
 body.theme-mica .history-item.compact .item-actions .btn-icon,
 body.theme-acrylic .history-item.compact .item-actions .btn-icon,
 html.theme-mica .history-item.compact .item-actions .btn-icon,
 html.theme-acrylic .history-item.compact .item-actions .btn-icon {
-    --compact-btn-bg: color-mix(in srgb, var(--bg-button) 92%, transparent);
-    --compact-btn-border: 1px solid color-mix(in srgb, var(--border-light) 72%, transparent);
-    --compact-btn-shadow: 0 2px 12px color-mix(in srgb, var(--shadow-color) 22%, transparent);
-    --compact-btn-backdrop: blur(12px) saturate(180%);
-    --compact-btn-radius: 8px;
-}
-
-body.dark-mode.theme-mica .history-item.compact .item-actions .btn-icon,
-body.dark-mode.theme-acrylic .history-item.compact .item-actions .btn-icon,
-html.dark-mode.theme-mica .history-item.compact .item-actions .btn-icon,
-html.dark-mode.theme-acrylic .history-item.compact .item-actions .btn-icon {
-    --compact-btn-bg: color-mix(in srgb, var(--bg-button) 86%, transparent);
-    --compact-btn-border: 1px solid color-mix(in srgb, var(--border-dark) 58%, transparent);
-    --compact-btn-shadow: 0 2px 12px color-mix(in srgb, var(--shadow-color) 64%, transparent);
+    --compact-btn-active-color: var(--accent-color);
 }
 
 /* Retro/Non-Modern Theme Overrides for Buttons */
@@ -306,26 +254,12 @@ body:not(.theme-mica):not(.theme-acrylic):not(.theme-macos) .history-item.compac
     box-shadow: var(--compact-btn-hover-shadow) !important;
 }
 
-.dark-mode .history-item.compact .item-actions .btn-icon:hover {
-    --compact-btn-hover-bg: color-mix(in srgb, var(--bg-input) 86%, transparent);
-    --compact-btn-hover-color: var(--accent-color);
-}
-
 /* Modern/Mica hover - Enhanced */
 body.theme-mica .history-item.compact .item-actions .btn-icon:hover,
 body.theme-acrylic .history-item.compact .item-actions .btn-icon:hover,
 html.theme-mica .history-item.compact .item-actions .btn-icon:hover,
 html.theme-acrylic .history-item.compact .item-actions .btn-icon:hover {
-    --compact-btn-hover-bg: color-mix(in srgb, var(--bg-input) 94%, transparent);
-    --compact-btn-hover-transform: translateY(-2px);
-    --compact-btn-hover-shadow: 0 6px 16px color-mix(in srgb, var(--shadow-color) 28%, transparent);
-}
-
-body.dark-mode.theme-mica .history-item.compact .item-actions .btn-icon:hover,
-body.dark-mode.theme-acrylic .history-item.compact .item-actions .btn-icon:hover,
-html.dark-mode.theme-mica .history-item.compact .item-actions .btn-icon:hover,
-html.dark-mode.theme-acrylic .history-item.compact .item-actions .btn-icon:hover {
-    --compact-btn-hover-bg: color-mix(in srgb, var(--bg-input) 88%, transparent);
+    --compact-btn-active-color: var(--accent-color);
 }
 
 /* Active/Selected State - Glass style */
@@ -337,28 +271,12 @@ html.dark-mode.theme-acrylic .history-item.compact .item-actions .btn-icon:hover
     backdrop-filter: var(--compact-btn-backdrop);
 }
 
-.dark-mode .history-item.compact .item-actions .btn-icon.active {
-    --compact-btn-active-bg: color-mix(in srgb, var(--accent-color) 30%, transparent);
-    --compact-btn-active-border: 1px solid color-mix(in srgb, var(--accent-color) 62%, transparent);
-    --compact-btn-active-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-color) 40%, transparent), 0 2px 12px color-mix(in srgb, var(--accent-color) 25%, transparent);
-}
-
 /* Modern/Mica active - Enhanced glass */
 body.theme-mica .history-item.compact .item-actions .btn-icon.active,
 body.theme-acrylic .history-item.compact .item-actions .btn-icon.active,
 html.theme-mica .history-item.compact .item-actions .btn-icon.active,
 html.theme-acrylic .history-item.compact .item-actions .btn-icon.active {
-    --compact-btn-active-bg: color-mix(in srgb, var(--accent-color) 25%, transparent);
-    --compact-btn-active-border: 1px solid color-mix(in srgb, var(--accent-color) 62%, transparent);
-    --compact-btn-active-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-color) 30%, transparent), 0 4px 12px color-mix(in srgb, var(--accent-color) 25%, transparent);
-}
-
-body.dark-mode.theme-mica .history-item.compact .item-actions .btn-icon.active,
-body.dark-mode.theme-acrylic .history-item.compact .item-actions .btn-icon.active,
-html.dark-mode.theme-mica .history-item.compact .item-actions .btn-icon.active,
-html.dark-mode.theme-acrylic .history-item.compact .item-actions .btn-icon.active {
-    --compact-btn-active-bg: color-mix(in srgb, var(--accent-color) 35%, transparent);
-    --compact-btn-active-border: 1px solid color-mix(in srgb, var(--accent-color) 72%, transparent);
+    --compact-btn-active-color: var(--accent-color);
 }
 
 /* Non-Modern Theme Active State - Mechanical style */
@@ -380,53 +298,6 @@ body:not(.theme-mica):not(.theme-acrylic):not(.theme-macos) .history-item.compac
 .history-item.compact .item-actions .btn-icon svg {
     width: 14px !important;
     height: 14px !important;
-}
-
-/* AI Dropdown Panel - Theme Adaptation */
-/* Modern/Mica/Acrylic Theme - Glass effect */
-body.theme-mica .history-item.compact .ai-options-dropdown,
-body.theme-acrylic .history-item.compact .ai-options-dropdown {
-    background: rgba(255, 255, 255, 0.85) !important;
-    border: 1px solid rgba(255, 255, 255, 0.5) !important;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important;
-    backdrop-filter: blur(12px) saturate(180%) !important;
-    -webkit-backdrop-filter: blur(12px) saturate(180%) !important;
-    border-radius: 8px !important;
-}
-
-body.dark-mode.theme-mica .history-item.compact .ai-options-dropdown,
-body.dark-mode.theme-acrylic .history-item.compact .ai-options-dropdown {
-    background: rgba(45, 45, 45, 0.8) !important;
-    border: 1px solid rgba(255, 255, 255, 0.15) !important;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4) !important;
-}
-
-/* AI Dropdown Buttons in Modern Theme */
-body.theme-mica .history-item.compact .ai-options-dropdown button,
-body.theme-acrylic .history-item.compact .ai-options-dropdown button {
-    background: rgba(255, 255, 255, 0.5) !important;
-    border: 1px solid rgba(128, 128, 128, 0.2) !important;
-    box-shadow: none !important;
-    border-radius: 6px !important;
-}
-
-body.dark-mode.theme-mica .history-item.compact .ai-options-dropdown button,
-body.dark-mode.theme-acrylic .history-item.compact .ai-options-dropdown button {
-    background: rgba(255, 255, 255, 0.1) !important;
-    border: 1px solid rgba(255, 255, 255, 0.15) !important;
-}
-
-/* Retro Theme - Keep mechanical style */
-body.theme-retro .history-item.compact .ai-options-dropdown {
-    background: var(--bg-element) !important;
-    border: 2px solid var(--border-dark) !important;
-    box-shadow: 4px 4px 0 0 var(--shadow-color) !important;
-    border-radius: 0 !important;
-}
-
-body.theme-retro .history-item.compact .ai-options-dropdown button {
-    box-shadow: 2px 2px 0 0 var(--shadow-color) !important;
-    border-radius: 0 !important;
 }
 
 /* Hide Timestamp */
@@ -584,47 +455,28 @@ html.theme-acrylic .history-item.compact .compact-pinned-indicator {
 
 /* Retro Theme Specific Styling for Popover */
 .compact-popover-portal.retro {
-    background: #e8e8e8;
-    /* Explicit retro light grey */
-    border: 3px solid #373737;
-    /* Thick dark border */
-    box-shadow: 4px 4px 0 0 #373737;
-    /* Hard shadow offset */
+    background: var(--compact-popover-retro-bg);
+    border: 3px solid var(--compact-popover-retro-border);
+    box-shadow: var(--compact-popover-retro-shadow);
     border-radius: 0;
-    /* Sharp corners */
-}
-
-.compact-popover-portal.retro.dark-mode,
-.compact-popover-portal.retro.dark {
-    background: #1f1f1f !important;
-    border-color: #555 !important;
-    /* Lighter border for visibility against dark bg */
-    box-shadow: 4px 4px 0 0 #000 !important;
-    color: #ededed !important;
+    color: var(--compact-popover-retro-color);
 }
 
 .compact-popover-portal.retro .popover-divider {
     display: block;
-    /* Show divider in retro */
     height: 2px;
-    background: #373737;
+    background: var(--compact-popover-retro-divider);
     margin: 6px 0 10px 0;
     border-bottom: none;
 }
 
-.compact-popover-portal.retro.dark-mode .popover-divider {
-    background: #555;
-    opacity: 0.5;
+.compact-popover-portal.retro .popover-meta {
+    color: var(--compact-popover-retro-meta);
 }
 
-/* Force metadata colors in retro dark mode */
-.compact-popover-portal.retro.dark-mode .popover-meta {
-    color: #a0a0a0;
-}
-
-.compact-popover-portal.retro.dark-mode .popover-meta .meta-row span,
-.compact-popover-portal.retro.dark-mode .popover-meta .meta-row svg {
-    color: #cccccc !important;
+.compact-popover-portal.retro .popover-meta .meta-row span,
+.compact-popover-portal.retro .popover-meta .meta-row svg {
+    color: var(--compact-popover-retro-meta-strong) !important;
     opacity: 1;
 }
 

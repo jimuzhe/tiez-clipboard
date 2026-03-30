@@ -1,4 +1,4 @@
-use rusqlite::{params, Connection, Result};
+use rusqlite::{Connection, Result};
 
 use base64::Engine;
 
@@ -18,10 +18,6 @@ pub struct DbState {
 }
 
 const SENSITIVE_KEYS: &[&str] = &[
-    "mqtt_password",
-    "ai_profiles",
-    "cloud_sync_api_key",
-    "cloud_sync_webdav_password",
 ];
 
 pub const SENSITIVE_TAGS: &[&str] = &[
@@ -77,22 +73,78 @@ pub fn calc_image_hash(base64_data: &str) -> Option<i64> {
 }
 
 pub fn init_db(path: &str) -> Result<Connection> {
-    let conn = Connection::open(path)?;
-    
-    // Performance and space pragmas
-    conn.execute_batch("
-        PRAGMA journal_mode = WAL;
-        PRAGMA synchronous = NORMAL;
-        PRAGMA auto_vacuum = FULL;
-    ")?;
-    
-    // Run migrations
-    crate::infrastructure::repository::migrations::run_migrations(&conn)?;
+    fn init_db_once(path: &str) -> Result<Connection> {
+        let conn = Connection::open(path)?;
+        conn.execute_batch("
+            PRAGMA journal_mode = WAL;
+            PRAGMA synchronous = NORMAL;
+            PRAGMA auto_vacuum = FULL;
+        ")?;
+        crate::infrastructure::repository::migrations::run_migrations(&conn)?;
+        seed_defaults(&conn)?;
+        Ok(conn)
+    }
 
-    // Initialize default settings
-    seed_defaults(&conn)?;
+    fn is_disk_io_error(err: &rusqlite::Error) -> bool {
+        err.to_string().to_ascii_lowercase().contains("disk i/o error")
+    }
 
-    Ok(conn)
+    fn quarantine_corrupted_db(path: &str) {
+        use std::time::{SystemTime, UNIX_EPOCH};
+        let db_path = std::path::PathBuf::from(path);
+        if !db_path.exists() {
+            return;
+        }
+        let ts = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+        let base = db_path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("clipboard");
+        let ext = db_path.extension().and_then(|s| s.to_str()).unwrap_or("db");
+        let mut backup = db_path.clone();
+        backup.set_file_name(format!("{base}.corrupt-{ts}.{ext}"));
+        let _ = std::fs::rename(&db_path, &backup);
+
+        let mut wal_path = db_path.clone();
+        wal_path.set_file_name(format!(
+            "{}-wal",
+            db_path.file_name().and_then(|s| s.to_str()).unwrap_or("clipboard.db")
+        ));
+        if wal_path.exists() {
+            let mut wal_backup = backup.clone();
+            wal_backup.set_file_name(format!(
+                "{}-wal",
+                backup.file_name().and_then(|s| s.to_str()).unwrap_or("clipboard.corrupt.db")
+            ));
+            let _ = std::fs::rename(&wal_path, &wal_backup);
+        }
+
+        let mut shm_path = db_path.clone();
+        shm_path.set_file_name(format!(
+            "{}-shm",
+            db_path.file_name().and_then(|s| s.to_str()).unwrap_or("clipboard.db")
+        ));
+        if shm_path.exists() {
+            let mut shm_backup = backup.clone();
+            shm_backup.set_file_name(format!(
+                "{}-shm",
+                backup.file_name().and_then(|s| s.to_str()).unwrap_or("clipboard.corrupt.db")
+            ));
+            let _ = std::fs::rename(&shm_path, &shm_backup);
+        }
+    }
+
+    match init_db_once(path) {
+        Ok(conn) => Ok(conn),
+        Err(err) if is_disk_io_error(&err) => {
+            quarantine_corrupted_db(path);
+            init_db_once(path)
+        }
+        Err(err) => Err(err),
+    }
 }
 
 // save_entry removed (migrated to repository)
@@ -255,186 +307,6 @@ pub fn seed_defaults(conn: &Connection) -> Result<()> {
         [],
     );
 
-    // File transfer settings
-    let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES ('file_transfer_auto_close', 'false')",
-        [],
-    );
-    let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES ('app.file_transfer_auto_close', 'false')",
-        [],
-    );
-    let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES ('file_transfer_auto_copy', 'false')",
-        [],
-    );
-    let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES ('app.file_transfer_auto_copy', 'false')",
-        [],
-    );
-    let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES ('app.file_transfer_auto_open', 'false')",
-        [],
-    );
-    let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES ('file_server_enabled', 'false')",
-        [],
-    );
-    let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES ('app.file_server_enabled', 'false')",
-        [],
-    );
-    let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES ('file_server_port', '12345')",
-        [],
-    );
-    let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES ('app.file_server_port', '12345')",
-        [],
-    );
-    let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES ('app.file_transfer_path', '')",
-        [],
-    );
-
-    // MQTT settings (safe defaults; can be overridden by environment variables)
-    let mqtt_default_server = std::env::var("DEFAULT_MQTT_SERVER").unwrap_or_default();
-    let mqtt_default_username = std::env::var("DEFAULT_MQTT_USERNAME").unwrap_or_default();
-    let mqtt_default_password = std::env::var("DEFAULT_MQTT_PASSWORD").unwrap_or_default();
-
-    let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES ('mqtt_port', '443')",
-        [],
-    );
-    let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES ('mqtt_enabled', 'false')",
-        [],
-    );
-    let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES (?1, ?2)",
-        params!["mqtt_server", mqtt_default_server],
-    );
-    let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES (?1, ?2)",
-        params!["mqtt_username", mqtt_default_username],
-    );
-    let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES (?1, ?2)",
-        params!["mqtt_password", mqtt_default_password],
-    );
-    let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES ('mqtt_topic', '')",
-        [],
-    );
-    let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES ('mqtt_protocol', 'wss://')",
-        [],
-    );
-    let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES ('mqtt_ssl', 'true')",
-        [],
-    );
-    let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES ('mqtt_client_id', '')",
-        [],
-    );
-    let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES ('mqtt_ws_path', '/mqtt')",
-        [],
-    );
-    let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES ('mqtt_notification_enabled', 'true')",
-        [],
-    );
-
-    // Cloud sync settings
-    let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES ('cloud_sync_enabled', 'false')",
-        [],
-    );
-    let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES ('cloud_sync_auto', 'true')",
-        [],
-    );
-    let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES ('cloud_sync_provider', 'webdav')",
-        [],
-    );
-    let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES ('cloud_sync_server', '')",
-        [],
-    );
-    let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES ('cloud_sync_api_key', '')",
-        [],
-    );
-    let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES ('cloud_sync_interval_sec', '120')",
-        [],
-    );
-    let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES ('cloud_sync_snapshot_interval_min', '720')",
-        [],
-    );
-    let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES ('cloud_sync_cursor', '0')",
-        [],
-    );
-    let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES ('cloud_sync_settings_applied_at', '0')",
-        [],
-    );
-    let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES ('cloud_sync_webdav_url', '')",
-        [],
-    );
-    let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES ('cloud_sync_webdav_username', '')",
-        [],
-    );
-    let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES ('cloud_sync_webdav_password', '')",
-        [],
-    );
-    let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES ('cloud_sync_webdav_base_path', 'tiez-sync')",
-        [],
-    );
-    let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES ('cloud_sync_webdav_local_seq', '0')",
-        [],
-    );
-    let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES ('cloud_sync_webdav_op_cursor_map', '{}')",
-        [],
-    );
-    let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES ('cloud_sync_webdav_last_snapshot_push_at', '0')",
-        [],
-    );
-    let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES ('cloud_sync_webdav_last_snapshot_pull_at', '0')",
-        [],
-    );
-
-    // AI settings
-    let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES ('ai_enabled', 'false')",
-        [],
-    );
-    let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES ('ai_target_lang', 'zh')",
-        [],
-    );
-    let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES ('ai_enable_thinking', 'false')",
-        [],
-    );
-    let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES ('ai_thinking_budget', '1024')",
-        [],
-    );
-
     // Paste method setting: "shift_insert" (default) or "ctrl_v"
     let _ = conn.execute(
         "INSERT OR IGNORE INTO settings (key, value) VALUES ('app.paste_method', 'shift_insert')",
@@ -498,22 +370,6 @@ mod tests {
                 entry_id INTEGER NOT NULL,
                 tag TEXT NOT NULL,
                 PRIMARY KEY (entry_id, tag)
-            )",
-            [],
-        ).unwrap();
-        conn.execute(
-            "CREATE TABLE cloud_sync_tombstones (
-                content_type TEXT NOT NULL,
-                content_hash INTEGER NOT NULL,
-                deleted_at INTEGER NOT NULL,
-                PRIMARY KEY (content_type, content_hash)
-            )",
-            [],
-        ).unwrap();
-        conn.execute(
-            "CREATE TABLE cloud_sync_local_index (
-                sync_key TEXT PRIMARY KEY,
-                digest TEXT NOT NULL
             )",
             [],
         ).unwrap();

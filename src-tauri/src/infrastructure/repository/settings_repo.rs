@@ -40,7 +40,7 @@ impl SqliteSettingsRepository {
 
     fn should_try_decrypt(key: &str, value: &str) -> bool {
         Self::encrypted_payload(value).is_some()
-            && (is_sensitive_key(key) || key.eq_ignore_ascii_case("mqtt_username"))
+            && is_sensitive_key(key)
     }
 
     fn try_decrypt_legacy_or_sensitive(key: &str, value: &str) -> Option<String> {
@@ -143,21 +143,12 @@ impl SettingsRepository for SqliteSettingsRepository {
             let decrypted = self.maybe_decrypt(key, &value);
             
             // Auto-migrate to encrypted if it was plaintext and is sensitive.
-            // Also migrate legacy encrypted mqtt_username back to plaintext.
             #[cfg(not(feature = "portable"))]
             {
                 if is_sensitive_key(key) && !value.starts_with(ENCRYPT_PREFIX) {
                     let _ = conn.execute(
                         "UPDATE settings SET value = ? WHERE key = ?",
                         params![self.maybe_encrypt(key, &decrypted), key],
-                    );
-                } else if key.eq_ignore_ascii_case("mqtt_username")
-                    && Self::encrypted_payload(&value).is_some()
-                    && !decrypted.is_empty()
-                {
-                    let _ = conn.execute(
-                        "UPDATE settings SET value = ? WHERE key = ?",
-                        params![&decrypted, key],
                     );
                 }
             }
@@ -181,21 +172,12 @@ impl SettingsRepository for SqliteSettingsRepository {
             let decrypted = self.maybe_decrypt(&key, &value);
             
             // Auto-migrate to encrypted if it was plaintext and is sensitive.
-            // Also migrate legacy encrypted mqtt_username back to plaintext.
             #[cfg(not(feature = "portable"))]
             {
                 if is_sensitive_key(&key) && !value.starts_with(ENCRYPT_PREFIX) {
                     let _ = conn.execute(
                         "UPDATE settings SET value = ? WHERE key = ?",
                         params![self.maybe_encrypt(&key, &decrypted), &key],
-                    );
-                } else if key.eq_ignore_ascii_case("mqtt_username")
-                    && Self::encrypted_payload(&value).is_some()
-                    && !decrypted.is_empty()
-                {
-                    let _ = conn.execute(
-                        "UPDATE settings SET value = ? WHERE key = ?",
-                        params![&decrypted, &key],
                     );
                 }
             }

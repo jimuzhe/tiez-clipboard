@@ -23,37 +23,3 @@ body.theme-retro #root {
   border: 2px solid var(--border-dark);
   box-shadow: 4px 4px 0 0 var(--shadow-color);
 }
-
-@media (prefers-color-scheme: dark) {
-  body:not(.light-mode).theme-retro {
-    --bg-body: #181818;
-    --bg-window: #1f1f1f;
-    --bg-content: #181818;
-    --bg-toolbar: #1f1f1f;
-    --bg-panel: #262626;
-    --bg-element: #2c2c2c;
-    --bg-button: #383838;
-    --bg-input: #202020;
-    --text-primary: #ededed;
-    --text-secondary: #a0a0a0;
-    --border-dark: #000000;
-    --border-light: #333333;
-    --shadow-color: #000000;
-  }
-}
-
-body.dark-mode.theme-retro {
-  --bg-body: #181818;
-  --bg-window: #1f1f1f;
-  --bg-content: #181818;
-  --bg-toolbar: #1f1f1f;
-  --bg-panel: #262626;
-  --bg-element: #2c2c2c;
-  --bg-button: #383838;
-  --bg-input: #202020;
-  --text-primary: #ededed;
-  --text-secondary: #a0a0a0;
-  --border-dark: #000000;
-  --border-light: #333333;
-  --shadow-color: #000000;
-}
