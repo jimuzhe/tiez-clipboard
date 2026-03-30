@@ -144,81 +144,268 @@ pub unsafe fn get_clipboard_raw_format(_name: &str) -> Option<Vec<u8>> {
     None
 }
 
-pub unsafe fn set_clipboard_files(paths: Vec<String>) -> Result<(), String> {
-    println!("[DEBUG] Setting {} files to clipboard: {:?}", paths.len(), paths);
-
-    // Build text/uri-list format according to freedesktop.org spec
-    // Format: file:///absolute/path (not URL-encoded for basic ASCII paths)
-    // Only encode special characters like spaces, not the path separators
-    let uri_list: String = paths
-        .iter()
-        .map(|p| {
-            // Only URL-encode spaces and special chars, keep / as-is
-            let encoded: String = p
-                .chars()
-                .map(|c| {
-                    if c.is_ascii_alphanumeric() || c == '/' || c == '-' || c == '_' || c == '.' || c == '~' {
-                        c.to_string()
-                    } else {
-                        format!("%{:02X}", c as u8)
-                    }
-                })
-                .collect();
-            format!("file://{}\r\n", encoded)
+/// Convert a file path to a file:// URI with percent-encoding for special characters
+fn path_to_file_uri(path: &str) -> String {
+    let encoded: String = path
+        .chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '/' || c == '-' || c == '_' || c == '.' || c == '~' {
+                c.to_string()
+            } else {
+                format!("%{:02X}", c as u8)
+            }
         })
         .collect();
+    format!("file://{}", encoded)
+}
 
-    println!("[DEBUG] URI list: {:?}", uri_list);
+/// Set clipboard files using x11rb with multi-target support (text/uri-list + x-special/gnome-copied-files).
+/// Nautilus requires both MIME types to accept file paste operations.
+/// Spawns a background thread that serves clipboard data until another app takes ownership.
+fn try_x11_multi_clipboard(file_uris: &[String]) -> bool {
+    use x11rb::connection::Connection;
+    use x11rb::protocol::xproto::*;
+    use x11rb::protocol::Event;
 
-    // Method 1: Try xclip (most reliable for file managers like Nautilus)
-    // xclip properly handles X11 selection protocol with multiple targets
-    if let Ok(xclip_output) = std::process::Command::new("xclip")
+    // Build data for both targets
+    let uri_list_bytes: Vec<u8> = file_uris.iter()
+        .map(|uri| format!("{}\r\n", uri))
+        .collect::<String>()
+        .into_bytes();
+    let gnome_bytes: Vec<u8> = format!("copy\n{}\n", file_uris.join("\n")).into_bytes();
+
+    // Connect to X11
+    let (conn, screen_num) = match x11rb::connect(None) {
+        Ok(c) => c,
+        Err(_) => return false,
+    };
+    let screen = &conn.setup().roots[screen_num];
+
+    // Create invisible window
+    let win = match conn.generate_id() {
+        Ok(id) => id,
+        Err(_) => return false,
+    };
+
+    if conn.create_window(
+        0, // CopyFromParent depth
+        win,
+        screen.root,
+        -10, -10, 1, 1, 0,
+        WindowClass::COPY_FROM_PARENT,
+        screen.root_visual,
+        &CreateWindowAux::new(),
+    ).is_err() {
+        return false;
+    }
+
+    // Intern atoms
+    let intern = |name: &[u8]| -> Option<Atom> {
+        conn.intern_atom(false, name).ok()?.reply().ok().map(|r| r.atom)
+    };
+    let clipboard_atom = match intern(b"CLIPBOARD") {
+        Some(a) => a,
+        None => return false,
+    };
+    let targets_atom = match intern(b"TARGETS") {
+        Some(a) => a,
+        None => return false,
+    };
+    let uri_list_atom = match intern(b"text/uri-list") {
+        Some(a) => a,
+        None => return false,
+    };
+    let gnome_atom = match intern(b"x-special/gnome-copied-files") {
+        Some(a) => a,
+        None => return false,
+    };
+    let timestamp_atom = match intern(b"TIMESTAMP") {
+        Some(a) => a,
+        None => return false,
+    };
+    let atom_atom: Atom = Atom::from(AtomEnum::ATOM);
+    let string_atom: Atom = Atom::from(AtomEnum::STRING);
+
+    // Set selection owner
+    if conn.set_selection_owner(win, clipboard_atom, 0u32).is_err() {
+        return false;
+    }
+    if conn.flush().is_err() {
+        return false;
+    }
+
+    // Verify ownership
+    match conn.get_selection_owner(clipboard_atom).ok().and_then(|c| c.reply().ok()) {
+        Some(reply) if reply.owner == win => {}
+        _ => return false,
+    }
+
+    println!("[DEBUG] X11 multi-target clipboard owner set (text/uri-list + x-special/gnome-copied-files)");
+
+    // Spawn background thread to serve clipboard data
+    std::thread::spawn(move || {
+        let timeout = std::time::Duration::from_secs(60);
+        let start = std::time::Instant::now();
+
+        loop {
+            if start.elapsed() > timeout {
+                break;
+            }
+
+            match conn.poll_for_event() {
+                Ok(Some(event)) => {
+                    let rt = event.response_type() & 0x7f;
+                    match rt {
+                        30 => { // SelectionRequest
+                            // Use Event enum pattern matching
+                            if let Event::SelectionRequest(req) = event {
+                                let property = if req.property == 0 { req.target } else { req.property };
+
+                                if req.target == targets_atom {
+                                    // TARGETS request: return list of supported atoms
+                                    let supported = [targets_atom, timestamp_atom, uri_list_atom, gnome_atom];
+                                    let data: Vec<u8> = supported.iter()
+                                        .flat_map(|a| a.to_ne_bytes())
+                                        .collect();
+                                    let _ = conn.change_property(
+                                        PropMode::REPLACE,
+                                        req.requestor,
+                                        property,
+                                        atom_atom,
+                                        32,
+                                        supported.len() as u32,
+                                        &data,
+                                    );
+                                } else if req.target == timestamp_atom {
+                                    let ts = 0u32;
+                                    let _ = conn.change_property(
+                                        PropMode::REPLACE,
+                                        req.requestor,
+                                        property,
+                                        Atom::from(AtomEnum::INTEGER),
+                                        32,
+                                        1,
+                                        &ts.to_ne_bytes(),
+                                    );
+                                } else if req.target == uri_list_atom {
+                                    let _ = conn.change_property(
+                                        PropMode::REPLACE,
+                                        req.requestor,
+                                        property,
+                                        string_atom,
+                                        8,
+                                        uri_list_bytes.len() as u32,
+                                        &uri_list_bytes,
+                                    );
+                                } else if req.target == gnome_atom {
+                                    let _ = conn.change_property(
+                                        PropMode::REPLACE,
+                                        req.requestor,
+                                        property,
+                                        string_atom,
+                                        8,
+                                        gnome_bytes.len() as u32,
+                                        &gnome_bytes,
+                                    );
+                                } else {
+                                    let _ = conn.change_property(
+                                        PropMode::REPLACE,
+                                        req.requestor,
+                                        property,
+                                        Atom::from(AtomEnum::NONE),
+                                        8,
+                                        0,
+                                        &[],
+                                    );
+                                }
+
+                                // Send SelectionNotify response
+                                let notify = SelectionNotifyEvent {
+                                    response_type: 31,
+                                    sequence: 0,
+                                    time: req.time,
+                                    requestor: req.requestor,
+                                    selection: req.selection,
+                                    target: req.target,
+                                    property,
+                                };
+                                let _ = conn.send_event(
+                                    false,
+                                    req.requestor as u32,
+                                    EventMask::NO_EVENT,
+                                    notify,
+                                );
+                                let _ = conn.flush();
+                            }
+                        }
+                        29 => break, // SelectionClear — another app took ownership
+                        _ => {}
+                    }
+                }
+                Ok(None) => {
+                    std::thread::sleep(std::time::Duration::from_millis(50));
+                }
+                Err(_) => break,
+            }
+        }
+
+        let _ = conn.destroy_window(win);
+        let _ = conn.flush();
+    });
+
+    true
+}
+
+/// Try setting clipboard via xclip (X11 only, single target — Nautilus may not work)
+fn try_xclip_clipboard(paths: &[String]) -> Result<(), String> {
+    let uri_list: String = paths
+        .iter()
+        .map(|p| format!("{}\r\n", path_to_file_uri(p)))
+        .collect();
+
+    if let Ok(mut xclip) = std::process::Command::new("xclip")
         .arg("-selection")
         .arg("clipboard")
         .arg("-t")
         .arg("text/uri-list")
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::null())
         .spawn()
     {
-        let mut xclip = xclip_output;
         if let Some(mut stdin) = xclip.stdin.take() {
             use std::io::Write;
             if stdin.write_all(uri_list.as_bytes()).is_ok() {
                 let status = xclip.wait();
-                println!("[DEBUG] xclip result: {:?}", status);
                 if status.map(|s| s.success()).unwrap_or(false) {
-                    println!("[DEBUG] Successfully set files via xclip");
+                    println!("[DEBUG] Files set via xclip (single target, Nautilus may not work)");
                     return Ok(());
                 }
             }
         }
     }
 
-    // Method 2: Try x11-clipboard crate as fallback
-    if let Ok(clipboard) = x11_clipboard::Clipboard::new() {
-        println!("[DEBUG] Trying x11-clipboard as fallback...");
+    Err("xclip failed".to_string())
+}
 
-        if let Ok(uri_list_atom) = clipboard.setter.get_atom("text/uri-list") {
-            match clipboard.store(
-                clipboard.setter.atoms.clipboard,
-                uri_list_atom,
-                uri_list.as_bytes(),
-            ) {
-                Ok(()) => {
-                    println!("[DEBUG] Successfully set files via x11-clipboard");
-                    return Ok(());
-                }
-                Err(e) => {
-                    println!("[WARN] x11-clipboard store failed: {:?}", e);
-                }
-            }
-        }
+pub unsafe fn set_clipboard_files(paths: Vec<String>) -> Result<(), String> {
+    println!("[DEBUG] Setting {} files to clipboard: {:?}", paths.len(), paths);
+
+    let file_uris: Vec<String> = paths.iter().map(|p| path_to_file_uri(p)).collect();
+
+    // Method 1: x11rb multi-target clipboard (text/uri-list + x-special/gnome-copied-files)
+    // Required by Nautilus and other GNOME file managers. Works on X11 and XWayland.
+    if try_x11_multi_clipboard(&file_uris) {
+        return Ok(());
     }
 
-    // Method 3: Fallback to arboard (won't work with file managers)
-    println!("[DEBUG] Falling back to arboard (file paste may not work in file managers)");
+    // Method 2: xclip fallback (X11 only, single target — Nautilus may not work)
+    if try_xclip_clipboard(&paths).is_ok() {
+        return Ok(());
+    }
+
+    // Method 3: Last resort — arboard (sets plain text, Nautilus won't work)
+    println!("[DEBUG] Falling back to arboard (file paste will not work in Nautilus)");
     let text_version: String = paths.join("\n");
     let mut clipboard = arboard::Clipboard::new().map_err(|e| e.to_string())?;
     clipboard.set_text(text_version).map_err(|e| e.to_string())?;

@@ -265,12 +265,24 @@ async fn copy_content_to_system_clipboard(
             if !content.starts_with("data:") && (content.starts_with('/') || content.contains(":\\"))
             {
                 if content_type == "image" {
-                    // For image type with local path, read pixels for better compatibility with chat apps
-                    let bytes = std::fs::read(content).map_err(AppError::from)?;
-                    let (primary_hash, _secondary_hash) = copy_image_bytes_to_clipboard(bytes, current_time)?;
-                    // Keep LAST_APP_SET_HASH as content_hash (path hash)
-                    // Store pixel/byte hash in HASH_ALT
-                    crate::LAST_APP_SET_HASH_ALT.store(primary_hash, Ordering::SeqCst);
+                    #[cfg(target_os = "linux")]
+                    {
+                        // On Linux, copy images as file URIs for Nautilus/GNOME file manager compatibility.
+                        // File managers expect text/uri-list + x-special/gnome-copied-files, not raw pixels.
+                        unsafe {
+                            crate::infrastructure::windows_api::win_clipboard::set_clipboard_files(vec![content.to_string()])
+                                .map_err(AppError::from)?;
+                        }
+                    }
+                    #[cfg(not(target_os = "linux"))]
+                    {
+                        // On Windows/macOS, read pixels for better compatibility with chat apps
+                        let bytes = std::fs::read(content).map_err(AppError::from)?;
+                        let (primary_hash, _secondary_hash) = copy_image_bytes_to_clipboard(bytes, current_time)?;
+                        // Keep LAST_APP_SET_HASH as content_hash (path hash)
+                        // Store pixel/byte hash in HASH_ALT
+                        crate::LAST_APP_SET_HASH_ALT.store(primary_hash, Ordering::SeqCst);
+                    }
                 } else {
                     unsafe {
                         crate::infrastructure::windows_api::win_clipboard::set_clipboard_files(vec![content.to_string()])
@@ -880,12 +892,34 @@ pub fn send_paste_keystroke(method: &str, content: Option<&str>, content_type: O
         }
     }
 
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(target_os = "macos")]
     {
         std::process::Command::new("osascript")
             .args(["-e", "tell application \"System Events\" to keystroke \"v\" using command down"])
             .spawn()
             .ok();
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        // Try multiple input simulation tools (xdotool for X11, ydotool/wtype for Wayland)
+        let tools: &[(&[&str], &str)] = &[
+            (&["xdotool", "key", "--clearmodifiers", "ctrl+v"], "xdotool"),
+            (&["ydotool", "key", "29:1", "47:1", "47:0", "29:0"], "ydotool"),
+            (&["wtype", "-M", "ctrl", "-k", "v", "-m", "ctrl"], "wtype"),
+        ];
+
+        for (args, name) in tools {
+            if std::process::Command::new(args[0])
+                .args(&args[1..])
+                .spawn()
+                .is_ok()
+            {
+                println!("[DEBUG] Paste keystroke sent via {}", name);
+                return;
+            }
+        }
+        println!("[WARN] No input simulation tool found (install xdotool for X11 or ydotool for Wayland)");
     }
 }
 

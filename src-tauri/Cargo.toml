@@ -42,6 +42,7 @@ rustls = { version = "0.23", default-features = false, features = ["ring", "std"
 webpki-roots = "0.26"
 rayon = "1.10"
 
+cfg-if = "1"
 regex = "1.12.2"
 tauri-plugin-single-instance = "2"
 tauri-plugin-window-state = "2"
@@ -71,7 +72,7 @@ winreg = "0.55.0"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 x11-clipboard = "0.9"
-x11rb = "0.13"
+x11rb = { version = "0.13", features = ["xtest"] }
 libc = "0.2"
 dirs = "5"
 
