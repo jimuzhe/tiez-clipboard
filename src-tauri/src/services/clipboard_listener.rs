@@ -97,6 +97,7 @@ pub fn listen_clipboard(callback: Arc<dyn Fn() + Send + Sync + 'static>) {
 
 #[cfg(target_os = "linux")]
 fn listen_clipboard_x11(callback: Arc<dyn Fn() + Send + Sync + 'static>) {
+    use std::hash::{Hash, Hasher};
     use x11rb::connection::{Connection, RequestConnection};
     use x11rb::protocol::xfixes::{ConnectionExt as XfixesConnectionExt, SelectionEventMask};
     use x11rb::protocol::xproto::ConnectionExt as XprotoConnectionExt;
@@ -110,30 +111,65 @@ fn listen_clipboard_x11(callback: Arc<dyn Fn() + Send + Sync + 'static>) {
         let clipboard_atom = conn.intern_atom(false, b"CLIPBOARD")?.reply()?.atom;
         let xfixes_ver = conn.xfixes_query_version(1, 0)?.reply()?;
 
-        // Register for clipboard selection notifications
         let mask = SelectionEventMask::SET_SELECTION_OWNER;
         conn.xfixes_select_selection_input(root, clipboard_atom, mask)?;
         conn.flush()?;
 
-        println!(">>> [CLIPBOARD] Linux X11 event-driven listener started (XFixes {}).", xfixes_ver.major_version);
+        println!(">>> [CLIPBOARD] Linux X11 hybrid listener started (XFixes {} + file polling).", xfixes_ver.major_version);
 
         let xfixes_first_event = conn
             .extension_information(x11rb::protocol::xfixes::X11_EXTENSION_NAME)?
             .map(|info| info.first_event)
             .unwrap_or(0);
+        let selection_notify_code = xfixes_first_event + x11rb::protocol::xfixes::SELECTION_NOTIFY_EVENT;
+
+        // Seed clipboard text hash to avoid false-trigger on startup.
+        // IMPORTANT: We use arboard::get_text() here instead of x11_clipboard's
+        // get_clipboard_files() because x11_clipboard creates its own X11 connection
+        // which interferes with the callback's subsequent get_clipboard_files() call
+        // (the owner's SelectionRequest responses get routed to the wrong connection).
+        let mut last_text_hash: u64 = {
+            if let Ok(mut cb) = arboard::Clipboard::new() {
+                if let Ok(text) = cb.get_text() {
+                    let mut h = std::collections::hash_map::DefaultHasher::new();
+                    text.hash(&mut h);
+                    h.finish()
+                } else {
+                    0
+                }
+            } else {
+                0
+            }
+        };
 
         loop {
-            match conn.wait_for_event() {
-                Ok(event) => {
-                    let event_code = event.response_type();
-                    let selection_notify_code = xfixes_first_event + x11rb::protocol::xfixes::SELECTION_NOTIFY_EVENT;
+            // Drain pending X11 selection-owner-change events (fast path)
+            while let Ok(Some(event)) = conn.poll_for_event() {
+                if event.response_type() == selection_notify_code {
+                    callback();
+                }
+            }
 
-                    if event_code == selection_notify_code {
-                        callback();
+            // Slow-path polling: XFixes SET_SELECTION_OWNER fires only when the
+            // owner *changes*, so re-copying files inside the same app (e.g.
+            // Nautilus) produces no event.  Use arboard (lightweight, separate
+            // from x11_clipboard) to detect text content changes which include
+            // file:// URIs when files are copied.
+            if let Ok(mut cb) = arboard::Clipboard::new() {
+                if let Ok(text) = cb.get_text() {
+                    if !text.is_empty() {
+                        let mut h = std::collections::hash_map::DefaultHasher::new();
+                        text.hash(&mut h);
+                        let hash = h.finish();
+                        if hash != last_text_hash {
+                            last_text_hash = hash;
+                            callback();
+                        }
                     }
                 }
-                Err(_) => break,
             }
+
+            std::thread::sleep(std::time::Duration::from_secs(1));
         }
 
         Ok(())

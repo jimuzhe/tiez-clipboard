@@ -176,6 +176,15 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
         conn.execute("INSERT INTO schema_migrations (version) VALUES (9)", [])?;
     }
 
+    // Migration 10: Enable file capture by default (multi-file copies need this)
+    if current_version < 10 {
+        conn.execute(
+            "UPDATE settings SET value = 'true' WHERE key = 'app.capture_files' AND value = 'false'",
+            [],
+        )?;
+        conn.execute("INSERT INTO schema_migrations (version) VALUES (10)", [])?;
+    }
+
     Ok(())
 }
 

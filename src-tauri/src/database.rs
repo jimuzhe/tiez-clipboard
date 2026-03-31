@@ -152,7 +152,7 @@ pub fn seed_defaults(conn: &Connection) -> Result<()> {
         [],
     );
     let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES ('app.capture_files', 'false')",
+        "INSERT OR IGNORE INTO settings (key, value) VALUES ('app.capture_files', 'true')",
         [],
     );
     let _ = conn.execute(
