@@ -243,7 +243,10 @@ pub fn toggle_window(app: &AppHandle) {
 
         let pinned = WINDOW_PINNED.load(Ordering::Relaxed);
         let _ = window.set_always_on_top(pinned);
+        #[cfg(target_os = "windows")]
         let _ = window.set_focusable(false);
+        #[cfg(not(target_os = "windows"))]
+        let _ = window.set_focusable(!pinned);
         let _ = app.emit("window-pinned-changed", pinned);
 
         #[cfg(target_os = "windows")]
