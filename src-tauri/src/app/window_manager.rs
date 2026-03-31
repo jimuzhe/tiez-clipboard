@@ -57,6 +57,33 @@ pub fn toggle_window(app: &AppHandle) {
             }
         }
 
+        #[cfg(target_os = "linux")]
+        {
+            // Save the currently active X11 window before TieZ takes focus
+            if let Ok(output) = std::process::Command::new("xdotool")
+                .arg("getactivewindow")
+                .output()
+            {
+                let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                if let Ok(wid) = stdout.parse::<u64>() {
+                    // Don't save our own window
+                    if let Ok(our_wid) = std::process::Command::new("xdotool")
+                        .args(["search", "--pid", &std::process::id().to_string()])
+                        .output()
+                    {
+                        let our_windows: Vec<u64> = String::from_utf8_lossy(&our_wid.stdout)
+                            .lines()
+                            .filter_map(|l| l.trim().parse().ok())
+                            .collect();
+                        if !our_windows.contains(&wid) {
+                            println!("[DEBUG] Linux saved last active X11 window: {}", wid);
+                            crate::LAST_ACTIVE_X11_WINDOW.store(wid, Ordering::Relaxed);
+                        }
+                    }
+                }
+            }
+        }
+
         if let Ok(size) = window.outer_size() {
             let settings = app.state::<SettingsState>();
             if settings.follow_mouse.load(Ordering::Relaxed) {
@@ -341,6 +368,51 @@ pub fn restore_last_focus(_app_handle: AppHandle) -> Result<(), String> {
         std::thread::sleep(std::time::Duration::from_millis(60));
     }
     Ok(())
+}
+
+/// On Linux, continuously track the active X11 window so we know where to
+/// send paste keystrokes.  Runs a lightweight poll loop (500 ms) that reads
+/// _NET_ACTIVE_WINDOW and caches the most recent non-TieZ window ID.
+#[cfg(target_os = "linux")]
+pub fn start_linux_window_tracker() {
+    std::thread::spawn(move || {
+        let our_pid = std::process::id().to_string();
+        let mut our_windows_cache: Vec<u64> = Vec::new();
+        let mut cache_time = std::time::Instant::now();
+
+        loop {
+            std::thread::sleep(std::time::Duration::from_millis(500));
+
+            // Refresh our own window list every 5 s (PID doesn't change, but
+            // transient helper windows may appear/disappear).
+            if cache_time.elapsed() > std::time::Duration::from_secs(5) {
+                our_windows_cache = std::process::Command::new("xdotool")
+                    .args(["search", "--pid", &our_pid])
+                    .output()
+                    .ok()
+                    .map(|o| {
+                        String::from_utf8_lossy(&o.stdout)
+                            .lines()
+                            .filter_map(|l| l.trim().parse::<u64>().ok())
+                            .collect()
+                    })
+                    .unwrap_or_default();
+                cache_time = std::time::Instant::now();
+            }
+
+            if let Ok(output) = std::process::Command::new("xdotool")
+                .args(["getactivewindow"])
+                .output()
+            {
+                let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                if let Ok(wid) = stdout.parse::<u64>() {
+                    if !our_windows_cache.contains(&wid) {
+                        LAST_ACTIVE_X11_WINDOW.store(wid, Ordering::Relaxed);
+                    }
+                }
+            }
+        }
+    });
 }
 
 pub fn release_win_keys() {

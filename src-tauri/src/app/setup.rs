@@ -150,10 +150,10 @@ fn resolve_data_dir(app: &App) -> Result<std::path::PathBuf, Box<dyn std::error:
 }
 
 fn apply_startup_resets(repo: &impl SettingsRepository) {
-    let paste_method = repo.get("app.paste_method").unwrap_or(Some("shift_insert".to_string())).unwrap_or("shift_insert".to_string());
+    let paste_method = repo.get("app.paste_method").unwrap_or(Some("ctrl_v".to_string())).unwrap_or("ctrl_v".to_string());
     if paste_method == "game_mode" && !crate::app::commands::system_cmd::check_is_admin() {
         info!(">>> [STARTUP] Game Mode active without Admin privileges. Resetting to default.");
-        let _ = repo.set("app.paste_method", "shift_insert");
+        let _ = repo.set("app.paste_method", "ctrl_v");
     }
 }
 
@@ -313,6 +313,8 @@ fn setup_main_window(app: &App, s: &StartupSettings) {
 
 fn start_services(app: &App, s: &StartupSettings, app_handle: AppHandle) {
     crate::infrastructure::windows_api::window_tracker::start_window_tracking(app_handle.clone());
+    #[cfg(target_os = "linux")]
+    crate::app::window_manager::start_linux_window_tracker();
     crate::services::clipboard::start_clipboard_monitor(app_handle.clone());
     crate::services::mqtt_sub::start_mqtt_client(app_handle.clone());
     crate::services::cloud_sync::start_cloud_sync_client(app_handle.clone());

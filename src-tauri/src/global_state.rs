@@ -26,6 +26,9 @@ pub static IGNORE_BLUR: AtomicBool = AtomicBool::new(false);
 pub static WINDOW_PINNED: AtomicBool = AtomicBool::new(false);
 pub static CLIPBOARD_MONITOR_PAUSED: AtomicBool = AtomicBool::new(false);
 pub static LAST_ACTIVE_HWND: AtomicUsize = AtomicUsize::new(0);
+
+#[cfg(target_os = "linux")]
+pub static LAST_ACTIVE_X11_WINDOW: AtomicU64 = AtomicU64::new(0);
 pub static LAST_APP_SET_HASH: AtomicU64 = AtomicU64::new(0);
 pub static LAST_APP_SET_HASH_ALT: AtomicU64 = AtomicU64::new(0);
 pub static LAST_APP_SET_TIMESTAMP: AtomicU64 = AtomicU64::new(0);

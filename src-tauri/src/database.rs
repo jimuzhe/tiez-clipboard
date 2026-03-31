@@ -411,9 +411,9 @@ pub fn seed_defaults(conn: &Connection) -> Result<()> {
         [],
     );
 
-    // Paste method setting: "shift_insert" (default) or "ctrl_v"
+    // Paste method setting: "ctrl_v" (default) or "shift_insert"
     let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES ('app.paste_method', 'shift_insert')",
+        "INSERT OR IGNORE INTO settings (key, value) VALUES ('app.paste_method', 'ctrl_v')",
         [],
     );
 

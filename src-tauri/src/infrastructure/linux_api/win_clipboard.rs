@@ -159,6 +159,59 @@ fn path_to_file_uri(path: &str) -> String {
     format!("file://{}", encoded)
 }
 
+/// Try setting clipboard via xclip with x-special/gnome-copied-files format.
+/// xclip handles all X11 event loop complexity internally and is well-tested with Nautilus.
+fn try_xclip_gnome_files(file_uris: &[String]) -> bool {
+    let gnome_data = format!("copy\n{}\n", file_uris.join("\n"));
+    let uri_list: String = file_uris.iter()
+        .map(|uri| format!("{}\r\n", uri))
+        .collect();
+
+    // Try x-special/gnome-copied-files first (what Nautilus uses internally)
+    if let Ok(mut child) = std::process::Command::new("xclip")
+        .arg("-selection")
+        .arg("clipboard")
+        .arg("-t")
+        .arg("x-special/gnome-copied-files")
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+    {
+        if let Some(mut stdin) = child.stdin.take() {
+            use std::io::Write;
+            if stdin.write_all(gnome_data.as_bytes()).is_ok() {
+                drop(stdin);
+                println!("[DEBUG] Files set via xclip (x-special/gnome-copied-files)");
+                return true;
+            }
+        }
+    }
+
+    // Fallback: text/uri-list
+    if let Ok(mut child) = std::process::Command::new("xclip")
+        .arg("-selection")
+        .arg("clipboard")
+        .arg("-t")
+        .arg("text/uri-list")
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+    {
+        if let Some(mut stdin) = child.stdin.take() {
+            use std::io::Write;
+            if stdin.write_all(uri_list.as_bytes()).is_ok() {
+                drop(stdin);
+                println!("[DEBUG] Files set via xclip (text/uri-list)");
+                return true;
+            }
+        }
+    }
+
+    false
+}
+
 /// Set clipboard files using x11rb with multi-target support (text/uri-list + x-special/gnome-copied-files).
 /// Nautilus requires both MIME types to accept file paste operations.
 /// Spawns a background thread that serves clipboard data until another app takes ownership.
@@ -172,7 +225,9 @@ fn try_x11_multi_clipboard(file_uris: &[String]) -> bool {
         .map(|uri| format!("{}\r\n", uri))
         .collect::<String>()
         .into_bytes();
-    let gnome_bytes: Vec<u8> = format!("copy\n{}\n", file_uris.join("\n")).into_bytes();
+    let gnome_bytes: Vec<u8> = format!("copy\n{}", file_uris.join("\n")).into_bytes();
+    // Pre-compute plain text for UTF8_STRING / STRING targets (can't capture &file_uris in move closure)
+    let text_bytes: Vec<u8> = file_uris.join("\n").into_bytes();
 
     // Connect to X11
     let (conn, screen_num) = match x11rb::connect(None) {
@@ -194,7 +249,7 @@ fn try_x11_multi_clipboard(file_uris: &[String]) -> bool {
         -10, -10, 1, 1, 0,
         WindowClass::COPY_FROM_PARENT,
         screen.root_visual,
-        &CreateWindowAux::new(),
+        &CreateWindowAux::new().override_redirect(1), // Prevent WM from managing this window (avoids focus theft)
     ).is_err() {
         return false;
     }
@@ -225,6 +280,10 @@ fn try_x11_multi_clipboard(file_uris: &[String]) -> bool {
     };
     let atom_atom: Atom = Atom::from(AtomEnum::ATOM);
     let string_atom: Atom = Atom::from(AtomEnum::STRING);
+
+    // Extra atoms for better GTK4 compatibility
+    let utf8_string_atom = intern(b"UTF8_STRING");
+    let text_plain_atom = intern(b"text/plain");
 
     // Set selection owner
     if conn.set_selection_owner(win, clipboard_atom, 0u32).is_err() {
@@ -261,13 +320,22 @@ fn try_x11_multi_clipboard(file_uris: &[String]) -> bool {
                             if let Event::SelectionRequest(req) = event {
                                 let property = if req.property == 0 { req.target } else { req.property };
 
+                                // Debug: log which target is being requested
+                                let target_name = if req.target == targets_atom { "TARGETS".to_string() }
+                                    else if req.target == timestamp_atom { "TIMESTAMP".to_string() }
+                                    else if req.target == uri_list_atom { "text/uri-list".to_string() }
+                                    else if req.target == gnome_atom { "x-special/gnome-copied-files".to_string() }
+                                    else { format!("unknown({})", req.target) };
+                                println!("[DEBUG] X11 SelectionRequest: target={} from window={}", target_name, req.requestor);
+
                                 if req.target == targets_atom {
                                     // TARGETS request: return list of supported atoms
-                                    let supported = [targets_atom, timestamp_atom, uri_list_atom, gnome_atom];
+                                    println!("[DEBUG] X11 TARGETS request from window {}", req.requestor);
+                                    let supported = [targets_atom, timestamp_atom, uri_list_atom, gnome_atom, utf8_string_atom.unwrap_or(targets_atom), text_plain_atom.unwrap_or(targets_atom), string_atom];
                                     let data: Vec<u8> = supported.iter()
                                         .flat_map(|a| a.to_ne_bytes())
                                         .collect();
-                                    let _ = conn.change_property(
+                                    if let Err(e) = conn.change_property(
                                         PropMode::REPLACE,
                                         req.requestor,
                                         property,
@@ -275,7 +343,9 @@ fn try_x11_multi_clipboard(file_uris: &[String]) -> bool {
                                         32,
                                         supported.len() as u32,
                                         &data,
-                                    );
+                                    ) {
+                                        println!("[WARN] change_property failed for TARGETS: {:?}", e);
+                                    }
                                 } else if req.target == timestamp_atom {
                                     let ts = 0u32;
                                     let _ = conn.change_property(
@@ -288,26 +358,48 @@ fn try_x11_multi_clipboard(file_uris: &[String]) -> bool {
                                         &ts.to_ne_bytes(),
                                     );
                                 } else if req.target == uri_list_atom {
-                                    let _ = conn.change_property(
+                                    if let Err(e) = conn.change_property(
                                         PropMode::REPLACE,
                                         req.requestor,
                                         property,
-                                        string_atom,
+                                        uri_list_atom,  // Use target atom as type (X11/GTK convention for MIME targets)
                                         8,
                                         uri_list_bytes.len() as u32,
                                         &uri_list_bytes,
-                                    );
+                                    ) {
+                                        println!("[WARN] change_property failed for text/uri-list: {:?}", e);
+                                    } else {
+                                        println!("[DEBUG] X11 responding with text/uri-list: {} bytes", uri_list_bytes.len());
+                                    }
                                 } else if req.target == gnome_atom {
-                                    let _ = conn.change_property(
+                                    if let Err(e) = conn.change_property(
+                                        PropMode::REPLACE,
+                                        req.requestor,
+                                        property,
+                                        gnome_atom,  // Use target atom as type (X11/GTK convention for MIME targets)
+                                        8,
+                                        gnome_bytes.len() as u32,
+                                        &gnome_bytes,
+                                    ) {
+                                        println!("[WARN] change_property failed for gnome-copied-files: {:?}", e);
+                                    } else {
+                                        println!("[DEBUG] X11 responding with x-special/gnome-copied-files: {} bytes", gnome_bytes.len());
+                                    }
+                                } else if utf8_string_atom == Some(req.target) || req.target == string_atom {
+                                    // UTF8_STRING or STRING: return URI list as plain text
+                                    if let Err(e) = conn.change_property(
                                         PropMode::REPLACE,
                                         req.requestor,
                                         property,
                                         string_atom,
                                         8,
-                                        gnome_bytes.len() as u32,
-                                        &gnome_bytes,
-                                    );
+                                        text_bytes.len() as u32,
+                                        &text_bytes,
+                                    ) {
+                                        println!("[WARN] change_property failed for STRING: {:?}", e);
+                                    }
                                 } else {
+                                    // Unknown target — set empty property with None type
                                     let _ = conn.change_property(
                                         PropMode::REPLACE,
                                         req.requestor,
@@ -329,12 +421,14 @@ fn try_x11_multi_clipboard(file_uris: &[String]) -> bool {
                                     target: req.target,
                                     property,
                                 };
-                                let _ = conn.send_event(
+                                if let Err(e) = conn.send_event(
                                     false,
                                     req.requestor as u32,
                                     EventMask::NO_EVENT,
                                     notify,
-                                );
+                                ) {
+                                    println!("[WARN] send_event failed: {:?}", e);
+                                }
                                 let _ = conn.flush();
                             }
                         }
@@ -388,23 +482,91 @@ fn try_xclip_clipboard(paths: &[String]) -> Result<(), String> {
     Err("xclip failed".to_string())
 }
 
+/// Try setting clipboard via wl-copy with x-special/gnome-copied-files (Nautilus preferred format).
+/// Works on Wayland; silently fails on X11 (no Wayland compositor).
+fn try_wl_copy_gnome_files(file_uris: &[String]) -> bool {
+    let gnome_data = format!("copy\n{}\n", file_uris.join("\n"));
+
+    // Try x-special/gnome-copied-files first (Nautilus native format)
+    if let Ok(mut child) = std::process::Command::new("wl-copy")
+        .arg("--type")
+        .arg("x-special/gnome-copied-files")
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+    {
+        if let Some(mut stdin) = child.stdin.take() {
+            use std::io::Write;
+            if stdin.write_all(gnome_data.as_bytes()).is_ok() {
+                drop(stdin);
+                if child.wait().map(|s| s.success()).unwrap_or(false) {
+                    println!("[DEBUG] Files set via wl-copy (x-special/gnome-copied-files)");
+                    return true;
+                }
+            }
+        }
+    }
+
+    // Fallback: text/uri-list
+    let uri_list: String = file_uris.iter()
+        .map(|uri| format!("{}\r\n", uri))
+        .collect();
+    if let Ok(mut child) = std::process::Command::new("wl-copy")
+        .arg("--type")
+        .arg("text/uri-list")
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+    {
+        if let Some(mut stdin) = child.stdin.take() {
+            use std::io::Write;
+            if stdin.write_all(uri_list.as_bytes()).is_ok() {
+                drop(stdin);
+                if child.wait().map(|s| s.success()).unwrap_or(false) {
+                    println!("[DEBUG] Files set via wl-copy (text/uri-list)");
+                    return true;
+                }
+            }
+        }
+    }
+    false
+}
+
 pub unsafe fn set_clipboard_files(paths: Vec<String>) -> Result<(), String> {
     println!("[DEBUG] Setting {} files to clipboard: {:?}", paths.len(), paths);
 
     let file_uris: Vec<String> = paths.iter().map(|p| path_to_file_uri(p)).collect();
+    println!("[DEBUG] File URIs: {:?}", file_uris);
 
-    // Method 1: x11rb multi-target clipboard (text/uri-list + x-special/gnome-copied-files)
-    // Required by Nautilus and other GNOME file managers. Works on X11 and XWayland.
+    // Method 0: Try wl-copy (Wayland native clipboard — works if wl-copy is installed)
+    // No platform check: on X11 wl-copy silently fails, on Wayland it works natively.
+    if try_wl_copy_gnome_files(&file_uris) {
+        return Ok(());
+    }
+
+    // Method 1: x11rb multi-target clipboard (SYNCHRONOUS — preferred over xclip)
+    // x11rb synchronously acquires X11 CLIPBOARD ownership and verifies it before returning.
+    // xclip is async (spawns background process) — clipboard may not be ready when Ctrl+V is sent.
     if try_x11_multi_clipboard(&file_uris) {
         return Ok(());
     }
 
-    // Method 2: xclip fallback (X11 only, single target — Nautilus may not work)
-    if try_xclip_clipboard(&paths).is_ok() {
+    // Method 2: xclip with x-special/gnome-copied-files (async fallback)
+    if try_xclip_gnome_files(&file_uris) {
+        // xclip is async — give it time to acquire clipboard ownership before we return
+        std::thread::sleep(std::time::Duration::from_millis(50));
         return Ok(());
     }
 
-    // Method 3: Last resort — arboard (sets plain text, Nautilus won't work)
+    // Method 3: xclip with text/uri-list (async fallback, less reliable with Nautilus)
+    if try_xclip_clipboard(&paths).is_ok() {
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        return Ok(());
+    }
+
+    // Method 4: Last resort — arboard (sets plain text, Nautilus won't work)
     println!("[DEBUG] Falling back to arboard (file paste will not work in Nautilus)");
     let text_version: String = paths.join("\n");
     let mut clipboard = arboard::Clipboard::new().map_err(|e| e.to_string())?;
