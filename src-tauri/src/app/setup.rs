@@ -958,13 +958,26 @@ fn handle_blur(window: &tauri::Window) {
     let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as u64;
     if now.saturating_sub(LAST_SHOW_TIMESTAMP.load(Ordering::Relaxed)) < 500 { return; }
 
+    // Capture window position to detect drag (position changes during drag)
+    let pos_before = window.outer_position().ok();
+
     let w = window.clone();
     std::thread::spawn(move || {
         std::thread::sleep(std::time::Duration::from_millis(200));
         if matches!(w.is_focused(), Ok(false)) {
             if !IGNORE_BLUR.load(Ordering::Relaxed) && !WINDOW_PINNED.load(Ordering::Relaxed) {
-                let _ = w.hide();
-                NAVIGATION_ENABLED.store(false, Ordering::SeqCst);
+                // If the window moved, the user is dragging it — don't hide
+                let pos_after = w.outer_position().ok();
+                let is_dragging = match (pos_before, pos_after) {
+                    (Some(before), Some(after)) => {
+                        (before.x - after.x).abs() > 2 || (before.y - after.y).abs() > 2
+                    }
+                    _ => false,
+                };
+                if !is_dragging {
+                    let _ = w.hide();
+                    NAVIGATION_ENABLED.store(false, Ordering::SeqCst);
+                }
             }
         }
     });

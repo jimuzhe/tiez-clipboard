@@ -13,6 +13,7 @@ import {
   X
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { getTagColor } from "../../../shared/lib/utils";
 
 interface AppHeaderProps {
@@ -109,10 +110,14 @@ const AppHeader = ({
       }
     }}
   >
-    <div className="header-top">
+    <div className="header-top" onMouseDown={() => {
+        // Start window drag for gap area between buttons.
+        // Button clicks are blocked by stopPropagation on each button.
+        getCurrentWindow().startDragging().catch(() => {});
+      }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
         {(showSettings || showTagManager || showEmojiPanel) && (
-          <button className="btn-icon" onClick={() => {
+          <button className="btn-icon" onMouseDown={(e) => e.stopPropagation()} onClick={() => {
             if (chatMode) setChatMode(false);
             else if (showEmojiPanel) setShowEmojiPanel(false);
             else if (showTagManager) setShowTagManager(false);
@@ -131,11 +136,13 @@ const AppHeader = ({
                 : t('app_name')}
         </span>
       </div>
-      <div style={{ display: 'flex', gap: '4px' }}>
+      <div style={{ display: 'flex', gap: '4px' }}
+      >
         {/* Pin Button - Always visible but single instance */}
         <button
           className={`btn-icon ${isWindowPinned ? 'active' : ''}`}
           title={t('pin')}
+          onMouseDown={(e) => e.stopPropagation()}
           onClick={() => {
             const newVal = !isWindowPinned;
             setIsWindowPinned(newVal);
@@ -147,20 +154,20 @@ const AppHeader = ({
 
         {!showSettings && !showTagManager && !showEmojiPanel && (
           <>
-            <button className="btn-icon" title={t('clear_history')} onClick={clearHistory}>
+            <button className="btn-icon" title={t('clear_history')} onMouseDown={(e) => e.stopPropagation()} onClick={clearHistory}>
               <Trash2 size={16} />
             </button>
             {tagManagerEnabled && (
-              <button className="btn-icon" title={t('tag_manager') || '标签管理'} onClick={() => setShowTagManager(true)}>
+              <button className="btn-icon" title={t('tag_manager') || '标签管理'} onMouseDown={(e) => e.stopPropagation()} onClick={() => setShowTagManager(true)}>
                 <Tag size={16} />
               </button>
             )}
             {emojiPanelEnabled && (
-              <button className="btn-icon" title={t('emoji_panel') || '表情包'} onClick={() => setShowEmojiPanel(true)}>
+              <button className="btn-icon" title={t('emoji_panel') || '表情包'} onMouseDown={(e) => e.stopPropagation()} onClick={() => setShowEmojiPanel(true)}>
                 <Smile size={16} />
               </button>
             )}
-            <button className="btn-icon" title={t('settings')} onClick={() => setShowSettings(true)}>
+            <button className="btn-icon" title={t('settings')} onMouseDown={(e) => e.stopPropagation()} onClick={() => setShowSettings(true)}>
               <SettingsIcon size={16} />
             </button>
           </>
@@ -169,6 +176,7 @@ const AppHeader = ({
           <button
             className={`btn-icon ${chatMode && showSettings ? 'active' : ''}`}
             title="Chat"
+            onMouseDown={(e) => e.stopPropagation()}
             onClick={() => {
               if (showTagManager) setShowTagManager(false);
               if (!showSettings) {
@@ -185,7 +193,7 @@ const AppHeader = ({
             </div>
           </button>
         )}
-        <button className="btn-icon" title={t('hide')} onClick={async () => {
+        <button className="btn-icon" title={t('hide')} onMouseDown={(e) => e.stopPropagation()} onClick={async () => {
           invoke("hide_window_cmd").catch(console.error);
         }}>
           <X size={16} />

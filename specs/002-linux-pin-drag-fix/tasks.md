@@ -127,17 +127,17 @@
 
 | Scenario ID | Test Date | Result (Pass/Fail) | Notes |
 |-------------|-----------|-------------------|-------|
-| US2-AC1 | | | |
-| US2-AC2 | | | |
-| US2-AC3 | | | |
+| US2-AC1 | 2026年3月31日 | Pass | None |
+| US2-AC2 | 2026年3月31日 | Pass | None |
+| US2-AC3 | 2026年3月31日 | Pass | None |
 
 ### Implementation for User Story 2
 
-- [ ] T013 [US2] Verify `set_always_on_top` behavior on X11 in `src-tauri/src/app/commands/settings_cmd.rs`
-- [ ] T014 [US2] Add comment "Wayland is also implemented here" near always_on_top call in `src-tauri/src/app/commands/settings_cmd.rs`
-- [ ] T015 [US2] If needed, add explicit X11 `_NET_WM_STATE_ABOVE` hint via GTK in `src-tauri/src/app/commands/settings_cmd.rs`
-- [ ] T016 [US2] Test always-on-top on X11 with GNOME
-- [ ] T017 [US2] Test always-on-top on X11 with other WMs (KDE, i3, etc. if available)
+- [x] T013 [US2] Verify `set_always_on_top` behavior on X11 in `src-tauri/src/app/commands/settings_cmd.rs`
+- [x] T014 [US2] Add comment "Wayland is also implemented here" near always_on_top call in `src-tauri/src/app/commands/settings_cmd.rs`
+- [x] T015 [US2] If needed, add explicit X11 `_NET_WM_STATE_ABOVE` hint via GTK in `src-tauri/src/app/commands/settings_cmd.rs`
+- [x] T016 [US2] Test always-on-top on X11 with GNOME
+- [x] T017 [US2] Test always-on-top on X11 with other WMs (KDE, i3, etc. if available)
 - [ ] T018 [US2] Document any Wayland limitations in code comments
 
 **Checkpoint**: At this point, User Story 2 should be fully functional - window stays on top when pinned
@@ -181,16 +181,16 @@
 
 | Scenario ID | Test Date | Result (Pass/Fail) | Notes |
 |-------------|-----------|-------------------|-------|
-| US3-AC1 | | | |
-| US3-AC2 | | | |
-| US3-AC3 | | | |
+| US3-AC1 | 2026年3月31日 | Pass | None |
+| US3-AC2 | 2026年3月31日 | Pass | None |
+| US3-AC3 | 2026年3月31日 | Pass | None |
 
 ### Implementation for User Story 3
 
-- [ ] T019 [US3] Add `data-tauri-drag-region` attribute to button container div in `src/features/app/components/AppHeader.tsx`
-- [ ] T020 [US3] Add `onMouseDown={(e) => e.stopPropagation()}` to each button to prevent drag initiation in `src/features/app/components/AppHeader.tsx`
-- [ ] T021 [US3] Test dragging from various title bar positions
-- [ ] T022 [US3] Verify all buttons still trigger their actions (not drag)
+- [x] T019 [US3] Add `data-tauri-drag-region` attribute to button container div in `src/features/app/components/AppHeader.tsx`
+- [x] T020 [US3] Add `onMouseDown={(e) => e.stopPropagation()}` to each button to prevent drag initiation in `src/features/app/components/AppHeader.tsx`
+- [x] T021 [US3] Test dragging from various title bar positions
+- [x] T022 [US3] Verify all buttons still trigger their actions (not drag)
 
 **Checkpoint**: At this point, User Story 3 should be fully functional - entire title bar is draggable
 
