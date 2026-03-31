@@ -97,8 +97,6 @@ pub async fn copy_to_clipboard(
     paste_with_format: Option<bool>,
     move_to_top: Option<bool>,
 ) -> AppResult<()> {
-    println!("[DEBUG] copy_to_clipboard called: id={}, paste={}, content_type={}, content_len={}", id, paste, content_type, content.len());
-
     let mut html_content: Option<String> = None;
 
     // 0. Resolve full content if ID is provided and content is placeholder/truncated
@@ -194,7 +192,6 @@ async fn handle_window_focus_for_paste(app_handle: &tauri::AppHandle, content_ty
                         .output()
                     {
                         let name = String::from_utf8_lossy(&name_out.stdout).trim().to_string();
-                        println!("[DEBUG] Linux getactivewindow: {} ({})", w, name);
                     }
                     target_wid = Some(w);
                 }
@@ -261,7 +258,6 @@ async fn handle_window_focus_for_paste(app_handle: &tauri::AppHandle, content_ty
                                 .unwrap_or_default();
 
                             if blacklist.iter().any(|b| name == *b) {
-                                println!("[DEBUG] Linux skipping helper/desktop window: {} (name={})", wid, name);
                                 continue;
                             }
 
@@ -273,8 +269,6 @@ async fn handle_window_focus_for_paste(app_handle: &tauri::AppHandle, content_ty
                                 .map(|o| String::from_utf8_lossy(&o.stdout).contains("ICONIC"))
                                 .unwrap_or(false);
 
-                            println!("[DEBUG] Linux candidate FM window: {} (name={}, minimized={})", wid, name, is_minimized);
-
                             if is_minimized {
                                 minimized_candidates.push(*wid);
                             } else {
@@ -285,7 +279,6 @@ async fn handle_window_focus_for_paste(app_handle: &tauri::AppHandle, content_ty
                         // Prefer visible windows; fall back to minimized (will be un-minimized by windowactivate)
                         let pool = if !visible_candidates.is_empty() { &visible_candidates } else { &minimized_candidates };
                         if let Some(&wid) = pool.last() {
-                            println!("[DEBUG] Linux found file manager window: {} ({})", wid, class);
                             target_wid = Some(wid);
                             break;
                         }
@@ -301,10 +294,8 @@ async fn handle_window_focus_for_paste(app_handle: &tauri::AppHandle, content_ty
                 .output()
             {
                 let name = String::from_utf8_lossy(&output.stdout).trim().to_string();
-                println!("[DEBUG] Linux target paste window: {} ({})", wid, name);
             }
         } else {
-            println!("[DEBUG] Linux: no target window found for paste");
         }
 
         // Step 2: Hide our window (non-pinned only)
@@ -323,7 +314,6 @@ async fn handle_window_focus_for_paste(app_handle: &tauri::AppHandle, content_ty
         // On GNOME Shell, _NET_ACTIVE_WINDOW and actual keyboard focus can
         // diverge, so we use both WM-level activation and direct X11 focus.
         if let Some(wid) = target_wid {
-            println!("[DEBUG] Linux activating window {} for paste", wid);
             // WM-level activation (un-minimizes, raises, sets _NET_ACTIVE_WINDOW)
             let _ = std::process::Command::new("xdotool")
                 .args(["windowactivate", "--sync", &wid.to_string()])
@@ -416,7 +406,6 @@ async fn restore_focus_before_paste(_app_handle: &tauri::AppHandle) -> AppResult
     {
         let last_wid = crate::LAST_ACTIVE_X11_WINDOW.load(Ordering::Relaxed);
         if last_wid != 0 {
-            println!("[DEBUG] Linux restoring focus to X11 window: {}", last_wid);
             let _ = std::process::Command::new("xdotool")
                 .args(["windowactivate", "--sync", &last_wid.to_string()])
                 .output();
@@ -700,7 +689,6 @@ fn copy_image_bytes_to_clipboard(
 async fn copy_text_with_retry(
     content: &str,
 ) -> AppResult<()> {
-    println!("[DEBUG] Copying text to clipboard: {} chars", content.len());
     let mut retries = 3;
     while retries > 0 {
         let res = {
@@ -710,12 +698,10 @@ async fn copy_text_with_retry(
 
         match res {
             Ok(_) => {
-                println!("[DEBUG] Text copied to clipboard successfully");
                 return Ok(());
             }
             Err(_e) if retries > 1 => {
                 retries -= 1;
-                println!("[DEBUG] Clipboard set failed, retrying... ({} left)", retries);
                 tokio::time::sleep(std::time::Duration::from_millis(50)).await;
             }
             Err(e) => return Err(AppError::Internal(format!("Clipboard error: {}", e))),
@@ -733,8 +719,6 @@ async fn perform_paste_action(
     content_type: &str,
     move_to_top: Option<bool>,
 ) -> AppResult<()> {
-    println!("[DEBUG] perform_paste_action: pinned={}", crate::WINDOW_PINNED.load(Ordering::Relaxed));
-    
     // Settling time is now mostly handled in handle_window_focus_for_paste
     // But we add a small extra buffer here to be absolutely sure the focus is solid
     tokio::time::sleep(std::time::Duration::from_millis(40)).await;
@@ -780,7 +764,6 @@ async fn hide_window_after_paste(app_handle: &tauri::AppHandle) {
     if crate::WINDOW_PINNED.load(Ordering::Relaxed) {
         // Pinned mode: window was never hidden — nothing to restore.
         // Window stays visible with set_focusable(false) so it doesn't steal focus.
-        println!("[DEBUG] Pinned window: no hide/show needed after paste");
         return;
     }
 
@@ -796,7 +779,6 @@ async fn hide_window_after_paste(app_handle: &tauri::AppHandle) {
 }
 
 pub fn send_paste_keystroke(method: &str, content: Option<&str>, content_type: Option<&str>) {
-    println!("[DEBUG] Sending paste keystroke using method: {}", method);
     #[cfg(target_os = "windows")]
     unsafe {
         use windows::Win32::UI::Input::KeyboardAndMouse::{
@@ -1112,7 +1094,6 @@ pub fn send_paste_keystroke(method: &str, content: Option<&str>, content_type: O
                 .output()
                 .map(|o| {
                     let name = String::from_utf8_lossy(&o.stdout).trim().to_string();
-                    println!("[DEBUG] Active window before paste: {}", name);
                 });
         }
 
@@ -1134,7 +1115,6 @@ pub fn send_paste_keystroke(method: &str, content: Option<&str>, content_type: O
                 _ => continue,
             };
             if std::process::Command::new(*tool).args(args).spawn().is_ok() {
-                println!("[DEBUG] Paste keystroke sent via {} ({}, display={:?})", tool, method, display);
                 return;
             }
         }

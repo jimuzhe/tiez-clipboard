@@ -76,7 +76,6 @@ pub fn toggle_window(app: &AppHandle) {
                             .filter_map(|l| l.trim().parse().ok())
                             .collect();
                         if !our_windows.contains(&wid) {
-                            println!("[DEBUG] Linux saved last active X11 window: {}", wid);
                             crate::LAST_ACTIVE_X11_WINDOW.store(wid, Ordering::Relaxed);
                         }
                     }

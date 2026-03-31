@@ -159,7 +159,6 @@ pub fn paste_next_step(app_handle: tauri::AppHandle) {
                         },
                     };
                     SendInput(&[alt_restore], std::mem::size_of::<INPUT>() as i32);
-                    println!("[DEBUG] Restored Alt key state for continuous sequential paste");
                 }
             }
 

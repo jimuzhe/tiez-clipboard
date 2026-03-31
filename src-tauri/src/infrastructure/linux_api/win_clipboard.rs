@@ -22,7 +22,6 @@ pub unsafe fn get_clipboard_image() -> Option<ImageData> {
     // First try arboard (handles most cases)
     if let Ok(mut clipboard) = arboard::Clipboard::new() {
         if let Ok(image) = clipboard.get_image() {
-            println!("[DEBUG] Linux got image via arboard: {}x{}, {} bytes", image.width, image.height, image.bytes.len());
             return Some(ImageData {
                 width: image.width,
                 height: image.height,
@@ -43,7 +42,6 @@ pub unsafe fn get_clipboard_image() -> Option<ImageData> {
                     std::time::Duration::from_millis(200),
                 ) {
                     if !data.is_empty() {
-                        println!("[DEBUG] Linux got {} bytes via x11 {} format", data.len(), mime_type);
                         // Try to decode the image
                         if let Ok(img) = image::load_from_memory(&data) {
                             let img = img.to_rgba8();
@@ -60,7 +58,6 @@ pub unsafe fn get_clipboard_image() -> Option<ImageData> {
         }
     }
 
-    println!("[DEBUG] Linux: No image found in clipboard");
     None
 }
 
@@ -97,7 +94,6 @@ pub unsafe fn get_clipboard_files() -> Option<Vec<String>> {
 
             if let Ok(data) = result {
                 let uri_list = String::from_utf8_lossy(&data);
-                println!("[DEBUG] Raw text/uri-list: {:?}", uri_list);
 
                 let files: Vec<String> = uri_list
                     .lines()
@@ -107,7 +103,6 @@ pub unsafe fn get_clipboard_files() -> Option<Vec<String>> {
                     .collect();
 
                 if !files.is_empty() {
-                    println!("[DEBUG] Linux found {} valid files via text/uri-list: {:?}", files.len(), files);
                     return Some(files);
                 }
             }
@@ -128,7 +123,6 @@ pub unsafe fn get_clipboard_files() -> Option<Vec<String>> {
 
             if let Ok(data) = result {
                 let raw = String::from_utf8_lossy(&data);
-                println!("[DEBUG] Raw x-special/gnome-copied-files: {:?}", raw);
 
                 let lines: Vec<&str> = raw.lines().collect();
                 if lines.len() > 1 {
@@ -141,7 +135,6 @@ pub unsafe fn get_clipboard_files() -> Option<Vec<String>> {
                         .collect();
 
                     if !files.is_empty() {
-                        println!("[DEBUG] Linux found {} valid files via gnome-copied-files: {:?}", files.len(), files);
                         return Some(files);
                     }
                 }
@@ -152,7 +145,6 @@ pub unsafe fn get_clipboard_files() -> Option<Vec<String>> {
     // Fallback to arboard for plain text with file:// URIs
     let mut clipboard = arboard::Clipboard::new().ok()?;
     let text = clipboard.get_text().ok()?;
-    println!("[DEBUG] Linux clipboard text: {:?}", text);
 
     let lines: Vec<String> = text
         .lines()
@@ -162,10 +154,8 @@ pub unsafe fn get_clipboard_files() -> Option<Vec<String>> {
         .collect();
 
     if lines.is_empty() {
-        println!("[DEBUG] No valid files found in clipboard");
         None
     } else {
-        println!("[DEBUG] Found {} valid files: {:?}", lines.len(), lines);
         Some(lines)
     }
 }
@@ -267,8 +257,6 @@ fn try_x11_multi_clipboard(file_uris: &[String]) -> bool {
         _ => return false,
     }
 
-    println!("[DEBUG] X11 multi-target clipboard owner set (text/uri-list + x-special/gnome-copied-files)");
-
     std::thread::spawn(move || {
         let timeout = std::time::Duration::from_secs(60);
         let start = std::time::Instant::now();
@@ -355,7 +343,6 @@ fn try_xclip_gnome_files(file_uris: &[String]) -> bool {
             if stdin.write_all(gnome_data.as_bytes()).is_ok() {
                 drop(stdin);
                 if child.wait().map(|s| s.success()).unwrap_or(false) {
-                    println!("[DEBUG] Files set via xclip (x-special/gnome-copied-files)");
                     return true;
                 }
             }
@@ -378,7 +365,6 @@ fn try_xclip_gnome_files(file_uris: &[String]) -> bool {
             if stdin.write_all(uri_list.as_bytes()).is_ok() {
                 drop(stdin);
                 if child.wait().map(|s| s.success()).unwrap_or(false) {
-                    println!("[DEBUG] Files set via xclip (text/uri-list)");
                     return true;
                 }
             }
@@ -408,7 +394,6 @@ fn try_wl_copy_gnome_files(file_uris: &[String]) -> bool {
             if stdin.write_all(gnome_data.as_bytes()).is_ok() {
                 drop(stdin);
                 if child.wait().map(|s| s.success()).unwrap_or(false) {
-                    println!("[DEBUG] Files set via wl-copy (x-special/gnome-copied-files)");
                     return true;
                 }
             }
@@ -432,7 +417,6 @@ fn try_wl_copy_gnome_files(file_uris: &[String]) -> bool {
             if stdin.write_all(uri_list.as_bytes()).is_ok() {
                 drop(stdin);
                 if child.wait().map(|s| s.success()).unwrap_or(false) {
-                    println!("[DEBUG] Files set via wl-copy (text/uri-list)");
                     return true;
                 }
             }
@@ -442,10 +426,7 @@ fn try_wl_copy_gnome_files(file_uris: &[String]) -> bool {
 }
 
 pub unsafe fn set_clipboard_files(paths: Vec<String>) -> Result<(), String> {
-    println!("[DEBUG] Setting {} files to clipboard: {:?}", paths.len(), paths);
-
     let file_uris: Vec<String> = paths.iter().map(|p| path_to_file_uri(p)).collect();
-    println!("[DEBUG] File URIs: {:?}", file_uris);
 
     let display = super::detect_display_server();
     match display {
@@ -472,7 +453,6 @@ pub unsafe fn set_clipboard_files(paths: Vec<String>) -> Result<(), String> {
 }
 
 fn fallback_arboard(paths: &[String]) -> Result<(), String> {
-    println!("[DEBUG] Falling back to arboard (file paste will not work in Nautilus)");
     let text_version: String = paths.join("\n");
     let mut clipboard = arboard::Clipboard::new().map_err(|e| e.to_string())?;
     clipboard.set_text(text_version).map_err(|e| e.to_string())
