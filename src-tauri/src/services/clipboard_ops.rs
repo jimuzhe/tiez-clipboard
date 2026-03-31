@@ -307,13 +307,10 @@ async fn handle_window_focus_for_paste(app_handle: &tauri::AppHandle, content_ty
             println!("[DEBUG] Linux: no target window found for paste");
         }
 
-        // Step 2: Hide our window
-        if crate::WINDOW_PINNED.load(Ordering::Relaxed) {
-            if let Some(window) = app_handle.get_webview_window("main") {
-                let _ = window.hide();
-            }
-            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-        } else {
+        // Step 2: Hide our window (non-pinned only)
+        // Pinned mode: window is already set_focusable(false) — xdotool can
+        // activate the target window without hiding ours. No flicker.
+        if !crate::WINDOW_PINNED.load(Ordering::Relaxed) {
             if let Some(window) = app_handle.get_webview_window("main") {
                 let _ = window.hide();
                 crate::IS_HIDDEN.store(false, std::sync::atomic::Ordering::Relaxed);
@@ -781,32 +778,18 @@ async fn perform_paste_action(
 
 async fn hide_window_after_paste(app_handle: &tauri::AppHandle) {
     if crate::WINDOW_PINNED.load(Ordering::Relaxed) {
-        #[cfg(target_os = "linux")]
-        {
-            // Wait for the target app to process the paste before restoring our window.
-            // If we restore too quickly, the window show steals focus back from Nautilus.
-            tokio::time::sleep(std::time::Duration::from_millis(200)).await;
-            if let Some(window) = app_handle.get_webview_window("main") {
-                let _ = window.set_focusable(false);
-                let _ = window.show();
-            }
-            println!("[DEBUG] Pinned window restored after paste delay");
-        }
-        #[cfg(not(target_os = "linux"))]
-        {
-            if let Some(window) = app_handle.get_webview_window("main") {
-                let _ = window.set_focusable(false);
-            }
-            let _ = restore_focus_before_paste(app_handle).await;
-        }
+        // Pinned mode: window was never hidden — nothing to restore.
+        // Window stays visible with set_focusable(false) so it doesn't steal focus.
+        println!("[DEBUG] Pinned window: no hide/show needed after paste");
         return;
     }
 
+    // Non-pinned (auto-hide) mode: hide the window
     if let Some(window) = app_handle.get_webview_window("main") {
         let _ = window.set_focusable(false);
         let _ = window.hide();
         crate::IS_HIDDEN.store(false, std::sync::atomic::Ordering::Relaxed);
-        crate::NAVIGATION_ENABLED.store(false, Ordering::Relaxed); // Disable navigation like hide_window_cmd does
+        crate::NAVIGATION_ENABLED.store(false, Ordering::Relaxed);
         crate::app::window_manager::release_win_keys();
         tokio::time::sleep(std::time::Duration::from_millis(20)).await;
     }
