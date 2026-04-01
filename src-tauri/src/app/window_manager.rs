@@ -332,7 +332,7 @@ pub fn toggle_window(app: &AppHandle) {
 
         #[cfg(not(windows))]
         {
-            let _ = window.show();
+            show_and_raise(&window);
         }
     }
 }
@@ -487,4 +487,33 @@ pub fn release_win_keys() {
 
 pub fn is_main_window_focused() -> bool {
     IS_MAIN_WINDOW_FOCUSED.load(Ordering::Relaxed)
+}
+
+/// On GNOME/Mutter, `window.show()` alone does not raise the window above the
+/// currently focused one because Mutter applies focus-stealing prevention.
+/// This helper shows the window and then explicitly activates it via
+/// `xdotool windowactivate` so it appears on top of all other windows.
+#[cfg(target_os = "linux")]
+pub fn show_and_raise(window: &tauri::WebviewWindow) {
+    let _ = window.show();
+    let pid = std::process::id().to_string();
+    if let Ok(search) = std::process::Command::new("xdotool")
+        .args(["search", "--pid", &pid, "--onlyvisible"])
+        .output()
+    {
+        if let Some(wid) = String::from_utf8_lossy(&search.stdout)
+            .lines()
+            .filter_map(|l| l.trim().parse::<u64>().ok())
+            .last()
+        {
+            let _ = std::process::Command::new("xdotool")
+                .args(["windowactivate", &wid.to_string()])
+                .output();
+        }
+    }
+}
+
+#[cfg(not(target_os = "linux"))]
+pub fn show_and_raise(window: &tauri::WebviewWindow) {
+    let _ = window.show();
 }

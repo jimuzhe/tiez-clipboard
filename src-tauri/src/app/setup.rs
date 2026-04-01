@@ -1059,7 +1059,7 @@ fn setup_tray(app: &App, hide_tray: bool) {
         .menu(&menu)
         .on_menu_event(|app, event| {
             if event.id.as_ref() == "show" {
-                if let Some(window) = app.get_webview_window("main") { let _ = window.show(); }
+                if let Some(window) = app.get_webview_window("main") { crate::app::window_manager::show_and_raise(&window); }
             } else if event.id.as_ref() == "settings" {
                 if let Some(window) = app.get_webview_window("main") {
                     let _ = window.show();
@@ -1071,8 +1071,7 @@ fn setup_tray(app: &App, hide_tray: bool) {
         .on_tray_icon_event(|tray, event| {
             if let TrayIconEvent::Click { button: MouseButton::Left, .. } = event {
                 if let Some(window) = tray.app_handle().get_webview_window("main") {
-                    let _ = window.show();
-                    let _ = window.set_focus();
+                    crate::app::window_manager::show_and_raise(&window);
                     let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as u64;
                     LAST_SHOW_TIMESTAMP.store(now, Ordering::Relaxed);
                 }
