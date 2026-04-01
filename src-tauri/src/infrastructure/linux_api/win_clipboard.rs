@@ -1,6 +1,7 @@
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Mutex;
 
+#[derive(Clone)]
 pub struct ImageData {
     pub width: usize,
     pub height: usize,

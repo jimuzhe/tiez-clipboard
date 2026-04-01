@@ -277,6 +277,11 @@ pub fn get_executable_icon(executable_path: String) -> AppResult<Option<String>>
     Ok(icon)
 }
 
+#[tauri::command]
+pub fn get_file_icon(_file_path: String) -> AppResult<Option<String>> {
+    Ok(None)
+}
+
 static ICON_CACHE: OnceLock<Mutex<HashMap<String, Option<String>>>> = OnceLock::new();
 
 pub fn open_with_default(path: &str) -> Result<(), String> {
