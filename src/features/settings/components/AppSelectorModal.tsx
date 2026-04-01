@@ -60,11 +60,15 @@ const AppSelectorModal = ({ show, installedApps, theme, colorMode, t, onClose, o
                             className="btn-icon"
                             onClick={async () => {
                                 try {
+                                    const isLinux = navigator.platform.toLowerCase().includes('linux')
+                                        || navigator.userAgent.toLowerCase().includes('linux');
                                     const selected = await open({
                                         multiple: false,
                                         filters: [{
                                             name: 'Applications',
-                                            extensions: ['exe', 'cmd', 'bat', 'lnk']
+                                            extensions: isLinux
+                                                ? ['desktop', 'AppImage']
+                                                : ['exe', 'cmd', 'bat', 'lnk']
                                         }]
                                     });
                                     if (selected && show) {

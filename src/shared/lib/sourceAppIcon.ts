@@ -6,7 +6,8 @@ const sourceAppIconRequests = new Map<string, Promise<string | null>>();
 const normalizeSourceAppPath = (sourceAppPath?: string | null) => {
   const value = sourceAppPath?.trim();
   if (!value) return "";
-  return value.replace(/\//g, "\\").toLowerCase();
+  const isWindows = navigator.platform.toLowerCase().includes('win');
+  return isWindows ? value.replace(/\//g, "\\").toLowerCase() : value.toLowerCase();
 };
 
 export const peekSourceAppIcon = (sourceAppPath?: string | null) => {

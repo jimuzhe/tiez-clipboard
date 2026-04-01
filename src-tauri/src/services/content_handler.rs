@@ -100,15 +100,33 @@ fn get_app_path_for_content_type(
 
 async fn handle_url_content(app_path: &Option<String>, content: &str) -> Result<(), AppError> {
     if let Some(app) = app_path {
+        // Path exists on disk — launch directly
         if std::path::Path::new(app).exists() {
             Command::new(app)
                 .arg(content)
                 .spawn()
                 .map_err(|e| AppError::Internal(format!("启动程序失败: {}", e)))?;
             return Ok(());
-        } else {
+        }
+
+        // ── Linux: bare command names (e.g. "firefox") resolve via $PATH ──
+        #[cfg(target_os = "linux")]
+        {
+            if !app.contains('/') {
+                Command::new(app)
+                    .arg(content)
+                    .spawn()
+                    .map_err(|e| AppError::Internal(format!("Failed to launch: {}", e)))?;
+                return Ok(());
+            }
+            // Absolute path that doesn't exist — fall through to default
+            return launch_default_handler(content).await;
+        }
+
+        // ── Windows ──
+        #[cfg(target_os = "windows")]
+        {
             // Check for macOS-style paths on Windows to avoid invalid Start-Process calls
-            #[cfg(target_os = "windows")]
             if app.starts_with("/Applications/") || app.contains(".app") {
                 return launch_default_handler(content).await;
             }
@@ -120,25 +138,23 @@ async fn handle_url_content(app_path: &Option<String>, content: &str) -> Result<
                 content.replace("'", "''")
             );
 
-            #[cfg(target_os = "windows")]
-            {
-                let mut cmd = Command::new("powershell");
-                cmd.args(["-NoProfile", "-Command", &ps_script])
-                    .creation_flags(0x08000000);
-                
-                match cmd.spawn() {
-                    Ok(_) => return Ok(()),
-                    Err(e) => {
-                        println!("Failed to launch via powershell: {}, falling back to default", e);
-                        return launch_default_handler(content).await;
-                    }
+            let mut cmd = Command::new("powershell");
+            cmd.args(["-NoProfile", "-Command", &ps_script])
+                .creation_flags(0x08000000);
+
+            match cmd.spawn() {
+                Ok(_) => return Ok(()),
+                Err(e) => {
+                    println!("Failed to launch via powershell: {}, falling back to default", e);
+                    return launch_default_handler(content).await;
                 }
             }
-            
-            #[cfg(not(target_os = "windows"))]
-            {
-                return launch_default_handler(content).await;
-            }
+        }
+
+        // ── macOS / other ──
+        #[cfg(not(any(target_os = "windows", target_os = "linux")))]
+        {
+            return launch_default_handler(content).await;
         }
     } else {
         return launch_default_handler(content).await;
@@ -229,21 +245,38 @@ async fn launch_file_with_app(
     use_direct_path: bool,
 ) -> Result<(), AppError> {
     if let Some(app) = app_path {
+        // Path exists on disk — launch directly
         if std::path::Path::new(app).exists() {
             Command::new(app)
                 .arg(temp_path)
                 .spawn()
                 .map_err(|e| format!("启动程序失败: {}", e))?;
+            return Ok(());
+        }
 
-        } else {
-            // Check for macOS-style paths on Windows to avoid invalid WinRT/Start-Process calls
-            #[cfg(target_os = "windows")]
+        // ── Linux: bare command names resolve via $PATH ──
+        #[cfg(target_os = "linux")]
+        {
+            if !app.contains('/') {
+                Command::new(app)
+                    .arg(temp_path)
+                    .spawn()
+                    .map_err(|e| format!("Failed to launch: {}", e))?;
+                return Ok(());
+            }
+            // Absolute path that doesn't exist — fall back to default
+            return launch_with_default_app(path_str, content_type, use_direct_path);
+        }
+
+        // ── Windows ──
+        #[cfg(target_os = "windows")]
+        {
+            // Check for macOS-style paths on Windows
             if app.starts_with("/Applications/") || app.contains(".app") {
                 return launch_with_default_app(path_str, content_type, use_direct_path);
             }
 
             println!("Attempting to launch UWP app: {} for file: {}", app, path_str);
-            #[cfg(target_os = "windows")]
             if let Err(e) = launch_uwp_with_file(app, path_str).await {
                 println!("WinRT launch failed: {}, falling back to old method", e);
                 let safe_path = path_str.replace("'", "''");
@@ -251,36 +284,30 @@ async fn launch_file_with_app(
                     "Start-Process -FilePath 'shell:AppsFolder\\{}' -ArgumentList '{}'",
                     app, safe_path
                 );
-                {
-                    let mut cmd = Command::new("powershell");
-                    cmd.args(["-NoProfile", "-Command", &ps_script])
-                        .creation_flags(0x08000000);
-                    match cmd.spawn() {
-                        Ok(_) => return Ok(()),
-                        Err(err) => {
-                            println!("Fallback launch failed: {}, using system default", err);
-                            return launch_with_default_app(path_str, content_type, use_direct_path);
-                        }
+                let mut cmd = Command::new("powershell");
+                cmd.args(["-NoProfile", "-Command", &ps_script])
+                    .creation_flags(0x08000000);
+                match cmd.spawn() {
+                    Ok(_) => return Ok(()),
+                    Err(err) => {
+                        println!("Fallback launch failed: {}, using system default", err);
+                        return launch_with_default_app(path_str, content_type, use_direct_path);
                     }
                 }
             }
+            return Ok(());
+        }
 
-            #[cfg(target_os = "macos")]
-            {
-                let safe_path = path_str.replace("'", "''");
-                Command::new("open").arg(safe_path).spawn().map_err(|e| AppError::Internal(format!("启动 UWP 程序失败 (Fallback): {}", e)))?;
-            }
-
-            #[cfg(target_os = "linux")]
-            {
-                let safe_path = path_str.replace("'", "''");
-                Command::new("xdg-open").arg(safe_path).spawn().map_err(|e| AppError::Internal(format!("Failed to open file: {}", e)))?;
-            }
+        // ── macOS / other ──
+        #[cfg(not(any(target_os = "windows", target_os = "linux")))]
+        {
+            let safe_path = path_str.replace("'", "''");
+            Command::new("open").arg(safe_path).spawn().map_err(|e| AppError::Internal(format!("Failed to open file: {}", e)))?;
+            Ok(())
         }
     } else {
-        launch_with_default_app(path_str, content_type, use_direct_path)?;
+        launch_with_default_app(path_str, content_type, use_direct_path)
     }
-    Ok(())
 }
 
 fn launch_with_default_app(
