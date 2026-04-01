@@ -350,6 +350,22 @@ const App = () => {
   useEffect(() => {
     const handleKeydown = (event: KeyboardEvent) => {
       if (isRecording || isRecordingSequential || isRecordingRich || isRecordingSearch) return;
+
+      // ESC hides the window without quitting the app
+      if (event.key === 'Escape') {
+        const activeEl = document.activeElement as HTMLElement | null;
+        const isEditable = !!activeEl && (
+          activeEl.tagName === 'INPUT' ||
+          activeEl.tagName === 'TEXTAREA' ||
+          activeEl.isContentEditable
+        );
+        // If focused on an input, let the browser handle it (e.g. clear search)
+        if (isEditable) return;
+        event.preventDefault();
+        invoke("hide_window_cmd").catch(console.error);
+        return;
+      }
+
       if (!hotkey || hotkey === t('not_set')) return;
 
       const activeEl = document.activeElement as HTMLElement | null;
