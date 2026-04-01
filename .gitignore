@@ -27,3 +27,4 @@ Thumbs.db
 specs/
 .claude/
 CLAUDE.md
+pnpm-lock.yaml
