@@ -11,25 +11,18 @@ use windows::Win32::Foundation::{HWND, POINT};
 use windows::Win32::UI::WindowsAndMessaging::{GetCursorPos, GetWindowLongPtrW, SetWindowLongPtrW, GWL_EXSTYLE, WS_EX_NOACTIVATE};
 
 pub fn toggle_window(app: &AppHandle) {
-    if let Some(window) = app.get_webview_window("main") {
-        #[cfg(windows)]
-        let mut active_center: Option<(i32, i32)> = None;
-        let is_visible = window.is_visible().unwrap_or(false);
-        let is_hidden_by_edge = IS_HIDDEN.load(Ordering::Relaxed);
+    // Debounce: skip if window was shown very recently (prevents double-trigger
+    // from both XGrabKey and GNOME custom keybinding firing on the same keypress)
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_millis() as u64;
+    if now.saturating_sub(LAST_SHOW_TIMESTAMP.load(Ordering::Relaxed)) < 200 {
+        return;
+    }
 
-        if is_visible && !is_hidden_by_edge {
-            #[cfg(target_os = "windows")]
-            WindowExt::release_win_keys();
-            let _ = window.set_focusable(false);
-            let _ = window.hide();
-            
-            let _ = restore_last_focus(app.clone());
-            
-            IS_HIDDEN.store(false, Ordering::Relaxed);
-            NAVIGATION_ENABLED.store(false, Ordering::SeqCst);
-            NAVIGATION_MODE_ACTIVE.store(false, Ordering::SeqCst);
-            return;
-        }
+    if let Some(window) = app.get_webview_window("main") {
+        let is_hidden_by_edge = IS_HIDDEN.load(Ordering::Relaxed);
 
         IS_HIDDEN.store(false, Ordering::Relaxed);
         NAVIGATION_ENABLED.store(true, Ordering::SeqCst);
@@ -491,29 +484,29 @@ pub fn is_main_window_focused() -> bool {
 
 /// On GNOME/Mutter, `window.show()` alone does not raise the window above the
 /// currently focused one because Mutter applies focus-stealing prevention.
-/// This helper shows the window and then explicitly activates it via
-/// `xdotool windowactivate` so it appears on top of all other windows.
+/// We use `always_on_top` + `show` + `set_focus` which maps to GTK's own
+/// `gtk_window_set_keep_above` + `gtk_widget_show` + `gtk_window_present`,
+/// avoiding external tools like xdotool/wmctrl that fight Mutter's focus mgmt.
 #[cfg(target_os = "linux")]
 pub fn show_and_raise(window: &tauri::WebviewWindow) {
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_millis() as u64;
+    LAST_SHOW_TIMESTAMP.store(now, Ordering::Relaxed);
+
+    // Force above all windows via GTK hint — Mutter respects this
+    let _ = window.set_always_on_top(true);
     let _ = window.show();
-    let pid = std::process::id().to_string();
-    if let Ok(search) = std::process::Command::new("xdotool")
-        .args(["search", "--pid", &pid, "--onlyvisible"])
-        .output()
-    {
-        if let Some(wid) = String::from_utf8_lossy(&search.stdout)
-            .lines()
-            .filter_map(|l| l.trim().parse::<u64>().ok())
-            .last()
-        {
-            let _ = std::process::Command::new("xdotool")
-                .args(["windowactivate", &wid.to_string()])
-                .output();
-        }
-    }
+    let _ = window.set_focus();
 }
 
 #[cfg(not(target_os = "linux"))]
 pub fn show_and_raise(window: &tauri::WebviewWindow) {
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_millis() as u64;
+    LAST_SHOW_TIMESTAMP.store(now, Ordering::Relaxed);
     let _ = window.show();
 }

@@ -94,9 +94,19 @@ const AppHeader = ({
     }
   };
 
+  const handleDragStart = async () => {
+    try {
+      const win = getCurrentWindow();
+      if (await win.isVisible()) {
+        await win.startDragging();
+      }
+    } catch {
+      // Window may be in a transitional state, ignore drag errors
+    }
+  };
+
   return (
   <header
-    data-tauri-drag-region
     onMouseDown={(e) => {
       // Don't drag if clicking on interactive elements
       const target = e.target as HTMLElement;
@@ -110,10 +120,13 @@ const AppHeader = ({
       }
     }}
   >
-    <div className="header-top" onMouseDown={() => {
-        // Start window drag for gap area between buttons.
-        // Button clicks are blocked by stopPropagation on each button.
-        getCurrentWindow().startDragging().catch(() => {});
+    <div className="header-top" onMouseDown={(e) => {
+        // Don't drag if clicking on interactive elements
+        const target = e.target as HTMLElement;
+        if (target.closest('button, input, select, textarea, [role="button"]')) {
+          return;
+        }
+        handleDragStart();
       }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
         {(showSettings || showTagManager || showEmojiPanel) && (
