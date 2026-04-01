@@ -639,8 +639,370 @@ fn start_edge_docking_monitor(app_handle: AppHandle) {
     });
 }
 
-#[cfg(not(target_os = "windows"))]
-fn start_edge_docking_monitor(_app_handle: AppHandle) {}
+#[cfg(target_os = "linux")]
+fn start_edge_docking_monitor(app_handle: AppHandle) {
+    fn get_mouse_pos() -> Option<(i32, i32)> {
+        let output = std::process::Command::new("xdotool")
+            .args(["getmouselocation", "--shell"])
+            .output()
+            .ok()?;
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let mut x: Option<i32> = None;
+        let mut y: Option<i32> = None;
+        for line in stdout.lines() {
+            if let Some(rest) = line.strip_prefix("X=") {
+                x = rest.trim().parse().ok();
+            } else if let Some(rest) = line.strip_prefix("Y=") {
+                y = rest.trim().parse().ok();
+            }
+        }
+        match (x, y) {
+            (Some(xv), Some(yv)) => Some((xv, yv)),
+            _ => None,
+        }
+    }
+
+    /// Read _NET_WORKAREA from X11 root window to get usable area (excluding panels).
+    /// Returns (left, top, right, bottom) of the first work area entry.
+    fn get_work_area() -> Option<(i32, i32, i32, i32)> {
+        let output = std::process::Command::new("xprop")
+            .args(["-root", "_NET_WORKAREA"])
+            .output()
+            .ok()?;
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        // Format: _NET_WORKAREA(CARDINAL) = 0, 32, 1920, 1048, ...
+        // Each 4 values: x, y, width, height
+        if let Some(rest) = stdout.split('=').nth(1) {
+            let nums: Vec<i32> = rest
+                .split([',', ' '])
+                .filter_map(|s| s.trim().parse().ok())
+                .collect();
+            if nums.len() >= 4 {
+                return Some((nums[0], nums[1], nums[0] + nums[2], nums[1] + nums[3]));
+            }
+        }
+        None
+    }
+
+    std::thread::spawn(move || {
+        let mut log_throttle = std::time::Instant::now();
+        let mut cached_work_area: Option<(i32, i32, i32, i32)> = None;
+        let mut work_area_check = std::time::Instant::now();
+
+        loop {
+            std::thread::sleep(std::time::Duration::from_millis(150));
+
+            // Refresh work area periodically (accounts for panel changes)
+            if work_area_check.elapsed() >= std::time::Duration::from_secs(5) {
+                cached_work_area = get_work_area();
+                work_area_check = std::time::Instant::now();
+            }
+
+            let settings = match app_handle.try_state::<SettingsState>() {
+                Some(s) => s,
+                None => continue,
+            };
+
+            if !settings.edge_docking.load(Ordering::Relaxed) {
+                if IS_HIDDEN.load(Ordering::Relaxed) {
+                    if let Some(window) = app_handle.get_webview_window("main") {
+                        let _ = window.show();
+                        IS_HIDDEN.store(false, Ordering::Relaxed);
+                        CURRENT_DOCK.store(0, Ordering::Relaxed);
+                    }
+                }
+                continue;
+            }
+
+            if let Some(window) = app_handle.get_webview_window("main") {
+                if window.is_minimized().unwrap_or(false) {
+                    continue;
+                }
+
+                let is_window_visible = window.is_visible().unwrap_or(true);
+                let is_hidden_by_edge = IS_HIDDEN.load(Ordering::Relaxed);
+
+                if !is_window_visible && !is_hidden_by_edge {
+                    continue;
+                }
+
+                let last_show = LAST_SHOW_TIMESTAMP.load(Ordering::Relaxed);
+                let now = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_millis() as u64;
+
+                if !is_hidden_by_edge
+                    && NAVIGATION_ENABLED.load(Ordering::SeqCst)
+                    && now.saturating_sub(last_show) < 800
+                {
+                    continue;
+                }
+
+                if now.saturating_sub(last_show) < 500 {
+                    continue;
+                }
+
+                // When hidden by edge, use saved geometry (window is invisible, outer_position may fail)
+                let (rect_left, rect_top, rect_right, rect_bottom) = if is_hidden_by_edge {
+                    let sx = SAVED_HIDE_X.load(Ordering::Relaxed);
+                    let sy = SAVED_HIDE_Y.load(Ordering::Relaxed);
+                    let sw = SAVED_HIDE_W.load(Ordering::Relaxed);
+                    let sh = SAVED_HIDE_H.load(Ordering::Relaxed);
+                    (sx, sy, sx + sw, sy + sh)
+                } else {
+                    let pos = match window.outer_position() {
+                        Ok(p) => p,
+                        Err(_) => continue,
+                    };
+                    let size = match window.outer_size() {
+                        Ok(s) => s,
+                        Err(_) => continue,
+                    };
+                    (pos.x, pos.y, pos.x + size.width as i32, pos.y + size.height as i32)
+                };
+
+                let (mouse_x, mouse_y) = match get_mouse_pos() {
+                    Some(p) => p,
+                    None => continue,
+                };
+
+                let (screen_left, screen_top, screen_right, screen_bottom) = if is_hidden_by_edge {
+                    (
+                        SAVED_SCREEN_LEFT.load(Ordering::Relaxed),
+                        SAVED_SCREEN_TOP.load(Ordering::Relaxed),
+                        SAVED_SCREEN_RIGHT.load(Ordering::Relaxed),
+                        SAVED_SCREEN_BOTTOM.load(Ordering::Relaxed),
+                    )
+                } else {
+                    let monitor = match window.current_monitor() {
+                        Ok(Some(m)) => m,
+                        _ => continue,
+                    };
+                    let screen_size = monitor.size();
+                    let screen_pos = monitor.position();
+                    let ml = screen_pos.x;
+                    let mt = screen_pos.y;
+                    let mr = screen_pos.x + screen_size.width as i32;
+                    let mb = screen_pos.y + screen_size.height as i32;
+
+                    // Intersect with work area (excludes panels like GNOME top bar)
+                    if let Some((wl, wt, wr, wb)) = cached_work_area {
+                        (wl.max(ml), wt.max(mt), wr.min(mr), wb.min(mb))
+                    } else {
+                        (ml, mt, mr, mb)
+                    }
+                };
+
+                let threshold = 5;
+
+                // Throttled state log (every ~3s)
+                if log_throttle.elapsed() >= std::time::Duration::from_secs(3) {
+                    log_throttle = std::time::Instant::now();
+                    info!(
+                        "[edge-dock] state: visible={}, hidden_by_edge={}, nav_enabled={}, pinned={} | \
+                         window=({},{},{},{}) screen=({},{},{},{}) | mouse=({},{}), last_show_ago={}ms",
+                        is_window_visible, is_hidden_by_edge,
+                        NAVIGATION_ENABLED.load(Ordering::SeqCst),
+                        WINDOW_PINNED.load(Ordering::Relaxed),
+                        rect_left, rect_top, rect_right, rect_bottom,
+                        screen_left, screen_top, screen_right, screen_bottom,
+                        mouse_x, mouse_y,
+                        now.saturating_sub(last_show),
+                    );
+                }
+
+                let is_mouse_near_edge = if is_hidden_by_edge {
+                    let current_dock = CURRENT_DOCK.load(Ordering::Relaxed);
+                    // Use a thin strip just inside the work area edge as the trigger zone.
+                    // This avoids the GNOME panel gap issue where the trigger extends into
+                    // the panel area (y=0..32), causing reveal→hide flicker because the
+                    // mouse is "near edge" but not actually inside the revealed window.
+                    let trigger = 3;
+                    match current_dock {
+                        1 => mouse_y >= screen_top && mouse_y <= screen_top + trigger
+                            && mouse_x >= rect_left && mouse_x <= rect_right,
+                        2 => mouse_x >= screen_left && mouse_x <= screen_left + trigger
+                            && mouse_y >= rect_top && mouse_y <= rect_bottom,
+                        3 => mouse_x >= screen_right - trigger && mouse_x <= screen_right
+                            && mouse_y >= rect_top && mouse_y <= rect_bottom,
+                        _ => false,
+                    }
+                } else {
+                    false
+                };
+
+                let is_mouse_in = if is_hidden_by_edge {
+                    is_mouse_near_edge
+                } else {
+                    mouse_x >= rect_left
+                        && mouse_x <= rect_right
+                        && mouse_y >= rect_top
+                        && mouse_y <= rect_bottom
+                };
+
+                let window_center_x = (rect_left + rect_right) / 2;
+                let window_center_y = (rect_top + rect_bottom) / 2;
+                let is_on_current_monitor = window_center_x >= screen_left
+                    && window_center_x < screen_right
+                    && window_center_y >= screen_top
+                    && window_center_y < screen_bottom;
+
+                if !is_hidden_by_edge && !is_on_current_monitor {
+                    if IS_HIDDEN.load(Ordering::Relaxed) {
+                        IS_HIDDEN.store(false, Ordering::Relaxed);
+                        CURRENT_DOCK.store(0, Ordering::Relaxed);
+                    }
+                    continue;
+                }
+
+                let mut dock = DockPosition::None;
+                if rect_top <= screen_top + threshold {
+                    dock = DockPosition::Top;                } else if rect_left <= screen_left + threshold {
+                    dock = DockPosition::Left;
+                } else if rect_right >= screen_right - threshold {
+                    dock = DockPosition::Right;
+                }
+
+                if is_hidden_by_edge {
+                    if is_mouse_in {
+                        let current_dock = CURRENT_DOCK.load(Ordering::Relaxed);
+                        let dock_actual = match current_dock {
+                            1 => DockPosition::Top,
+                            2 => DockPosition::Left,
+                            3 => DockPosition::Right,
+                            _ => DockPosition::None,
+                        };
+
+                        info!(
+                            "[edge-dock] REVEAL: dock_actual={:?}, mouse=({},{}), rect=({},{},{},{})",
+                            dock_actual, mouse_x, mouse_y, rect_left, rect_top, rect_right, rect_bottom
+                        );
+
+                        if dock_actual != DockPosition::None {
+                            let _ = window.show();
+                            // Emit slide-in animation event
+                            let dock_name = match dock_actual {
+                                DockPosition::Top => "top",
+                                DockPosition::Left => "left",
+                                DockPosition::Right => "right",
+                                _ => "none",
+                            };
+                            let _ = app_handle.emit("edge-dock-slide", serde_json::json!({
+                                "action": "show",
+                                "dock": dock_name,
+                            }));
+                            match dock_actual {
+                                DockPosition::Top => {
+                                    let r = window.set_position(tauri::Position::Physical(
+                                        tauri::PhysicalPosition { x: rect_left, y: screen_top },
+                                    ));
+                                    info!("[edge-dock] REVEAL set_position(Top): {:?}", r);
+                                }
+                                DockPosition::Left => {
+                                    let r = window.set_position(tauri::Position::Physical(
+                                        tauri::PhysicalPosition { x: screen_left, y: rect_top },
+                                    ));
+                                    info!("[edge-dock] REVEAL set_position(Left): {:?}", r);
+                                }
+                                DockPosition::Right => {
+                                    let w = rect_right - rect_left;
+                                    let r = window.set_position(tauri::Position::Physical(
+                                        tauri::PhysicalPosition { x: screen_right - w, y: rect_top },
+                                    ));
+                                    info!("[edge-dock] REVEAL set_position(Right): {:?}", r);
+                                }
+                                _ => {}
+                            }
+                            IS_HIDDEN.store(false, Ordering::Relaxed);
+                            CURRENT_DOCK.store(0, Ordering::Relaxed);
+                            // Update timestamp to prevent immediate re-hide
+                            LAST_SHOW_TIMESTAMP.store(now, Ordering::Relaxed);
+                        }
+                    }
+                } else if dock != DockPosition::None {
+                    if is_mouse_in {
+                        continue;
+                    }
+
+                    if !IS_HIDDEN.load(Ordering::Relaxed) {
+                        info!(
+                            "[edge-dock] HIDE triggered: dock={:?}, mouse=({},{}), is_mouse_in={}",
+                            dock, mouse_x, mouse_y, is_mouse_in
+                        );
+
+                        if !WINDOW_PINNED.load(Ordering::Relaxed) {
+                            WINDOW_PINNED.store(true, Ordering::Relaxed);
+                            let r1 = window.set_always_on_top(true);
+                            let r2 = window.set_focusable(false);
+                            info!("[edge-dock] set pinned: always_on_top={:?}, set_focusable={:?}", r1, r2);
+                            let _ = app_handle.emit("window-pinned-changed", true);
+                        }
+
+                        // Save geometry before hiding (Linux WM blocks off-screen positioning)
+                        SAVED_HIDE_X.store(rect_left, Ordering::Relaxed);
+                        SAVED_HIDE_Y.store(rect_top, Ordering::Relaxed);
+                        SAVED_HIDE_W.store(rect_right - rect_left, Ordering::Relaxed);
+                        SAVED_HIDE_H.store(rect_bottom - rect_top, Ordering::Relaxed);
+                        SAVED_SCREEN_LEFT.store(screen_left, Ordering::Relaxed);
+                        SAVED_SCREEN_TOP.store(screen_top, Ordering::Relaxed);
+                        SAVED_SCREEN_RIGHT.store(screen_right, Ordering::Relaxed);
+                        SAVED_SCREEN_BOTTOM.store(screen_bottom, Ordering::Relaxed);
+
+                        let dock_id = match dock {
+                            DockPosition::Top => 1,
+                            DockPosition::Left => 2,
+                            DockPosition::Right => 3,
+                            _ => 0,
+                        };
+                        CURRENT_DOCK.store(dock_id, Ordering::Relaxed);
+
+                        info!(
+                            "[edge-dock] HIDE: emitting slide event, dock={:?}, saved=({},{},{},{})",
+                            dock, rect_left, rect_top, rect_right - rect_left, rect_bottom - rect_top
+                        );
+                        // Emit slide-out animation event, then wait for frontend animation
+                        let dock_name = match dock {
+                            DockPosition::Top => "top",
+                            DockPosition::Left => "left",
+                            DockPosition::Right => "right",
+                            _ => "none",
+                        };
+                        let _ = app_handle.emit("edge-dock-slide", serde_json::json!({
+                            "action": "hide",
+                            "dock": dock_name,
+                        }));
+                        std::thread::sleep(std::time::Duration::from_millis(160));
+                        let r = window.hide();
+                        info!("[edge-dock] HIDE window.hide() result: {:?}", r);
+                        IS_HIDDEN.store(true, Ordering::Relaxed);
+                        // Update timestamp so REVEAL must wait 500ms before re-hiding
+                        LAST_SHOW_TIMESTAMP.store(now, Ordering::Relaxed);
+                    }
+                } else if IS_HIDDEN.load(Ordering::Relaxed) {
+                    info!("[edge-dock] UNHIDE (no dock): restoring from IS_HIDDEN state");
+                    let _ = window.show();
+                    IS_HIDDEN.store(false, Ordering::Relaxed);
+                    CURRENT_DOCK.store(0, Ordering::Relaxed);
+
+                    let mut user_pinned = WINDOW_PINNED.load(Ordering::Relaxed);
+                    if let Some(db_state) = app_handle.try_state::<DbState>() {
+                        if let Ok(val) = db_state.settings_repo.get("app.window_pinned") {
+                            user_pinned = val.as_deref() == Some("true");
+                        }
+                    }
+
+                    let prev = WINDOW_PINNED.swap(user_pinned, Ordering::Relaxed);
+                    if prev != user_pinned {
+                        let _ = window.set_always_on_top(user_pinned);
+                        let _ = window.set_focusable(!user_pinned);
+                        let _ = app_handle.emit("window-pinned-changed", user_pinned);
+                    }
+                }
+            }
+        }
+    });
+}
 
 fn init_announcement_ping(app: &App, repo: &impl SettingsRepository) {
     let machine_id = crate::app::system::get_machine_id();

@@ -47,6 +47,24 @@ pub enum DockPosition {
 
 pub static CURRENT_DOCK: AtomicI32 = AtomicI32::new(0); // 0: None, 1: Top, 2: Left, 3: Right
 pub static IS_HIDDEN: AtomicBool = AtomicBool::new(false);
+
+// Saved window geometry before edge-docking hide (Linux: WM prevents off-screen positioning)
+#[cfg(target_os = "linux")]
+pub static SAVED_HIDE_X: AtomicI32 = AtomicI32::new(0);
+#[cfg(target_os = "linux")]
+pub static SAVED_HIDE_Y: AtomicI32 = AtomicI32::new(0);
+#[cfg(target_os = "linux")]
+pub static SAVED_HIDE_W: AtomicI32 = AtomicI32::new(0);
+#[cfg(target_os = "linux")]
+pub static SAVED_HIDE_H: AtomicI32 = AtomicI32::new(0);
+#[cfg(target_os = "linux")]
+pub static SAVED_SCREEN_LEFT: AtomicI32 = AtomicI32::new(0);
+#[cfg(target_os = "linux")]
+pub static SAVED_SCREEN_TOP: AtomicI32 = AtomicI32::new(0);
+#[cfg(target_os = "linux")]
+pub static SAVED_SCREEN_RIGHT: AtomicI32 = AtomicI32::new(0);
+#[cfg(target_os = "linux")]
+pub static SAVED_SCREEN_BOTTOM: AtomicI32 = AtomicI32::new(0);
 pub static IS_MOUSE_BUTTON_DOWN: AtomicBool = AtomicBool::new(false);
 pub static NAVIGATION_ENABLED: AtomicBool = AtomicBool::new(false);
 pub static NAVIGATION_MODE_ACTIVE: AtomicBool = AtomicBool::new(false);

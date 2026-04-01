@@ -38,6 +38,7 @@ import { usePinnedSort } from "./shared/hooks/usePinnedSort";
 import { useFilteredHistory } from "./shared/hooks/useFilteredHistory";
 import { useKeyboardNavigation } from "./shared/hooks/useKeyboardNavigation";
 import { useListSelectionReset } from "./shared/hooks/useListSelectionReset";
+import { useEdgeDockSlide } from "./shared/hooks/useEdgeDockSlide";
 import { useSearchFetchTrigger } from "./shared/hooks/useSearchFetchTrigger";
 import { useScrollToSelection } from "./shared/hooks/useScrollToSelection";
 import { useClipboardItemRenderer } from "./shared/hooks/useClipboardItemRenderer";
@@ -542,6 +543,8 @@ const App = () => {
     onPinnedChange: setIsWindowPinned
   });
 
+  const edgeDockSlideRef = useEdgeDockSlide();
+
   useContextMenuBlock();
 
   useSettingsApply({
@@ -803,6 +806,7 @@ const App = () => {
   return (
     <div
       className="app-container"
+      ref={edgeDockSlideRef}
     >
       <AppHeader
         t={t}
