@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { convertFileSrc } from "@tauri-apps/api/core";
+import { supportsCustomBackground } from "../config/themes";
 
 interface UseCustomBackgroundOptions {
   customBackground: string;
@@ -16,7 +17,7 @@ export const useCustomBackground = ({
     const root = document.documentElement;
     const body = document.body;
     root.style.setProperty("--custom-bg-opacity", (customBackgroundOpacity / 100).toString());
-    if (customBackground && (theme === "mica" || theme === "acrylic")) {
+    if (customBackground && supportsCustomBackground(theme)) {
       root.style.setProperty("--custom-bg-image", `url("${convertFileSrc(customBackground)}")`);
       body.classList.add("has-custom-bg");
     } else {

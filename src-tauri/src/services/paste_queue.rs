@@ -2,7 +2,6 @@ use crate::app_state::{PasteQueue, SessionHistory, AppDataDir};
 use crate::database::DbState;
 use crate::infrastructure::repository::clipboard_repo::ClipboardRepository;
 use crate::infrastructure::repository::settings_repo::SettingsRepository;
-use arboard::Clipboard;
 use tauri::{Emitter, Manager, State};
 use crate::error::AppResult;
 
@@ -76,11 +75,10 @@ fn prepare_next_paste_item(app_handle: &tauri::AppHandle) {
 }
 
 #[tauri::command]
-pub fn paste_next_step(app_handle: tauri::AppHandle) {
+pub async fn paste_next_step(app_handle: tauri::AppHandle) {
     let state = app_handle.state::<PasteQueue>();
     let db_state = app_handle.state::<DbState>();
     let session = app_handle.state::<SessionHistory>();
-    let _settings = app_handle.state::<crate::app_state::SettingsState>();
 
     // 1. Pop item from queue (Scope the lock)
     let id_opt = {
@@ -95,12 +93,12 @@ pub fn paste_next_step(app_handle: tauri::AppHandle) {
             let s = session.inner().0.lock().unwrap();
             s.iter()
                 .find(|i| i.id == id)
-                .map(|i| (i.content.clone(), i.content_type.clone()))
+                .map(|i| (i.content.clone(), i.content_type.clone(), i.html_content.clone()))
         } else {
-            db_state.repo.get_entry_content_full(id).unwrap_or(None)
+            db_state.repo.get_entry_content_with_html(id).unwrap_or(None)
         };
 
-        if let Some((content, c_type)) = content_opt {
+        if let Some((content, c_type, html_content)) = content_opt {
             // CRITICAL: Update last_pasted_content BEFORE modifying clipboard to prevent race condition
             // where the monitor sees the change before we've marked it as an echo.
             {
@@ -108,10 +106,17 @@ pub fn paste_next_step(app_handle: tauri::AppHandle) {
                 queue.last_pasted_content = Some(content.clone());
             }
 
-            if c_type == "text" || c_type == "code" || c_type == "url" || c_type == "rich_text" {
-                if let Ok(mut clipboard) = Clipboard::new() {
-                    let _ = clipboard.set_text(content.clone());
-                }
+            if let Err(err) = crate::services::clipboard_ops::prepare_clipboard_payload(
+                &content,
+                &c_type,
+                html_content.as_deref(),
+                c_type == "rich_text" && html_content.as_deref().is_some(),
+            )
+            .await
+            {
+                eprintln!("[ERROR] Failed to prepare clipboard payload for sequential paste: {err}");
+                let _ = app_handle.emit("queue-item-pasted", id);
+                return;
             }
 
             // Get paste method from settings

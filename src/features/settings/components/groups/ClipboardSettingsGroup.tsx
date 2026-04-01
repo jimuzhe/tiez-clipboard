@@ -564,7 +564,7 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
                     </div>
 
                     <div className="setting-item" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '6px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <div className="settings-subsection-trigger">
                             <button
                                 type="button"
                                 className="btn-icon"
@@ -573,7 +573,7 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
                             >
                                 {props.privacyKindsOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
                             </button>
-                            <span style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-primary)' }}>{props.t('privacy_protection_kinds')}</span>
+                            <span className="settings-subsection-title">{props.t('privacy_protection_kinds')}</span>
                         </div>
                         {props.privacyKindsOpen && (
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginLeft: '30px' }}>
@@ -608,7 +608,7 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
                     </div>
 
                     <div className="setting-item" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '6px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <div className="settings-subsection-trigger">
                             <button
                                 type="button"
                                 className="btn-icon"
@@ -617,11 +617,13 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
                             >
                                 {props.privacyRulesOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
                             </button>
-                            <props.LabelWithHint
-                                label={props.t('privacy_protection_custom_rules')}
-                                hint={props.t('privacy_protection_custom_rules_hint')}
-                                hintKey="privacy_protection_custom_rules"
-                            />
+                            <div className="settings-subsection-label">
+                                <props.LabelWithHint
+                                    label={props.t('privacy_protection_custom_rules')}
+                                    hint={props.t('privacy_protection_custom_rules_hint')}
+                                    hintKey="privacy_protection_custom_rules"
+                                />
+                            </div>
                         </div>
                         {props.privacyRulesOpen && (
                             <textarea

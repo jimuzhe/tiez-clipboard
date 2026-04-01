@@ -4,6 +4,7 @@ import type { MutableRefObject } from "react";
 import type { AiProfile } from "../../features/settings/types";
 
 const DEFAULT_AI_KEY = import.meta.env.VITE_AI_DEFAULT_API_KEY ?? "";
+const AI_PRESET_IDS = new Set(["lc_flash_v1", "lc_think_v1", "lc_think_2601_v1"]);
 
 interface UseSettingsPostInitOptions {
   settings: Record<string, string> | null;
@@ -24,6 +25,7 @@ interface UseSettingsPostInitOptions {
   setSilentStart: (val: boolean) => void;
   setFollowMouse: (val: boolean) => void;
   setShowAppBorder: (val: boolean) => void;
+  setShowSourceAppIcon: (val: boolean) => void;
   setDeleteAfterPaste: (val: boolean) => void;
   setMoveToTopAfterPaste: (val: boolean) => void;
   setHideTrayIcon: (val: boolean) => void;
@@ -100,6 +102,7 @@ export const useSettingsPostInit = ({
   setSilentStart,
   setFollowMouse,
   setShowAppBorder,
+  setShowSourceAppIcon,
   setDeleteAfterPaste,
   setMoveToTopAfterPaste,
   setHideTrayIcon,
@@ -233,6 +236,7 @@ export const useSettingsPostInit = ({
     setSilentStart(settings["app.silent_start"] !== "false");
     setFollowMouse(settings["app.follow_mouse"] !== "false");
     setShowAppBorder(settings["app.show_app_border"] !== "false");
+    setShowSourceAppIcon(settings["app.show_source_app_icon"] !== "false");
 
     // These have false as default, so check for 'true'
     setDeleteAfterPaste(settings["app.delete_after_paste"] === "true");
@@ -326,19 +330,35 @@ export const useSettingsPostInit = ({
       try {
         const parsed = JSON.parse(settings["ai_profiles"]);
         if (Array.isArray(parsed)) {
-          finalProfiles = parsed.filter(
-            (p): p is AiProfile =>
-              !!p &&
-              typeof p === "object" &&
-              typeof p.id === "string" &&
-              typeof p.baseUrl === "string" &&
-              typeof p.apiKey === "string" &&
-              typeof p.model === "string" &&
-              typeof p.enableThinking === "boolean"
-          );
+          finalProfiles = parsed
+            .filter(
+              (p): p is AiProfile =>
+                !!p &&
+                typeof p === "object" &&
+                typeof p.id === "string" &&
+                typeof p.baseUrl === "string" &&
+                typeof p.apiKey === "string" &&
+                typeof p.model === "string" &&
+                typeof p.enableThinking === "boolean"
+            )
+            .map((profile) => {
+              if (!DEFAULT_AI_KEY || !AI_PRESET_IDS.has(profile.id) || profile.apiKey.trim()) {
+                return profile;
+              }
+              return {
+                ...profile,
+                apiKey: DEFAULT_AI_KEY,
+              };
+            });
         }
       } catch (e) {
         console.error(e);
+      }
+      if (DEFAULT_AI_KEY && JSON.stringify(finalProfiles) !== settings["ai_profiles"]) {
+        invoke("save_setting", {
+          key: "ai_profiles",
+          value: JSON.stringify(finalProfiles)
+        }).catch(console.error);
       }
     } else {
       // First time initialization
@@ -381,6 +401,7 @@ export const useSettingsPostInit = ({
     setSilentStart,
     setFollowMouse,
     setShowAppBorder,
+    setShowSourceAppIcon,
     setDeleteAfterPaste,
     setMoveToTopAfterPaste,
     setHideTrayIcon,

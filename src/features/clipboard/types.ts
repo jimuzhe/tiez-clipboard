@@ -13,6 +13,7 @@ export interface ClipboardItemProps {
   theme: string;
   language: Locale;
   t: (key: string) => string;
+  showSourceAppIcon?: boolean;
   isAIProcessing?: boolean;
   aiEnabled?: boolean;
   tagColors?: Record<string, string>;

@@ -11,6 +11,62 @@ use base64::Engine;
 
 use utils::*;
 
+const DEFAULT_CLIPBOARD_SETTLE_DELAY_MS: u64 = 100;
+const SNIPPING_TOOL_SETTLE_DELAY_MS: u64 = 1200;
+
+fn should_capture_file_entries(capture_files_enabled: bool) -> bool {
+    capture_files_enabled
+}
+
+fn is_snipping_tool_source(
+    source_snapshot: &crate::infrastructure::windows_api::window_tracker::ActiveAppInfo,
+) -> bool {
+    let app_name = source_snapshot.app_name.to_ascii_lowercase();
+    let process_path = source_snapshot
+        .process_path
+        .as_deref()
+        .unwrap_or("")
+        .to_ascii_lowercase();
+
+    [
+        "snippingtool.exe",
+        "snipping tool",
+        "screenclippinghost.exe",
+        "screen clipping host",
+        "screensketch.exe",
+        "screen sketch",
+        "snipandsketch",
+        "snip & sketch",
+    ]
+    .iter()
+    .any(|needle| app_name.contains(needle) || process_path.contains(needle))
+}
+
+fn read_clipboard_text_once(
+    clipboard: &mut Clipboard,
+    cache: &mut Option<Option<String>>,
+) -> Option<String> {
+    if let Some(value) = cache.as_ref() {
+        return value.clone();
+    }
+
+    let value = clipboard.get_text().ok();
+    *cache = Some(value.clone());
+    value
+}
+
+fn read_clipboard_image_once(
+    cache: &mut Option<Option<crate::infrastructure::windows_api::win_clipboard::ImageData>>,
+) -> Option<crate::infrastructure::windows_api::win_clipboard::ImageData> {
+    if let Some(value) = cache.as_ref() {
+        return value.clone();
+    }
+
+    let value = unsafe { crate::infrastructure::windows_api::win_clipboard::get_clipboard_image() };
+    *cache = Some(value.clone());
+    value
+}
+
 fn clipboard_image_fallback_data_url() -> Option<String> {
     for _ in 0..3 {
         unsafe {
@@ -112,15 +168,24 @@ pub fn start_clipboard_monitor(app_handle: AppHandle) {
         monitor_state.last_seq = current_seq;
         let source_snapshot = crate::infrastructure::windows_api::window_tracker::get_clipboard_source_app_info();
 
-        // Give source app (especially Excel) time to release lock/finish writing
-        // fixes "Another application is using the clipboard" error
-        std::thread::sleep(std::time::Duration::from_millis(100));
+        // Give source apps time to finish writing clipboard payloads before we start
+        // probing formats. Snipping Tool needs a longer quiet period or its save
+        // pipeline may race with clipboard-manager reads.
+        let settle_delay_ms = if is_snipping_tool_source(&source_snapshot) {
+            SNIPPING_TOOL_SETTLE_DELAY_MS
+        } else {
+            DEFAULT_CLIPBOARD_SETTLE_DELAY_MS
+        };
+        std::thread::sleep(std::time::Duration::from_millis(settle_delay_ms));
 
         // Initialize clipboard for this thread
         let mut clipboard = match Clipboard::new() {
             Ok(cb) => cb,
             Err(_) => return,
         };
+
+        let mut cached_text: Option<Option<String>> = None;
+        let mut cached_image: Option<Option<crate::infrastructure::windows_api::win_clipboard::ImageData>> = None;
 
         // 3. Content-based deduplication with time window (for Chrome address bar, etc.)
         // Some apps trigger multiple clipboard updates with different sequence numbers
@@ -136,15 +201,13 @@ pub fn start_clipboard_monitor(app_handle: AppHandle) {
             let mut hasher = std::collections::hash_map::DefaultHasher::new();
             
             // Hash text content if available
-            if let Ok(text) = clipboard.get_text() {
+            if let Some(text) = read_clipboard_text_once(&mut clipboard, &mut cached_text) {
                 text.hash(&mut hasher);
             }
             
             // Also consider image hash if present
-            unsafe {
-                if let Some(image) = crate::infrastructure::windows_api::win_clipboard::get_clipboard_image() {
-                    image.bytes.hash(&mut hasher);
-                }
+            if let Some(image) = read_clipboard_image_once(&mut cached_image) {
+                image.bytes.hash(&mut hasher);
             }
             
             hasher.finish()
@@ -314,7 +377,7 @@ pub fn start_clipboard_monitor(app_handle: AppHandle) {
                             monitor_state.last_text = content.clone();
                             
                             let settings = app.state::<SettingsState>();
-                            if settings.capture_files.load(Ordering::Relaxed) || files.len() == 1 {
+                            if should_capture_file_entries(settings.capture_files.load(Ordering::Relaxed)) {
                                 process_new_entry(&app, ClipboardData::Files(files), None, Some(source_snapshot.clone()));
                             }
                         }
@@ -328,8 +391,7 @@ pub fn start_clipboard_monitor(app_handle: AppHandle) {
         if !handled {
             let settings = app.state::<SettingsState>();
             let rich_text_enabled = settings.capture_rich_text.load(Ordering::Relaxed);
-            let has_text = clipboard
-                .get_text()
+            let has_text = read_clipboard_text_once(&mut clipboard, &mut cached_text)
                 .map(|t| !t.trim().is_empty())
                 .unwrap_or(false);
             let has_rich_html = if rich_text_enabled && has_text {
@@ -380,7 +442,7 @@ pub fn start_clipboard_monitor(app_handle: AppHandle) {
                     }
 
                     if !handled {
-                        if let Some(image) = crate::infrastructure::windows_api::win_clipboard::get_clipboard_image() {
+                        if let Some(image) = read_clipboard_image_once(&mut cached_image) {
                             let mut hasher = std::collections::hash_map::DefaultHasher::new();
                             use std::hash::{Hash, Hasher};
                             image.bytes.hash(&mut hasher);
@@ -416,7 +478,7 @@ pub fn start_clipboard_monitor(app_handle: AppHandle) {
 
         // 3. Check Text
         if !handled {
-            if let Ok(text) = clipboard.get_text() {
+            if let Some(text) = read_clipboard_text_once(&mut clipboard, &mut cached_text) {
                 if !text.is_empty() {
                     let settings = app.state::<SettingsState>();
                     
@@ -476,7 +538,7 @@ pub fn start_clipboard_monitor(app_handle: AppHandle) {
 }
 
 pub use pipeline::{ClipboardData, ClipboardPipeline, PipelineContext};
-pub use utils::truncate_html_for_preview;
+pub use utils::{build_entry_preview, derive_rich_text_content, repair_html_fragment, truncate_html_for_preview};
 
 pub fn process_new_entry(
     app_handle: &AppHandle,
@@ -497,6 +559,49 @@ pub fn process_new_entry(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{is_snipping_tool_source, should_capture_file_entries};
+    use crate::infrastructure::windows_api::window_tracker::ActiveAppInfo;
 
+    #[test]
+    fn detects_snipping_tool_by_process_name() {
+        let source = ActiveAppInfo {
+            app_name: "SnippingTool.exe".to_string(),
+            process_path: Some(r"C:\Windows\System32\SnippingTool.exe".to_string()),
+        };
+
+        assert!(is_snipping_tool_source(&source));
+    }
+
+    #[test]
+    fn detects_legacy_screen_sketch_source() {
+        let source = ActiveAppInfo {
+            app_name: "ApplicationFrameHost.exe".to_string(),
+            process_path: Some(
+                r"C:\Program Files\WindowsApps\Microsoft.ScreenSketch_2022.2405.32.0_x64__8wekyb3d8bbwe\ScreenSketch.exe"
+                    .to_string(),
+            ),
+        };
+
+        assert!(is_snipping_tool_source(&source));
+    }
+
+    #[test]
+    fn ignores_normal_apps() {
+        let source = ActiveAppInfo {
+            app_name: "WINWORD.EXE".to_string(),
+            process_path: Some(r"C:\Program Files\Microsoft Office\root\Office16\WINWORD.EXE".to_string()),
+        };
+
+        assert!(!is_snipping_tool_source(&source));
+    }
+
+    #[test]
+    fn file_capture_follows_setting_when_disabled() {
+        assert!(!should_capture_file_entries(false));
+    }
+
+    #[test]
+    fn file_capture_follows_setting_when_enabled() {
+        assert!(should_capture_file_entries(true));
+    }
 }

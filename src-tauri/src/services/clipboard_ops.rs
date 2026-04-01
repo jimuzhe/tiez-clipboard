@@ -117,29 +117,28 @@ pub async fn copy_to_clipboard(
         }
     }
 
+    if content_type == "rich_text" {
+        let normalized = crate::services::clipboard::derive_rich_text_content(&content, html_content.as_deref());
+        if !normalized.trim().is_empty() {
+            content = normalized;
+        }
+    }
+
     // 1. Handle Window Visibility and Focus
     if paste {
         handle_window_focus_for_paste(&app_handle, &content_type).await?;
     }
 
-    // 2. Calculate content hash for deduplication
-    let (content_hash, current_time) = calculate_content_hash(&content);
-    crate::LAST_APP_SET_HASH.store(content_hash, Ordering::SeqCst);
-    crate::LAST_APP_SET_HASH_ALT.store(0, Ordering::SeqCst);
-    crate::LAST_APP_SET_TIMESTAMP.store(current_time, Ordering::SeqCst);
-
-    // 3. Copy to system clipboard
-    copy_content_to_system_clipboard(
+    // 2. Copy to system clipboard
+    prepare_clipboard_payload(
         &content,
         &content_type,
         html_content.as_deref(),
         paste_with_format.unwrap_or(content_type == "rich_text" && html_content.as_deref().is_some()),
-        content_hash,
-        current_time,
     )
     .await?;
 
-    // 4. Perform paste action if requested
+    // 3. Perform paste action if requested
     if paste {
         perform_paste_action(
             &app_handle,
@@ -429,6 +428,28 @@ fn calculate_content_hash(content: &str) -> (u64, u64) {
     (content_hash, current_time)
 }
 
+pub async fn prepare_clipboard_payload(
+    content: &str,
+    content_type: &str,
+    html_content: Option<&str>,
+    paste_with_format: bool,
+) -> AppResult<()> {
+    let (content_hash, current_time) = calculate_content_hash(content);
+    crate::LAST_APP_SET_HASH.store(content_hash, Ordering::SeqCst);
+    crate::LAST_APP_SET_HASH_ALT.store(0, Ordering::SeqCst);
+    crate::LAST_APP_SET_TIMESTAMP.store(current_time, Ordering::SeqCst);
+
+    copy_content_to_system_clipboard(
+        content,
+        content_type,
+        html_content,
+        paste_with_format,
+        content_hash,
+        current_time,
+    )
+    .await
+}
+
 async fn copy_content_to_system_clipboard(
     content: &str,
     content_type: &str,
@@ -560,7 +581,7 @@ fn generate_cf_html(html: &str) -> String {
         )
     };
 
-    let mut html_content = html.to_string();
+    let mut html_content = crate::services::clipboard::repair_html_fragment(html);
     let has_html_tag = html_tag_re.is_match(&html_content);
     let has_start = html_content.contains("<!--StartFragment-->");
     let has_end = html_content.contains("<!--EndFragment-->");

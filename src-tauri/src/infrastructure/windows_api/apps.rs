@@ -8,15 +8,17 @@ use std::os::windows::process::CommandExt;
 use std::path::Path;
 use std::sync::{Mutex, OnceLock};
 use crate::error::{AppResult, AppError};
+use windows::Win32::Storage::FileSystem::{FILE_ATTRIBUTE_DIRECTORY, FILE_ATTRIBUTE_NORMAL};
 use windows::Win32::Graphics::Gdi::{
     BITMAPINFO, BITMAPINFOHEADER, BI_RGB, CreateCompatibleDC, CreateDIBSection, DIB_RGB_COLORS,
     DeleteDC, DeleteObject, HGDIOBJ, RGBQUAD, SelectObject,
 };
 use windows::Win32::UI::Shell::{
-    AssocQueryStringW, ExtractIconExW, ASSOCSTR_FRIENDLYAPPNAME, ASSOCSTR_EXECUTABLE, ASSOCF_VERIFY,
+    AssocQueryStringW, ExtractIconExW, SHGetFileInfoW, SHFILEINFOW, SHGFI_ICON, SHGFI_LARGEICON,
+    SHGFI_USEFILEATTRIBUTES, ASSOCSTR_FRIENDLYAPPNAME, ASSOCSTR_EXECUTABLE, ASSOCF_VERIFY,
 };
 use windows::Win32::UI::WindowsAndMessaging::{
-    DestroyIcon, DrawIconEx, GetSystemMetrics, HICON, DI_NORMAL, SM_CXSMICON, SM_CYSMICON,
+    DestroyIcon, DrawIconEx, GetSystemMetrics, HICON, DI_NORMAL, SM_CXICON, SM_CXSMICON, SM_CYICON, SM_CYSMICON,
 };
 use windows::core::{PCWSTR, PWSTR};
 
@@ -27,6 +29,7 @@ pub struct AppInfo {
 }
 
 static EXECUTABLE_ICON_CACHE: OnceLock<Mutex<HashMap<String, Option<String>>>> = OnceLock::new();
+static FILE_ICON_CACHE: OnceLock<Mutex<HashMap<String, Option<String>>>> = OnceLock::new();
 
 #[tauri::command]
 pub async fn scan_installed_apps() -> AppResult<Vec<AppInfo>> {
@@ -265,6 +268,31 @@ pub fn get_executable_icon(executable_path: String) -> AppResult<Option<String>>
     Ok(icon)
 }
 
+#[tauri::command]
+pub fn get_file_icon(file_path: String) -> AppResult<Option<String>> {
+    let cache_key = normalize_file_icon_cache_key(&file_path);
+    if cache_key.is_empty() {
+        return Ok(None);
+    }
+
+    let cache = FILE_ICON_CACHE.get_or_init(|| Mutex::new(HashMap::new()));
+    if let Some(cached) = cache
+        .lock()
+        .map_err(|e| AppError::Internal(e.to_string()))?
+        .get(&cache_key)
+        .cloned()
+    {
+        return Ok(cached);
+    }
+
+    let icon = extract_file_icon_data_url(&file_path)?;
+    cache
+        .lock()
+        .map_err(|e| AppError::Internal(e.to_string()))?
+        .insert(cache_key, icon.clone());
+    Ok(icon)
+}
+
 fn normalize_icon_cache_key(path: &str) -> String {
     let trimmed = path.trim();
     if trimmed.is_empty() {
@@ -276,6 +304,25 @@ fn normalize_icon_cache_key(path: &str) -> String {
         .unwrap_or_else(|_| trimmed.to_string())
         .replace('/', "\\")
         .to_ascii_lowercase()
+}
+
+fn normalize_file_icon_cache_key(path: &str) -> String {
+    let trimmed = path.trim();
+    if trimmed.is_empty() {
+        return String::new();
+    }
+
+    let candidate = Path::new(trimmed);
+    if candidate.exists() {
+        return normalize_icon_cache_key(trimmed);
+    }
+
+    candidate
+        .extension()
+        .and_then(|value| value.to_str())
+        .filter(|value| !value.is_empty())
+        .map(|value| format!(".{}", value.to_ascii_lowercase()))
+        .unwrap_or_else(|| trimmed.replace('/', "\\").to_ascii_lowercase())
 }
 
 fn extract_executable_icon_data_url(executable_path: &str) -> AppResult<Option<String>> {
@@ -295,6 +342,26 @@ fn extract_executable_icon_data_url(executable_path: &str) -> AppResult<Option<S
     };
 
     let png_result = unsafe { render_icon_to_png_bytes(icon) };
+    let _ = unsafe { DestroyIcon(icon) };
+
+    match png_result {
+        Ok(bytes) => Ok(Some(format!(
+            "data:image/png;base64,{}",
+            base64::engine::general_purpose::STANDARD.encode(bytes)
+        ))),
+        Err(err) => Err(err),
+    }
+}
+
+fn extract_file_icon_data_url(file_path: &str) -> AppResult<Option<String>> {
+    let icon = unsafe { extract_file_icon_handle(file_path)? };
+    let Some(icon) = icon else {
+        return Ok(None);
+    };
+
+    let width = unsafe { GetSystemMetrics(SM_CXICON).max(32) };
+    let height = unsafe { GetSystemMetrics(SM_CYICON).max(32) };
+    let png_result = unsafe { render_icon_to_png_bytes_with_size(icon, width, height) };
     let _ = unsafe { DestroyIcon(icon) };
 
     match png_result {
@@ -351,9 +418,64 @@ unsafe fn extract_executable_icon_handle(executable_path: &str) -> AppResult<Opt
     Ok(Some(selected))
 }
 
+unsafe fn extract_file_icon_handle(file_path: &str) -> AppResult<Option<HICON>> {
+    let trimmed = file_path.trim();
+    if trimmed.is_empty() {
+        return Ok(None);
+    }
+
+    let path = Path::new(trimmed);
+    let (lookup_target, attributes, use_file_attributes) = if path.exists() {
+        (
+            trimmed.to_string(),
+            if path.is_dir() {
+                FILE_ATTRIBUTE_DIRECTORY
+            } else {
+                FILE_ATTRIBUTE_NORMAL
+            },
+            false,
+        )
+    } else if let Some(ext) = path.extension().and_then(|value| value.to_str()).filter(|value| !value.is_empty()) {
+        (format!(".{}", ext), FILE_ATTRIBUTE_NORMAL, true)
+    } else {
+        (trimmed.to_string(), FILE_ATTRIBUTE_NORMAL, true)
+    };
+
+    let wide_path: Vec<u16> = OsStr::new(&lookup_target)
+        .encode_wide()
+        .chain(std::iter::once(0))
+        .collect();
+    let mut file_info = SHFILEINFOW::default();
+    let mut flags = SHGFI_ICON | SHGFI_LARGEICON;
+    if use_file_attributes {
+        flags |= SHGFI_USEFILEATTRIBUTES;
+    }
+
+    if SHGetFileInfoW(
+        PCWSTR(wide_path.as_ptr()),
+        attributes,
+        Some(&mut file_info),
+        std::mem::size_of::<SHFILEINFOW>() as u32,
+        flags,
+    ) == 0
+    {
+        return Ok(None);
+    }
+
+    if file_info.hIcon.0.is_null() {
+        return Ok(None);
+    }
+
+    Ok(Some(file_info.hIcon))
+}
+
 unsafe fn render_icon_to_png_bytes(icon: HICON) -> AppResult<Vec<u8>> {
     let width = GetSystemMetrics(SM_CXSMICON).max(16);
     let height = GetSystemMetrics(SM_CYSMICON).max(16);
+    render_icon_to_png_bytes_with_size(icon, width, height)
+}
+
+unsafe fn render_icon_to_png_bytes_with_size(icon: HICON, width: i32, height: i32) -> AppResult<Vec<u8>> {
     let bitmap_info = BITMAPINFO {
         bmiHeader: BITMAPINFOHEADER {
             biSize: std::mem::size_of::<BITMAPINFOHEADER>() as u32,

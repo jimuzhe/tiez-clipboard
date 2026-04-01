@@ -1,33 +1,38 @@
 /* Shared Icon Buttons */
-.btn-icon{
+.btn-icon {
   background: var(--bg-button);
-  border: 2px solid var(--border-dark);
+  border: var(--button-border);
+  border-radius: var(--button-radius);
   color: var(--text-primary);
   padding: 6px;
   cursor: pointer;
-  box-shadow: 2px 2px 0 0 var(--shadow-color);
+  box-shadow: var(--button-shadow);
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.1s;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease,
+    color 0.18s ease;
 }
 
-.btn-icon:hover{
-  transform: translateY(-1px);
-  transform: translateY(-1px);
-  box-shadow: 3px 3px 0 0 var(--shadow-color);
+.btn-icon:hover {
+  transform: var(--button-hover-transform);
+  box-shadow: var(--button-hover-shadow);
   background: var(--bg-input);
+  border-color: var(--button-hover-border-color);
 }
 
-.btn-icon:active{
-  transform: translate(2px, 2px);
-  box-shadow: 0 0 0 0 var(--shadow-color);
+.btn-icon:active {
+  transform: var(--button-active-transform);
+  box-shadow: var(--button-active-shadow);
 }
 
-.btn-icon.active{
-  background: var(--accent-color);
-  color: #fff;
-  box-shadow: inset 2px 2px 0 rgba(0, 0, 0, 0.2);
-  transform: translate(2px, 2px);
-  /* Pushed in state */
+.btn-icon.active {
+  background: var(--button-active-filled-background);
+  color: var(--button-active-filled-color);
+  border-color: var(--button-active-filled-border-color);
+  box-shadow: var(--button-active-filled-shadow);
 }

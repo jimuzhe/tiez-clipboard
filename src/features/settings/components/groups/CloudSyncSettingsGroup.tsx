@@ -87,7 +87,7 @@ const CloudSyncSettingsGroup = ({
     const normalizeInterval = (raw: string) => {
         const parsed = Number.parseInt(raw, 10);
         if (!Number.isFinite(parsed)) return "120";
-        return String(Math.min(3600, Math.max(30, parsed)));
+        return String(Math.min(3600, Math.max(5, parsed)));
     };
     const normalizeSnapshotIntervalMin = (raw: string) => {
         const parsed = Number.parseInt(raw, 10);

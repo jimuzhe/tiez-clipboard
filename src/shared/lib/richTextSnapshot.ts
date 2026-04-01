@@ -1,4 +1,9 @@
 import { toTauriLocalImageSrc } from "./localImageSrc";
+import {
+  isHtmlishTagText,
+  isOfficeStyleDefinitionText,
+  stripOfficePreviewNoise
+} from "./repairHtmlFragment";
 
 const SNAPSHOT_CACHE_LIMIT = 240;
 const SNAPSHOT_CACHE_VERSION = "v4";
@@ -68,7 +73,7 @@ const normalizeRichHtml = (html: string): {
   };
 } | null => {
   const parser = new DOMParser();
-  let processed = stripRichImageFallbackMarker((html || "").trim());
+  let processed = stripOfficePreviewNoise(stripRichImageFallbackMarker((html || "").trim()));
   if (!processed) return null;
 
   if (
@@ -80,9 +85,46 @@ const normalizeRichHtml = (html: string): {
 
   const doc = parser.parseFromString(processed, "text/html");
   doc.querySelectorAll("script").forEach((el) => el.remove());
+  doc.querySelectorAll("style").forEach((style) => {
+    if (isOfficeStyleDefinitionText(style.textContent || "")) {
+      style.remove();
+    }
+  });
+  doc.querySelectorAll("meta, link, xml").forEach((el) => el.remove());
   doc.head.querySelectorAll("style").forEach((style) => {
     doc.body.prepend(style);
   });
+
+  if (doc.body.querySelector("table")) {
+    for (const node of Array.from(doc.body.childNodes)) {
+      if (node.nodeType === Node.TEXT_NODE) {
+        const text = node.textContent?.trim() || "";
+        if (!text) {
+          doc.body.removeChild(node);
+          continue;
+        }
+        if (isHtmlishTagText(text) || isOfficeStyleDefinitionText(text)) {
+          doc.body.removeChild(node);
+          continue;
+        }
+      }
+
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        const element = node as Element;
+        const tagName = element.tagName.toLowerCase();
+        if (tagName === "style" && isOfficeStyleDefinitionText(element.textContent || "")) {
+          doc.body.removeChild(node);
+          continue;
+        }
+        if (tagName === "meta" || tagName === "link" || tagName === "xml") {
+          doc.body.removeChild(node);
+          continue;
+        }
+      }
+
+      break;
+    }
+  }
 
   const imageStats = {
     total: 0,

@@ -10,6 +10,65 @@ use windows::Win32::Foundation::{HWND, POINT};
 #[cfg(windows)]
 use windows::Win32::UI::WindowsAndMessaging::{GetCursorPos, GetWindowLongPtrW, SetWindowLongPtrW, GWL_EXSTYLE, WS_EX_NOACTIVATE};
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct MonitorBounds {
+    x: i32,
+    y: i32,
+    width: i32,
+    height: i32,
+}
+
+fn monitor_bounds(monitor: &tauri::Monitor) -> MonitorBounds {
+    let position = monitor.position();
+    let size = monitor.size();
+
+    MonitorBounds {
+        x: position.x,
+        y: position.y,
+        width: size.width as i32,
+        height: size.height as i32,
+    }
+}
+
+fn same_monitor(a: &tauri::Monitor, b: &tauri::Monitor) -> bool {
+    monitor_bounds(a) == monitor_bounds(b)
+}
+
+fn remap_fixed_window_position(
+    window_pos: (i32, i32),
+    window_size: (i32, i32),
+    source_monitor: MonitorBounds,
+    target_monitor: MonitorBounds,
+) -> (i32, i32) {
+    let (window_width, window_height) = window_size;
+    let source_span_x = (source_monitor.width - window_width).max(0);
+    let source_span_y = (source_monitor.height - window_height).max(0);
+    let target_span_x = (target_monitor.width - window_width).max(0);
+    let target_span_y = (target_monitor.height - window_height).max(0);
+
+    let source_offset_x = (window_pos.0 - source_monitor.x).clamp(0, source_span_x);
+    let source_offset_y = (window_pos.1 - source_monitor.y).clamp(0, source_span_y);
+
+    let ratio_x = if source_span_x == 0 {
+        0.0
+    } else {
+        source_offset_x as f64 / source_span_x as f64
+    };
+    let ratio_y = if source_span_y == 0 {
+        0.0
+    } else {
+        source_offset_y as f64 / source_span_y as f64
+    };
+
+    let mapped_x = target_monitor.x + (ratio_x * target_span_x as f64).round() as i32;
+    let mapped_y = target_monitor.y + (ratio_y * target_span_y as f64).round() as i32;
+
+    (
+        mapped_x.clamp(target_monitor.x, target_monitor.x + target_span_x),
+        mapped_y.clamp(target_monitor.y, target_monitor.y + target_span_y),
+    )
+}
+
 pub fn toggle_window(app: &AppHandle) {
     // Debounce: skip if window was shown very recently (prevents double-trigger
     // from both XGrabKey and GNOME custom keybinding firing on the same keypress)
@@ -269,23 +328,38 @@ pub fn toggle_window(app: &AppHandle) {
 
                     if let Some(target) = target_monitor {
                         let current = window.current_monitor().ok().flatten();
-                        let is_same = current.as_ref().map(|c| {
-                            let c_pos = c.position();
-                            let c_size = c.size();
-                            let t_pos = target.position();
-                            let t_size = target.size();
-                            c_pos.x == t_pos.x
-                                && c_pos.y == t_pos.y
-                                && c_size.width == t_size.width
-                                && c_size.height == t_size.height
-                        }).unwrap_or(false);
+                        let is_same = current
+                            .as_ref()
+                            .map(|c| same_monitor(c, &target))
+                            .unwrap_or(false);
 
                         if !is_same {
-                            let t_pos = target.position();
-                            let t_size = target.size();
-                            let center_x = t_pos.x + (t_size.width as i32 - w) / 2;
-                            let center_y = t_pos.y + (t_size.height as i32 - h) / 2;
-                            let _ = window.set_position(tauri::Position::Physical(tauri::PhysicalPosition { x: center_x, y: center_y }));
+                            let mapped_position = current
+                                .as_ref()
+                                .and_then(|current_monitor| {
+                                    window.outer_position().ok().map(|current_pos| {
+                                        remap_fixed_window_position(
+                                            (current_pos.x, current_pos.y),
+                                            (w, h),
+                                            monitor_bounds(current_monitor),
+                                            monitor_bounds(&target),
+                                        )
+                                    })
+                                })
+                                .unwrap_or_else(|| {
+                                    let target_bounds = monitor_bounds(&target);
+                                    (
+                                        target_bounds.x + (target_bounds.width - w) / 2,
+                                        target_bounds.y + (target_bounds.height - h) / 2,
+                                    )
+                                });
+
+                            let _ = window.set_position(tauri::Position::Physical(
+                                tauri::PhysicalPosition {
+                                    x: mapped_position.0,
+                                    y: mapped_position.1,
+                                },
+                            ));
                         }
                     }
                 }
@@ -509,4 +583,84 @@ pub fn show_and_raise(window: &tauri::WebviewWindow) {
         .as_millis() as u64;
     LAST_SHOW_TIMESTAMP.store(now, Ordering::Relaxed);
     let _ = window.show();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{remap_fixed_window_position, MonitorBounds};
+
+    #[test]
+    fn keeps_bottom_right_anchor_when_switching_monitors() {
+        let source = MonitorBounds {
+            x: 0,
+            y: 0,
+            width: 1920,
+            height: 1080,
+        };
+        let target = MonitorBounds {
+            x: 1920,
+            y: 0,
+            width: 2560,
+            height: 1440,
+        };
+
+        let mapped = remap_fixed_window_position(
+            (1610, 670),
+            (300, 400),
+            source,
+            target,
+        );
+
+        assert_eq!(mapped, (4180, 1040));
+    }
+
+    #[test]
+    fn preserves_center_ratio_for_mid_screen_window() {
+        let source = MonitorBounds {
+            x: 0,
+            y: 0,
+            width: 1920,
+            height: 1080,
+        };
+        let target = MonitorBounds {
+            x: -1600,
+            y: 0,
+            width: 1600,
+            height: 900,
+        };
+
+        let mapped = remap_fixed_window_position(
+            (810, 340),
+            (300, 400),
+            source,
+            target,
+        );
+
+        assert_eq!(mapped, (-800, 250));
+    }
+
+    #[test]
+    fn clamps_positions_that_started_partly_outside_source_monitor() {
+        let source = MonitorBounds {
+            x: 0,
+            y: 0,
+            width: 1920,
+            height: 1080,
+        };
+        let target = MonitorBounds {
+            x: 1920,
+            y: 0,
+            width: 1280,
+            height: 1024,
+        };
+
+        let mapped = remap_fixed_window_position(
+            (2000, 900),
+            (500, 500),
+            source,
+            target,
+        );
+
+        assert_eq!(mapped, (2700, 524));
+    }
 }

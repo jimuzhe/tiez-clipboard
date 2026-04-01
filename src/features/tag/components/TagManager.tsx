@@ -71,7 +71,15 @@ export default function TagManager({ t, theme }: TagManagerProps) {
             setTags(tagArray);
             setTagColors(colors || {});
 
-            if (!selectedTag && tagArray.length > 0) loadTagItems(tagArray[0].name);
+            const activeTag = selectedTagRef.current;
+            if (tagArray.length === 0) {
+                setSelectedTag(null);
+                setTagItems([]);
+                return;
+            }
+            if (!activeTag || !tagArray.some(tag => tag.name === activeTag)) {
+                loadTagItems(tagArray[0].name);
+            }
         } catch (err) { console.error(err); }
     };
 
@@ -85,10 +93,18 @@ export default function TagManager({ t, theme }: TagManagerProps) {
         finally { setLoading(false); }
     };
 
-    // Helper for color collision detection
+    const createTag = async (rawName: string) => {
+        const trimmed = rawName.trim();
+        if (!trimmed) return;
 
-
-
+        try {
+            await invoke('create_new_tag', { tagName: trimmed });
+            setNewTagName('');
+            setTagSearch('');
+            await fetchTags();
+            await loadTagItems(trimmed);
+        } catch (err) { console.error(err); }
+    };
 
     const handleRenameTag = async (oldName: string) => {
         const trimmed = newTagName.trim();
@@ -116,7 +132,6 @@ export default function TagManager({ t, theme }: TagManagerProps) {
             await invoke('delete_tag_from_all', { tagName });
             await emit('clipboard-changed'); // Notify App.tsx to refresh
             await fetchTags();
-            if (selectedTag === tagName) { setSelectedTag(null); setTagItems([]); }
         } catch (err) { console.error(err); }
         finally {
             setIsDeleting(false);
@@ -159,10 +174,22 @@ export default function TagManager({ t, theme }: TagManagerProps) {
         return tags.filter(t => t.name.toLowerCase().includes(tagSearch.toLowerCase()));
     }, [tags, tagSearch]);
 
+    const normalizedTagSearch = tagSearch.trim().toLowerCase();
+    const canCreateTag = normalizedTagSearch.length > 0
+        && !tags.some(tag => tag.name.toLowerCase() === normalizedTagSearch);
+
     const sortedItems = [...tagItems].sort((a, b) => {
         if (sortBy === 'count') return (b.use_count || 0) - (a.use_count || 0);
         return b.timestamp - a.timestamp;
     });
+
+    const formatItemDate = (timestamp: number) => {
+        const date = new Date(timestamp);
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
 
     return (
         <div
@@ -176,7 +203,7 @@ export default function TagManager({ t, theme }: TagManagerProps) {
                     {!isCollapsed && <span className="header-label">{t('tags')}</span>}
                     <button
                         className="collapse-toggle"
-                        title={isCollapsed ? (t('collapse') || '展开') : (t('collapse') || '收起')}
+                        title={isCollapsed ? (t('open') || '展开') : (t('collapse') || '收起')}
                         onClick={() => setIsCollapsed(!isCollapsed)}
                     >
                         {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
@@ -185,6 +212,7 @@ export default function TagManager({ t, theme }: TagManagerProps) {
 
                 {!isCollapsed && (
                     <div className="tag-search-box">
+                        <Search size={16} className="search-icon-placeholder" />
                         <input
                             placeholder={t('find_or_create')}
                             value={tagSearch}
@@ -194,17 +222,11 @@ export default function TagManager({ t, theme }: TagManagerProps) {
                             onKeyDown={async (e) => {
                                 if (e.key === 'Enter' && tagSearch.trim()) {
                                     // If exact match exists, select it. If not, create new.
-                                    const exactMatch = tags.find(t => t.name.toLowerCase() === tagSearch.trim().toLowerCase());
+                                    const exactMatch = tags.find(t => t.name.toLowerCase() === normalizedTagSearch);
                                     if (exactMatch) {
                                         loadTagItems(exactMatch.name);
                                     } else {
-                                        // Create new persistence tag
-                                        try {
-                                            await invoke('create_new_tag', { tagName: tagSearch.trim() });
-                                            setNewTagName('');
-                                            setTagSearch('');
-                                            await fetchTags();
-                                        } catch (err) { console.error(err); }
+                                        await createTag(tagSearch);
                                     }
                                 }
                             }}
@@ -212,29 +234,18 @@ export default function TagManager({ t, theme }: TagManagerProps) {
                         {tagSearch ? (
                             <div className="action-icons">
                                 { /* If no exact match, show Plus to indicate creation */}
-                                {!tags.some(t => t.name.toLowerCase() === tagSearch.trim().toLowerCase()) ? (
+                                {canCreateTag ? (
                                     <span
                                         title={t('create_new_tag_tooltip')}
                                         className="action-icon create"
-                                        onClick={async () => {
-                                            try {
-                                                await invoke('create_new_tag', { tagName: tagSearch.trim() });
-                                                setNewTagName('');
-                                                setTagSearch('');
-                                                await fetchTags();
-                                            } catch (err) { console.error(err); }
-                                        }}
+                                        onClick={() => createTag(tagSearch)}
                                     >
                                         <Plus size={12} />
                                     </span>
-                                ) : (
-                                    <Search size={12} className="action-icon search" />
-                                )}
+                                ) : null}
                                 <X size={12} className="action-icon clear" onClick={() => setTagSearch('')} />
                             </div>
-                        ) : (
-                            <Search size={12} className="search-icon-placeholder" />
-                        )}
+                        ) : null}
                     </div>
                 )}
 
@@ -314,16 +325,12 @@ export default function TagManager({ t, theme }: TagManagerProps) {
                             )}
                         </div>
                     ))}
+                    {filteredTags.length === 0 && !tagSearch.trim() && (
+                        <div className="sidebar-status">{t('no_tags')}</div>
+                    )}
                     {/* Visual cue for creating new tag when filtering shows no results */}
-                    {!isCollapsed && tagSearch && filteredTags.length === 0 && (
-                        <div className="tag-item create-hint" onClick={async () => {
-                            try {
-                                await invoke('create_new_tag', { tagName: tagSearch.trim() });
-                                setNewTagName('');
-                                setTagSearch('');
-                                await fetchTags();
-                            } catch (err) { console.error(err); }
-                        }}>
+                    {!isCollapsed && canCreateTag && filteredTags.length === 0 && (
+                        <div className="tag-item create-hint" onClick={() => createTag(tagSearch)}>
                             <div className="tag-color-dot" style={{ border: '1px dashed currentColor', background: 'transparent' }} />
                             <span className="tag-name" style={{ opacity: 0.7 }}>{t('create_tag_hint').replace('{tag}', tagSearch.trim())}</span>
                             <Plus size={10} />
@@ -338,8 +345,9 @@ export default function TagManager({ t, theme }: TagManagerProps) {
                     <div className="toolbar-left">
                         <div className="selected-tag-indicator">
                             <span className="breadcrumb-marker">#</span>
-                            <span className="breadcrumb-text">{selectedTag?.toUpperCase()}</span>
+                            <span className="breadcrumb-text">{selectedTag || t('tags')}</span>
                         </div>
+                        <div className="toolbar-divider" />
                         <div className="sort-group">
                             <button
                                 className={`sort-btn ${sortBy === 'time' ? 'active' : ''}`}
@@ -347,6 +355,7 @@ export default function TagManager({ t, theme }: TagManagerProps) {
                                 onClick={() => setSortBy('time')}
                             >
                                 <Clock size={12} />
+                                <span>{t('sort_time') || '时间'}</span>
                             </button>
                             <button
                                 className={`sort-btn ${sortBy === 'count' ? 'active' : ''}`}
@@ -354,14 +363,17 @@ export default function TagManager({ t, theme }: TagManagerProps) {
                                 onClick={() => setSortBy('count')}
                             >
                                 <MousePointer2 size={12} />
+                                <span>{t('sort_usage') || '频率'}</span>
                             </button>
                         </div>
+                    </div>
+                    <div className="toolbar-right">
                         {selectedTag && (
                             <button className="add-item-btn btn-icon" onClick={() => setIsCreatingItem(true)} title={t('add_item')}>
-                                <Plus size={14} />
+                                <Plus size={16} />
+                                <span>{t('add_item') || '添加'}</span>
                             </button>
                         )}
-                    </div>
                     <div className="view-toggle">
                         <button
                             type="button"
@@ -376,10 +388,13 @@ export default function TagManager({ t, theme }: TagManagerProps) {
                             onClick={() => setViewMode('grid')}
                         ><LayoutGrid size={14} /></button>
                     </div>
+                    </div>
                 </div>
 
                 <div className="items-area custom-scrollbar">
-                    {loading ? <div className="status-msg">{t('processing')}</div> : (
+                    {loading ? <div className="status-msg">{t('processing')}</div> : sortedItems.length === 0 ? (
+                        <div className="status-msg">{selectedTag ? t('no_items') : t('select_tag_to_begin')}</div>
+                    ) : (
                         <div className={`items-${viewMode}`}>
                             {sortedItems.map(item => (
                                 <div key={item.id} className="themed-card" onClick={() => copyToClipboard(item.id, item.content, item.content_type)}>
@@ -429,8 +444,9 @@ export default function TagManager({ t, theme }: TagManagerProps) {
                                         <div className="card-body-text">{item.preview || item.content}</div>
                                     )}
 
+                                    <div className="card-divider" />
                                     <div className="card-footer">
-                                        <span className="meta-time">{new Date(item.timestamp).toLocaleDateString()}</span>
+                                        <span className="meta-time">{formatItemDate(item.timestamp)}</span>
                                         <div className="meta-usage"><MousePointer2 size={8} /> {item.use_count || 0}</div>
                                     </div>
                                 </div>
@@ -446,7 +462,7 @@ export default function TagManager({ t, theme }: TagManagerProps) {
             {/* Tag Delete Confirmation Modal */}
             {deleteConfirmation.show && (
                 <div className="modal-overlay" onClick={() => setDeleteConfirmation({ show: false, tagName: null })}>
-                    <div className={`confirm-dialog theme-${theme}`} onClick={(e) => e.stopPropagation()}>
+                    <div className={`confirm-dialog tag-manager-dialog theme-${theme}`} onClick={(e) => e.stopPropagation()}>
                         <h3>{t('confirm_delete')}</h3>
                         <p>
                             {t('confirm_delete_tag')}
@@ -475,7 +491,7 @@ export default function TagManager({ t, theme }: TagManagerProps) {
             {/* Item Delete Confirmation Modal */}
             {itemDeleteConfirmation.show && (
                 <div className="modal-overlay" onClick={() => setItemDeleteConfirmation({ show: false, id: null })}>
-                    <div className={`confirm-dialog theme-${theme}`} onClick={e => e.stopPropagation()}>
+                    <div className={`confirm-dialog tag-manager-dialog theme-${theme}`} onClick={e => e.stopPropagation()}>
                         <h3>{t('confirm_delete')}</h3>
                         <p>{t('confirm_delete_desc') || "确定要删除这条记录吗？"}</p>
                         <div className="confirm-dialog-buttons">
@@ -500,27 +516,15 @@ export default function TagManager({ t, theme }: TagManagerProps) {
             {/* Create Item Modal */}
             {isCreatingItem && (
                 <div className="modal-overlay" onClick={() => setIsCreatingItem(false)}>
-                    <div className={`confirm-dialog theme-${theme}`} onClick={e => e.stopPropagation()}>
+                    <div className={`confirm-dialog tag-manager-dialog theme-${theme}`} onClick={e => e.stopPropagation()}>
                         <h3>{t('add_item')}</h3>
                         <div className="modal-input-field">
                             <textarea
+                                className="tag-manager-textarea"
                                 value={newItemContent}
                                 onChange={e => setNewItemContent(e.target.value)}
                                 placeholder={t('input_content_placeholder')}
                                 autoFocus
-                                style={{
-                                    width: '100%',
-                                    minHeight: '120px',
-                                    background: 'var(--bg-input)',
-                                    border: '2px solid var(--border-dark)',
-                                    padding: '12px',
-                                    color: 'var(--text-primary)',
-                                    fontFamily: 'inherit',
-                                    fontSize: '14px',
-                                    outline: 'none',
-                                    resize: 'vertical',
-                                    marginBottom: '20px'
-                                }}
                             />
                         </div>
                         <div className="confirm-dialog-buttons">
@@ -538,26 +542,14 @@ export default function TagManager({ t, theme }: TagManagerProps) {
             {/* Edit Item Modal */}
             {editingItem && (
                 <div className="modal-overlay" onClick={() => setEditingItem(null)}>
-                    <div className={`confirm-dialog theme-${theme}`} onClick={e => e.stopPropagation()}>
+                    <div className={`confirm-dialog tag-manager-dialog theme-${theme}`} onClick={e => e.stopPropagation()}>
                         <h3>{t('edit_item')}</h3>
                         <div className="modal-input-field">
                             <textarea
+                                className="tag-manager-textarea"
                                 value={editingItem.content}
                                 onChange={e => setEditingItem({ ...editingItem, content: e.target.value })}
                                 autoFocus
-                                style={{
-                                    width: '100%',
-                                    minHeight: '150px',
-                                    background: 'var(--bg-input)',
-                                    border: '2px solid var(--border-dark)',
-                                    padding: '12px',
-                                    color: 'var(--text-primary)',
-                                    fontFamily: 'inherit',
-                                    fontSize: '14px',
-                                    outline: 'none',
-                                    resize: 'vertical',
-                                    marginBottom: '20px'
-                                }}
                             />
                         </div>
                         <div className="confirm-dialog-buttons">
@@ -578,73 +570,116 @@ export default function TagManager({ t, theme }: TagManagerProps) {
                     background: var(--bg-content);
                     font-family: var(--font-main, ui-monospace, monospace);
                     color: var(--text-primary);
+                    gap: 16px;
+                    padding: 16px;
                 }
 
                 /* Sidebar */
                 .tag-sidebar {
-                    width: 140px;
-                    border-right: 2px solid var(--border-dark);
-                    background: var(--bg-toolbar);
+                    width: 220px;
+                    flex-shrink: 0;
                     display: flex;
                     flex-direction: column;
-                    transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-                    flex-shrink: 0;
+                    background: var(--bg-panel);
+                    border-radius: var(--radius-lg);
+                    box-shadow: 0 2px 12px var(--shadow);
+                    overflow: hidden;
+                    border: var(--panel-border);
                 }
-                .sidebar-collapsed .tag-sidebar { width: 40px; }
+                .sidebar-collapsed .tag-sidebar { width: 56px; }
                 
                 .sidebar-header {
-                    padding: 8px 10px;
-                    background: var(--bg-element);
-                    color: var(--text-primary);
-                    font-size: 10px; font-weight: 900; text-transform: uppercase;
-                    display: flex; justify-content: space-between; align-items: center;
-                    min-height: 32px;
-                    border-bottom: 2px solid var(--border-dark);
+                    padding: 16px 20px;
+                    border-bottom: 1px solid var(--panel-divider-color);
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    min-height: auto;
+                    background: transparent;
+                    color: var(--text-secondary);
+                    font-size: 13px;
+                    font-weight: 600;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
                 }
                 .header-actions { display: flex; align-items: center; gap: 8px; }
                 .action-btn { background: transparent; border: none; color: inherit; cursor: pointer; padding: 2px; opacity: 0.7; transition: opacity 0.2s; }
                 .action-btn:hover { opacity: 1; }
-                .collapse-toggle { background: transparent; border: none; color: inherit; cursor: pointer; display: flex; align-items: center; }
+                .collapse-toggle { 
+                    background: var(--bg-main); 
+                    border: none; 
+                    color: inherit; 
+                    cursor: pointer; 
+                    display: flex; 
+                    align-items: center;
+                    justify-content: center;
+                    width: 28px;
+                    height: 28px;
+                    border-radius: var(--radius-sm);
+                    transition: all 0.2s;
+                }
+                .collapse-toggle:hover { background: var(--border-light); color: var(--text-primary); }
 
                 /* Tag Search Box */
                 .tag-search-box {
-                    padding: 6px 10px;
+                    padding: 12px 16px;
                     display: flex; align-items: center; gap: 6px;
-                    background: var(--bg-input);
-                    border-bottom: 2px solid var(--border-dark);
+                    background: transparent;
+                    border-bottom: 1px solid var(--panel-divider-color);
                     margin: 0;
-                    min-height: 34px;
+                    min-height: auto;
                     position: relative;
                 }
                 .tag-search-box .search-icon-placeholder { opacity: 0.3; color: var(--text-primary); flex-shrink: 0; }
                 .tag-search-box input {
-                    background: transparent; border: none; outline: none;
-                    font-size: 11px; font-weight: 700; width: 100%;
+                    width: 100%;
+                    background: var(--bg-main); 
+                    border: 1px solid var(--border); 
+                    outline: none;
+                    font-size: 13px; 
+                    font-weight: 500; 
                     color: var(--text-primary);
-                    padding: 2px 0;
+                    padding: 10px 12px 10px 36px;
                     flex: 1;
                     min-width: 0; 
+                    border-radius: var(--radius-sm);
+                    transition: all 0.2s;
                 }
-                .tag-search-box input::placeholder { color: var(--text-muted); opacity: 0.5; font-style: italic; font-size: 10px; }
+                .tag-search-box input:focus {
+                    border-color: var(--accent-color);
+                    background: var(--bg-panel);
+                    box-shadow: 0 0 0 3px var(--accent-light);
+                }
+                .tag-search-box input::placeholder { color: var(--text-muted); opacity: 0.7; font-style: normal; font-size: 13px; }
                 
                 .action-icons { display: flex; align-items: center; gap: 4px; }
-                .action-icon { cursor: pointer; opacity: 0.5; color: var(--text-primary); transition: all 0.1s; }
+                .action-icon { cursor: pointer; opacity: 0.5; color: var(--text-primary); transition: all 0.15s; }
                 .action-icon:hover { opacity: 1; transform: scale(1.1); }
                 .action-icon.create { color: var(--accent-color); opacity: 0.8; }
                 .action-icon.create:hover { opacity: 1; }
 
-                .tag-scroll { flex: 1; overflow-y: auto; padding: 4px; overflow-x: hidden; }
+                .tag-scroll { flex: 1; overflow-y: auto; padding: 8px; overflow-x: hidden; }
                 /* Tag Item Layout: [Color] [Name (Flex)] [Actions (Hover)] [Badge] */
                 .tag-item {
-                    display: flex; align-items: center; gap: 8px;
-                    padding: 8px 10px; cursor: pointer;
-                    margin-bottom: 2px; border: 1px solid transparent;
-                    transition: all 0.1s;
+                    display: flex; 
+                    align-items: center; 
+                    gap: 10px;
+                    padding: 10px 12px; 
+                    cursor: pointer;
+                    margin-bottom: 2px; 
+                    border: 1px solid transparent;
+                    border-radius: var(--radius-sm);
+                    transition: all 0.15s;
                     position: relative;
                 }
-                .tag-item.active { background: var(--bg-element); border: 2px solid var(--border-dark); box-shadow: 3px 3px 0 var(--shadow-color); }
-                .tag-item.create-hint { border: 1px dashed var(--border-dark); opacity: 0.8; font-style: italic; }
-                .tag-item.create-hint:hover { background: var(--bg-input); border-style: solid; }
+                .tag-item:hover { background: var(--bg-main); }
+                .tag-item.active { 
+                    background: var(--accent-light); 
+                    border-color: transparent;
+                    box-shadow: none;
+                }
+                .tag-item.create-hint { border: 1px dashed var(--border); opacity: 0.8; }
+                .tag-item.create-hint:hover { background: var(--bg-main); border-style: solid; }
 
                 .sidebar-collapsed .tag-item { justify-content: center; padding: 10px 0; gap: 0; }
                 .sidebar-collapsed .tag-name,
@@ -652,98 +687,145 @@ export default function TagManager({ t, theme }: TagManagerProps) {
                 .sidebar-collapsed .tag-hover-actions { display: none; }
                 .sidebar-collapsed .tag-color-wrapper { width: 100%; justify-content: center; }
                 .tag-color-wrapper { display: flex; align-items: center; justify-content: center; }
-                .tag-color-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; cursor: pointer; border: 1px solid rgba(0,0,0,0.1); transition: transform 0.2s; }
+                .tag-color-dot { 
+                    width: 10px; 
+                    height: 10px; 
+                    border-radius: 50%; 
+                    flex-shrink: 0; 
+                    cursor: pointer; 
+                    border: none;
+                    transition: transform 0.2s; 
+                }
                 .tag-color-dot:hover { transform: scale(1.2); }
-                .tag-name { flex: 1; font-size: 11px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+                .tag-name { 
+                    flex: 1; 
+                    font-size: 13px; 
+                    font-weight: 500; 
+                    white-space: nowrap; 
+                    overflow: hidden; 
+                    text-overflow: ellipsis; 
+                    min-width: 0; 
+                }
                 
                 /* Inline Edit Input */
                 .inline-tag-edit {
-                    flex: 1; border: none; background: var(--bg-input); 
-                    color: var(--text-primary); font-size: 11px; font-weight: 800;
-                    padding: 0 4px; border-radius: 2px;
-                    min-width: 0; outline: 1px solid var(--accent-color);
+                    flex: 1; 
+                    border: 1px solid var(--border); 
+                    background: var(--bg-main); 
+                    color: var(--text-primary); 
+                    font-size: 13px; 
+                    font-weight: 500;
+                    padding: 6px 10px; 
+                    border-radius: var(--radius-sm);
+                    min-width: 0; 
+                    outline: none;
+                    box-shadow: 0 0 0 3px var(--accent-light);
                 }
 
-                /* Actions group: Hidden by default, Flex on hover. Static position (displaces name) */
-                .tag-hover-actions { display: none; gap: 8px; align-items: center; }
+                /* Actions group: Hidden by default, Flex on hover */
+                .tag-hover-actions { 
+                    display: none; 
+                    gap: 4px; 
+                    align-items: center; 
+                }
                 .tag-item:hover .tag-hover-actions { display: flex; }
                 
-                .tag-badge { font-size: 9px; opacity: 0.6; min-width: 16px; text-align: right; }
+                .tag-badge { 
+                    font-size: 11px; 
+                    font-weight: 600; 
+                    color: var(--text-secondary); 
+                    background: var(--bg-main); 
+                    padding: 2px 8px; 
+                    border-radius: 10px;
+                    min-width: auto;
+                    text-align: center;
+                }
+                .tag-item.active .tag-badge {
+                    background: var(--accent-color);
+                    color: white;
+                }
                 
                 .tag-hover-actions > *:hover { color: var(--accent-color); }
                 .tag-item.active .tag-hover-actions > * { opacity: 0.8; }
-                .tag-item.active .tag-hover-actions > *:hover { opacity: 1; color: white; }
+                .tag-item.active .tag-hover-actions > *:hover { opacity: 1; color: var(--accent-color); }
 
                 /* Content Area */
                 .tag-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
                 .content-toolbar {
-                    height: 32px; border-bottom: 2px solid var(--border-dark);
-                    background: var(--bg-toolbar);
-                    display: flex; align-items: center; justify-content: space-between; padding: 0 12px;
+                    height: 48px; border-bottom: 1px solid var(--panel-divider-color);
+                    background: var(--bg-panel);
+                    display: flex; align-items: center; justify-content: space-between; padding: 0 16px;
                 }
-                .toolbar-left { display: flex; align-items: center; gap: 16px; }
-                .selected-tag-indicator { display: flex; align-items: center; gap: 4px; font-weight: 900; font-size: 10px; opacity: 0.7; }
+                .toolbar-left { display: flex; align-items: center; gap: 12px; }
+                .selected-tag-indicator { display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: 14px; color: var(--text-primary); }
                 .breadcrumb-marker { color: var(--accent-color); }
 
-                .sort-group { display: flex; gap: 4px; padding-left: 12px; border-left: 1px dashed var(--border-dark); }
-                .sort-btn { background: transparent; border: none; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; padding: 2px; }
-                .sort-btn.active { color: var(--accent-color); opacity: 1; }
+                .sort-group { display: flex; gap: 6px; padding-left: 12px; border-left: 1px solid var(--panel-divider-color); }
+                .sort-btn { background: transparent; border: none; color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: var(--radius-sm); transition: all 0.15s; }
+                .sort-btn:hover { background: var(--bg-main); color: var(--text-primary); }
+                .sort-btn.active { background: var(--accent-light); color: var(--accent-color); }
 
                 .view-toggle {
                     display: flex;
                     align-items: center;
-                    gap: 6px;
-                    padding: 0;
-                    border: none;
-                    background: transparent;
+                    gap: 4px;
+                    padding: 2px;
+                    border: 1px solid var(--panel-divider-color);
+                    border-radius: var(--radius-sm);
+                    background: var(--bg-main);
                 }
                 .toggle-btn {
-                    padding: 6px;
+                    padding: 4px;
+                    border-radius: var(--radius-sm);
+                    transition: all 0.15s;
                 }
+                .toggle-btn:hover { background: var(--bg-input); }
+                .toggle-btn.active { background: var(--accent-color); color: white; }
 
-                .items-area { flex: 1; overflow-y: auto; padding: 8px; background: var(--bg-content); }
+                .items-area { flex: 1; overflow-y: auto; padding: 16px; background: var(--bg-content); }
 
-                .items-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
-                .items-list { display: flex; flex-direction: column; gap: 4px; }
+                .items-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+                .items-list { display: flex; flex-direction: column; gap: 8px; }
 
                 .themed-card {
                     background: var(--bg-element);
-                    border: 2px solid var(--border-dark);
-                    padding: 6px; cursor: pointer;
+                    border: 1px solid var(--border);
+                    padding: 12px; cursor: pointer;
                     position: relative;
-                    box-shadow: 3px 3px 0 var(--border-dark);
-                    transition: all 0.1s;
+                    border-radius: var(--radius-md);
+                    transition: all 0.15s ease;
                 }
-                .themed-card:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--border-dark); background: var(--bg-input); }
+                .themed-card:hover { transform: translateY(-1px); box-shadow: 0 4px 12px var(--shadow); border-color: var(--accent-color); }
 
-                .del-btn { background: transparent; border: none; color: var(--text-muted); cursor: pointer; opacity: 0.2; }
-                .del-btn:hover { opacity: 1; color: #ff0000; }
+                .del-btn { background: transparent; border: none; color: var(--text-muted); cursor: pointer; opacity: 0.4; transition: opacity 0.15s; }
+                .del-btn:hover { opacity: 1; color: #ff4d4f; }
 
-                .card-media { min-height: 40px; border: 1px solid var(--border-dark); margin: 4px 0; overflow: hidden; background: transparent; display: flex; justify-content: center; }
-                .card-media.image-preview { max-width: 100%; max-height: 120px; object-fit: contain; }
+                .card-media { min-height: 60px; border-radius: var(--radius-sm); margin: 8px 0; overflow: hidden; background: var(--bg-main); display: flex; justify-content: center; align-items: center; }
+                .card-media img { max-width: 100%; max-height: 140px; object-fit: contain; border-radius: var(--radius-sm); }
                 
-                .card-body-text { font-size: 12px; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; word-break: break-all; }
-                .card-footer { display: flex; justify-content: space-between; margin-top: 4px; font-size: 8px; font-weight: 900; opacity: 0.4; }
-                .meta-usage { display: flex; align-items: center; gap: 2px; }
+                .card-body-text { font-size: 13px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word; color: var(--text-primary); }
+                .card-footer { display: flex; justify-content: space-between; margin-top: 8px; font-size: 11px; color: var(--text-secondary); opacity: 0.8; }
+                .meta-usage { display: flex; align-items: center; gap: 4px; }
                 
                 .add-item-btn {
                     margin-left: 12px;
                 }
 
-                .card-top-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
-                .card-actions-left { display: flex; gap: 4px; }
+                .card-top-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+                .card-actions-left { display: flex; gap: 6px; }
                 .card-action-btn {
                     background: transparent;
                     border: none;
-                    color: var(--text-muted);
+                    color: var(--text-secondary);
                     cursor: pointer;
                     display: flex;
                     align-items: center;
-                    padding: 2px;
-                    opacity: 0.3;
-                    transition: opacity 0.2s;
+                    padding: 4px;
+                    border-radius: var(--radius-sm);
+                    opacity: 0.6;
+                    transition: all 0.15s;
                 }
-                .card-action-btn:hover { opacity: 1; color: var(--accent-color); }
+                .card-action-btn:hover { opacity: 1; color: var(--accent-color); background: var(--bg-main); }
 
                 /* Overlay */
                 .modal-overlay {
@@ -755,68 +837,75 @@ export default function TagManager({ t, theme }: TagManagerProps) {
                 }
 
 
-                /* Confirm Dialog - Base Retro (Brutalist) Style */
+                /* Confirm Dialog - Modern Style */
                 .modal-overlay .confirm-dialog {
-                    background: var(--bg-window) !important;
+                    background: var(--bg-panel) !important;
                     padding: 24px;
-                    border: 3px solid var(--border-dark) !important;
-                    box-shadow: 8px 8px 0 var(--shadow-color) !important;
-                    border-radius: 0 !important;
-                    width: 360px;
+                    border: 1px solid var(--border) !important;
+                    box-shadow: 0 20px 40px rgba(0,0,0,0.15) !important;
+                    border-radius: var(--radius-lg) !important;
+                    width: 400px;
                     max-width: 90%;
-                    animation: modal-pop 0.15s cubic-bezier(0.17, 0.89, 0.32, 1.28);
+                    animation: modal-pop 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
                 }
 
                 @keyframes modal-pop {
-                    0% { transform: scale(0.9); opacity: 0; }
+                    0% { transform: scale(0.95); opacity: 0; }
                     100% { transform: scale(1); opacity: 1; }
                 }
 
                 .modal-overlay .confirm-dialog h3 {
-                    margin: 0 0 12px 0;
-                    font-size: 16px;
-                    font-weight: 900;
-                    text-transform: uppercase;
-                    background: var(--border-dark) !important;
-                    color: var(--bg-window) !important;
-                    padding: 4px 8px;
-                    display: inline-block;
+                    margin: 0 0 16px 0;
+                    font-size: 17px;
+                    font-weight: 600;
+                    background: transparent !important;
+                    color: var(--text-primary) !important;
+                    padding: 0;
+                    display: block;
+                    text-transform: none;
                 }
 
                 .modal-overlay .confirm-dialog p {
                     margin: 12px 0 24px 0;
                     font-size: 14px;
-                    font-weight: 700;
-                    line-height: 1.4;
-                    color: var(--text-primary);
+                    font-weight: 400;
+                    line-height: 1.5;
+                    color: var(--text-secondary);
                 }
 
                 .modal-overlay .confirm-dialog-buttons {
                     display: flex;
                     justify-content: flex-end;
-                    gap: 12px;
+                    gap: 8px;
                 }
 
                 .modal-overlay .confirm-dialog-button {
-                    padding: 6px 20px;
-                    font-size: 12px;
-                    font-weight: 900;
+                    padding: 8px 16px;
+                    font-size: 13px;
+                    font-weight: 500;
                     cursor: pointer;
-                    background: var(--bg-button) !important;
-                    border: 2px solid var(--border-dark) !important;
+                    background: var(--bg-main) !important;
+                    border: 1px solid var(--border) !important;
                     color: var(--text-primary) !important;
-                    box-shadow: 3px 3px 0 var(--border-dark) !important;
-                    transition: all 0.1s;
-                    border-radius: 0;
+                    box-shadow: none !important;
+                    transition: all 0.15s;
+                    border-radius: var(--radius-sm);
+                }
+                .modal-overlay .confirm-dialog-button:hover {
+                    background: var(--border-light) !important;
                 }
                 .modal-overlay .confirm-dialog-button:active {
-                    transform: translate(2px, 2px);
-                    box-shadow: 0 0 0 !important;
+                    transform: scale(0.98);
+                    box-shadow: none !important;
                 }
 
                 .modal-overlay .confirm-dialog-button.primary {
                     background: var(--accent-color) !important;
                     color: #fff !important;
+                    border: none !important;
+                }
+                .modal-overlay .confirm-dialog-button.primary:hover {
+                    background: var(--accent-color-dark) !important;
                 }
 
                 /* Modern Theme Polishes for Confirm Dialog */
@@ -882,60 +971,614 @@ export default function TagManager({ t, theme }: TagManagerProps) {
                 }
 
                 .modal-input-field input {
-                    width: 100%; background: var(--bg-input);
-                    border: 2px solid var(--border-dark);
-                    padding: 8px; color: var(--text-primary);
-                    font-family: inherit; font-size: 12px; font-weight: 700;
-                    outline: none; margin-bottom: 20px;
-                }
-                .modal-buttons { display: flex; gap: 12px; justify-content: flex-end; }
-                .modal-buttons button {
-                    padding: 6px 16px; cursor: pointer;
-                    font-size: 11px; font-weight: 900;
-                    border: 2px solid var(--border-dark);
-                    background: var(--bg-button);
+                    width: 100%; 
+                    background: var(--bg-main);
+                    border: 1px solid var(--border);
+                    padding: 12px; 
                     color: var(--text-primary);
-                    box-shadow: 3px 3px 0 var(--border-dark);
-                    transition: all 0.1s;
+                    font-family: inherit; 
+                    font-size: 14px; 
+                    font-weight: 400;
+                    outline: none; 
+                    margin-bottom: 20px;
+                    border-radius: var(--radius-sm);
+                    transition: all 0.2s;
                 }
-                .modal-buttons button:active { transform: translate(2px, 2px); box-shadow: 0 0 0; }
-                .btn-save { background: var(--accent-color); color: white; }
+                .modal-input-field input:focus {
+                    border-color: var(--accent-color);
+                    box-shadow: 0 0 0 3px var(--accent-light);
+                }
+                .modal-buttons { display: flex; gap: 8px; justify-content: flex-end; }
+                .modal-buttons button {
+                    padding: 8px 16px; 
+                    cursor: pointer;
+                    font-size: 13px; 
+                    font-weight: 500;
+                    border: 1px solid var(--border);
+                    background: var(--bg-main);
+                    color: var(--text-primary);
+                    box-shadow: none;
+                    transition: all 0.15s;
+                    border-radius: var(--radius-sm);
+                }
+                .modal-buttons button:active { transform: scale(0.98); }
+                .btn-save { background: var(--accent-color); color: white; border: none; }
+                .btn-save:hover { background: var(--accent-color-dark); }
                 
                 /* Modern Theme Polishes */
-                .theme-mica, .theme-acrylic { background: transparent !important; }
-                .theme-mica .tag-sidebar, .theme-acrylic .tag-sidebar { border-right: 1px solid rgba(128,128,128,0.1); background: transparent; }
-                .theme-mica .sidebar-header, .theme-acrylic .sidebar-header { background: transparent; color: var(--text-primary); border-bottom: 1px solid rgba(128,128,128,0.1); margin: 0; padding: 8px 12px; }
-                
-                .theme-mica .tag-item.active, .theme-acrylic .tag-item.active { background: var(--accent-color); color: white; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-radius: 6px; }
+                .theme-mica.themed-tag-manager,
+                .theme-acrylic.themed-tag-manager {
+                    gap: 14px;
+                    padding: 14px;
+                    background: transparent !important;
+                    overflow: hidden;
+                }
 
-                /* Modern theme rounded inputs & buttons */
-                .theme-mica .tag-search-box, .theme-acrylic .tag-search-box {
-                    border-radius: 10px;
-                    margin: 6px;
-                    border: 1px solid rgba(128,128,128,0.2);
-                    background: rgba(255,255,255,0.35);
+                .theme-mica .tag-sidebar,
+                .theme-acrylic .tag-sidebar {
+                    width: clamp(196px, 24%, 248px);
+                    border: var(--panel-border);
+                    border-radius: 24px;
+                    background: var(--bg-panel);
+                    box-shadow: var(--panel-shadow);
+                    overflow: hidden;
                 }
-                .theme-mica .tag-search-box input, .theme-acrylic .tag-search-box input {
-                    border-radius: 8px;
-                    padding: 6px 8px;
+
+                .theme-mica.sidebar-collapsed .tag-sidebar,
+                .theme-acrylic.sidebar-collapsed .tag-sidebar {
+                    width: 64px;
                 }
-                .theme-mica .collapse-toggle, .theme-acrylic .collapse-toggle,
-                .theme-mica .sort-btn, .theme-acrylic .sort-btn,
-                .theme-mica .toggle-btn, .theme-acrylic .toggle-btn,
-                .theme-mica .add-item-btn, .theme-acrylic .add-item-btn,
-                .theme-mica .card-action-btn, .theme-acrylic .card-action-btn,
-                .theme-mica .del-btn, .theme-acrylic .del-btn {
-                    border-radius: 8px;
+
+                .theme-mica .sidebar-header,
+                .theme-acrylic .sidebar-header {
+                    min-height: 88px;
+                    padding: 24px 24px 18px;
+                    background: transparent;
+                    border-bottom: 1px solid var(--panel-divider-color);
+                }
+
+                .theme-mica .header-label,
+                .theme-acrylic .header-label {
+                    font-size: 18px;
+                    font-weight: 700;
+                    letter-spacing: 0;
+                }
+
+                .theme-mica .collapse-toggle,
+                .theme-acrylic .collapse-toggle {
+                    width: 40px;
+                    height: 40px;
+                    border: 1px solid rgba(var(--accent-color-rgb), 0.12);
+                    border-radius: 14px;
+                    background: var(--bg-input);
+                    color: var(--text-secondary);
+                    box-shadow: none;
+                }
+
+                .theme-mica .collapse-toggle:hover,
+                .theme-acrylic .collapse-toggle:hover {
+                    background: rgba(var(--accent-color-rgb), 0.08);
+                    color: var(--text-primary);
+                }
+
+                .theme-mica .tag-search-box,
+                .theme-acrylic .tag-search-box {
+                    margin: 18px 16px;
+                    min-height: 56px;
+                    padding: 0 16px;
+                    gap: 12px;
+                    border: var(--input-border);
+                    border-radius: 16px;
+                    background: var(--bg-input);
+                    box-shadow: var(--input-shadow);
+                }
+
+                .theme-mica .tag-search-box .search-icon-placeholder,
+                .theme-acrylic .tag-search-box .search-icon-placeholder {
+                    opacity: 0.78;
+                    color: var(--text-secondary);
+                }
+
+                .theme-mica .tag-search-box input,
+                .theme-acrylic .tag-search-box input {
+                    padding: 0;
+                    font-size: 15px;
+                    font-weight: 600;
+                }
+
+                .theme-mica .tag-search-box input::placeholder,
+                .theme-acrylic .tag-search-box input::placeholder {
+                    font-size: 15px;
+                    font-style: normal;
+                    opacity: 0.72;
+                }
+
+                .theme-mica .action-icons,
+                .theme-acrylic .action-icons {
+                    gap: 8px;
+                }
+
+                .theme-mica .action-icon,
+                .theme-acrylic .action-icon {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 28px;
+                    height: 28px;
+                    border-radius: 999px;
+                    background: rgba(var(--accent-color-rgb), 0.08);
+                    color: var(--text-secondary);
+                    opacity: 1;
+                }
+
+                .theme-mica .action-icon:hover,
+                .theme-acrylic .action-icon:hover {
+                    background: rgba(var(--accent-color-rgb), 0.14);
+                    color: var(--accent-color);
+                    transform: none;
+                }
+
+                .theme-mica .tag-scroll,
+                .theme-acrylic .tag-scroll {
+                    padding: 4px 12px 16px;
+                }
+
+                .theme-mica .tag-item,
+                .theme-acrylic .tag-item {
+                    min-height: 60px;
+                    padding: 14px 16px;
+                    margin-bottom: 6px;
+                    border: 1px solid transparent;
+                    border-radius: 16px;
+                    background: transparent;
+                }
+
+                .theme-mica .tag-item:hover,
+                .theme-acrylic .tag-item:hover {
+                    background: rgba(var(--accent-color-rgb), 0.06);
+                    border-color: rgba(var(--accent-color-rgb), 0.12);
+                }
+
+                .theme-mica .tag-item.active,
+                .theme-acrylic .tag-item.active {
+                    background: rgba(var(--accent-color-rgb), 0.12);
+                    border-color: rgba(var(--accent-color-rgb), 0.16);
+                    box-shadow: none;
+                }
+
+                .theme-mica .tag-color-dot,
+                .theme-acrylic .tag-color-dot {
+                    width: 14px;
+                    height: 14px;
+                    border: none;
+                    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28);
+                }
+
+                .theme-mica .tag-name,
+                .theme-acrylic .tag-name {
+                    font-size: 15px;
+                    font-weight: 700;
+                }
+
+                .theme-mica .tag-hover-actions,
+                .theme-acrylic .tag-hover-actions {
+                    gap: 6px;
+                    color: var(--text-secondary);
+                }
+
+                .theme-mica .tag-hover-actions > span,
+                .theme-acrylic .tag-hover-actions > span {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 24px;
+                    height: 24px;
+                    border-radius: 999px;
+                }
+
+                .theme-mica .tag-hover-actions > span:hover,
+                .theme-acrylic .tag-hover-actions > span:hover {
+                    background: rgba(var(--accent-color-rgb), 0.12);
+                    color: var(--accent-color);
+                }
+
+                .theme-mica .tag-item.active .tag-hover-actions > span:hover,
+                .theme-acrylic .tag-item.active .tag-hover-actions > span:hover {
+                    background: rgba(var(--accent-color-rgb), 0.14);
+                    color: var(--accent-color);
+                }
+
+                .theme-mica .tag-badge,
+                .theme-acrylic .tag-badge {
+                    margin-left: auto;
+                    min-width: 34px;
+                    height: 30px;
+                    padding: 0 10px;
+                    border-radius: 999px;
+                    background: rgba(127, 140, 160, 0.1);
+                    color: var(--text-secondary);
+                    font-size: 14px;
+                    font-weight: 700;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    opacity: 1;
+                }
+
+                .theme-mica .tag-item.active .tag-badge,
+                .theme-acrylic .tag-item.active .tag-badge {
+                    background: var(--accent-color);
+                    color: #ffffff;
+                }
+
+                .theme-mica .tag-content,
+                .theme-acrylic .tag-content {
+                    min-width: 0;
+                    border: var(--panel-border);
+                    border-radius: 28px;
+                    background: var(--bg-panel);
+                    box-shadow: var(--panel-shadow);
+                }
+
+                .theme-mica .content-toolbar,
+                .theme-acrylic .content-toolbar {
+                    min-height: 88px;
+                    padding: 20px 28px;
+                    border-bottom: 1px solid var(--panel-divider-color);
+                    background: transparent;
+                }
+
+                .theme-mica .toolbar-left,
+                .theme-mica .toolbar-right,
+                .theme-acrylic .toolbar-left,
+                .theme-acrylic .toolbar-right {
+                    display: flex;
+                    align-items: center;
+                    gap: 14px;
+                }
+
+                .theme-mica .toolbar-right,
+                .theme-acrylic .toolbar-right {
+                    margin-left: auto;
+                }
+
+                .theme-mica .toolbar-divider,
+                .theme-acrylic .toolbar-divider {
+                    width: 1px;
+                    height: 28px;
+                    background: var(--panel-divider-color);
+                }
+
+                .theme-mica .selected-tag-indicator,
+                .theme-acrylic .selected-tag-indicator {
+                    padding: 10px 18px;
+                    border-radius: var(--radius-pill);
+                    background: rgba(var(--accent-color-rgb), 0.12);
+                    border: 1px solid rgba(var(--accent-color-rgb), 0.16);
+                    color: var(--accent-color);
+                    font-size: 16px;
+                    font-weight: 700;
+                    gap: 10px;
+                    opacity: 1;
+                }
+
+                .theme-mica .breadcrumb-text,
+                .theme-acrylic .breadcrumb-text {
+                    color: var(--text-primary);
+                }
+
+                .theme-mica .sort-group,
+                .theme-acrylic .sort-group {
+                    gap: 10px;
+                    padding-left: 0;
+                    border-left: none;
+                }
+
+                .theme-mica .sort-btn,
+                .theme-acrylic .sort-btn {
+                    min-height: 48px;
+                    padding: 0 18px;
+                    border: 1px solid rgba(var(--accent-color-rgb), 0.14);
+                    border-radius: 16px;
+                    background: transparent;
+                    color: var(--text-secondary);
+                    box-shadow: none;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 8px;
+                }
+
+                .theme-mica .sort-btn span,
+                .theme-acrylic .sort-btn span {
+                    font-size: 15px;
+                    font-weight: 700;
+                }
+
+                .theme-mica .sort-btn:hover,
+                .theme-acrylic .sort-btn:hover {
+                    background: rgba(var(--accent-color-rgb), 0.08);
+                    color: var(--text-primary);
+                }
+
+                .theme-mica .sort-btn.active,
+                .theme-acrylic .sort-btn.active {
+                    background: var(--accent-color);
+                    border-color: var(--accent-color);
+                    color: #ffffff;
+                    box-shadow: 0 12px 24px rgba(var(--accent-color-rgb), 0.24);
+                }
+
+                .theme-mica .add-item-btn,
+                .theme-acrylic .add-item-btn {
+                    width: auto !important;
+                    min-height: 52px;
+                    padding: 0 22px;
+                    border: none;
+                    border-radius: 18px;
+                    background: var(--accent-color);
+                    color: #ffffff;
+                    box-shadow: 0 12px 24px rgba(var(--accent-color-rgb), 0.26);
+                    gap: 10px;
+                    font-size: 16px;
+                    font-weight: 700;
+                }
+
+                .theme-mica .add-item-btn span,
+                .theme-acrylic .add-item-btn span {
+                    display: inline-block;
+                }
+
+                .theme-mica .add-item-btn:hover,
+                .theme-acrylic .add-item-btn:hover {
+                    background: var(--accent-hover);
+                    color: #ffffff;
+                }
+
+                .theme-mica .view-toggle,
+                .theme-acrylic .view-toggle {
+                    padding: 4px;
+                    gap: 4px;
+                    border: 1px solid rgba(var(--accent-color-rgb), 0.12);
+                    border-radius: 18px;
+                    background: var(--bg-input);
+                }
+
+                .theme-mica .toggle-btn,
+                .theme-acrylic .toggle-btn {
+                    width: 44px;
+                    height: 44px;
+                    padding: 0;
+                    border: none;
+                    border-radius: 14px;
+                    background: transparent;
+                    color: var(--text-secondary);
+                    box-shadow: none;
+                }
+
+                .theme-mica .toggle-btn:hover,
+                .theme-acrylic .toggle-btn:hover {
+                    background: rgba(var(--accent-color-rgb), 0.08);
+                    color: var(--text-primary);
+                }
+
+                .theme-mica .toggle-btn.active,
+                .theme-acrylic .toggle-btn.active {
+                    background: var(--accent-color);
+                    color: #ffffff;
+                    box-shadow: 0 10px 20px rgba(var(--accent-color-rgb), 0.2);
+                }
+
+                .theme-mica .items-area,
+                .theme-acrylic .items-area {
+                    padding: 28px;
+                    background: transparent;
+                }
+
+                .theme-mica .status-msg,
+                .theme-acrylic .status-msg {
+                    padding: 36px 12px;
+                    text-align: center;
+                    color: var(--text-secondary);
+                    font-size: 14px;
+                }
+
+                .theme-mica .items-grid,
+                .theme-acrylic .items-grid {
+                    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+                    gap: 22px;
+                }
+
+                .theme-mica .items-list,
+                .theme-acrylic .items-list {
+                    display: grid;
+                    grid-template-columns: 1fr;
+                    gap: 18px;
+                }
+
+                .theme-mica .themed-card,
+                .theme-acrylic .themed-card {
+                    position: relative;
+                    min-height: 244px;
+                    padding: 24px 22px 18px;
+                    border: 1px solid rgba(var(--accent-color-rgb), 0.08);
+                    border-radius: 22px;
+                    background: var(--bg-input);
+                    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+                    display: flex;
+                    flex-direction: column;
+                    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+                }
+
+                .theme-mica .themed-card:hover,
+                .theme-acrylic .themed-card:hover {
+                    transform: translateY(-2px);
+                    border-color: rgba(var(--accent-color-rgb), 0.14);
+                    box-shadow: 0 18px 34px rgba(15, 23, 42, 0.1);
+                    background: var(--bg-input);
+                }
+
+                .theme-mica .items-list .themed-card,
+                .theme-acrylic .items-list .themed-card {
+                    min-height: 180px;
+                }
+
+                .theme-mica .card-top-row,
+                .theme-acrylic .card-top-row {
+                    position: absolute;
+                    top: 14px;
+                    right: 14px;
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                    opacity: 0;
+                    transition: opacity 0.18s ease;
+                    z-index: 1;
+                }
+
+                .theme-mica .themed-card:hover .card-top-row,
+                .theme-acrylic .themed-card:hover .card-top-row {
+                    opacity: 1;
+                }
+
+                .theme-mica .card-actions-left,
+                .theme-acrylic .card-actions-left {
+                    gap: 6px;
+                }
+
+                .theme-mica .card-action-btn,
+                .theme-mica .del-btn,
+                .theme-acrylic .card-action-btn,
+                .theme-acrylic .del-btn {
+                    width: 28px;
+                    height: 28px;
+                    padding: 0;
+                    border: 1px solid rgba(var(--accent-color-rgb), 0.08);
+                    border-radius: 999px;
+                    background: rgba(255, 255, 255, 0.88);
+                    color: var(--text-secondary);
+                    box-shadow: none;
+                    opacity: 1;
+                }
+
+                .theme-mica .card-action-btn:hover,
+                .theme-mica .del-btn:hover,
+                .theme-acrylic .card-action-btn:hover,
+                .theme-acrylic .del-btn:hover {
+                    background: rgba(var(--accent-color-rgb), 0.12);
+                    color: var(--accent-color);
+                }
+
+                .theme-mica .card-body-text,
+                .theme-acrylic .card-body-text {
+                    flex: 1;
+                    padding-top: 12px;
+                    font-size: 15px;
+                    line-height: 1.7;
+                    font-weight: 500;
+                    color: var(--text-primary);
+                    -webkit-line-clamp: 5;
+                    min-height: 122px;
+                }
+
+                .theme-mica .items-list .card-body-text,
+                .theme-acrylic .items-list .card-body-text {
+                    -webkit-line-clamp: 3;
+                    min-height: 84px;
+                }
+
+                .theme-mica .card-media,
+                .theme-acrylic .card-media {
+                    flex: 1;
+                    min-height: 190px;
+                    margin-top: 14px;
+                    border: none;
+                    border-radius: 18px;
+                    background: rgba(127, 140, 160, 0.12);
+                    align-items: center;
+                }
+
+                .theme-mica .card-media img,
+                .theme-acrylic .card-media img {
+                    max-width: 100%;
+                    max-height: 190px;
+                    object-fit: contain;
+                    border-radius: 14px;
+                }
+
+                .theme-mica .card-divider,
+                .theme-acrylic .card-divider {
+                    height: 1px;
+                    margin: 18px 0 14px;
+                    background: var(--panel-divider-color);
+                }
+
+                .theme-mica .card-footer,
+                .theme-acrylic .card-footer {
+                    margin-top: auto;
+                    font-size: 13px;
+                    font-weight: 600;
+                    color: var(--text-secondary);
+                    opacity: 1;
+                }
+
+                .theme-mica .meta-usage,
+                .theme-acrylic .meta-usage {
+                    gap: 4px;
+                }
+
+                .theme-mica .inline-tag-edit,
+                .theme-acrylic .inline-tag-edit,
+                .theme-mica .modal-input-field input,
+                .theme-acrylic .modal-input-field input {
+                    border: var(--input-border);
+                    border-radius: var(--input-radius);
+                    box-shadow: var(--input-shadow);
+                    padding: 8px 10px;
+                    outline: none;
+                }
+
+                .theme-mica .modal-input-field textarea,
+                .theme-acrylic .modal-input-field textarea {
+                    background: var(--bg-input) !important;
+                    border: var(--input-border) !important;
+                    border-radius: 16px !important;
+                    box-shadow: var(--input-shadow) !important;
+                    color: var(--text-primary) !important;
+                }
+
+                .theme-mica .modal-buttons button,
+                .theme-acrylic .modal-buttons button {
+                    border: var(--button-border);
+                    border-radius: var(--button-radius);
+                    box-shadow: var(--button-shadow);
+                }
+
+                .dark-mode .theme-mica .tag-search-box,
+                .dark-mode .theme-acrylic .tag-search-box,
+                .dark-mode .theme-mica .tag-sidebar,
+                .dark-mode .theme-acrylic .tag-sidebar,
+                .dark-mode .theme-mica .tag-content,
+                .dark-mode .theme-acrylic .tag-content {
+                    border-color: rgba(255, 255, 255, 0.08);
+                }
+
+                .dark-mode .theme-mica .card-action-btn,
+                .dark-mode .theme-mica .del-btn,
+                .dark-mode .theme-acrylic .card-action-btn,
+                .dark-mode .theme-acrylic .del-btn {
+                    background: rgba(22, 28, 39, 0.92);
+                    border-color: rgba(255, 255, 255, 0.08);
+                }
+
+                .dark-mode .theme-mica .tag-badge,
+                .dark-mode .theme-acrylic .tag-badge {
+                    background: rgba(255, 255, 255, 0.08);
                 }
                 
-                .theme-mica .themed-card, .theme-acrylic .themed-card { border-radius: 12px; border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.45); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-                .dark-mode .theme-mica .themed-card, .dark-mode .theme-acrylic .themed-card { background: rgba(45,45,45,0.6); border-color: rgba(255,255,255,0.1); }
-                
-                .custom-scrollbar::-webkit-scrollbar { width: 3px; }
-                .custom-scrollbar::-webkit-scrollbar-thumb { background: var(--border-dark); border-radius: 10px; }
+                .custom-scrollbar::-webkit-scrollbar { width: var(--scrollbar-size-thin); }
+                .custom-scrollbar::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb-color); border-radius: var(--scrollbar-radius); }
             `}</style>
         </div >
     );
 }
-
-

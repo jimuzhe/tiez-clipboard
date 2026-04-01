@@ -142,18 +142,29 @@ pub fn set_theme(
         let build = windows_version::OsVersion::current().build;
         let is_win11 = build >= 22000;
         let is_win10_1803 = build >= 17134;
+        let is_win10 = build >= 10240 && build < 22000;
 
         match theme.as_str() {
             "mica" if is_win11 => {
                 let _ = window_vibrancy::apply_mica(&window, Some(is_dark));
                 let _ = window.set_shadow(show_border);
             }
-            "acrylic" if is_win10_1803 => {
-                let _ = window_vibrancy::apply_acrylic(&window, Some(if is_dark { (30, 30, 30, 40) } else { (240, 240, 240, 40) }));
+            "acrylic" if is_win10_1803 && !is_win10 => {
+                let _ = window_vibrancy::apply_acrylic(
+                    &window,
+                    Some(if is_dark {
+                        (30, 30, 30, 40)
+                    } else {
+                        (240, 240, 240, 40)
+                    }),
+                );
                 let _ = window.set_shadow(show_border);
             }
+            "acrylic" if is_win10 => {
+                let _ = window.set_shadow(false);
+            }
             _ => {
-                let _ = window.set_shadow(show_border && (theme != "mica" && theme != "acrylic" || is_win11));
+                let _ = window.set_shadow(show_border && is_win11 && theme != "mica" && theme != "acrylic");
             }
         }
     }

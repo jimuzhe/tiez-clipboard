@@ -523,9 +523,9 @@ body.theme-retro .history-item.compact .ai-options-dropdown button {
 
 /* Compact mode - make file icon smaller */
 .history-item.compact .file-icon-wrapper {
-    width: 36px !important;
-    height: 36px !important;
-    min-width: 36px !important;
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
 }
 
 /* Compact mode - make video thumbnail smaller */
@@ -549,6 +549,11 @@ body.theme-retro .history-item.compact .ai-options-dropdown button {
 .history-item.compact .file-icon-wrapper svg {
     width: 20px !important;
     height: 20px !important;
+}
+
+.history-item.compact .file-icon-image {
+    width: 100% !important;
+    height: 100% !important;
 }
 
 /* Pinned Indicator - Compact Mode */
@@ -629,16 +634,16 @@ html.theme-acrylic .history-item.compact .compact-pinned-indicator {
 
 /* AI dropdown scrollbar styling */
 .history-item.compact .item-actions [style*="overflow-y: auto"]::-webkit-scrollbar {
-    width: 4px;
+    width: var(--scrollbar-size-thin);
 }
 
 .history-item.compact .item-actions [style*="overflow-y: auto"]::-webkit-scrollbar-track {
-    background: transparent;
+    background: var(--scrollbar-track-background);
 }
 
 .history-item.compact .item-actions [style*="overflow-y: auto"]::-webkit-scrollbar-thumb {
-    background: var(--border-dark);
-    border-radius: 0;
+    background: var(--scrollbar-thumb-color);
+    border-radius: var(--scrollbar-radius);
 }
 
 body.theme-mica .history-item.compact,

@@ -35,12 +35,12 @@
 }
 
 :root.dark-mode .wt-chat-box{
-  scrollbar-color: #ededed transparent;
+  scrollbar-color: var(--scrollbar-thumb-color) var(--scrollbar-track-background);
 }
 
 :root.dark-mode .wt-chat-box::-webkit-scrollbar-thumb{
-  background: #ededed;
-  border-color: #202020;
+  background: var(--scrollbar-thumb-color);
+  border-color: var(--bg-body);
 }
 
 :root.dark-mode .wt-expand-btn{

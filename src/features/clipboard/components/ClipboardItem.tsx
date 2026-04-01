@@ -35,6 +35,7 @@ import { getConciseTime, getTagColor } from "../../../shared/lib/utils";
 import HtmlContent from "../../../shared/components/HtmlContent";
 import { toTauriLocalImageSrc } from "../../../shared/lib/localImageSrc";
 import { getRichTextSnapshotDataUrl } from "../../../shared/lib/richTextSnapshot";
+import { getFileIcon as getFileIconDataUrl, peekFileIcon } from "../../../shared/lib/fileIcon";
 import { getSourceAppIcon, peekSourceAppIcon } from "../../../shared/lib/sourceAppIcon";
 
 const COMPACT_PREVIEW_LABEL = "compact-preview";
@@ -551,7 +552,7 @@ const renderSourceAppIcon = (iconSrc: string | null, contentType: string, source
     );
 };
 
-const getFileIcon = (filePath: string) => {
+const getFallbackFileIcon = (filePath: string) => {
     const ext = filePath.split('.').pop()?.toLowerCase();
     switch (ext) {
         case 'zip':
@@ -626,6 +627,7 @@ const ClipboardItem = ({
     onAIOptionsToggle,
     tagColors,
     richTextSnapshotPreview = false,
+    showSourceAppIcon = true,
     dragControls,
     id,
     compactMode,
@@ -638,6 +640,12 @@ const ClipboardItem = ({
     const [snapshotFailed, setSnapshotFailed] = useState(false);
     const [richImageFallbackFailed, setRichImageFallbackFailed] = useState(false);
     const [sourceAppIcon, setSourceAppIcon] = useState<string | null>(() => peekSourceAppIcon(item.source_app_path) ?? null);
+    const filePaths = useMemo(
+        () => item.content_type === "file" ? item.content.split('\n').filter(path => path.trim()) : [],
+        [item.content, item.content_type]
+    );
+    const singleFilePath = filePaths.length === 1 ? filePaths[0] : null;
+    const [fileIcon, setFileIcon] = useState<string | null>(() => peekFileIcon(singleFilePath) ?? null);
     const isComposing = useRef(false);
     const richSnapshotImgRef = useRef<HTMLImageElement | null>(null);
     const richSnapshotFallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -655,6 +663,7 @@ const ClipboardItem = ({
     const richTextCleanHtml = richTextFallback?.cleanHtml || item.html_content || "";
     const richTextSnapshotDisplayMaxHeight = compactMode ? 40 : 64;
     const richTextSnapshotRenderMaxHeight = compactMode ? 100 : 200;
+    const canShowCompactPreview = compactMode && item.content_type !== "file";
     const richTextSnapshotSrc = useMemo(() => {
         if (!richTextSnapshotPreview) return null;
         if (item.content_type !== "rich_text" || !item.html_content) return null;
@@ -709,6 +718,35 @@ const ClipboardItem = ({
             cancelled = true;
         };
     }, [item.source_app_path]);
+
+    useEffect(() => {
+        let cancelled = false;
+        const cachedIcon = peekFileIcon(singleFilePath);
+
+        if (cachedIcon !== undefined) {
+            setFileIcon(cachedIcon ?? null);
+            return () => {
+                cancelled = true;
+            };
+        }
+
+        setFileIcon(null);
+        if (item.content_type !== "file" || item.file_preview_exists === false || !singleFilePath) {
+            return () => {
+                cancelled = true;
+            };
+        }
+
+        getFileIconDataUrl(singleFilePath).then((icon) => {
+            if (!cancelled) {
+                setFileIcon(icon);
+            }
+        });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [item.content_type, item.file_preview_exists, singleFilePath]);
 
     const hideCompactPreview = async () => {
         await hideCompactPreviewGlobal();
@@ -897,10 +935,10 @@ const ClipboardItem = ({
     }, [isEditingTags]);
 
     useEffect(() => {
-        if (!compactMode) {
+        if (!canShowCompactPreview) {
             hideCompactPreview();
         }
-    }, [compactMode]);
+    }, [canShowCompactPreview]);
 
     useEffect(() => {
         return () => {
@@ -925,29 +963,37 @@ const ClipboardItem = ({
             );
         }
 
-        const paths = item.content.split('\n').filter(p => p.trim());
-        if (paths.length > 1) {
+        if (filePaths.length > 1) {
             return (
                 <div className="file-thumbnail-card" title={item.content}>
                     <div className="file-icon-wrapper">
                         <Files size={24} />
                     </div>
                     <div className="file-info-wrapper">
-                        <div className="file-name">{paths.length} {t('items')}</div>
-                        <div className="file-hint">{paths[0].split(/[\\/]/).pop()} ...</div>
+                        <div className="file-name">{filePaths.length} {t('items')}</div>
+                        <div className="file-hint">{filePaths[0].split(/[\\/]/).pop()} ...</div>
                     </div>
                 </div>
             );
         }
 
-        const filePath = paths[0];
+        const filePath = filePaths[0];
         const fileName = filePath.split(/[\\/]/).pop();
         const dirPath = filePath.split(/[\\/]/).slice(0, -1).join('\\');
 
         return (
             <div className="file-thumbnail-card" title={item.content}>
-                <div className="file-icon-wrapper">
-                    {getFileIcon(filePath)}
+                <div className={`file-icon-wrapper ${fileIcon ? 'file-icon-wrapper-system' : ''}`}>
+                    {fileIcon ? (
+                        <img
+                            src={fileIcon}
+                            alt=""
+                            className="file-icon-image"
+                            loading="lazy"
+                        />
+                    ) : (
+                        getFallbackFileIcon(filePath)
+                    )}
                 </div>
                 <div className="file-info-wrapper">
                     <div className="file-name">{fileName}</div>
@@ -966,7 +1012,7 @@ const ClipboardItem = ({
             animate={{ marginBottom: 0 }}
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.1 }}
-            className={`history-item ${isSelected ? "selected" : ""} ${compactMode ? "compact" : ""} ${item.is_pinned ? "pinned" : ""} ${className || ''}`}
+            className={`history-item ${isSelected ? "selected" : ""} ${compactMode ? "compact" : ""} ${item.is_pinned ? "pinned" : ""} ${item.content_type === 'file' ? 'file-item' : ''} ${className || ''}`}
             onMouseDown={(e) => {
                 if (!windowPinned) return;
                 const target = e.target as HTMLElement;
@@ -1006,7 +1052,7 @@ const ClipboardItem = ({
                 onSelect();
             }}
             onMouseEnter={(e) => {
-                if (!compactMode) return;
+                if (!canShowCompactPreview) return;
                 // Don't show preview if AI options are open to avoid interference
                 if (showAIOptions) return;
                 compactPreviewLog("mouseenter schedule preview", { itemId: item.id });
@@ -1033,7 +1079,7 @@ const ClipboardItem = ({
                 }, 1000); // 1s delay
             }}
             onMouseMove={(e) => {
-                if (!compactMode) return;
+                if (!canShowCompactPreview) return;
                 hoverAnchorRef.current = {
                     clientX: e.clientX,
                     clientY: e.clientY,
@@ -1068,7 +1114,9 @@ const ClipboardItem = ({
                     )}
                     <div className="app-info">
                         {item.is_pinned && !dragControls && <Pin size={10} style={{ color: 'var(--accent-color)', marginRight: '-2px' }} />}
-                        {renderSourceAppIcon(sourceAppIcon, item.content_type, item.source_app)}
+                        {showSourceAppIcon
+                            ? renderSourceAppIcon(sourceAppIcon, item.content_type, item.source_app)
+                            : getIcon(item.content_type)}
                         <span>{item.source_app}</span>
                     </div>
                 </div>
@@ -1139,7 +1187,9 @@ const ClipboardItem = ({
                     <Pin size={10} fill="currentColor" />
                 </div>
             )}
-            <div className={`content-preview ${item.content_type === 'rich_text' ? 'rich-text' : ''} ${isSensitiveHidden ? 'sensitive-blur' : ''}`}>
+            <div
+                className={`content-preview ${item.content_type === 'rich_text' ? 'rich-text' : ''} ${item.content_type === 'file' ? 'file-preview' : ''} ${isSensitiveHidden ? 'sensitive-blur' : ''}`}
+            >
                 {item.content_type === "image" ? (
                     <div style={{ position: 'relative' }}>
                         {item.is_external && item.file_preview_exists === false ? (
@@ -1506,6 +1556,7 @@ export default memo(ClipboardItem, (prevProps, nextProps) => {
         prevProps.aiOptionsOpen === nextProps.aiOptionsOpen &&
         prevProps.aiEnabled === nextProps.aiEnabled &&
         prevProps.richTextSnapshotPreview === nextProps.richTextSnapshotPreview &&
+        prevProps.showSourceAppIcon === nextProps.showSourceAppIcon &&
         prevProps.compactMode === nextProps.compactMode &&
         prevProps.theme === nextProps.theme &&
         prevProps.language === nextProps.language &&

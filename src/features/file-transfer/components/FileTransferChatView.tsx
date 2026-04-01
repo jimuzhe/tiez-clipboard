@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -31,6 +31,17 @@ const FileTransferChatView = ({
     localIp,
     actualPort
 }: FileTransferChatViewProps) => {
+    const resolveComposerMetrics = (height?: number) => {
+        const baseHeight = height ?? (typeof window !== "undefined" ? window.innerHeight : 0);
+        const controlHeight = Math.max(46, Math.min(84, Math.round(baseHeight * 0.1)));
+        const footerPaddingY = Math.max(8, Math.min(20, Math.round(controlHeight * 0.18)));
+        return { controlHeight, footerPaddingY };
+    };
+
+    const rootRef = useRef<HTMLDivElement>(null);
+    const [composerMetrics, setComposerMetrics] = useState(() => resolveComposerMetrics());
+    const composerMinHeight = composerMetrics.controlHeight;
+    const composerSideWidth = Math.max(74, Math.round(composerMinHeight * 1.6));
     const [messages, setMessages] = useState<FileTransferMessage[]>([]);
     const [input, setInput] = useState("");
     const [appLogo, setAppLogo] = useState("");
@@ -46,6 +57,12 @@ const FileTransferChatView = ({
     const [isDragging, setIsDragging] = useState(false);
     const lastDropSignatureRef = useRef("");
     const lastDropHandledAtRef = useRef(0);
+    const chatViewStyle = {
+        position: 'relative',
+        ['--wt-control-height']: `${composerMinHeight}px`,
+        ['--wt-side-width']: `${composerSideWidth}px`,
+        ['--wt-footer-padding-y']: `${composerMetrics.footerPaddingY}px`
+    } as CSSProperties;
 
     const URL_REGEX = /((https?:\/\/|www\.)[^\s<]+|(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+(?:[a-z]{2,})(?:\/[^\s<]*)?)/gi;
 
@@ -146,18 +163,24 @@ const FileTransferChatView = ({
 
     const getAvatarConfig = (m: FileTransferMessage) => {
         if (m.sender_id === 'pc' || m.direction === 'out') {
-            return { isImg: !!appLogo, content: appLogo || 'PC', color: 'var(--text-primary)', initial: 'PC' };
+            return {
+                isImg: !!appLogo,
+                content: appLogo || 'PC',
+                color: 'var(--wt-own-avatar-background)',
+                textColor: 'var(--wt-own-avatar-color)',
+                initial: 'PC'
+            };
         }
 
         const gradients = [
-            'linear-gradient(135deg, #FF5F6D 0%, #FFC371 100%)',
-            'linear-gradient(135deg, #2193b0 0%, #6dd5ed 100%)',
-            'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)',
-            'linear-gradient(135deg, #8E2DE2 0%, #4A00E0 100%)',
-            'linear-gradient(135deg, #f953c6 0%, #b91d73 100%)',
-            'linear-gradient(135deg, #ee0979 0%, #ff6a00 100%)',
-            'linear-gradient(135deg, #00c6ff 0%, #0072ff 100%)',
-            'linear-gradient(135deg, #f7971e 0%, #ffd200 100%)'
+            'var(--wt-peer-gradient-1)',
+            'var(--wt-peer-gradient-2)',
+            'var(--wt-peer-gradient-3)',
+            'var(--wt-peer-gradient-4)',
+            'var(--wt-peer-gradient-5)',
+            'var(--wt-peer-gradient-6)',
+            'var(--wt-peer-gradient-7)',
+            'var(--wt-peer-gradient-8)'
         ];
 
         const id = m.sender_id || 'mobile';
@@ -177,7 +200,12 @@ const FileTransferChatView = ({
             else initial = m.sender_name.charAt(0).toUpperCase();
         }
 
-        return { isImg: false, color: gradient, initial };
+        return {
+            isImg: false,
+            color: gradient,
+            textColor: 'var(--wt-peer-avatar-color)',
+            initial
+        };
     };
 
     const fetchMessages = async () => {
@@ -352,8 +380,25 @@ const FileTransferChatView = ({
 
     // Adjust textarea height
     useEffect(() => {
+        const element = rootRef.current;
+        if (!element || typeof ResizeObserver === "undefined") {
+            setComposerMetrics(resolveComposerMetrics());
+            return;
+        }
+
+        const updateMetrics = () => {
+            setComposerMetrics(resolveComposerMetrics(element.clientHeight));
+        };
+
+        updateMetrics();
+        const observer = new ResizeObserver(() => updateMetrics());
+        observer.observe(element);
+        return () => observer.disconnect();
+    }, []);
+
+    useEffect(() => {
         if (textareaRef.current) {
-            textareaRef.current.style.height = '40px';
+            textareaRef.current.style.height = `${composerMinHeight}px`;
             const scrollHeight = textareaRef.current.scrollHeight;
 
             // Check if text is overflowing (more content than fits in max height)
@@ -363,9 +408,9 @@ const FileTransferChatView = ({
                 setShowExpandBtn(false);
             }
 
-            textareaRef.current.style.height = Math.min(Math.max(40, scrollHeight), 120) + 'px';
+            textareaRef.current.style.height = Math.min(Math.max(composerMinHeight, scrollHeight), 120) + 'px';
         }
-    }, [input]);
+    }, [composerMinHeight, input]);
 
     const send = async () => {
         if (!input.trim()) return;
@@ -375,7 +420,7 @@ const FileTransferChatView = ({
             setShowFullScreen(false);
             fetchMessages();
             // Reset height
-            if (textareaRef.current) textareaRef.current.style.height = '40px';
+            if (textareaRef.current) textareaRef.current.style.height = `${composerMinHeight}px`;
         } catch (e) { }
     };
 
@@ -424,8 +469,9 @@ const FileTransferChatView = ({
 
     return (
         <div
+            ref={rootRef}
             className="wt-chat-view"
-            style={{ position: 'relative' }}
+            style={chatViewStyle}
             onDragOver={(e) => {
                 // Critical: Prevent default browser behavior to allow drop
                 e.preventDefault();
@@ -454,7 +500,7 @@ const FileTransferChatView = ({
                         style={{
                             position: 'absolute',
                             top: 0, left: 0, right: 0, bottom: 0,
-                            background: 'rgba(0,0,0,0.6)',
+                            background: 'var(--wt-overlay-background)',
                             backdropFilter: 'blur(4px)',
                             zIndex: 99999, // Ensure it's on top of everything
                             display: 'flex',
@@ -464,16 +510,16 @@ const FileTransferChatView = ({
                         }}
                     >
                         <div style={{
-                            border: '4px dashed rgba(255,255,255,0.8)',
+                            border: '4px dashed var(--wt-overlay-border)',
                             borderRadius: '16px',
                             padding: '40px',
                             display: 'flex',
                             flexDirection: 'column',
                             alignItems: 'center',
                             gap: '16px',
-                            color: '#fff'
+                            color: 'var(--wt-overlay-color)'
                         }}>
-                            <Folder size={64} color="#fff" strokeWidth={1.5} />
+                            <Folder size={64} color="currentColor" strokeWidth={1.5} />
                             <div style={{ fontSize: '24px', fontWeight: 'bold' }}>Drop to Send</div>
                         </div>
                     </motion.div>
@@ -521,7 +567,7 @@ const FileTransferChatView = ({
                                 style={{
                                     overflow: 'hidden',
                                     background: avatar.isImg ? 'transparent' : avatar.color,
-                                    color: '#fff',
+                                    color: avatar.textColor,
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
@@ -714,96 +760,82 @@ const FileTransferChatView = ({
             </div>
 
             <div className="wt-footer">
-                <button
-                    className="wt-btn"
-                    title="Send File"
-                    onClick={async () => {
-                        try {
-                            const selected = await open({
-                                multiple: true
-                            });
-
-                            if (selected) {
-                                const paths = Array.isArray(selected) ? selected : [selected];
-                                const tempMessages: FileTransferMessage[] = [];
-                                paths.forEach(path => {
-                                    const fileName = path.split(/[/\\]/).pop() || 'File';
-                                    const tempId = Date.now() + Math.random();
-                                    tempMessages.push({
-                                        id: tempId,
-                                        direction: 'out',
-                                        msg_type: 'file',
-                                        content: 'Preparing...',
-                                        timestamp: Date.now(),
-                                        _fileName: fileName,
-                                        _preparing: true
-                                    });
+                <div className="wt-composer">
+                    <button
+                        className="wt-btn wt-btn-add"
+                        title="Send File"
+                        onClick={async () => {
+                            try {
+                                const selected = await open({
+                                    multiple: true
                                 });
 
-                                setMessages(prev => [...prev, ...tempMessages]);
-                                setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+                                if (selected) {
+                                    const paths = Array.isArray(selected) ? selected : [selected];
+                                    const tempMessages: FileTransferMessage[] = [];
+                                    paths.forEach(path => {
+                                        const fileName = path.split(/[/\\]/).pop() || 'File';
+                                        const tempId = Date.now() + Math.random();
+                                        tempMessages.push({
+                                            id: tempId,
+                                            direction: 'out',
+                                            msg_type: 'file',
+                                            content: 'Preparing...',
+                                            timestamp: Date.now(),
+                                            _fileName: fileName,
+                                            _preparing: true
+                                        });
+                                    });
 
-                                const sendPromises = paths.map(path =>
-                                    invoke("send_file_to_client", { filePath: path })
-                                );
-                                await Promise.all(sendPromises);
-                                setTimeout(fetchMessages, 300);
+                                    setMessages(prev => [...prev, ...tempMessages]);
+                                    setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+
+                                    const sendPromises = paths.map(path =>
+                                        invoke("send_file_to_client", { filePath: path })
+                                    );
+                                    await Promise.all(sendPromises);
+                                    setTimeout(fetchMessages, 300);
+                                }
+                            } catch (e) {
+                                console.error(e);
                             }
-                        } catch (e) {
-                            console.error(e);
-                        }
-                    }}
-                >
-                    <Plus size={18} />
-                </button>
-
-                <div style={{ flex: 1, position: 'relative', display: 'flex', minWidth: 0 }}>
-                    <textarea
-                        ref={textareaRef}
-                        className="wt-input"
-                        value={input}
-                        onFocus={() => invoke("focus_clipboard_window").catch(console.error)}
-                        onChange={e => setInput(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        onPaste={handlePaste}
-                        placeholder={t ? (t('type_message') || "Type a message...") : "Type..."}
-                        rows={1}
-                        style={{
-                            resize: 'none',
-                            minHeight: '40px',
-                            maxHeight: '120px',
-                            paddingTop: '10px',
-                            paddingRight: '30px', /* space for expand btn */
-                            overflowY: 'hidden'
                         }}
-                    />
-                    {showExpandBtn && (
-                        <button
-                            className="wt-expand-btn"
-                            onClick={() => setShowFullScreen(true)}
-                            title="Full Screen Edit"
-                            style={{
-                                position: 'absolute',
-                                right: '6px',
-                                bottom: '6px',
-                                background: 'transparent',
-                                border: 'none',
-                                cursor: 'pointer',
-                                opacity: 0.5,
-                                padding: '4px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center'
-                            }}
-                        >
-                            <Maximize2 size={14} />
-                        </button>
-                    )}
-                </div>
+                    >
+                        <Plus size={16} />
+                    </button>
 
-                <button onClick={send} className="wt-btn send">
-                    SEND
-                </button>
+                    <div className="wt-input-wrap">
+                        <textarea
+                            ref={textareaRef}
+                            className="wt-input"
+                            value={input}
+                            onFocus={() => invoke("focus_clipboard_window").catch(console.error)}
+                            onChange={e => setInput(e.target.value)}
+                            onKeyDown={handleKeyDown}
+                            onPaste={handlePaste}
+                            placeholder={t ? (t('type_message') || "Type a message...") : "Type..."}
+                            rows={1}
+                            style={{
+                                resize: 'none',
+                                maxHeight: '120px',
+                                overflowY: 'hidden'
+                            }}
+                        />
+                        {showExpandBtn && (
+                            <button
+                                className="wt-expand-btn"
+                                onClick={() => setShowFullScreen(true)}
+                                title="Full Screen Edit"
+                            >
+                                <Maximize2 size={14} />
+                            </button>
+                        )}
+                    </div>
+
+                    <button onClick={send} className="wt-btn send">
+                        SEND
+                    </button>
+                </div>
             </div>
 
             <AnimatePresence>
@@ -828,7 +860,12 @@ const FileTransferChatView = ({
                             <div style={{ fontWeight: 900, fontSize: '14px' }}>FULL SCREEN EDIT</div>
                             <button
                                 onClick={() => setShowFullScreen(false)}
-                                style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}
+                                style={{
+                                    background: 'transparent',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    color: 'var(--text-primary)'
+                                }}
                             >
                                 <Minimize2 size={20} />
                             </button>

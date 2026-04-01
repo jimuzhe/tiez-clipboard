@@ -118,19 +118,27 @@ fn get_mqtt_config(app: &AppHandle) -> Option<MqttConfig> {
         .filter(|s| !s.is_empty())
         .or_else(|| std::env::var("DEFAULT_MQTT_USERNAME").ok().filter(|s| !s.is_empty()));
 
-    let protocol = db_state.settings_repo.get("mqtt_protocol").ok().flatten().unwrap_or_else(|| {
-        if port == 8883 || port == 443 {
-            "mqtts://".to_string()
-        } else {
-            "mqtt://".to_string()
-        }
-    });
-    
-    let ssl = db_state.settings_repo.get("mqtt_ssl").ok().flatten()
-        .map(|s| s == "true")
+    let protocol = db_state.settings_repo.get("mqtt_protocol").ok().flatten()
+        .filter(|s| !s.is_empty())
         .unwrap_or_else(|| {
-            protocol.starts_with("mqtts://") || protocol.starts_with("wss://") || port == 8883 || port == 443
+            if port == 8883 || port == 443 {
+                "mqtts://".to_string()
+            } else {
+                "mqtt://".to_string()
+            }
         });
+
+    // Prefer the explicit protocol selection. `mqtt_ssl` is a legacy flag and
+    // should not force TLS when the user selected mqtt:// or ws://.
+    let legacy_ssl = db_state.settings_repo.get("mqtt_ssl").ok().flatten()
+        .map(|s| s == "true");
+    let ssl = if protocol.starts_with("mqtt://") || protocol.starts_with("ws://") {
+        false
+    } else if protocol.starts_with("mqtts://") || protocol.starts_with("wss://") {
+        true
+    } else {
+        legacy_ssl.unwrap_or(port == 8883 || port == 443)
+    };
 
     let ws_path = db_state.settings_repo.get("mqtt_ws_path").ok().flatten()
         .filter(|s| !s.is_empty())
@@ -200,7 +208,7 @@ pub fn start_mqtt_client(app: AppHandle) {
                 };
                 
                 let use_wss = cfg.protocol.starts_with("wss://");
-                let use_tls = cfg.protocol.starts_with("mqtts://") || cfg.ssl;
+                let use_tls = cfg.protocol.starts_with("mqtts://") || (cfg.ssl && !use_wss);
                 let use_ws = cfg.protocol.starts_with("ws://");
                 let ws_path = if cfg.ws_path.starts_with('/') {
                     cfg.ws_path.clone()

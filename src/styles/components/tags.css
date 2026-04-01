@@ -1,164 +1,79 @@
 /* --- Base Layout --- */
 .tags-dropdown {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    z-index: 100000 !important;
-    /* 极高层级，确保在列表上方 */
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 8px;
-    visibility: visible !important;
-    opacity: 1 !important;
-    pointer-events: auto !important;
-    min-height: 50px !important;
-    background-color: var(--bg-element) !important;
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 100000 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  min-height: 50px !important;
+  background-color: var(--bg-panel) !important;
+  border: var(--tags-border);
+  padding: 10px 12px 12px 12px;
+  box-shadow: var(--tags-shadow);
+  border-radius: var(--tags-radius);
 }
 
 .tags-label {
-    font-size: 11px;
-    font-weight: 800;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    opacity: 0.7;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: none;
+  opacity: 0.8;
 }
 
 .tags-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-}
-
-/* Dropdown Layout (base) */
-.tags-dropdown {
-    border: 3px solid var(--border-dark);
-    padding: 10px 10px 12px 10px;
-    box-shadow: inset 4px 4px 0 rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .tag-chip {
-    font-size: var(--clipboard-tag-font-size);
-    padding: 2px 6px;
-    background: var(--text-primary);
-    color: #fff;
-    cursor: pointer;
-    font-weight: bold;
-    border: 2px solid rgba(0, 0, 0, 0.6);
-    border-bottom-width: 3px;
-    border-right-width: 3px;
-    border-radius: 2px;
-    box-shadow: 1px 1px 0 0 rgba(0, 0, 0, 0.2);
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    transition: all 0.1s;
+  font-size: var(--clipboard-tag-font-size);
+  padding: 4px 10px;
+  background: rgba(var(--accent-color-rgb), 0.12);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-weight: 600;
+  border: var(--tag-chip-border);
+  border-radius: var(--tag-chip-radius);
+  box-shadow: var(--tag-chip-shadow);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.16s ease;
+  user-select: none;
 }
 
 .tag-chip:hover {
-    transform: translate(-1px, -1px);
-    box-shadow: 3px 3px 0 0 rgba(0, 0, 0, 0.3);
+  transform: var(--tag-chip-hover-transform);
+  box-shadow: var(--tag-chip-hover-shadow);
+  filter: brightness(1.05);
 }
 
 .tag-chip:active {
-    transform: translate(1px, 1px);
-    box-shadow: none;
-    border-bottom-width: 2px;
-    border-right-width: 2px;
+  transform: var(--tag-chip-active-transform);
+  box-shadow: var(--tag-chip-active-shadow);
 }
 
-/* Utilities */
 .hide-scrollbar::-webkit-scrollbar {
-    display: none;
+  display: none;
 }
 
-/* --- 1. Retro / Standard Style (Brutalist) --- */
-.theme-retro .tags-dropdown,
-.app-container:not(.theme-mica):not(.theme-acrylic) .tags-dropdown {
-    background: var(--bg-element);
-    border: 3px solid var(--border-dark);
-    box-shadow: inset 4px 4px 0 rgba(0, 0, 0, 0.1);
-    border-radius: 0;
-    padding: 10px 10px 12px 10px;
-    margin-top: 4px;
-    left: 0;
-    right: 0;
-    width: 100%;
-}
-
-.theme-retro .tag-chip,
-.app-container:not(.theme-mica):not(.theme-acrylic) .tag-chip {
-    padding: 2px 8px;
-    font-size: var(--clipboard-tag-font-size);
-    font-weight: 800;
-    color: #fff !important;
-    border: 2px solid var(--border-dark);
-    box-shadow: 2px 2px 0 0 var(--shadow-color);
-    border-radius: 0;
-}
-
-/* --- 2. Modern Styles (Mica / Acrylic) --- */
-
-/* 搜索框打开时的联动：彻底移除底部圆角和阴影 */
-.theme-mica .search-input.dropdown-open,
-.theme-acrylic .search-input.dropdown-open {
-    border-radius: 10px !important;
-    border: 1px solid rgba(128, 128, 128, 0.2) !important;
-    box-shadow: none !important;
-    background: rgba(255, 255, 255, 0.75) !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-}
-
-.theme-mica .tags-dropdown,
-.theme-acrylic .tags-dropdown {
-    background: rgba(255, 255, 255, 0.75) !important;
-    border: 1px solid rgba(128, 128, 128, 0.2) !important;
-    box-shadow: none !important;
-    border-radius: 10px !important;
-    padding: 10px 12px 12px 12px;
-    margin-top: 4px;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-}
-
-/* 深色模式同步颜色 */
-:root.dark-mode .theme-mica .tags-dropdown,
-:root.dark-mode .theme-acrylic .tags-dropdown,
-:root.dark-mode .theme-mica .search-input.dropdown-open,
-:root.dark-mode .theme-acrylic .search-input.dropdown-open {
-    background: rgba(255, 255, 255, 0.18) !important;
-    border-color: rgba(255, 255, 255, 0.1) !important;
-}
-
-.theme-mica .tag-chip,
-.theme-acrylic .tag-chip {
-    padding: 2px 10px;
-    font-size: var(--clipboard-tag-font-size);
-    font-weight: 500;
-    color: #fff !important;
-    border-radius: 6px;
-    border: none;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-/* --- Global Fix for Search Input Accessibility in Dark Mode --- */
 :root.dark-mode .search-input {
-    color: #ffffff !important;
+  color: #ffffff !important;
 }
 
 :root.dark-mode .search-input::placeholder {
-    color: rgba(255, 255, 255, 0.5) !important;
+  color: rgba(255, 255, 255, 0.5) !important;
 }
 
-/* Interactions */
-.tag-chip {
-    cursor: pointer;
-    transition: all 0.2s;
-    user-select: none;
-}
-
-.tag-chip:hover {
-    transform: translateY(-1px);
-    filter: brightness(1.15);
+.search-input.dropdown-open {
+  border-bottom-left-radius: var(--input-radius);
+  border-bottom-right-radius: var(--input-radius);
 }

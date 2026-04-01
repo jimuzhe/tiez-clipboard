@@ -1,8 +1,8 @@
-/* Header - Retro Control Panel */
 header {
   padding: var(--spacing-md) 0;
   background: var(--bg-toolbar);
-  border-bottom: 2px solid var(--border-dark);
+  border-bottom: var(--toolbar-border);
+  box-shadow: var(--toolbar-shadow);
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
@@ -16,19 +16,48 @@ header {
   justify-content: space-between;
   align-items: center;
   padding: 0 var(--spacing-md);
+  gap: var(--spacing-sm);
+}
+
+.header-leading {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex: 1;
+  min-width: 0;
+}
+
+.header-drag-region {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  min-height: 32px;
+  cursor: grab;
+}
+
+.header-drag-region:active {
+  cursor: grabbing;
 }
 
 .header-title {
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: 2px;
-  background: var(--text-primary);
-  color: var(--bg-window);
-  padding: 4px 8px;
-  font-size: 16px;
+  font-family: var(--title-font-family);
+  font-weight: var(--title-font-weight);
+  text-transform: var(--title-transform);
+  letter-spacing: var(--title-letter-spacing);
+  background: var(--title-background);
+  color: var(--title-color);
+  border: var(--title-border);
+  border-radius: var(--title-radius);
+  box-shadow: var(--title-shadow);
+  padding: var(--title-padding);
+  font-size: var(--title-font-size);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-/* Mechanical Input Field */
 .search-container {
   position: relative;
   width: 100%;
@@ -39,19 +68,22 @@ header {
 
 .search-input {
   width: 100%;
-  background: var(--bg-element);
-  border: 3px solid var(--border-dark);
-  border-radius: 0;
-  padding: 10px 10px 10px 36px;
+  background: var(--bg-input);
+  border: var(--input-border);
+  border-radius: var(--input-radius);
+  padding: 10px 12px 10px 36px;
   color: var(--text-primary);
   font-family: inherit;
-  font-weight: bold;
+  font-weight: var(--input-font-weight);
   font-size: 14px;
   outline: none;
-  box-shadow: inset 4px 4px 0 rgba(0, 0, 0, 0.1);
+  box-shadow: var(--input-shadow);
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
 }
 
-/* Ensure select dropdown options are readable in dark mode */
 select.search-input,
 select.search-input option {
   background: var(--bg-input);
@@ -60,7 +92,8 @@ select.search-input option {
 
 .search-input:focus {
   background: var(--bg-input);
-  border-color: var(--accent-color);
+  border-color: var(--input-focus-border-color);
+  box-shadow: var(--input-focus-shadow);
 }
 
 .search-icon {
@@ -68,20 +101,23 @@ select.search-input option {
   left: 12px;
   top: 50%;
   transform: translateY(-50%);
-  color: var(--text-primary);
+  color: var(--text-secondary);
 }
 
-/* Content Area - CRT/Terminal or Tape List */
 .main-content {
   flex: 1;
   overflow-y: hidden;
-  /* Let virtual list handle scrolling */
-  padding: 4px 0 12px 0;
+  padding: 6px 0 12px 0;
   display: flex;
   flex-direction: column;
   background: var(--bg-content);
-  gap: 4px;
+  gap: 6px;
   width: 100%;
+}
+
+.main-content.main-content-chat-mode {
+  padding-bottom: 0;
+  gap: 0;
 }
 
 .virtual-list-wrapper {
@@ -89,7 +125,6 @@ select.search-input option {
   height: 100%;
   flex: 1;
   position: relative;
-  /* Keep list centered even when scrollbar appears */
   margin-right: 0;
 }
 
@@ -105,11 +140,10 @@ select.search-input option {
   right: 16px;
   bottom: 16px;
   z-index: 5;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   padding: 8px;
 }
 
-/* Keep content aligned but allow scrollbar to sit on the right edge */
 .virtual-list-wrapper .virtuoso-scroller {
   width: calc(100% + var(--scrollbar-overlay-width, 10px));
   margin-right: calc(var(--scrollbar-overlay-width, 10px) * -1);
@@ -118,46 +152,43 @@ select.search-input option {
   overflow-x: hidden;
 }
 
-/* History Item - Cassette/Card Style */
 .history-item {
   position: relative;
-  padding: 6px 10px 4px 10px;
-  /* Reduced from 8px 12px 6px 12px for higher density */
+  padding: 10px 12px 8px 12px;
   background: var(--bg-element);
-  border: 3px solid var(--border-dark);
+  border: var(--card-border);
+  border-radius: var(--card-radius);
   color: var(--text-primary);
   cursor: pointer;
-  box-shadow: none;
-  transition: transform 0.1s;
-  margin: 0 8px;
-  /* Horizontal breathing room */
-
-  /* Variable height controlled by virtual list */
+  box-shadow: var(--card-shadow);
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
+  margin: 0 8px 2px 8px;
   height: 100%;
   overflow: visible;
-  /* Allow AI options to overflow in non-compact mode */
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
 }
 
-
-/* Compact mode override */
 .history-item.compact {
   height: 100%;
-  padding: 4px 8px 2px 8px;
+  padding: 6px 10px 4px 10px;
 }
 
 .history-item:hover {
-  transform: translate(-1px, -1px);
-  transform: translate(-1px, -1px);
-  box-shadow: 5px 5px 0 0 var(--shadow-color);
+  transform: var(--card-hover-transform);
+  box-shadow: var(--card-hover-shadow);
   background: var(--bg-input);
+  border-color: var(--card-hover-border-color);
 }
 
 .history-item:active {
-  transform: translate(2px, 2px);
-  box-shadow: 2px 2px 0 0 var(--shadow-color);
+  transform: var(--card-active-transform);
+  box-shadow: var(--card-active-shadow);
 }
 
 .pinned-reorder.dragging .history-item,
@@ -175,7 +206,7 @@ select.search-input option {
   display: flex !important;
   align-items: center;
   justify-content: center;
-  border-radius: 2px;
+  border-radius: 10px;
   transition: all 0.2s;
   color: var(--text-secondary);
 }
@@ -183,17 +214,16 @@ select.search-input option {
 .drag-handle:hover {
   opacity: 1 !important;
   color: var(--accent-color) !important;
-  background: rgba(0, 0, 0, 0.05);
+  background: rgba(var(--accent-color-rgb), 0.08);
 }
 
 .drag-handle:active {
   cursor: grabbing !important;
 }
 
-/* Reorder item dragging state */
 .history-item[data-reordering="true"] {
   z-index: 9999;
-  box-shadow: 8px 8px 0 0 var(--shadow-color);
-  background: var(--bg-input);
-  transform: scale(1.02);
+  box-shadow: var(--card-selected-shadow);
+  background: var(--card-selected-background);
+  transform: scale(1.01);
 }

@@ -1,15 +1,14 @@
 /* Clipboard Item Selection */
 .history-item.selected {
-  outline: 2px solid var(--accent-color) !important;
-  outline-offset: -2px !important;
-  border-color: var(--accent-color) !important;
-  box-shadow: 0 0 10px rgba(72, 123, 219, 0.3), 4px 4px 0 0 var(--shadow-color) !important;
+  outline: var(--card-selected-outline) !important;
+  outline-offset: var(--card-selected-outline-offset) !important;
+  border-color: var(--card-selected-border-color) !important;
+  box-shadow: var(--card-selected-shadow) !important;
   z-index: 10;
 }
 
-/* Ensure original colors are preserved */
 .history-item.selected {
-  background: inherit;
+  background: var(--card-selected-background);
   color: inherit;
   transform: none !important;
 }

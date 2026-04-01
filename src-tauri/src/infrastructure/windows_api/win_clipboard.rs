@@ -88,6 +88,7 @@ fn detect_appended_bitfields_masks(
     }
 }
 
+#[derive(Clone)]
 pub struct ImageData {
     pub width: usize,
     pub height: usize,

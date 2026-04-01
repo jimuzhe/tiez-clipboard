@@ -4,21 +4,19 @@
   bottom: 24px;
   left: 50%;
   transform: translateX(-50%);
-  background: #ffffff !important;
-  /* Force opaque for readability */
-  border: 3px solid var(--border-dark);
+  background: var(--bg-panel) !important;
+  border: var(--queue-border);
   padding: 10px 18px;
   display: flex;
   align-items: center;
   gap: 14px;
   z-index: 10000;
-  box-shadow: 8px 8px 0 var(--border-dark);
+  box-shadow: var(--queue-shadow);
   width: max-content;
   max-width: 90%;
-  border-radius: 2px;
+  border-radius: var(--queue-radius);
   animation: slideUpBar 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
   backdrop-filter: none !important;
-  /* Disable mica transparency here */
 }
 
 .queue-bar .count-chip {
@@ -31,17 +29,17 @@
   justify-content: center;
   font-weight: 900;
   font-size: 16px;
-  border: 2px solid var(--border-dark);
+  border: var(--queue-count-border);
   flex-shrink: 0;
-  border-radius: 4px;
-  transform: rotate(-3deg);
-  box-shadow: 2px 2px 0 var(--border-dark);
+  border-radius: 12px;
+  transform: rotate(var(--queue-count-rotate));
+  box-shadow: var(--queue-count-shadow);
 }
 
 .queue-bar .queue-info {
   display: flex;
   flex-direction: column;
-  gap: 0px;
+  gap: 0;
   min-width: 100px;
   color: var(--text-primary);
 }
@@ -70,40 +68,39 @@
 .queue-bar .start-btn {
   background: var(--accent-color);
   color: #fff !important;
-  font-size: 11px;
+  font-size: 12px;
   padding: 6px 12px !important;
-  height: 28px !important;
+  height: 32px !important;
   min-width: 60px;
-  text-transform: uppercase;
-  font-style: italic;
-  font-weight: 900;
-  border: 2px solid var(--border-dark) !important;
-  box-shadow: 2px 2px 0 var(--border-dark) !important;
+  text-transform: var(--queue-button-text-transform);
+  font-weight: 700;
+  border: var(--queue-action-border) !important;
+  box-shadow: var(--queue-action-shadow) !important;
   cursor: pointer;
 }
 
 .queue-bar .close-btn {
   background: #ff4d4f;
   color: #fff !important;
-  width: 28px !important;
-  height: 28px !important;
+  width: 32px !important;
+  height: 32px !important;
   padding: 0 !important;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 2px solid var(--border-dark) !important;
-  box-shadow: 2px 2px 0 var(--border-dark) !important;
+  border: var(--queue-action-border) !important;
+  box-shadow: var(--queue-action-shadow) !important;
   cursor: pointer;
 }
 
 .queue-bar .btn-icon:hover {
-  transform: translate(-1px, -1px);
-  box-shadow: 3px 3px 0 var(--border-dark) !important;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm) !important;
 }
 
 .queue-bar .btn-icon:active {
-  transform: translate(1px, 1px);
-  box-shadow: none !important;
+  transform: translateY(0);
+  box-shadow: var(--shadow-xs) !important;
 }
 
 @keyframes slideUpBar {

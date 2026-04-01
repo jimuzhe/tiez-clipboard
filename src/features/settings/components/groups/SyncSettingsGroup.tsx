@@ -143,6 +143,10 @@ const SyncSettingsGroup = ({
                                     const protocol = e.target.value;
                                     setMqttProtocol(protocol);
                                     saveMqtt('mqtt_protocol', protocol);
+                                    invoke('save_setting', {
+                                        key: 'mqtt_ssl',
+                                        value: String(protocol === 'mqtts://' || protocol === 'wss://')
+                                    }).catch(console.error);
                                     // Auto-update port based on protocol
                                     let defaultPort = '1883';
                                     if (protocol === 'mqtts://') defaultPort = '8883';

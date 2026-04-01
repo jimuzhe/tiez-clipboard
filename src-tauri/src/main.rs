@@ -164,6 +164,7 @@ fn main() {
             
             infrastructure::windows_api::apps::get_system_default_app,
             infrastructure::windows_api::apps::get_executable_icon,
+            infrastructure::windows_api::apps::get_file_icon,
             infrastructure::windows_api::apps::scan_installed_apps,
             infrastructure::windows_api::apps::get_associated_apps
         ])

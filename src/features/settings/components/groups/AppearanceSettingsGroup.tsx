@@ -2,6 +2,12 @@ import type { ComponentType, ReactNode, CSSProperties } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open, message } from "@tauri-apps/plugin-dialog";
 import { ChevronDown, ChevronRight, X } from "lucide-react";
+import {
+    THEMES,
+    getThemeLabel,
+    supportsCustomBackground,
+    supportsSurfaceOpacity
+} from "../../../../shared/config/themes";
 import type { Locale } from "../../../../shared/types";
 
 interface LabelWithHintProps {
@@ -23,6 +29,8 @@ interface AppearanceSettingsGroupProps {
     setLanguage: (val: Locale) => void;
     showAppBorder: boolean;
     setShowAppBorder: (val: boolean) => void;
+    showSourceAppIcon: boolean;
+    setShowSourceAppIcon: (val: boolean) => void;
     compactMode: boolean;
     setCompactMode: (val: boolean) => void;
     clipboardItemFontSize: number;
@@ -65,6 +73,8 @@ const AppearanceSettingsGroup = ({
     setLanguage,
     showAppBorder,
     setShowAppBorder,
+    showSourceAppIcon,
+    setShowSourceAppIcon,
     compactMode,
     setCompactMode,
     clipboardItemFontSize,
@@ -78,7 +88,11 @@ const AppearanceSettingsGroup = ({
     surfaceOpacity,
     setSurfaceOpacity,
     saveAppSetting
-}: AppearanceSettingsGroupProps) => (
+}: AppearanceSettingsGroupProps) => {
+    const showCustomBackgroundControls = supportsCustomBackground(theme);
+    const showSurfaceOpacityControls = supportsSurfaceOpacity(theme);
+
+    return (
     <div className={`settings-group ${collapsed ? 'collapsed' : ''}`}>
         <div className="group-header" onClick={onToggle}>
             <h3 style={{ margin: 0 }}>{t('appearance_settings')}</h3>
@@ -90,22 +104,20 @@ const AppearanceSettingsGroup = ({
                     <div className="item-label-group" style={{ marginBottom: '8px' }}>
                         <span className="item-label">{t('visual_theme')}</span>
                     </div>
-                    <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
-                        {[
-                            { id: 'retro', name: t('theme_retro') },
-                            { id: 'mica', name: t('theme_mica') },
-                            { id: 'acrylic', name: t('theme_acrylic') }
-                        ].map(themeItem => (
+                    <div className="settings-choice-grid theme-choice-grid">
+                        {THEMES.map(themeItem => (
                             <button
                                 key={themeItem.id}
                                 onClick={() => {
                                     setTheme(themeItem.id);
                                     saveAppSetting('theme', themeItem.id);
                                 }}
-                                className={`btn-icon ${theme === themeItem.id ? 'active' : ''}`}
-                                style={{ flex: 1, height: '36px', fontSize: '12px', fontWeight: 'bold' }}
+                                className={`btn-icon theme-choice-btn ${theme === themeItem.id ? 'active' : ''}`}
+                                type="button"
                             >
-                                {themeItem.name}
+                                <span className="theme-choice-title">
+                                    {getThemeLabel(themeItem.id, language)}
+                                </span>
                             </button>
                         ))}
                     </div>
@@ -176,6 +188,27 @@ const AppearanceSettingsGroup = ({
                                 const val = e.target.checked;
                                 setShowAppBorder(val);
                                 saveAppSetting('show_app_border', String(val));
+                            }}
+                        />
+                        <div className="toggle"><div className="left" /><div className="right" /></div>
+                    </label>
+                </div>
+
+                <div className="setting-item">
+                    <LabelWithHint
+                        label={t('show_source_app_icon') || '显示来源应用图标'}
+                        hint={t('show_source_app_icon_hint') || '关闭后不显示来源应用图标，改为显示剪贴板条目类型图标'}
+                        hintKey="show_source_app_icon"
+                    />
+                    <label className="switch">
+                        <input
+                            className="cb"
+                            type="checkbox"
+                            checked={showSourceAppIcon}
+                            onChange={(e) => {
+                                const val = e.target.checked;
+                                setShowSourceAppIcon(val);
+                                saveAppSetting('show_source_app_icon', String(val));
                             }}
                         />
                         <div className="toggle"><div className="left" /><div className="right" /></div>
@@ -255,8 +288,9 @@ const AppearanceSettingsGroup = ({
                     />
                 </div>
 
-                {(theme === 'mica' || theme === 'acrylic') && (
+                {(showCustomBackgroundControls || showSurfaceOpacityControls) && (
                     <>
+                        {showCustomBackgroundControls && (
                         <div className="setting-item column no-border">
                             <div className="item-label-group" style={{ marginBottom: '8px' }}>
                                 <span className="item-label">{t('custom_background') || '自定义背景'}</span>
@@ -335,7 +369,9 @@ const AppearanceSettingsGroup = ({
                                 </div>
                             )}
                         </div>
+                        )}
 
+                        {showSurfaceOpacityControls && (
                         <div className="setting-item column">
                             <div className="item-label-group" style={{ marginBottom: '4px', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <span className="item-label">{t('surface_opacity') || '界面底板透明度'}</span>
@@ -354,11 +390,13 @@ const AppearanceSettingsGroup = ({
                                 style={buildRangeStyle(surfaceOpacity, 0, 100)}
                             />
                         </div>
+                        )}
                     </>
                 )}
             </div>
         )}
     </div>
-);
+    );
+};
 
 export default AppearanceSettingsGroup;

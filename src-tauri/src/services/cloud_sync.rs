@@ -21,7 +21,7 @@ use tauri::{AppHandle, Emitter, Manager};
 use tokio::time::sleep;
 
 const DEFAULT_INTERVAL_SECS: u64 = 120;
-const MIN_INTERVAL_SECS: u64 = 30;
+const MIN_INTERVAL_SECS: u64 = 5;
 const MAX_INTERVAL_SECS: u64 = 3600;
 const DEFAULT_SNAPSHOT_INTERVAL_MIN: i64 = 720;
 const MIN_SNAPSHOT_INTERVAL_MIN: i64 = 5;
@@ -222,11 +222,24 @@ fn parse_snapshot_interval_secs(raw: Option<String>) -> i64 {
 }
 
 fn normalize_webdav_base_path(raw: &str) -> String {
-    let trimmed = raw.trim().trim_matches('/');
-    if trimmed.is_empty() {
+    let segments = raw
+        .trim()
+        .replace('\\', "/")
+        .split('/')
+        .filter_map(|segment| {
+            let trimmed = segment.trim();
+            if trimmed.is_empty() {
+                None
+            } else {
+                Some(trimmed.to_string())
+            }
+        })
+        .collect::<Vec<_>>();
+
+    if segments.is_empty() {
         DEFAULT_WEBDAV_BASE_PATH.to_string()
     } else {
-        trimmed.to_string()
+        segments.join("/")
     }
 }
 
@@ -1147,12 +1160,90 @@ fn webdav_with_auth(req: RequestBuilder, cfg: &CloudSyncConfig) -> RequestBuilde
     }
 }
 
+fn encode_webdav_relative_path(relative_path: &str, collection: bool) -> String {
+    let mut encoded = relative_path
+        .replace('\\', "/")
+        .split('/')
+        .filter_map(|segment| {
+            let trimmed = segment.trim();
+            if trimmed.is_empty() {
+                None
+            } else {
+                Some(urlencoding::encode(trimmed).into_owned())
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("/");
+
+    if collection && !encoded.is_empty() {
+        encoded.push('/');
+    }
+
+    encoded
+}
+
+fn webdav_resource_url_for(cfg: &CloudSyncConfig, relative_path: &str) -> String {
+    let encoded = encode_webdav_relative_path(relative_path, false);
+    if encoded.is_empty() {
+        cfg.webdav_url.trim_end_matches('/').to_string()
+    } else {
+        format!("{}/{}", cfg.webdav_url.trim_end_matches('/'), encoded)
+    }
+}
+
+fn webdav_collection_url_for(cfg: &CloudSyncConfig, relative_path: &str) -> String {
+    let encoded = encode_webdav_relative_path(relative_path, true);
+    if encoded.is_empty() {
+        format!("{}/", cfg.webdav_url.trim_end_matches('/'))
+    } else {
+        format!("{}/{}", cfg.webdav_url.trim_end_matches('/'), encoded)
+    }
+}
+
 fn webdav_url_for(cfg: &CloudSyncConfig, relative_path: &str) -> String {
-    format!(
-        "{}/{}",
-        cfg.webdav_url.trim_end_matches('/'),
-        relative_path.trim_start_matches('/')
+    webdav_resource_url_for(cfg, relative_path)
+}
+
+async fn webdav_collection_exists(
+    client: &Client,
+    cfg: &CloudSyncConfig,
+    relative_path: &str,
+) -> AppResult<bool> {
+    let method = Method::from_bytes(b"PROPFIND")
+        .map_err(|e| AppError::Internal(format!("invalid PROPFIND method: {}", e)))?;
+    let url = webdav_collection_url_for(cfg, relative_path);
+    let resp = webdav_with_auth(
+        client
+            .request(method, &url)
+            .header("Depth", "0")
+            .header("Content-Type", "application/xml; charset=utf-8")
+            .body(
+                r#"<?xml version="1.0" encoding="utf-8" ?>
+<d:propfind xmlns:d="DAV:">
+  <d:prop>
+    <d:resourcetype />
+  </d:prop>
+</d:propfind>"#,
+            ),
+        cfg,
     )
+    .send()
+    .await
+    .map_err(|e| AppError::Network(e.to_string()))?;
+
+    let status = resp.status();
+    if status.is_success() || status.as_u16() == 207 {
+        return Ok(true);
+    }
+    if status.as_u16() == 404 {
+        return Ok(false);
+    }
+
+    let text = resp.text().await.unwrap_or_default();
+    Err(AppError::Network(format!(
+        "webdav PROPFIND verify failed for {}: {} {}",
+        url, status, text
+    )))
 }
 
 async fn mkcol_if_needed(
@@ -1162,21 +1253,27 @@ async fn mkcol_if_needed(
 ) -> AppResult<()> {
     let method = Method::from_bytes(b"MKCOL")
         .map_err(|e| AppError::Internal(format!("invalid MKCOL method: {}", e)))?;
-    let url = webdav_url_for(cfg, relative_path);
+    let url = webdav_collection_url_for(cfg, relative_path);
     let resp = webdav_with_auth(client.request(method, &url), cfg)
         .send()
         .await
         .map_err(|e| AppError::Network(e.to_string()))?;
 
     let code = resp.status().as_u16();
-    if resp.status().is_success() || code == 405 || code == 301 || code == 302 {
+    if resp.status().is_success() {
+        return Ok(());
+    }
+
+    if matches!(code, 301 | 302 | 307 | 308 | 405)
+        && webdav_collection_exists(client, cfg, relative_path).await?
+    {
         return Ok(());
     }
 
     let text = resp.text().await.unwrap_or_default();
     Err(AppError::Network(format!(
-        "webdav MKCOL failed: {} {}",
-        code, text
+        "webdav MKCOL failed for {}: {} {}",
+        url, code, text
     )))
 }
 
@@ -1301,7 +1398,7 @@ async fn list_webdav_snapshot_ids(
 ) -> AppResult<Vec<String>> {
     let method = Method::from_bytes(b"PROPFIND")
         .map_err(|e| AppError::Internal(format!("invalid PROPFIND method: {}", e)))?;
-    let url = webdav_url_for(cfg, devices_path);
+    let url = webdav_collection_url_for(cfg, devices_path);
     let body = r#"<?xml version="1.0" encoding="utf-8" ?>
 <d:propfind xmlns:d="DAV:">
   <d:prop>
@@ -1471,7 +1568,7 @@ async fn list_webdav_op_refs(
 ) -> AppResult<Vec<WebDavOpRef>> {
     let method = Method::from_bytes(b"PROPFIND")
         .map_err(|e| AppError::Internal(format!("invalid PROPFIND method: {}", e)))?;
-    let url = webdav_url_for(cfg, ops_path);
+    let url = webdav_collection_url_for(cfg, ops_path);
     let body = r#"<?xml version="1.0" encoding="utf-8" ?>
 <d:propfind xmlns:d="DAV:">
   <d:prop>
@@ -2234,4 +2331,64 @@ fn merge_remote_emojis(app: &AppHandle, remote_json: &str) -> AppResult<()> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        encode_webdav_relative_path, normalize_webdav_base_path, webdav_collection_url_for,
+        webdav_resource_url_for, CloudSyncConfig, CloudSyncProvider,
+    };
+
+    fn test_cfg(webdav_url: &str) -> CloudSyncConfig {
+        CloudSyncConfig {
+            enabled: true,
+            auto_sync: true,
+            provider: CloudSyncProvider::WebDav,
+            base_url: String::new(),
+            api_key: String::new(),
+            device_id: "abc12345".to_string(),
+            interval_secs: 120,
+            snapshot_interval_secs: 720 * 60,
+            cursor: 0,
+            webdav_url: webdav_url.to_string(),
+            webdav_username: String::new(),
+            webdav_password: String::new(),
+            webdav_base_path: "tiez-sync".to_string(),
+        }
+    }
+
+    #[test]
+    fn normalizes_webdav_base_path_segments() {
+        assert_eq!(
+            normalize_webdav_base_path(r"  \Team Folder\\TieZ Sync/ops\  "),
+            "Team Folder/TieZ Sync/ops"
+        );
+    }
+
+    #[test]
+    fn encodes_webdav_relative_path_by_segment() {
+        assert_eq!(
+            encode_webdav_relative_path("共享目录/TieZ Sync/设备 01.json", false),
+            "%E5%85%B1%E4%BA%AB%E7%9B%AE%E5%BD%95/TieZ%20Sync/%E8%AE%BE%E5%A4%87%2001.json"
+        );
+    }
+
+    #[test]
+    fn builds_collection_url_with_trailing_slash() {
+        let cfg = test_cfg("https://nas.example.com:5006/webdav");
+        assert_eq!(
+            webdav_collection_url_for(&cfg, "共享目录/TieZ Sync"),
+            "https://nas.example.com:5006/webdav/%E5%85%B1%E4%BA%AB%E7%9B%AE%E5%BD%95/TieZ%20Sync/"
+        );
+    }
+
+    #[test]
+    fn builds_resource_url_without_trailing_slash() {
+        let cfg = test_cfg("https://nas.example.com:5006/webdav/");
+        assert_eq!(
+            webdav_resource_url_for(&cfg, "ops/device__0001.json"),
+            "https://nas.example.com:5006/webdav/ops/device__0001.json"
+        );
+    }
 }

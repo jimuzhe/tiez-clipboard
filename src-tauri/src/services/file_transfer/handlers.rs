@@ -28,13 +28,20 @@ use super::{append_message, register_received_file};
 pub async fn index(State(state): State<Arc<AppState>>) -> Html<String> {
     let app_handle = &state.app_handle;
     let settings = app_handle.state::<SettingsState>();
+    let db_state = app_handle.state::<DbState>();
     let logo_base64 = get_app_logo_base64(app_handle);
     let theme = {
         let guard = settings.theme.lock().unwrap();
         guard.clone()
     };
+    let color_mode = db_state
+        .settings_repo
+        .get("app.color_mode")
+        .ok()
+        .flatten()
+        .unwrap_or_else(|| "system".to_string());
 
-    Html(render_index(&theme, &logo_base64))
+    Html(render_index(&theme, &color_mode, &logo_base64))
 }
 
 pub async fn poll_messages(

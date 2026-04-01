@@ -1,0 +1,235 @@
+/* Sticky Note Theme */
+:root.theme-sticky-note,
+body.theme-sticky-note {
+  --bg-body: #fff4b8;
+  --bg-window: #fff8c9;
+  --bg-content: linear-gradient(180deg, #fff9cf 0%, #fff3b0 100%);
+  --bg-toolbar: rgba(255, 242, 167, 0.92);
+  --bg-panel: rgba(255, 249, 211, 0.9);
+  --bg-input: rgba(255, 255, 255, 0.74);
+  --bg-element: #fffde7;
+  --bg-button: rgba(255, 255, 255, 0.3);
+
+  --text-primary: #5d4037;
+  --text-secondary: #7a5c50;
+  --text-muted: #957364;
+
+  --accent-color: #f0a70b;
+  --accent-color-rgb: 240, 167, 11;
+  --accent-hover: #df9100;
+  --border-dark: #c7a35d;
+  --border-light: rgba(255, 255, 255, 0.6);
+  --shadow-color: rgba(93, 64, 55, 0.16);
+
+  --line-soft: rgba(122, 92, 80, 0.16);
+  --line-strong: rgba(122, 92, 80, 0.28);
+  --shadow-xs: 0 4px 10px rgba(93, 64, 55, 0.08);
+  --shadow-sm: 0 10px 20px rgba(93, 64, 55, 0.12);
+  --shadow-md: 0 16px 28px rgba(93, 64, 55, 0.14);
+  --shadow-lg: 0 22px 46px rgba(93, 64, 55, 0.16);
+  --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+
+  --font-main: "Comic Sans MS", "Chalkboard SE", "Segoe Print", "Microsoft YaHei", sans-serif;
+  --font-mono: "Consolas", "Courier New", monospace;
+
+  --radius-window: 8px;
+  --radius-panel: 12px;
+  --radius-card: 6px;
+  --radius-control: 8px;
+
+  --shell-background: linear-gradient(180deg, #fff9cf 0%, #fff2ab 100%);
+  --shell-border: 1px solid rgba(199, 163, 93, 0.5);
+  --shell-shadow: 0 18px 36px rgba(93, 64, 55, 0.18);
+
+  --toolbar-border: 2px solid rgba(240, 167, 11, 0.5);
+
+  --title-font-family: var(--font-main);
+  --title-font-weight: 700;
+  --title-font-size: 18px;
+
+  --input-border: 1px dashed rgba(240, 167, 11, 0.7);
+  --input-radius: 8px;
+  --input-shadow: none;
+  --input-focus-shadow: 0 0 0 3px rgba(240, 167, 11, 0.14);
+
+  --button-border: none;
+  --button-radius: 999px;
+  --button-shadow: none;
+  --button-hover-transform: scale(1.06);
+  --button-hover-shadow: none;
+  --button-active-transform: scale(0.98);
+  --button-active-shadow: none;
+  --button-active-filled-shadow: 0 10px 22px rgba(240, 167, 11, 0.24);
+
+  --card-border: none;
+  --card-radius: 6px 6px 12px 6px;
+  --card-shadow: 0 4px 16px rgba(93, 64, 55, 0.08);
+  --card-hover-shadow: 0 12px 24px rgba(93, 64, 55, 0.14);
+  --card-hover-transform: translateY(-2px) rotate(0deg);
+  --card-active-transform: translateY(0);
+  --card-active-shadow: 0 8px 16px rgba(93, 64, 55, 0.12);
+  --card-selected-background: rgba(240, 167, 11, 0.12);
+  --card-selected-border-color: rgba(240, 167, 11, 0.55);
+  --card-selected-shadow: 0 12px 22px rgba(240, 167, 11, 0.18);
+  --card-selected-outline: 2px solid rgba(240, 167, 11, 0.36);
+
+  --panel-border: 1px solid rgba(199, 163, 93, 0.28);
+  --panel-radius: 14px;
+  --panel-shadow: 0 10px 22px rgba(93, 64, 55, 0.08);
+  --panel-header-background: rgba(255, 255, 255, 0.14);
+  --panel-divider-color: rgba(122, 92, 80, 0.1);
+
+  --data-panel-border: 1px dashed rgba(199, 163, 93, 0.58);
+  --data-panel-shadow: none;
+  --data-panel-hover-background: rgba(255, 255, 255, 0.85);
+
+  --segment-active-background: rgba(255, 255, 255, 0.8);
+  --segment-active-shadow: 0 4px 10px rgba(93, 64, 55, 0.1);
+
+  --tags-border: 1px dashed rgba(199, 163, 93, 0.58);
+  --tags-shadow: 0 10px 18px rgba(93, 64, 55, 0.08);
+  --tag-chip-border: none;
+  --tag-chip-radius: 999px;
+  --tag-chip-shadow: none;
+  --tag-chip-hover-shadow: none;
+
+  --menu-border: 1px dashed rgba(199, 163, 93, 0.58);
+  --menu-shadow: 0 16px 26px rgba(93, 64, 55, 0.12);
+
+  --scrollbar-size: 8px;
+  --scrollbar-size-thin: 4px;
+  --scrollbar-radius: 999px;
+  --scrollbar-track-background: transparent;
+  --scrollbar-track-border-start: none;
+  --scrollbar-thumb-color: rgba(122, 92, 80, 0.5);
+  --scrollbar-thumb-hover-color: rgba(240, 167, 11, 0.8);
+  --scrollbar-thumb-border: 2px solid transparent;
+  --scrollbar-chat-thumb-border: 2px solid rgba(255, 248, 201, 0.35);
+
+  --content-font-family: var(--font-main);
+  --content-line-height: 1.4;
+  --meta-text-transform: none;
+
+  --queue-border: 1px solid rgba(199, 163, 93, 0.45);
+  --queue-shadow: 0 16px 32px rgba(93, 64, 55, 0.14);
+  --queue-count-shadow: 0 6px 14px rgba(93, 64, 55, 0.1);
+
+  --reset-button-border: 1px dashed rgba(240, 167, 11, 0.5);
+  --reset-button-shadow: none;
+}
+
+body.theme-sticky-note #root {
+  background-image:
+    radial-gradient(rgba(0, 0, 0, 0.04) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.4), rgba(255, 243, 188, 0.22));
+  background-size: 15px 15px, 100% 100%;
+}
+
+.theme-sticky-note .header-title {
+  color: var(--text-primary);
+}
+
+.theme-sticky-note .history-item {
+  background: #fffde7 !important;
+  transform: rotate(var(--rotate, -0.6deg));
+}
+
+.theme-sticky-note .history-item:nth-child(even) {
+  --rotate: 0.9deg;
+}
+
+.theme-sticky-note .history-item:nth-child(3n) {
+  --rotate: -1.1deg;
+}
+
+.theme-sticky-note .history-item:nth-child(5n) {
+  --rotate: 0.4deg;
+}
+
+
+.theme-sticky-note .search-input {
+  font-family: var(--font-main);
+}
+
+.theme-sticky-note .btn-icon {
+  color: var(--text-secondary);
+}
+
+.theme-sticky-note .btn-icon:hover {
+  color: var(--accent-color);
+}
+
+.theme-sticky-note .item-meta {
+  border-bottom-style: solid;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root.theme-sticky-note:not(.light-mode),
+  body.theme-sticky-note:not(.light-mode) {
+    --bg-body: #242427;
+    --bg-window: #2d2d31;
+    --bg-content: linear-gradient(180deg, #303035 0%, #26262a 100%);
+    --bg-toolbar: rgba(28, 28, 30, 0.94);
+    --bg-panel: rgba(47, 47, 51, 0.9);
+    --bg-input: rgba(255, 255, 255, 0.08);
+    --bg-element: #3a3a3c;
+    --bg-button: rgba(255, 255, 255, 0.06);
+
+    --text-primary: #f2eee3;
+    --text-secondary: #d0c7b5;
+    --text-muted: #a79d90;
+
+    --accent-color: #ffd44d;
+    --accent-color-rgb: 255, 212, 77;
+    --accent-hover: #ffcc33;
+
+    --line-soft: rgba(255, 255, 255, 0.12);
+    --line-strong: rgba(255, 255, 255, 0.2);
+    --shadow-xs: 0 4px 12px rgba(0, 0, 0, 0.22);
+    --shadow-sm: 0 10px 24px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 16px 30px rgba(0, 0, 0, 0.34);
+    --shadow-lg: 0 24px 50px rgba(0, 0, 0, 0.38);
+    --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+
+  .theme-sticky-note:not(.light-mode) .history-item {
+    background: #3a3a3c !important;
+  }
+
+}
+
+:root.dark-mode.theme-sticky-note,
+body.dark-mode.theme-sticky-note {
+  --bg-body: #242427;
+  --bg-window: #2d2d31;
+  --bg-content: linear-gradient(180deg, #303035 0%, #26262a 100%);
+  --bg-toolbar: rgba(28, 28, 30, 0.94);
+  --bg-panel: rgba(47, 47, 51, 0.9);
+  --bg-input: rgba(255, 255, 255, 0.08);
+  --bg-element: #3a3a3c;
+  --bg-button: rgba(255, 255, 255, 0.06);
+
+  --text-primary: #f2eee3;
+  --text-secondary: #d0c7b5;
+  --text-muted: #a79d90;
+
+  --accent-color: #ffd44d;
+  --accent-color-rgb: 255, 212, 77;
+  --accent-hover: #ffcc33;
+
+  --line-soft: rgba(255, 255, 255, 0.12);
+  --line-strong: rgba(255, 255, 255, 0.2);
+  --shadow-xs: 0 4px 12px rgba(0, 0, 0, 0.22);
+  --shadow-sm: 0 10px 24px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 16px 30px rgba(0, 0, 0, 0.34);
+  --shadow-lg: 0 24px 50px rgba(0, 0, 0, 0.38);
+  --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+body.dark-mode.theme-sticky-note .history-item {
+  background: #3a3a3c !important;
+}
+
+.theme-sticky-note .settings-group {
+  overflow: hidden !important;
+}

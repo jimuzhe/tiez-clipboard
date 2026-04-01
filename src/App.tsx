@@ -167,6 +167,8 @@ const App = () => {
     setColorMode,
     showAppBorder,
     setShowAppBorder,
+    showSourceAppIcon,
+    setShowSourceAppIcon,
     compactMode,
     setCompactMode,
     clipboardItemFontSize,
@@ -441,6 +443,7 @@ const App = () => {
     setSilentStart,
     setFollowMouse,
     setShowAppBorder,
+    setShowSourceAppIcon,
     setDeleteAfterPaste,
     setMoveToTopAfterPaste,
     setHideTrayIcon,
@@ -805,6 +808,7 @@ const App = () => {
     language,
     t,
     compactMode,
+    showSourceAppIcon,
     richTextSnapshotPreview,
     processingAiId,
     aiEnabled,
@@ -888,7 +892,7 @@ const App = () => {
       />
 
       <main
-        className="main-content"
+        className={`main-content ${showSettings && chatMode ? 'main-content-chat-mode' : ''}`}
         style={{ overflowY: (showSettings || effectiveShowTagManager) ? 'auto' : 'hidden' }}
         onWheel={handleMainWheel}
       >

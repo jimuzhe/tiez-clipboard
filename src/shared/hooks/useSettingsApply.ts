@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { applyThemeClasses, normalizeThemeId } from "../config/themes";
 
 type PlatformInfo = {
   platform: string;
@@ -36,6 +37,7 @@ export const useSettingsApply = ({
     const body = document.body;
 
     let disposed = false;
+    const normalizedTheme = normalizeThemeId(theme);
 
     const applyExplicitMode = (mode: "light" | "dark") => {
       if (disposed) return;
@@ -63,10 +65,7 @@ export const useSettingsApply = ({
       }
     };
 
-    root.classList.remove("theme-retro", "theme-mica", "theme-acrylic");
-    body.classList.remove("theme-retro", "theme-mica", "theme-acrylic");
-    root.classList.add(`theme-${theme}`);
-    body.classList.add(`theme-${theme}`);
+    applyThemeClasses(normalizedTheme, root, body);
     invoke<PlatformInfo>("get_platform_info")
       .then((info) => {
         if (disposed) return;
@@ -98,7 +97,7 @@ export const useSettingsApply = ({
     }
 
     invoke("set_theme", {
-      theme,
+      theme: normalizedTheme,
       color_mode: colorMode,
       show_app_border: showAppBorder
     }).catch(console.error);
@@ -120,7 +119,7 @@ export const useSettingsApply = ({
         // Native mica/acrylic may be refreshed by the OS when system theme changes.
         // Re-apply the user's selected mode so the window background stays locked.
         invoke("set_theme", {
-          theme,
+          theme: normalizedTheme,
           color_mode: colorMode,
           show_app_border: showAppBorder
         }).catch(console.error);

@@ -100,7 +100,11 @@ impl PipelineStage for DiscoveryStage {
     fn process(&self, ctx: &mut PipelineContext) {
         let (content_type, content, html_content) = match &ctx.data {
             ClipboardData::Text(t) => (detect_content_type(t), t.clone(), None),
-            ClipboardData::RichText { text, html } => ("rich_text".to_string(), text.clone(), Some(html.clone())),
+            ClipboardData::RichText { text, html } => (
+                "rich_text".to_string(),
+                derive_rich_text_content(text, Some(html)),
+                Some(html.clone()),
+            ),
             ClipboardData::Image { data_url } => ("image".to_string(), data_url.clone(), None),
             ClipboardData::Files(f) => {
                 let content = f.join("\n");
@@ -138,14 +142,7 @@ impl PipelineStage for DiscoveryStage {
             }
         };
 
-        let preview = if content_type == "image" {
-            "[Image Content]".to_string()
-        } else if content.chars().count() > 500 {
-            let preview_text: String = content.chars().take(497).collect();
-            format!("{}...", preview_text.replace('\n', " "))
-        } else {
-            content.replace('\n', " ")
-        };
+        let preview = build_entry_preview(&content_type, &content, html_content.as_deref());
 
         let is_external = (content_type == "file" || content_type == "video" || content_type == "image")
             && !content.starts_with("data:");

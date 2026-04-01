@@ -177,6 +177,8 @@ interface SettingsPanelProps {
     setLanguage: (val: Locale) => void;
     showAppBorder: boolean;
     setShowAppBorder: (val: boolean) => void;
+    showSourceAppIcon: boolean;
+    setShowSourceAppIcon: (val: boolean) => void;
 
     compactMode: boolean;
     setCompactMode: (val: boolean) => void;
@@ -263,7 +265,7 @@ const SettingsPanel = (props: SettingsPanelProps) => {
         setIsRecordingSearch, updateSearchHotkey,
         setPrivacyProtection,
         setIsRecording, isRecording, hotkey, hotkeyParts, updateHotkey,
-        setTheme, setColorMode, setLanguage, showAppBorder, setShowAppBorder, compactMode, setCompactMode, checkHotkeyConflict,
+        setTheme, setColorMode, setLanguage, showAppBorder, setShowAppBorder, showSourceAppIcon, setShowSourceAppIcon, compactMode, setCompactMode, checkHotkeyConflict,
         clipboardItemFontSize, setClipboardItemFontSize, clipboardTagFontSize, setClipboardTagFontSize,
         emojiPanelEnabled, setEmojiPanelEnabled, tagManagerEnabled, setTagManagerEnabled,
         setMqttEnabled, saveMqtt, setMqttServer, setMqttPort, setMqttUser, setMqttPass, setMqttTopic, setMqttProtocol, setMqttWsPath, setMqttNotificationEnabled,
@@ -567,6 +569,8 @@ const SettingsPanel = (props: SettingsPanelProps) => {
                 setLanguage={setLanguage}
                 showAppBorder={showAppBorder}
                 setShowAppBorder={setShowAppBorder}
+                showSourceAppIcon={showSourceAppIcon}
+                setShowSourceAppIcon={setShowSourceAppIcon}
                 compactMode={compactMode}
                 setCompactMode={setCompactMode}
                 clipboardItemFontSize={clipboardItemFontSize}

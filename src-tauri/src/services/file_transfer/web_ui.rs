@@ -1,4 +1,305 @@
-pub fn render_index(theme: &str, logo_base64: &str) -> String {
+fn file_transfer_theme_variants(theme: &str) -> (&'static str, &'static str, &'static str) {
+    match theme {
+        "sticky-note" => (
+            r#"
+            --bg-body: #fff4b8;
+            --bg-panel: rgba(255, 249, 211, 0.9);
+            --bg-input: rgba(255, 255, 255, 0.74);
+            --bg-button: rgba(255, 255, 255, 0.3);
+            --border-dark: #c7a35d;
+            --text-primary: #5d4037;
+            --text-secondary: #7a5c50;
+            --accent-color: #f0a70b;
+            --shadow-color: rgba(93, 64, 55, 0.16);
+            --font-mono: "Consolas", "Courier New", monospace;
+            --content-font-family: "Comic Sans MS", "Chalkboard SE", "Segoe Print", "Microsoft YaHei", sans-serif;
+            --radius: 12px;
+            --bubble-received-bg: #fffde7;
+            --panel-border: 1px solid rgba(199, 163, 93, 0.28);
+            --panel-radius: 14px;
+            --panel-shadow: 0 10px 22px rgba(93, 64, 55, 0.08);
+            --input-border: 1px dashed rgba(240, 167, 11, 0.7);
+            --input-radius: 8px;
+            --input-shadow: none;
+            --button-border: none;
+            --button-radius: 999px;
+            --button-shadow: none;
+            --button-active-transform: scale(0.98);
+            --button-active-shadow: none;
+            --button-active-filled-shadow: 0 10px 22px rgba(240, 167, 11, 0.24);
+            --send-button-background: rgba(240, 167, 11, 0.18);
+            --send-button-color: var(--text-primary);
+            --send-button-border: 1px dashed rgba(240, 167, 11, 0.44);
+            --send-button-shadow: 0 10px 22px rgba(240, 167, 11, 0.18);
+            "#,
+            r#"
+            --bg-body: #242427;
+            --bg-panel: rgba(47, 47, 51, 0.9);
+            --bg-input: rgba(255, 255, 255, 0.08);
+            --bg-button: rgba(255, 255, 255, 0.06);
+            --border-dark: rgba(255, 212, 77, 0.24);
+            --text-primary: #f2eee3;
+            --text-secondary: #d0c7b5;
+            --accent-color: #ffd44d;
+            --shadow-color: rgba(0, 0, 0, 0.28);
+            --bubble-received-bg: #3a3a3c;
+            --panel-border: 1px solid rgba(255, 212, 77, 0.16);
+            --panel-shadow: 0 14px 28px rgba(0, 0, 0, 0.22);
+            --input-border: 1px dashed rgba(255, 212, 77, 0.42);
+            --send-button-background: rgba(255, 212, 77, 0.14);
+            --send-button-border: 1px dashed rgba(255, 212, 77, 0.3);
+            --send-button-shadow: 0 10px 22px rgba(0, 0, 0, 0.2);
+            "#,
+            r#"
+            body.theme-sticky-note {
+                background-image:
+                    radial-gradient(rgba(0, 0, 0, 0.04) 1px, transparent 1px),
+                    linear-gradient(180deg, rgba(255, 255, 255, 0.4), rgba(255, 243, 188, 0.22));
+                background-size: 15px 15px, 100% 100%;
+            }
+            "#
+        ),
+        "paper" => (
+            r#"
+            --bg-body: #f4ecd8;
+            --bg-panel: rgba(255, 253, 247, 0.78);
+            --bg-input: #ffffff;
+            --bg-button: rgba(139, 90, 43, 0.08);
+            --border-dark: #d5c4a1;
+            --text-primary: #3c3836;
+            --text-secondary: #7c6f64;
+            --accent-color: #8b5a2b;
+            --shadow-color: rgba(60, 56, 54, 0.12);
+            --font-mono: "Courier New", Courier, monospace;
+            --content-font-family: "Georgia", "STSong", "SimSun", "Songti SC", serif;
+            --radius: 2px;
+            --bubble-received-bg: #fffdf7;
+            --panel-border: 1px solid #d5c4a1;
+            --panel-radius: 2px;
+            --panel-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+            --input-border: 1px solid #d5c4a1;
+            --input-radius: 2px;
+            --input-shadow: inset 0 1px 3px rgba(0,0,0,0.03);
+            --button-border: 1px solid rgba(139, 90, 43, 0.3);
+            --button-radius: 4px;
+            --button-shadow: none;
+            --button-active-transform: translateY(0);
+            --button-active-shadow: none;
+            --button-active-filled-shadow: 0 4px 10px rgba(139, 90, 43, 0.12);
+            --send-button-background: rgba(139, 90, 43, 0.12);
+            --send-button-color: var(--text-primary);
+            --send-button-border: 1px solid rgba(139, 90, 43, 0.28);
+            --send-button-shadow: 0 4px 10px rgba(139, 90, 43, 0.12);
+            "#,
+            r#"
+            --bg-body: #282828;
+            --bg-panel: rgba(50, 48, 47, 0.82);
+            --bg-input: #1d2021;
+            --bg-button: rgba(213, 196, 161, 0.1);
+            --border-dark: #504945;
+            --text-primary: #ebdbb2;
+            --text-secondary: #a89984;
+            --accent-color: #d79921;
+            --shadow-color: rgba(0, 0, 0, 0.3);
+            --bubble-received-bg: #32302f;
+            --panel-border: 1px solid #504945;
+            --input-border: 1px solid #504945;
+            --send-button-background: rgba(215, 153, 33, 0.16);
+            --send-button-color: var(--text-primary);
+            --send-button-border: 1px solid rgba(215, 153, 33, 0.26);
+            --send-button-shadow: 0 4px 10px rgba(0, 0, 0, 0.18);
+            "#,
+            r#"
+            body.theme-paper {
+                background-image: linear-gradient(rgba(139, 90, 43, 0.06) 1px, transparent 1px);
+                background-size: 100% 1.65em;
+            }
+            "#
+        ),
+        "mica" => (
+            r#"
+            --bg-body: #f3f3f3;
+            --bg-panel: rgba(255, 255, 255, 0.48);
+            --bg-input: rgba(255, 255, 255, 0.74);
+            --bg-button: rgba(255, 255, 255, 0.46);
+            --border-dark: rgba(128, 128, 128, 0.18);
+            --text-primary: #1a2435;
+            --text-secondary: #607188;
+            --accent-color: #4f7dff;
+            --shadow-color: rgba(15, 23, 42, 0.1);
+            --font-mono: "Segoe UI", system-ui, -apple-system, sans-serif;
+            --content-font-family: var(--font-mono);
+            --radius: 12px;
+            --bubble-received-bg: rgba(255, 255, 255, 0.9);
+            --panel-border: 1px solid rgba(255, 255, 255, 0.3);
+            --panel-radius: 14px;
+            --panel-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+            --input-border: 1px solid rgba(128, 128, 128, 0.18);
+            --input-radius: 12px;
+            --input-shadow: none;
+            --button-border: 1px solid rgba(128, 128, 128, 0.18);
+            --button-radius: 10px;
+            --button-shadow: 0 4px 10px rgba(15, 23, 42, 0.06);
+            --button-active-transform: translateY(1px);
+            --button-active-shadow: 0 4px 10px rgba(15, 23, 42, 0.06);
+            --button-active-filled-shadow: 0 12px 24px rgba(79, 125, 255, 0.26);
+            --send-button-background: rgba(79, 125, 255, 0.16);
+            --send-button-color: var(--text-primary);
+            --send-button-border: 1px solid rgba(79, 125, 255, 0.24);
+            --send-button-shadow: 0 12px 24px rgba(79, 125, 255, 0.18);
+            "#,
+            r#"
+            --bg-body: #1a1a1a;
+            --bg-panel: rgba(36, 36, 36, 0.52);
+            --bg-input: rgba(255, 255, 255, 0.12);
+            --bg-button: rgba(255, 255, 255, 0.05);
+            --border-dark: rgba(255, 255, 255, 0.08);
+            --text-primary: #e8e8e8;
+            --text-secondary: #a8a8a8;
+            --accent-color: #4f7dff;
+            --shadow-color: rgba(0, 0, 0, 0.24);
+            --bubble-received-bg: rgba(40, 40, 40, 0.9);
+            --panel-border: 1px solid rgba(255, 255, 255, 0.08);
+            --button-border: 1px solid rgba(255, 255, 255, 0.08);
+            --send-button-background: rgba(79, 125, 255, 0.2);
+            --send-button-color: var(--text-primary);
+            --send-button-border: 1px solid rgba(79, 125, 255, 0.26);
+            --send-button-shadow: 0 12px 24px rgba(0, 0, 0, 0.22);
+            "#,
+            ""
+        ),
+        "acrylic" => (
+            r#"
+            --bg-body: #f4f6fb;
+            --bg-panel: rgba(255, 255, 255, 0.34);
+            --bg-input: rgba(255, 255, 255, 0.52);
+            --bg-button: rgba(255, 255, 255, 0.2);
+            --border-dark: rgba(255, 255, 255, 0.28);
+            --text-primary: #162234;
+            --text-secondary: #607188;
+            --accent-color: #4f7dff;
+            --shadow-color: rgba(15, 23, 42, 0.12);
+            --font-mono: "Segoe UI", system-ui, -apple-system, sans-serif;
+            --content-font-family: var(--font-mono);
+            --radius: 12px;
+            --bubble-received-bg: rgba(255, 255, 255, 0.9);
+            --panel-border: 1px solid rgba(255, 255, 255, 0.28);
+            --panel-radius: 14px;
+            --panel-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+            --input-border: 1px solid rgba(255, 255, 255, 0.28);
+            --input-radius: 12px;
+            --input-shadow: none;
+            --button-border: 1px solid rgba(255, 255, 255, 0.28);
+            --button-radius: 10px;
+            --button-shadow: none;
+            --button-active-transform: translateY(1px);
+            --button-active-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+            --button-active-filled-shadow: 0 14px 26px rgba(79, 125, 255, 0.24);
+            --send-button-background: rgba(79, 125, 255, 0.16);
+            --send-button-color: var(--text-primary);
+            --send-button-border: 1px solid rgba(79, 125, 255, 0.24);
+            --send-button-shadow: 0 14px 26px rgba(79, 125, 255, 0.18);
+            "#,
+            r#"
+            --bg-body: #16181d;
+            --bg-panel: rgba(28, 28, 28, 0.38);
+            --bg-input: rgba(255, 255, 255, 0.12);
+            --bg-button: rgba(255, 255, 255, 0.06);
+            --border-dark: rgba(255, 255, 255, 0.1);
+            --text-primary: #e8e8e8;
+            --text-secondary: #b2b2b2;
+            --accent-color: #4f7dff;
+            --shadow-color: rgba(0, 0, 0, 0.28);
+            --bubble-received-bg: rgba(45, 45, 45, 0.88);
+            --panel-border: 1px solid rgba(255, 255, 255, 0.1);
+            --button-border: 1px solid rgba(255, 255, 255, 0.1);
+            --send-button-background: rgba(79, 125, 255, 0.2);
+            --send-button-color: var(--text-primary);
+            --send-button-border: 1px solid rgba(79, 125, 255, 0.26);
+            --send-button-shadow: 0 14px 26px rgba(0, 0, 0, 0.22);
+            "#,
+            ""
+        ),
+        _ => (
+            r#"
+            --bg-body: #dcdcdc;
+            --bg-panel: #f3f3f3;
+            --bg-input: #ffffff;
+            --bg-button: #e0e0e0;
+            --border-dark: #373737;
+            --text-primary: #373737;
+            --text-secondary: #707070;
+            --accent-color: #487bdb;
+            --shadow-color: #373737;
+            --font-mono: "Courier New", Courier, monospace;
+            --content-font-family: var(--font-mono);
+            --radius: 0px;
+            --bubble-received-bg: #ffffff;
+            --panel-border: 2px solid var(--border-dark);
+            --panel-radius: 4px;
+            --panel-shadow: 2px 2px 0 0 var(--shadow-color);
+            --input-border: 3px solid var(--border-dark);
+            --input-radius: 0;
+            --input-shadow: inset 4px 4px 0 rgba(0, 0, 0, 0.1);
+            --button-border: 2px solid var(--border-dark);
+            --button-radius: 0;
+            --button-shadow: 2px 2px 0 0 var(--shadow-color);
+            --button-active-transform: translate(2px, 2px);
+            --button-active-shadow: 0 0 0 0 var(--shadow-color);
+            --button-active-filled-shadow: inset 2px 2px 0 rgba(0, 0, 0, 0.2);
+            --send-button-background: var(--accent-color);
+            --send-button-color: #ffffff;
+            --send-button-border: 2px solid var(--border-dark);
+            --send-button-shadow: inset 2px 2px 0 rgba(0, 0, 0, 0.2);
+            "#,
+            r#"
+            --bg-body: #121212;
+            --bg-panel: #1e1e1e;
+            --bg-input: #202020;
+            --bg-button: #333333;
+            --border-dark: #000000;
+            --text-primary: #e0e0e0;
+            --text-secondary: #a0a0a0;
+            --accent-color: #5a8dee;
+            --shadow-color: #000000;
+            --bubble-received-bg: #1e1e1e;
+            --panel-border: 2px solid #000000;
+            --panel-shadow: 2px 2px 0 0 #000000;
+            --input-border: 2px solid #000000;
+            --input-shadow: inset 2px 2px 0 0 rgba(0,0,0,0.5);
+            --button-border: 2px solid #000000;
+            --button-shadow: 2px 2px 0 0 #000000;
+            --send-button-background: #000000;
+            --send-button-color: #ffffff;
+            --send-button-border: 2px solid #000000;
+            --send-button-shadow: none;
+            "#,
+            ""
+        ),
+    }
+}
+
+fn file_transfer_theme_css(theme: &str, color_mode: &str) -> String {
+    let (light, dark, extra) = file_transfer_theme_variants(theme);
+    let dark_css = match color_mode {
+        "dark" => format!(":root {{{dark}}}"),
+        "system" => format!("@media (prefers-color-scheme: dark) {{ :root {{{dark}}} }}"),
+        _ => String::new(),
+    };
+
+    format!(
+        ":root {{{light}}}\n{dark_css}\n{extra}"
+    )
+}
+
+pub fn render_index(theme: &str, color_mode: &str, logo_base64: &str) -> String {
+    let theme_css = file_transfer_theme_css(theme, color_mode);
+    let mode_class = match color_mode {
+        "dark" => "dark-mode",
+        "light" => "light-mode",
+        _ => "",
+    };
+
     format!(r#"
 <!DOCTYPE html>
 <html lang="zh">
@@ -20,7 +321,10 @@ pub fn render_index(theme: &str, logo_base64: &str) -> String {
             --radius: 0px;
             --bubble-received-bg: #ffffff;
             --app-height: 100vh;
-            --vv-bottom: 0px;
+            --footer-shift: 0px;
+            --composer-height: 76px;
+            --control-height: clamp(40px, 6.6vh, 58px);
+            --side-width: clamp(72px, 14vw, 92px);
         }}
 
         @media (prefers-color-scheme: dark) {{
@@ -65,12 +369,16 @@ pub fn render_index(theme: &str, logo_base64: &str) -> String {
         body {{
             background-color: var(--bg-body);
             color: var(--text-primary);
-            font-family: var(--font-mono);
+            font-family: var(--content-font-family, var(--font-mono));
             margin: 0; padding: 0;
             display: flex; flex-direction: column;
             height: 100dvh;
             height: var(--app-height);
             overflow: hidden;
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            overscroll-behavior: none;
             transition: background 0.3s;
         }}
 
@@ -100,10 +408,18 @@ pub fn render_index(theme: &str, logo_base64: &str) -> String {
         .status-dot {{ width: 8px; height: 8px; background: #4caf50; border-radius: 50%; box-shadow: 0 0 5px #4caf50; }}
 
         #chat-box {{
-            flex: 1; overflow-y: auto; padding: 16px;
+            flex: 1; min-height: 0; overflow-y: auto; padding: 16px;
             display: flex; flex-direction: column; gap: 16px;
             scroll-behavior: smooth;
-            padding-bottom: calc(100px + max(env(safe-area-inset-bottom), var(--vv-bottom)));
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
+            scrollbar-width: none;
+            padding-bottom: calc(var(--composer-height) + var(--footer-shift) + env(safe-area-inset-bottom) + 16px);
+            scroll-padding-bottom: calc(var(--composer-height) + var(--footer-shift) + env(safe-area-inset-bottom) + 12px);
+        }}
+
+        #chat-box::-webkit-scrollbar {{
+            display: none;
         }}
 
         .timestamp {{
@@ -229,36 +545,40 @@ pub fn render_index(theme: &str, logo_base64: &str) -> String {
         .progress-inner {{ height: 100%; background: var(--accent-color); width: 0%; transition: width 0.2s; }}
 
         footer {{
-            padding: 10px 16px;
-            padding-bottom: calc(10px + max(env(safe-area-inset-bottom), var(--vv-bottom)));
-            background: var(--bg-panel);
-            border-top: 2px solid var(--border-dark);
-            display: flex; gap: 12px; align-items: flex-end;
+            padding: 8px 16px;
+            padding-bottom: calc(8px + env(safe-area-inset-bottom));
+            background: transparent;
+            border-top: none;
+            display: flex; gap: 12px; align-items: center;
             flex-shrink: 0;
             z-index: 10;
+            transform: translateY(calc(-1 * var(--footer-shift)));
+            transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+            will-change: transform;
         }}
         .theme-mica footer, .theme-acrylic footer {{
-            background: rgba(255,255,255,0.7); backdrop-filter: blur(20px);
-            border-top: 1px solid rgba(0,0,0,0.1);
+            background: transparent;
+            backdrop-filter: none;
+            border-top: none;
         }}
         @media (prefers-color-scheme: dark) {{
-            .theme-mica footer, .theme-acrylic footer {{ background: rgba(30,30,30,0.7); }}
+            .theme-mica footer, .theme-acrylic footer {{ background: transparent; }}
         }}
         
         .retro-btn {{
-            background: #f3f3f3;
-            border: 2px solid var(--border-dark);
-            box-shadow: 2px 2px 0 0 var(--shadow-color);
+            background: var(--bg-button);
+            border: var(--button-border, 2px solid var(--border-dark));
+            box-shadow: var(--button-shadow, 2px 2px 0 0 var(--shadow-color));
             display: flex; align-items: center; justify-content: center;
             cursor: pointer; color: var(--text-primary);
             transition: all 0.1s;
-            height: 40px;
+            height: var(--control-height);
             flex-shrink: 0;
-            border-radius: var(--radius);
+            border-radius: var(--button-radius, var(--radius));
         }}
         .retro-btn:active {{
-            transform: translate(2px, 2px);
-            box-shadow: 0 0 0 0 var(--shadow-color);
+            transform: var(--button-active-transform, translate(2px, 2px));
+            box-shadow: var(--button-active-shadow, 0 0 0 0 var(--shadow-color));
         }}
         
         .theme-mica .retro-btn, .theme-acrylic .retro-btn {{
@@ -269,16 +589,27 @@ pub fn render_index(theme: &str, logo_base64: &str) -> String {
             .theme-mica .retro-btn, .theme-acrylic .retro-btn {{ background: rgba(255,255,255,0.1); }}
         }}
 
-        .add-btn {{ width: 40px; font-size: 24px; font-weight: 900; }}
+        .add-btn {{ width: var(--side-width); min-width: var(--side-width); padding: 0; font-size: 24px; font-weight: 900; }}
+        .send-btn {{
+            width: var(--side-width);
+            min-width: var(--side-width);
+            padding: 0;
+            background: var(--send-button-background, var(--accent-color));
+            color: var(--send-button-color, #ffffff);
+            border: var(--send-button-border, var(--button-border, 2px solid var(--border-dark)));
+            box-shadow: var(--send-button-shadow, var(--button-active-filled-shadow, 2px 2px 0 0 var(--shadow-color)));
+        }}
         
         .text-input {{ 
-            flex: 1; height: 40px; min-height: 40px; max-height: 100px; padding: 10px 12px;
-            background: #fff; border: 2px solid var(--border-dark);
-            box-shadow: inset 2px 2px 0 rgba(0,0,0,0.1);
-            font-size: 14px; font-family: var(--font-mono);
+            flex: 1; height: var(--control-height); min-height: var(--control-height); max-height: 100px; padding: calc((var(--control-height) - 20px) / 2) 12px;
+            background: var(--bg-input); border: var(--input-border, 2px solid var(--border-dark));
+            box-shadow: var(--input-shadow, inset 2px 2px 0 rgba(0,0,0,0.1));
+            font-size: 14px; font-family: var(--content-font-family, var(--font-mono));
             color: var(--text-primary); outline: none;
-            border-radius: var(--radius); -webkit-appearance: none;
+            border-radius: var(--input-radius, var(--radius)); -webkit-appearance: none;
             resize: none; overflow-y: auto; line-height: 20px;
+            display: block;
+            margin: 0;
         }}
         .theme-mica .text-input, .theme-acrylic .text-input {{ box-shadow: none; border-width: 1px; }}
         @media (prefers-color-scheme: dark) {{
@@ -351,9 +682,10 @@ pub fn render_index(theme: &str, logo_base64: &str) -> String {
         }}
 
         .fs-toolbar {{ display: flex; justify-content: flex-end; gap: 12px; }}
+        {theme_css}
     </style>
 </head>
-<body class="theme-{theme}">
+<body class="theme-{theme} {mode_class}">
     <header>
         <div class="header-status">
             <div class="status-dot"></div>
@@ -407,6 +739,8 @@ pub fn render_index(theme: &str, logo_base64: &str) -> String {
         const textInput = document.getElementById('text-input');
         const sendBtn = document.getElementById('send-btn');
         const chatBox = document.getElementById('chat-box');
+        const footer = document.querySelector('footer');
+        const fsTextarea = document.getElementById('fs-textarea');
         
         const now = new Date();
         document.getElementById('time-now').innerText = `${{now.getHours().toString().padStart(2,'0')}}:${{now.getMinutes().toString().padStart(2,'0')}}`;
@@ -424,18 +758,31 @@ pub fn render_index(theme: &str, logo_base64: &str) -> String {
             chatBox.scrollTop = chatBox.scrollHeight;
         }}
 
+        function syncComposerMetrics() {{
+            if (!footer) return;
+            const composerHeight = Math.ceil(footer.getBoundingClientRect().height);
+            document.documentElement.style.setProperty('--composer-height', `${{composerHeight}}px`);
+        }}
+
         function syncViewportMetrics() {{
             const root = document.documentElement;
             const vv = window.visualViewport;
+            const activeElement = document.activeElement;
+            const mainInputFocused = activeElement === textInput;
             if (!vv) {{
                 root.style.setProperty('--app-height', `${{window.innerHeight}}px`);
-                root.style.setProperty('--vv-bottom', '0px');
+                root.style.setProperty('--footer-shift', '0px');
+                syncComposerMetrics();
                 return;
             }}
 
-            root.style.setProperty('--app-height', `${{Math.round(vv.height)}}px`);
-            const bottomInset = Math.max(0, window.innerHeight - (vv.height + vv.offsetTop));
-            root.style.setProperty('--vv-bottom', `${{Math.round(bottomInset)}}px`);
+            const layoutHeight = Math.max(window.innerHeight, vv.height + vv.offsetTop);
+            const overlap = Math.max(0, layoutHeight - (vv.height + vv.offsetTop));
+            const footerShift = mainInputFocused && overlap > 80 ? overlap : 0;
+
+            root.style.setProperty('--app-height', `${{Math.round(layoutHeight)}}px`);
+            root.style.setProperty('--footer-shift', `${{Math.round(footerShift)}}px`);
+            syncComposerMetrics();
         }}
 
         function normalizeFileName(name) {{
@@ -556,17 +903,24 @@ pub fn render_index(theme: &str, logo_base64: &str) -> String {
         textInput.addEventListener('focus', () => {{
             setTimeout(() => {{
                 syncViewportMetrics();
+                textInput.scrollIntoView({{ block: 'nearest', inline: 'nearest' }});
                 scrollToBottom();
             }}, 80);
         }});
 
+        textInput.addEventListener('blur', () => {{
+            setTimeout(syncViewportMetrics, 120);
+        }});
+
         window.addEventListener('resize', syncViewportMetrics);
         window.addEventListener('orientationchange', syncViewportMetrics);
+        window.addEventListener('load', syncComposerMetrics);
         if (window.visualViewport) {{
             window.visualViewport.addEventListener('resize', syncViewportMetrics);
             window.visualViewport.addEventListener('scroll', syncViewportMetrics);
         }}
         syncViewportMetrics();
+        syncComposerMetrics();
 
         // WebSocket Setup
         let socket;

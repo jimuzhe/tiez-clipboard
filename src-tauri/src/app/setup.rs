@@ -1155,7 +1155,14 @@ pub fn handle_global_shortcut(app: &AppHandle, shortcut: &tauri_plugin_global_sh
                 let q_notification = app.state::<PasteQueue>().inner().0.lock().unwrap();
                 !q_notification.items.is_empty()
             };
-            if is_seq || has_items { crate::services::paste_queue::paste_next_step(app.clone()); }
+            if is_seq || has_items {
+                tauri::async_runtime::spawn({
+                    let app = app.clone();
+                    async move {
+                        crate::services::paste_queue::paste_next_step(app).await;
+                    }
+                });
+            }
         }
     }
 

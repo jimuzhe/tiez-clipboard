@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { DEFAULT_THEME, normalizeThemeId } from "../config/themes";
 import type { Locale } from "../types";
 
 interface UseSettingsInitOptions {
@@ -34,7 +35,7 @@ export const useSettingsInit = ({
         setAppSettings(result);
         if (result["app.hotkey"]) setHotkey(result["app.hotkey"]);
 
-        const loadedTheme = result["app.theme"] || "mica";
+        const loadedTheme = normalizeThemeId(result["app.theme"] || DEFAULT_THEME);
         const loadedColorMode = result["app.color_mode"] || "system";
 
         setTheme(loadedTheme);

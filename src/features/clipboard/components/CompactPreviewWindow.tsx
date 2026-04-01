@@ -12,6 +12,11 @@ import {
     Clock
 } from "lucide-react";
 import HtmlContent from "../../../shared/components/HtmlContent";
+import {
+    applyThemeClasses,
+    DEFAULT_THEME,
+    normalizeThemeId
+} from "../../../shared/config/themes";
 import { getConciseTime } from "../../../shared/lib/utils";
 import type { Locale } from "../../../shared/types";
 import { toTauriLocalImageSrc } from "../../../shared/lib/localImageSrc";
@@ -102,16 +107,13 @@ const seekVideoPreviewFrame = (video: HTMLVideoElement | null) => {
 };
 
 const applyTheme = (payload: PreviewPayload) => {
-    const theme = payload.theme || "mica";
+    const theme = normalizeThemeId(payload.theme || DEFAULT_THEME);
     const colorMode = payload.colorMode || "light";
 
     const root = document.documentElement;
     const body = document.body;
 
-    root.classList.remove("theme-retro", "theme-mica", "theme-acrylic");
-    body.classList.remove("theme-retro", "theme-mica", "theme-acrylic");
-    root.classList.add(`theme-${theme}`);
-    body.classList.add(`theme-${theme}`);
+    applyThemeClasses(theme, root, body);
 
     root.classList.remove("light-mode", "dark-mode");
     body.classList.remove("light-mode", "dark-mode");
@@ -517,7 +519,7 @@ const CompactPreviewWindow = () => {
         <div className="compact-preview-root">
             <div
                 ref={containerRef}
-                className={`compact-popover-portal compact-preview-window ${payload?.theme || ""} ${payload?.contentType === "image" ? "compact-preview-image" : ""} ${payload?.contentType === "image" || payload?.contentType === "video" || !!effectiveRichImageFallbackSrc ? "compact-preview-media" : ""} ${payload?.colorMode === "dark" ? "dark-mode" : ""}`}
+                className={`compact-popover-portal compact-preview-window theme-${normalizeThemeId(payload?.theme || DEFAULT_THEME)} ${payload?.contentType === "image" ? "compact-preview-image" : ""} ${payload?.contentType === "image" || payload?.contentType === "video" || !!effectiveRichImageFallbackSrc ? "compact-preview-media" : ""} ${payload?.colorMode === "dark" ? "dark-mode" : ""}`}
                 style={{
                     display: "flex",
                     flexDirection: "column"

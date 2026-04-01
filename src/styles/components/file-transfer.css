@@ -1,3 +1,45 @@
+/* File Transfer Theme Tokens */
+:root {
+  --wt-own-avatar-background: var(--text-primary);
+  --wt-own-avatar-color: #ffffff;
+  --wt-peer-avatar-color: #ffffff;
+  --wt-panel-background: var(--bg-element);
+  --wt-qr-background: #ffffff;
+  --wt-qr-foreground: #000000;
+  --wt-chat-grid-color: rgba(var(--accent-color-rgb), 0.22);
+  --wt-sent-bubble-background: var(--accent-color);
+  --wt-sent-bubble-tail-color: var(--accent-color);
+  --wt-sent-bubble-color: #ffffff;
+  --wt-link-color: var(--accent-color);
+  --wt-link-hover-color: var(--accent-hover);
+  --wt-sent-link-color: rgba(255, 255, 255, 0.92);
+  --wt-sent-link-hover-color: #ffffff;
+  --wt-media-border: var(--line-soft);
+  --wt-media-shadow: var(--shadow-sm);
+  --wt-video-background: #000000;
+  --wt-overlay-background: rgba(10, 18, 32, 0.66);
+  --wt-overlay-border: rgba(255, 255, 255, 0.8);
+  --wt-overlay-color: #ffffff;
+  --wt-progress-divider: var(--line-soft);
+  --wt-progress-track-background: rgba(24, 34, 53, 0.08);
+  --wt-progress-track-border: rgba(24, 34, 53, 0.18);
+  --wt-progress-sent-track-background: rgba(255, 255, 255, 0.18);
+  --wt-progress-sent-track-border: rgba(255, 255, 255, 0.3);
+  --wt-progress-bar-border: rgba(24, 34, 53, 0.16);
+  --wt-progress-sent-bar: rgba(255, 255, 255, 0.82);
+  --wt-context-hover-background: rgba(var(--accent-color-rgb), 0.12);
+  --wt-expand-hover-background: rgba(var(--accent-color-rgb), 0.12);
+  --wt-fullscreen-shadow: var(--shadow-lg);
+  --wt-peer-gradient-1: linear-gradient(135deg, #ff5f6d 0%, #ffc371 100%);
+  --wt-peer-gradient-2: linear-gradient(135deg, #2193b0 0%, #6dd5ed 100%);
+  --wt-peer-gradient-3: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+  --wt-peer-gradient-4: linear-gradient(135deg, #8e2de2 0%, #4a00e0 100%);
+  --wt-peer-gradient-5: linear-gradient(135deg, #f953c6 0%, #b91d73 100%);
+  --wt-peer-gradient-6: linear-gradient(135deg, #ee0979 0%, #ff6a00 100%);
+  --wt-peer-gradient-7: linear-gradient(135deg, #00c6ff 0%, #0072ff 100%);
+  --wt-peer-gradient-8: linear-gradient(135deg, #f7971e 0%, #ffd200 100%);
+}
+
 /* File Transfer Panel Styles */
 .file-transfer-panel{
   display: flex;
@@ -82,13 +124,19 @@
 
 /* --- Web Transfer Style (Mirroring file_transfer.rs) --- */
 .wt-chat-view{
+  --wt-control-height: 46px;
+  --wt-side-width: 74px;
+  --wt-footer-padding-y: 8px;
+  --wt-composer-max-width: 1040px;
   flex: 1;
   display: flex;
   flex-direction: column;
   height: 100%;
+  width: 100%;
+  min-width: 0;
   overflow: hidden;
   background-color: var(--bg-body);
-  font-family: "Courier New", Courier, monospace;
+  font-family: var(--content-font-family, var(--font-main));
 }
 
 .wt-chat-box{
@@ -98,7 +146,7 @@
   display: flex;
   flex-direction: column;
   gap: 24px;
-  background-image: radial-gradient(var(--border-dark) 1px, transparent 1px);
+  background-image: radial-gradient(var(--wt-chat-grid-color) 1px, transparent 1px);
   background-size: 20px 20px;
   background-color: var(--bg-body);
 }
@@ -135,7 +183,7 @@
   width: 32px;
   height: 32px;
   border: 2px solid var(--border-dark);
-  background: #fff;
+  background: var(--wt-panel-background);
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -148,8 +196,8 @@
 }
 
 .wt-message.sent .wt-avatar{
-  background: var(--text-primary);
-  color: var(--bg-body);
+  background: var(--wt-own-avatar-background);
+  color: var(--wt-own-avatar-color);
 }
 
 .wt-bubble{
@@ -168,8 +216,8 @@
 }
 
 .wt-message.sent .wt-bubble{
-  background: #487bdb;
-  color: #fff;
+  background: var(--wt-sent-bubble-background);
+  color: var(--wt-sent-bubble-color);
 }
 
 .wt-file-card{
@@ -205,10 +253,10 @@
   width: auto;
   max-height: 400px;
   display: block;
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--wt-media-border);
   border-radius: 8px;
   margin-bottom: 6px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--wt-media-shadow);
   object-fit: contain;
 }
 
@@ -219,8 +267,8 @@
   display: block;
   border-radius: 8px;
   margin-bottom: 6px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  background: #000;
+  box-shadow: var(--wt-media-shadow);
+  background: var(--wt-video-background);
 }
 
 .wt-footer{
@@ -235,7 +283,7 @@
 .wt-header{
   padding: 16px;
   background: var(--bg-toolbar);
-  border-bottom: 2px solid var(--border-dark);
+  border-bottom: 1px solid var(--line-soft);
 }
 
 .wt-info-panel{
@@ -249,7 +297,7 @@
 }
 
 .wt-qr-container{
-  background: #fff;
+  background: var(--wt-qr-background);
   padding: 4px;
   border: 2px solid var(--border-dark);
   display: flex;
@@ -327,7 +375,7 @@
 /* New Header/QR Styles */
 .wt-header{
   padding: 8px;
-  border-bottom: 2px solid var(--border-dark);
+  border-bottom: 1px solid var(--line-soft);
   background: var(--bg-element);
 }
 
@@ -344,13 +392,13 @@
 .wt-qr-container{
   width: 70px;
   height: 70px;
-  background: #fff;
+  background: var(--wt-qr-background);
   border: 1px solid var(--border-dark);
   padding: 2px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #000 !important;
+  color: var(--wt-qr-foreground) !important;
   /* Ensure QR foreground is dark */
 }
 
@@ -381,32 +429,32 @@
 /* Progress Bar Styles */
 .progress-wrapper{
   margin-top: 8px;
-  border-top: 1px dashed rgba(0, 0, 0, 0.1);
+  border-top: 1px dashed var(--wt-progress-divider);
   padding-top: 8px;
 }
 
 .wt-message.sent .progress-wrapper{
-  border-top-color: rgba(255, 255, 255, 0.3);
+  border-top-color: var(--wt-progress-sent-track-border);
 }
 
 .progress-container{
   height: 6px;
-  background: rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(0, 0, 0, 0.2);
+  background: var(--wt-progress-track-background);
+  border: 1px solid var(--wt-progress-track-border);
   width: 100%;
   overflow: hidden;
   border-radius: 3px;
 }
 
 .wt-message.sent .progress-container{
-  background: rgba(255, 255, 255, 0.2);
-  border-color: rgba(255, 255, 255, 0.3);
+  background: var(--wt-progress-sent-track-background);
+  border-color: var(--wt-progress-sent-track-border);
 }
 
 .progress-bar{
   height: 100%;
   background: var(--accent-color);
-  border-right: 1px solid rgba(0, 0, 0, 0.2);
+  border-right: 1px solid var(--wt-progress-bar-border);
   transition: width 0.3s ease;
 }
 
@@ -424,7 +472,7 @@
 }
 
 .context-item:hover{
-  background: rgba(120, 120, 120, 0.1);
+  background: var(--wt-context-hover-background);
   color: var(--text-primary) !important;
 }
 
@@ -457,7 +505,7 @@
 }
 
 .wt-message.sent .progress-bar{
-  background: rgba(255, 255, 255, 0.8);
+  background: var(--wt-progress-sent-bar);
 }
 
 .wt-img-preview{
@@ -502,31 +550,31 @@
   flex-direction: column;
   gap: 22px;
   background: var(--bg-body);
-  background-image: radial-gradient(var(--text-primary) 0.5px, transparent 0.5px);
+  background-image: radial-gradient(var(--wt-chat-grid-color) 0.5px, transparent 0.5px);
   background-size: 24px 24px;
   opacity: 1;
   scrollbar-width: thin;
-  scrollbar-color: var(--text-primary) transparent;
+  scrollbar-color: var(--scrollbar-thumb-color) var(--scrollbar-track-background);
 }
 
 /* Custom Scrollbar for Chat Box */
 .wt-chat-box::-webkit-scrollbar{
-  width: 10px;
+  width: var(--scrollbar-size);
 }
 
 .wt-chat-box::-webkit-scrollbar-track{
-  background: transparent;
-  border-left: 2px solid var(--border-dark);
+  background: var(--scrollbar-track-background);
+  border-left: var(--scrollbar-track-border-start);
 }
 
 .wt-chat-box::-webkit-scrollbar-thumb{
-  background: var(--text-primary);
-  border: 2px solid var(--bg-body);
-  border-radius: 0;
+  background: var(--scrollbar-thumb-color);
+  border: var(--scrollbar-chat-thumb-border);
+  border-radius: var(--scrollbar-radius);
 }
 
 .wt-chat-box::-webkit-scrollbar-thumb:hover{
-  background: var(--accent-color);
+  background: var(--scrollbar-thumb-hover-color);
 }
 
 .wt-message{
@@ -562,7 +610,7 @@
   width: 34px;
   height: 34px;
   border: 2px solid var(--border-dark);
-  background: #fff;
+  background: var(--wt-panel-background);
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -575,8 +623,8 @@
 }
 
 .wt-message.sent .wt-avatar{
-  background: var(--text-primary);
-  color: #fff;
+  background: var(--wt-own-avatar-background);
+  color: var(--wt-own-avatar-color);
 }
 
 .wt-bubble{
@@ -634,12 +682,12 @@
 .wt-message.sent .wt-bubble::after{
   right: -4px;
   border-width: 4px 0 4px 5px;
-  border-color: transparent transparent transparent var(--accent-color);
+  border-color: transparent transparent transparent var(--wt-sent-bubble-tail-color);
 }
 
 .wt-message.sent .wt-bubble{
-  background: var(--accent-color);
-  color: #fff;
+  background: var(--wt-sent-bubble-background);
+  color: var(--wt-sent-bubble-color);
 }
 
 .wt-message.received .wt-bubble{
@@ -648,7 +696,7 @@
 }
 
 .wt-link{
-  color: #1a73e8;
+  color: var(--wt-link-color);
   text-decoration: underline;
   text-underline-offset: 2px;
   cursor: pointer;
@@ -656,16 +704,16 @@
 }
 
 .wt-link:hover{
-  color: #1558b0;
+  color: var(--wt-link-hover-color);
   opacity: 0.9;
 }
 
 .wt-message.sent .wt-link{
-  color: #e6f0ff;
+  color: var(--wt-sent-link-color);
 }
 
 .wt-message.sent .wt-link:hover{
-  color: #ffffff;
+  color: var(--wt-sent-link-hover-color);
   opacity: 1;
 }
 
@@ -707,10 +755,10 @@
   width: auto;
   max-height: 280px;
   display: block;
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--wt-media-border);
   border-radius: 8px;
   margin-bottom: 6px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--wt-media-shadow);
   object-fit: contain;
 }
 
@@ -723,7 +771,7 @@
 
 .wt-file-icon{
   font-size: 26px;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+  filter: drop-shadow(0 2px 4px var(--shadow-color));
 }
 
 .wt-file-name{
@@ -744,7 +792,7 @@
 }
 
 .wt-expand-btn:hover{
-  background-color: rgba(0, 0, 0, 0.1) !important;
+  background-color: var(--wt-expand-hover-background) !important;
   opacity: 1 !important;
 }
 
@@ -759,5 +807,271 @@
 
 /* Fullscreen Editor Animation */
 .wt-fullscreen-editor{
-  box-shadow: 0 0 50px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--wt-fullscreen-shadow);
+}
+
+body.theme-acrylic .wt-chat-view,
+body.theme-mica .wt-chat-view{
+  background-color: transparent;
+}
+
+body.theme-acrylic .wt-chat-box,
+body.theme-mica .wt-chat-box{
+  background-color: transparent;
+}
+
+body.theme-acrylic .file-transfer-panel,
+body.theme-mica .file-transfer-panel,
+body.theme-acrylic .wt-info-panel,
+body.theme-mica .wt-info-panel{
+  background: var(--bg-panel);
+  border: var(--panel-border);
+  border-radius: var(--panel-radius);
+  box-shadow: var(--panel-shadow);
+}
+
+body.theme-acrylic .qr-container,
+body.theme-mica .qr-container,
+body.theme-acrylic .wt-qr-container,
+body.theme-mica .wt-qr-container{
+  background: var(--wt-qr-background);
+  border: var(--data-panel-border);
+  border-radius: 14px;
+  box-shadow: var(--data-panel-shadow);
+}
+
+body.theme-acrylic .scan-title,
+body.theme-mica .scan-title{
+  border-bottom: 1px solid var(--panel-divider-color);
+  padding-bottom: 6px;
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+body.theme-acrylic .open-browser-btn,
+body.theme-mica .open-browser-btn{
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: var(--accent-color);
+  color: #ffffff;
+  border: none;
+  border-radius: var(--button-radius);
+  box-shadow: var(--button-active-filled-shadow);
+  font-size: 11px;
+  font-family: inherit;
+}
+
+body.theme-acrylic .wt-header,
+body.theme-mica .wt-header{
+  background: transparent;
+}
+
+/* Composer Overrides */
+.wt-footer{
+  background: transparent;
+  border-top: none;
+  display: flex;
+  justify-content: center;
+  padding: var(--wt-footer-padding-y) 12px;
+  width: 100%;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+.wt-composer{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  width: min(100%, var(--wt-composer-max-width));
+  min-width: 0;
+  margin: 0 auto;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  box-sizing: border-box;
+}
+
+.wt-input-wrap{
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+}
+
+.wt-input{
+  display: block;
+  width: 100%;
+  height: var(--wt-control-height);
+  min-height: var(--wt-control-height);
+  margin: 0;
+  padding: calc((var(--wt-control-height) - 24px) / 2 - 1px) 40px calc((var(--wt-control-height) - 24px) / 2 - 1px) 14px;
+  background: var(--bg-input);
+  border: var(--input-border, 2px solid var(--border-dark));
+  border-radius: var(--input-radius, 10px);
+  box-shadow: var(--input-shadow, inset 2px 2px 0 rgba(0, 0, 0, 0.1));
+  font-size: 14px;
+  line-height: 1.45;
+  font-family: inherit;
+  color: var(--text-primary);
+  box-sizing: border-box;
+  outline: none;
+}
+
+.wt-input::placeholder{
+  color: var(--text-secondary);
+  opacity: 0.72;
+}
+
+.wt-input:focus{
+  border-color: var(--accent-color);
+  box-shadow: var(--input-focus-shadow, 0 0 0 3px rgba(var(--accent-color-rgb), 0.14));
+}
+
+.wt-btn{
+  height: var(--wt-control-height);
+  min-width: var(--wt-control-height);
+  padding: 0 14px;
+  background: var(--bg-button);
+  border: var(--button-border, 2px solid var(--border-dark));
+  border-radius: var(--button-radius, 10px);
+  box-shadow: var(--button-shadow, 2px 2px 0 0 var(--border-dark));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-primary);
+  flex-shrink: 0;
+  transition: transform 0.14s ease, box-shadow 0.14s ease, background 0.14s ease, color 0.14s ease;
+}
+
+.wt-btn:hover{
+  transform: translateY(-1px);
+  box-shadow: var(--button-hover-shadow, var(--button-shadow, 2px 2px 0 0 var(--border-dark)));
+}
+
+.wt-btn:active{
+  transform: translateY(1px);
+  box-shadow: var(--button-active-shadow, none);
+}
+
+.wt-btn-icon{
+  min-width: var(--wt-side-width);
+  width: var(--wt-side-width);
+  padding: 0;
+}
+
+.wt-btn-add{
+  width: calc(var(--wt-control-height) - 4px);
+  min-width: calc(var(--wt-control-height) - 4px);
+  padding: 0;
+}
+
+.wt-btn.send{
+  width: var(--wt-side-width);
+  min-width: var(--wt-side-width);
+  padding: 0;
+  background: var(--accent-color);
+  color: #ffffff;
+  border-color: rgba(var(--accent-color-rgb), 0.9);
+  font-weight: 800;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  box-shadow: 0 8px 18px rgba(24, 34, 53, 0.16);
+}
+
+.wt-btn.send:hover{
+  background: var(--accent-hover);
+  box-shadow: 0 10px 20px rgba(24, 34, 53, 0.2);
+}
+
+.wt-btn.send:active{
+  background: var(--accent-hover);
+  box-shadow: 0 4px 10px rgba(24, 34, 53, 0.14);
+}
+
+.wt-expand-btn{
+  position: absolute;
+  right: 8px;
+  bottom: calc((var(--wt-control-height) - 28px) / 2);
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  opacity: 0.68;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+}
+
+.wt-expand-btn:hover{
+  opacity: 1;
+}
+
+body.theme-acrylic .wt-composer,
+body.theme-mica .wt-composer{
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+body.theme-acrylic .wt-input,
+body.theme-mica .wt-input{
+  background: var(--bg-input);
+  border: var(--input-border);
+  box-shadow: var(--input-shadow);
+}
+
+body.theme-acrylic .wt-btn,
+body.theme-mica .wt-btn{
+  background: var(--bg-button);
+  border: var(--button-border);
+  border-radius: var(--button-radius);
+  box-shadow: var(--button-shadow);
+}
+
+body.theme-acrylic .wt-btn:hover,
+body.theme-mica .wt-btn:hover{
+  box-shadow: var(--button-hover-shadow);
+}
+
+body.theme-acrylic .wt-btn:active,
+body.theme-mica .wt-btn:active{
+  box-shadow: var(--button-active-shadow);
+}
+
+body.theme-acrylic .wt-btn.send,
+body.theme-mica .wt-btn.send{
+  background: var(--accent-color);
+  color: #ffffff;
+  border: 1px solid rgba(var(--accent-color-rgb), 0.82);
+  box-shadow: 0 8px 18px rgba(24, 34, 53, 0.14);
+}
+
+body.theme-acrylic .wt-btn.send:hover,
+body.theme-mica .wt-btn.send:hover{
+  background: var(--accent-hover);
+  box-shadow: 0 10px 20px rgba(24, 34, 53, 0.18);
+}
+
+body.theme-acrylic .wt-btn.send:active,
+body.theme-mica .wt-btn.send:active{
+  box-shadow: 0 4px 10px rgba(24, 34, 53, 0.12);
+}
+
+.wt-info-panel{
+  border-radius: var(--panel-radius, 0);
+}
+
+.wt-qr-container{
+  border-radius: var(--data-panel-radius, var(--panel-radius, 0));
+  box-shadow: var(--data-panel-shadow, none);
 }

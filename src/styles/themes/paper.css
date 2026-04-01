@@ -1,0 +1,194 @@
+/* Paper & Quill Theme (纸质书感) */
+:root.theme-paper,
+body.theme-paper {
+  --bg-body: #f4ecd8;
+  --bg-window: #fdf6e3;
+  --bg-content: #fdf6e3;
+  --bg-toolbar: rgba(244, 236, 216, 0.95);
+  --bg-panel: rgba(255, 253, 247, 0.7);
+  --bg-input: #ffffff;
+  --bg-element: #f9f3e4;
+  --bg-button: rgba(139, 90, 43, 0.08);
+
+  --text-primary: #3c3836;
+  --text-secondary: #7c6f64;
+  --text-muted: #a89984;
+
+  --accent-color: #8b5a2b;
+  --accent-color-rgb: 139, 90, 43;
+  --accent-hover: #6d451e;
+  --border-dark: #d5c4a1;
+  --border-light: rgba(213, 196, 161, 0.4);
+  --shadow-color: rgba(60, 56, 54, 0.12);
+
+  --line-soft: rgba(139, 90, 43, 0.12);
+  --line-strong: rgba(139, 90, 43, 0.25);
+  
+  --shadow-xs: 0 2px 8px rgba(60, 56, 54, 0.05);
+  --shadow-sm: 0 4px 12px rgba(60, 56, 54, 0.08);
+  --shadow-md: 0 8px 24px rgba(60, 56, 54, 0.1);
+  --shadow-lg: 0 12px 36px rgba(60, 56, 54, 0.12);
+  --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+
+  --font-main: "Georgia", "STSong", "SimSun", "Songti SC", serif;
+  --font-mono: "Courier New", Courier, monospace;
+
+  --radius-window: 4px;
+  --radius-panel: 2px;
+  --radius-card: 0px;
+  --radius-control: 2px;
+
+  --shell-background: #fdf6e3;
+  --shell-border: 1px solid #d5c4a1;
+  --shell-shadow: 0 20px 50px rgba(0, 0, 0, 0.1);
+
+  --toolbar-border: 1px solid rgba(139, 90, 43, 0.2);
+
+  --title-font-family: var(--font-main);
+  --title-font-weight: 700;
+  --title-font-size: 19px;
+
+  --input-border: 1px solid #d5c4a1;
+  --input-radius: 2px;
+  --input-shadow: inset 0 1px 3px rgba(0,0,0,0.03);
+  --input-focus-shadow: 0 0 0 3px rgba(139, 90, 43, 0.1);
+
+  --button-border: 1px solid rgba(139, 90, 43, 0.3);
+  --button-radius: 4px;
+  --button-shadow: none;
+  --button-hover-transform: translateY(-1px);
+  --button-hover-shadow: 0 4px 8px rgba(139, 90, 43, 0.15);
+  --button-active-transform: translateY(0);
+  --button-active-shadow: none;
+
+  --card-border: 1px solid #ebdbb2;
+  --card-radius: 0px;
+  --card-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  --card-hover-shadow: 0 8px 20px rgba(139, 90, 43, 0.1);
+  --card-hover-transform: none;
+  --card-active-transform: none;
+  --card-active-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+  --card-selected-background: #fbf1c7;
+  --card-selected-border-color: #b57614;
+  --card-selected-shadow: 0 4px 12px rgba(139, 90, 43, 0.15);
+  --card-selected-outline: 1px solid #b57614;
+
+  --panel-border: 1px solid #d5c4a1;
+  --panel-radius: 2px;
+  --panel-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+  --panel-header-background: #f9f3e4;
+  --panel-divider-color: #d5c4a1;
+
+  --data-panel-border: 1px solid #d5c4a1;
+  --data-panel-shadow: none;
+  --data-panel-hover-background: #ffffff;
+
+  --segment-active-background: #ffffff;
+  --segment-active-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+
+  --tags-border: 1px solid #d5c4a1;
+  --tags-shadow: none;
+  --tag-chip-border: 1px solid #d5c4a1;
+  --tag-chip-radius: 2px;
+  --tag-chip-shadow: none;
+
+  --menu-border: 1px solid #d5c4a1;
+  --menu-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+
+  --scrollbar-size: 10px;
+  --scrollbar-radius: 0px;
+  --scrollbar-thumb-color: #d5c4a1;
+  --scrollbar-track-background: transparent;
+
+  --content-font-family: var(--font-main);
+  --content-line-height: 1.6;
+}
+
+/* Texture effect */
+body.theme-paper::before {
+  content: "";
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  opacity: 0.04;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+.theme-paper .history-item {
+  background-color: transparent !important;
+  background-image: linear-gradient(var(--line-soft) 1px, transparent 1px);
+  background-size: 100% 1.6em;
+  background-attachment: local;
+  padding: 12px !important;
+  border-bottom: 2px solid #d5c4a1 !important;
+  position: relative;
+}
+
+.theme-paper .history-item:hover {
+  background-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+.theme-paper .item-content {
+  margin-left: 0;
+  font-family: var(--font-main);
+}
+
+.theme-paper .history-item.selected {
+  background-color: #fbf1c7 !important;
+}
+
+/* Dark Mode Overrides for Paper */
+@media (prefers-color-scheme: dark) {
+  :root.theme-paper:not(.light-mode),
+  body.theme-paper:not(.light-mode) {
+    --bg-body: #282828;
+    --bg-window: #32302f;
+    --bg-content: #32302f;
+    --bg-toolbar: rgba(40, 40, 40, 0.95);
+    --bg-panel: rgba(50, 48, 47, 0.8);
+    --bg-input: #1d2021;
+    --bg-element: #3c3836;
+    --bg-button: rgba(213, 196, 161, 0.1);
+
+    --text-primary: #ebdbb2;
+    --text-secondary: #a89984;
+    --text-muted: #928374;
+
+    --accent-color: #d79921;
+    --accent-color-rgb: 215, 153, 33;
+    --border-dark: #504945;
+    --border-light: rgba(80, 73, 69, 0.4);
+    --shadow-color: rgba(0, 0, 0, 0.3);
+
+    --line-soft: rgba(213, 196, 161, 0.08);
+    --panel-header-background: #3c3836;
+    --panel-divider-color: #504945;
+  }
+}
+
+:root.dark-mode.theme-paper,
+body.dark-mode.theme-paper {
+  --bg-body: #282828;
+  --bg-window: #32302f;
+  --bg-content: #32302f;
+  --bg-toolbar: rgba(40, 40, 40, 0.95);
+  --bg-panel: rgba(50, 48, 47, 0.8);
+  --bg-input: #1d2021;
+  --bg-element: #3c3836;
+  --bg-button: rgba(213, 196, 161, 0.1);
+
+  --text-primary: #ebdbb2;
+  --text-secondary: #a89984;
+  --text-muted: #928374;
+
+  --accent-color: #d79921;
+  --accent-color-rgb: 215, 153, 33;
+  --border-dark: #504945;
+  --border-light: rgba(80, 73, 69, 0.4);
+  --shadow-color: rgba(0, 0, 0, 0.3);
+
+  --line-soft: rgba(213, 196, 161, 0.08);
+  --panel-header-background: #3c3836;
+  --panel-divider-color: #504945;
+}

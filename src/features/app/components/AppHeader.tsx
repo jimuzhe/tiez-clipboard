@@ -107,7 +107,8 @@ const AppHeader = ({
 
   return (
   <header
-    onMouseDown={(e) => {
+    data-tauri-drag-region
+    onMouseDown={(e) => {  {/* TODO 平台区分仅限Linux */}
       // Don't drag if clicking on interactive elements
       const target = e.target as HTMLElement;
       if (target.closest('button, input, select, textarea, [role="button"]')) {
@@ -121,7 +122,8 @@ const AppHeader = ({
       handleDragStart();
     }}
   >
-    <div className="header-top" onMouseDown={(e) => {
+    <div className="header-top" 
+      onMouseDown={(e) => { {/* TODO 平台区分仅限Linux */}
         // Don't drag if clicking on interactive elements
         const target = e.target as HTMLElement;
         if (target.closest('button, input, select, textarea, [role="button"]')) {
@@ -129,7 +131,7 @@ const AppHeader = ({
         }
         handleDragStart();
       }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+      <div className="header-leading">
         {(showSettings || showTagManager || showEmojiPanel) && (
           <button className="btn-icon" onMouseDown={(e) => e.stopPropagation()} onClick={() => {
             if (chatMode) setChatMode(false);
@@ -140,18 +142,19 @@ const AppHeader = ({
             <ChevronLeft size={18} />
           </button>
         )}
-        <span className="header-title">
-          {showEmojiPanel
-            ? (t('emoji_panel') || '表情包')
-            : showTagManager && tagManagerEnabled
-              ? (t('tag_manager') || '标签管理')
-              : showSettings
-                ? t('settings')
-                : t('app_name')}
-        </span>
+          <div className="header-drag-region" data-tauri-drag-region>
+            <span className="header-title">
+              {showEmojiPanel
+                ? (t('emoji_panel') || '表情包')
+                : showTagManager && tagManagerEnabled
+                  ? (t('tag_manager') || '标签管理')
+                  : showSettings
+                    ? t('settings')
+                    : t('app_name')}
+            </span>
+          </div>
       </div>
-      <div style={{ display: 'flex', gap: '4px' }}
-      >
+      <div style={{ display: 'flex', gap: '4px' }}>
         {/* Pin Button - Always visible but single instance */}
         <button
           className={`btn-icon ${isWindowPinned ? 'active' : ''}`}
