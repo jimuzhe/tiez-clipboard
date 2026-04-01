@@ -134,6 +134,69 @@ pub fn toggle_window(app: &AppHandle) {
 
                     let _ = window.set_position(tauri::Position::Physical(tauri::PhysicalPosition { x: target_x, y: target_y }));
                 }
+
+                #[cfg(target_os = "linux")]
+                {
+                    let (mouse_x, mouse_y) = if let Ok(output) = std::process::Command::new("xdotool")
+                        .args(["getmouselocation", "--shell"])
+                        .output()
+                    {
+                        let stdout = String::from_utf8_lossy(&output.stdout);
+                        let mut x = 0i32;
+                        let mut y = 0i32;
+                        for line in stdout.lines() {
+                            if let Some(val) = line.strip_prefix("X=") {
+                                x = val.parse().unwrap_or(0);
+                            } else if let Some(val) = line.strip_prefix("Y=") {
+                                y = val.parse().unwrap_or(0);
+                            }
+                        }
+                        (x, y)
+                    } else {
+                        (0, 0)
+                    };
+
+                    let mut target_x = mouse_x - (w / 2);
+                    let mut target_y = mouse_y + 12;
+
+                    let mut target_monitor: Option<tauri::Monitor> = None;
+                    if let Ok(monitors) = window.available_monitors() {
+                        for m in &monitors {
+                            let m_pos = m.position();
+                            let m_size = m.size();
+                            let mx = m_pos.x;
+                            let my = m_pos.y;
+                            let mw = m_size.width as i32;
+                            let mh = m_size.height as i32;
+                            if mouse_x >= mx && mouse_x < mx + mw && mouse_y >= my && mouse_y < my + mh {
+                                target_monitor = Some(m.clone());
+                                break;
+                            }
+                        }
+                        if target_monitor.is_none() && !monitors.is_empty() {
+                            target_monitor = Some(monitors[0].clone());
+                        }
+                    }
+
+                    if let Some(m) = target_monitor.as_ref() {
+                        let m_pos = m.position();
+                        let m_size = m.size();
+                        let mx = m_pos.x;
+                        let my = m_pos.y;
+                        let mw = m_size.width as i32;
+                        let mh = m_size.height as i32;
+                        if target_x < mx { target_x = mx + 5; }
+                        if target_x + w > mx + mw { target_x = mx + mw - w - 5; }
+                        if target_y + h > my + mh {
+                            let above_y = mouse_y - h - 12;
+                            if above_y >= my { target_y = above_y; }
+                            else { target_y = my + mh - h - 5; }
+                        }
+                        if target_y < my { target_y = my + 5; }
+                    }
+
+                    let _ = window.set_position(tauri::Position::Physical(tauri::PhysicalPosition { x: target_x, y: target_y }));
+                }
             } else if was_docked {
                 let mut target_monitor = window.current_monitor().ok().flatten();
 
