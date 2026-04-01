@@ -33,7 +33,11 @@ fn main() {
             }
         }).build())
         .plugin(tauri_plugin_window_state::Builder::default().build())
-        .plugin(tauri_plugin_single_instance::init(|_app, _args, _cwd| {}))
+        .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+            if args.iter().any(|a| a == "--toggle") {
+                let _ = crate::app::window_manager::toggle_window_cmd(app.clone());
+            }
+        }))
         .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, Some(vec!["--minimized"])))
         .plugin(tauri_plugin_http::init())
         .setup(|app| {

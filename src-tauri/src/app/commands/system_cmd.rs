@@ -345,9 +345,188 @@ pub fn trigger_registry_win_v_optimization(enable: bool) -> AppResult<bool> {
     Ok(changed)
 }
 
-#[cfg(not(target_os = "windows"))]
+#[cfg(target_os = "linux")]
+#[tauri::command]
+pub fn trigger_registry_win_v_optimization(enable: bool) -> AppResult<bool> {
+    let exe_path = std::env::current_exe()
+        .map_err(|e| AppError::Internal(e.to_string()))?
+        .to_string_lossy()
+        .to_string();
+
+    let command = format!("{} --toggle", exe_path);
+    let changed = if enable {
+        gnome_add_custom_keybinding(&command)?
+    } else {
+        gnome_remove_custom_keybinding()?
+    };
+    Ok(changed)
+}
+
+#[cfg(target_os = "macos")]
 #[tauri::command]
 pub fn trigger_registry_win_v_optimization(_enable: bool) -> AppResult<bool> {
+    Ok(false)
+}
+
+#[cfg(target_os = "linux")]
+fn gnome_custom_keybinding_path() -> String {
+    "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom-tiez0/".to_string()
+}
+
+#[cfg(target_os = "linux")]
+fn gnome_add_custom_keybinding(command: &str) -> AppResult<bool> {
+    use std::process::Command;
+
+    let tiez_path = gnome_custom_keybinding_path();
+
+    // Get current custom keybindings list
+    let output = Command::new("gsettings")
+        .args(["get", "org.gnome.settings-daemon.plugins.media-keys", "custom-keybindings"])
+        .output()
+        .map_err(|e| AppError::Internal(format!("gsettings failed: {}", e)))?;
+
+    let current = String::from_utf8_lossy(&output.stdout).trim().to_string();
+
+    if current.contains("custom-tiez0") {
+        // Already present, just update properties in case exe moved
+        gnome_set_keybinding_props(command)?;
+        return Ok(false);
+    }
+
+    // Parse existing list
+    let mut paths: Vec<String> = parse_gsettings_array(&current);
+    paths.push(tiez_path);
+
+    let new_list = format_gsettings_array(&paths);
+
+    // Set the updated list
+    let output = Command::new("gsettings")
+        .args(["set", "org.gnome.settings-daemon.plugins.media-keys", "custom-keybindings", &new_list])
+        .output()
+        .map_err(|e| AppError::Internal(format!("gsettings set failed: {}", e)))?;
+
+    if !output.status.success() {
+        return Err(AppError::Internal(format!("gsettings error: {}", String::from_utf8_lossy(&output.stderr))));
+    }
+
+    gnome_set_keybinding_props(command)?;
+    Ok(true)
+}
+
+#[cfg(target_os = "linux")]
+fn gnome_remove_custom_keybinding() -> AppResult<bool> {
+    use std::process::Command;
+
+    let output = Command::new("gsettings")
+        .args(["get", "org.gnome.settings-daemon.plugins.media-keys", "custom-keybindings"])
+        .output()
+        .map_err(|e| AppError::Internal(format!("gsettings failed: {}", e)))?;
+
+    let current = String::from_utf8_lossy(&output.stdout).trim().to_string();
+
+    if !current.contains("custom-tiez0") {
+        return Ok(false);
+    }
+
+    let paths: Vec<String> = parse_gsettings_array(&current)
+        .into_iter()
+        .filter(|p| !p.contains("custom-tiez0"))
+        .collect();
+
+    let new_list = format_gsettings_array(&paths);
+
+    let output = Command::new("gsettings")
+        .args(["set", "org.gnome.settings-daemon.plugins.media-keys", "custom-keybindings", &new_list])
+        .output()
+        .map_err(|e| AppError::Internal(format!("gsettings set failed: {}", e)))?;
+
+    if !output.status.success() {
+        return Err(AppError::Internal(format!("gsettings error: {}", String::from_utf8_lossy(&output.stderr))));
+    }
+
+    Ok(true)
+}
+
+#[cfg(target_os = "linux")]
+fn gnome_set_keybinding_props(command: &str) -> AppResult<()> {
+    use std::process::Command;
+
+    let schema_path = format!(
+        "org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:{}",
+        gnome_custom_keybinding_path()
+    );
+
+    for (key, value) in [
+        ("name", "'TieZ Clipboard'"),
+        ("command", &format!("'{}'", command)),
+        ("binding", "'<Super>v'"),
+    ] {
+        let output = Command::new("gsettings")
+            .args(["set", &schema_path, key, value])
+            .output()
+            .map_err(|e| AppError::Internal(format!("gsettings set {} failed: {}", key, e)))?;
+
+        if !output.status.success() {
+            return Err(AppError::Internal(format!(
+                "gsettings set {} error: {}", key, String::from_utf8_lossy(&output.stderr)
+            )));
+        }
+    }
+    Ok(())
+}
+
+#[cfg(target_os = "linux")]
+fn parse_gsettings_array(input: &str) -> Vec<String> {
+    if input.starts_with('@') || input.is_empty() {
+        return vec![];
+    }
+    let inner = input.trim_start_matches('[').trim_end_matches(']');
+    inner.split(',')
+        .map(|s| s.trim().trim_matches('\'').to_string())
+        .filter(|s| !s.is_empty())
+        .collect()
+}
+
+#[cfg(target_os = "linux")]
+fn format_gsettings_array(paths: &[String]) -> String {
+    if paths.is_empty() {
+        return "@as []".to_string();
+    }
+    let items: Vec<String> = paths.iter().map(|p| format!("'{}'", p)).collect();
+    format!("[{}]", items.join(", "))
+}
+
+#[cfg(target_os = "linux")]
+pub fn is_gnome_keybinding_registered() -> bool {
+    let output = std::process::Command::new("gsettings")
+        .args(["get", "org.gnome.settings-daemon.plugins.media-keys", "custom-keybindings"])
+        .output();
+    match output {
+        Ok(out) => {
+            let current = String::from_utf8_lossy(&out.stdout).trim().to_string();
+            current.contains("custom-tiez0")
+        }
+        Err(_) => false,
+    }
+}
+
+#[cfg(target_os = "linux")]
+pub fn gnome_add_custom_keybinding_startup() -> AppResult<bool> {
+    let exe_path = std::env::current_exe()
+        .map_err(|e| AppError::Internal(e.to_string()))?
+        .to_string_lossy()
+        .to_string();
+    let command = format!("{} --toggle", exe_path);
+    gnome_add_custom_keybinding(&command)
+}
+
+#[cfg(not(target_os = "linux"))]
+pub fn is_gnome_keybinding_registered() -> bool {
+    false
+}
+
+#[cfg(not(target_os = "linux"))]
+pub fn gnome_add_custom_keybinding_startup() -> AppResult<bool> {
     Ok(false)
 }
 
@@ -356,7 +535,24 @@ pub fn is_registry_win_v_optimized() -> AppResult<bool> {
     #[cfg(target_os = "windows")]
     return Ok(get_registry_win_v_optimized_status());
 
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(target_os = "linux")]
+    {
+        let output = std::process::Command::new("gsettings")
+            .args(["get", "org.gnome.settings-daemon.plugins.media-keys", "custom-keybindings"])
+            .output()
+            .unwrap_or_else(|_| {
+                use std::os::unix::process::ExitStatusExt;
+                std::process::Output {
+                    stdout: Vec::new(),
+                    stderr: Vec::new(),
+                    status: std::process::ExitStatus::from_raw(1),
+                }
+            });
+        let current = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        Ok(current.contains("custom-tiez0"))
+    }
+
+    #[cfg(not(any(target_os = "windows", target_os = "linux")))]
     Ok(false)
 }
 

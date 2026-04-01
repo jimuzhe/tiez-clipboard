@@ -372,6 +372,26 @@ fn start_services(app: &App, s: &StartupSettings, app_handle: AppHandle) {
             let _ = crate::app::commands::trigger_registry_win_v_optimization(true);
         }
     }
+
+    // On Linux, ensure hotkey is Win+V (Super+V) when use_win_v_shortcut is enabled
+    #[cfg(target_os = "linux")]
+    {
+        let use_super_v = db_state.settings_repo.get("app.use_win_v_shortcut")
+            .unwrap_or(Some("false".to_string()))
+            .map(|v| v == "true")
+            .unwrap_or(false);
+        if use_super_v {
+            if s.main_hotkey != "Win+V" {
+                let _ = crate::app::commands::register_hotkey(app_handle.clone(), "Win+V".to_string());
+                let _ = db_state.settings_repo.set("app.hotkey", "Win+V");
+            }
+            // Also register GNOME custom keybinding as fallback (XGrabKey for Super+*
+            // may not work on GNOME due to Mutter's overlay key grab)
+            if !crate::app::commands::system_cmd::is_gnome_keybinding_registered() {
+                let _ = crate::app::commands::system_cmd::gnome_add_custom_keybinding_startup();
+            }
+        }
+    }
 }
 
 #[cfg(target_os = "windows")]
@@ -874,11 +894,6 @@ fn start_edge_docking_monitor(app_handle: AppHandle) {
                             _ => DockPosition::None,
                         };
 
-                        info!(
-                            "[edge-dock] REVEAL: dock_actual={:?}, mouse=({},{}), rect=({},{},{},{})",
-                            dock_actual, mouse_x, mouse_y, rect_left, rect_top, rect_right, rect_bottom
-                        );
-
                         if dock_actual != DockPosition::None {
                             let _ = window.show();
                             // Emit slide-in animation event
@@ -897,20 +912,17 @@ fn start_edge_docking_monitor(app_handle: AppHandle) {
                                     let r = window.set_position(tauri::Position::Physical(
                                         tauri::PhysicalPosition { x: rect_left, y: screen_top },
                                     ));
-                                    info!("[edge-dock] REVEAL set_position(Top): {:?}", r);
                                 }
                                 DockPosition::Left => {
                                     let r = window.set_position(tauri::Position::Physical(
                                         tauri::PhysicalPosition { x: screen_left, y: rect_top },
                                     ));
-                                    info!("[edge-dock] REVEAL set_position(Left): {:?}", r);
                                 }
                                 DockPosition::Right => {
                                     let w = rect_right - rect_left;
                                     let r = window.set_position(tauri::Position::Physical(
                                         tauri::PhysicalPosition { x: screen_right - w, y: rect_top },
                                     ));
-                                    info!("[edge-dock] REVEAL set_position(Right): {:?}", r);
                                 }
                                 _ => {}
                             }
@@ -926,16 +938,10 @@ fn start_edge_docking_monitor(app_handle: AppHandle) {
                     }
 
                     if !IS_HIDDEN.load(Ordering::Relaxed) {
-                        info!(
-                            "[edge-dock] HIDE triggered: dock={:?}, mouse=({},{}), is_mouse_in={}",
-                            dock, mouse_x, mouse_y, is_mouse_in
-                        );
-
                         if !WINDOW_PINNED.load(Ordering::Relaxed) {
                             WINDOW_PINNED.store(true, Ordering::Relaxed);
                             let r1 = window.set_always_on_top(true);
                             let r2 = window.set_focusable(false);
-                            info!("[edge-dock] set pinned: always_on_top={:?}, set_focusable={:?}", r1, r2);
                             let _ = app_handle.emit("window-pinned-changed", true);
                         }
 
@@ -956,11 +962,6 @@ fn start_edge_docking_monitor(app_handle: AppHandle) {
                             _ => 0,
                         };
                         CURRENT_DOCK.store(dock_id, Ordering::Relaxed);
-
-                        info!(
-                            "[edge-dock] HIDE: emitting slide event, dock={:?}, saved=({},{},{},{})",
-                            dock, rect_left, rect_top, rect_right - rect_left, rect_bottom - rect_top
-                        );
                         // Emit slide-out animation event, then wait for frontend animation
                         let dock_name = match dock {
                             DockPosition::Top => "top",
@@ -974,13 +975,11 @@ fn start_edge_docking_monitor(app_handle: AppHandle) {
                         }));
                         std::thread::sleep(std::time::Duration::from_millis(160));
                         let r = window.hide();
-                        info!("[edge-dock] HIDE window.hide() result: {:?}", r);
                         IS_HIDDEN.store(true, Ordering::Relaxed);
                         // Update timestamp so REVEAL must wait 500ms before re-hiding
                         LAST_SHOW_TIMESTAMP.store(now, Ordering::Relaxed);
                     }
                 } else if IS_HIDDEN.load(Ordering::Relaxed) {
-                    info!("[edge-dock] UNHIDE (no dock): restoring from IS_HIDDEN state");
                     let _ = window.show();
                     IS_HIDDEN.store(false, Ordering::Relaxed);
                     CURRENT_DOCK.store(0, Ordering::Relaxed);

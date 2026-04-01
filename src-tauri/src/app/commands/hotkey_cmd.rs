@@ -69,10 +69,15 @@ pub fn test_hotkey_available(app_handle: AppHandle, hotkey: String) -> AppResult
     if hotkey.is_empty() || hotkey.eq_ignore_ascii_case("MouseMiddle") || hotkey.eq_ignore_ascii_case("MButton") {
         return Ok(true);
     }
-    
+
     let normalized = hotkey.replace("Win", "Super");
     let shortcut = normalized.parse::<Shortcut>().map_err(|_| AppError::Validation("快捷键格式无效".to_string()))?;
-    
+
+    // If already registered by our own app, it's available
+    if app_handle.global_shortcut().is_registered(shortcut.clone()) {
+        return Ok(true);
+    }
+
     match app_handle.global_shortcut().register(shortcut.clone()) {
         Ok(_) => {
             let _ = app_handle.global_shortcut().unregister(shortcut);
