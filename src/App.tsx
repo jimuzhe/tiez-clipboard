@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useCallback, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import ToastContainer from "./shared/components/ToastContainer";
 import ConfirmDialog from "./shared/components/ConfirmDialog";
 
@@ -529,6 +530,30 @@ const App = () => {
       unlisten.then((off) => off());
     };
   }, [setShowSettings, setShowTagManager, setChatMode, setShowEmojiPanel]);
+
+  // When the window gains focus (e.g. shown via hotkey on Linux/GNOME),
+  // ensure the webview document receives keyboard focus so ESC and other
+  // keydown listeners fire without requiring a click first.
+  useEffect(() => {
+    // body needs tabIndex to receive keyboard events
+    document.body.tabIndex = -1;
+    const appWindow = getCurrentWindow();
+    let unlisten: (() => void) | undefined;
+    appWindow.onFocusChanged(({ payload: focused }) => {
+      if (focused) {
+        // Only steal focus if nothing interactive is already focused
+        const el = document.activeElement as HTMLElement | null;
+        const isInteractive = el && (
+          el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' ||
+          el.tagName === 'SELECT' || el.isContentEditable
+        );
+        if (!isInteractive) {
+          document.body.focus();
+        }
+      }
+    }).then((fn) => { unlisten = fn; });
+    return () => { unlisten?.(); };
+  }, []);
 
   useEffect(() => {
     if (!emojiPanelEnabled && showEmojiPanel) {

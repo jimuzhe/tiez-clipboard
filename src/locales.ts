@@ -299,7 +299,7 @@ export const translations = {
         autostart_failed: "设置自启动失败: ",
         hotkey_register_failed: "快捷键注册失败: ",
         chars: "字符",
-        slogan: "让复制与粘贴，保持有序",
+        slogan: "让复制与粘贴，保持有序\n123456",
         email_copied: "邮箱已复制",
         reset_settings: "恢复初始设置",
         ai_assistant: "AI 助手",

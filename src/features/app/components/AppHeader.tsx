@@ -118,6 +118,7 @@ const AppHeader = ({
       if (searchInputRef.current && document.activeElement === searchInputRef.current) {
         searchInputRef.current.blur();
       }
+      handleDragStart();
     }}
   >
     <div className="header-top" onMouseDown={(e) => {

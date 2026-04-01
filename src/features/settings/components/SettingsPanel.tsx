@@ -276,6 +276,8 @@ const SettingsPanel = (props: SettingsPanelProps) => {
     } = props;
 
     const [emailCopied, setEmailCopied] = useState(false);
+    const isLinux = navigator.platform.toLowerCase().includes('linux')
+        || navigator.userAgent.toLowerCase().includes('linux');
     const [appVersion, setAppVersion] = useState("");
     const [mqttStatus, setMqttStatus] = useState<"connected" | "disconnected" | "connecting">("disconnected");
     const [cloudSyncStatus, setCloudSyncStatus] = useState<CloudSyncStatusPayload>({
@@ -580,7 +582,9 @@ const SettingsPanel = (props: SettingsPanelProps) => {
                 saveAppSetting={saveAppSetting}
             />
 
-            {/* Sync Settings */}
+            {/* Sync Settings — hidden on Linux */}
+            {/* TODO Linux环境下以下被标记为isLinux的功能全部都没有被测试，当前Reliase版本不做更改。 */}
+            {!isLinux && (
             <SyncSettingsGroup
                 t={t}
                 collapsed={collapsedGroups['sync']}
@@ -607,8 +611,9 @@ const SettingsPanel = (props: SettingsPanelProps) => {
                 mqttNotificationEnabled={mqttNotificationEnabled}
                 setMqttNotificationEnabled={setMqttNotificationEnabled}
             />
+            )}
 
-            {CLOUD_SYNC_ENABLED && (
+            {CLOUD_SYNC_ENABLED && !isLinux && (
                 <CloudSyncSettingsGroup
                     t={t}
                     collapsed={collapsedGroups['cloud_sync']}
@@ -637,7 +642,8 @@ const SettingsPanel = (props: SettingsPanelProps) => {
                 />
             )}
 
-            {/* AI Assistant Settings */}
+            {/* AI Assistant Settings — hidden on Linux */}
+            {!isLinux && (
             <AiSettingsGroup
                 t={t}
                 collapsed={collapsedGroups['ai']}
@@ -662,8 +668,10 @@ const SettingsPanel = (props: SettingsPanelProps) => {
                 setAiThinkingBudget={setAiThinkingBudget}
                 theme={theme}
             />
+            )}
 
-            {/* File Transfer Settings */}
+            {/* File Transfer Settings — hidden on Linux */}
+            {!isLinux && (
             <FileTransferSettingsGroup
                 t={t}
                 collapsed={collapsedGroups['file_transfer']}
@@ -690,6 +698,7 @@ const SettingsPanel = (props: SettingsPanelProps) => {
                 saveSetting={saveSetting}
                 fetchEffectiveTransferPath={fetchEffectiveTransferPath}
             />
+            )}
 
             {/* Default Apps Settings */}
             <DefaultAppsSettingsGroup
