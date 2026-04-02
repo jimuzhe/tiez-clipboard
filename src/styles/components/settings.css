@@ -10,7 +10,7 @@
 .settings-group {
   border: var(--panel-border);
   background: var(--bg-panel);
-  margin: 0;
+  margin: 3px 0;
   box-shadow: var(--panel-shadow);
   border-radius: var(--panel-radius);
   overflow: visible !important;
@@ -120,7 +120,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 6px 0;
+  padding: 9px 0;
   border-bottom: 1px solid var(--panel-divider-color);
   min-height: 34px;
 }
@@ -362,12 +362,12 @@ body.theme-acrylic .settings-view select.search-input option {
 }
 
 .switch {
-  font-size: 12px;
+  font-size: 9px;
   position: relative;
   display: flex;
   align-items: center;
-  width: 64px;
-  height: 32px;
+  width: 44px;
+  height: 22px;
   user-select: none;
   flex-shrink: 0;
 }
@@ -511,8 +511,8 @@ body.theme-acrylic .settings-view select.search-input option {
 
 .key-cap {
   position: relative;
-  min-width: 2.2em;
-  height: 2.2em;
+  min-width: 4.15em;
+  height: 2.5em;
   padding: 0 0.5em;
   margin: 0 3px;
   background-color: var(--bg-element);
