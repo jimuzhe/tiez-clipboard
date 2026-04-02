@@ -97,8 +97,6 @@ pub async fn copy_to_clipboard(
     paste_with_format: Option<bool>,
     move_to_top: Option<bool>,
 ) -> AppResult<()> {
-    println!("[DEBUG] copy_to_clipboard called: id={}, paste={}, content_type={}, content_len={}", id, paste, content_type, content.len());
-
     let mut html_content: Option<String> = None;
 
     // 0. Resolve full content if ID is provided and content is placeholder/truncated
@@ -128,7 +126,7 @@ pub async fn copy_to_clipboard(
 
     // 1. Handle Window Visibility and Focus
     if paste {
-        handle_window_focus_for_paste(&app_handle).await?;
+        handle_window_focus_for_paste(&app_handle, &content_type).await?;
     }
 
     // 2. Copy to system clipboard
@@ -156,21 +154,195 @@ pub async fn copy_to_clipboard(
     Ok(())
 }
 
-async fn handle_window_focus_for_paste(app_handle: &tauri::AppHandle) -> AppResult<()> {
-    // 1. Only restore focus if our window actually took focus; avoids unnecessary focus flips
-    // that can force fullscreen apps into windowed mode.
+async fn handle_window_focus_for_paste(app_handle: &tauri::AppHandle, content_type: &str) -> AppResult<()> {
+    #[cfg(target_os = "linux")]
+    {
+        // On Linux, focus management is unreliable after hiding windows.
+        // Strategy: save target window → hide → explicitly activate target.
+        // We must NOT rely on IS_MAIN_WINDOW_FOCUSED because clicking in a
+        // set_focusable(false) webview does not trigger the Focused(true) event.
+
+        // Step 1: Identify the target window (where paste should go)
+        let our_pid = std::process::id().to_string();
+        let our_windows: Vec<u64> = std::process::Command::new("xdotool")
+            .args(["search", "--pid", &our_pid])
+            .output()
+            .ok()
+            .map(|o| {
+                String::from_utf8_lossy(&o.stdout)
+                    .lines()
+                    .filter_map(|l| l.trim().parse::<u64>().ok())
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        let mut target_wid: Option<u64> = None;
+
+        // Try getactivewindow (current WM active window)
+        if let Ok(output) = std::process::Command::new("xdotool")
+            .args(["getactivewindow"])
+            .output()
+        {
+            let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            if let Ok(w) = stdout.parse::<u64>() {
+                if !our_windows.contains(&w) {
+                    if let Ok(name_out) = std::process::Command::new("xdotool")
+                        .args(["getwindowname", &w.to_string()])
+                        .output()
+                    {
+                        let name = String::from_utf8_lossy(&name_out.stdout).trim().to_string();
+                    }
+                    target_wid = Some(w);
+                }
+            }
+        }
+
+        // Fallback: previously saved window (from continuous tracker or toggle_window)
+        if target_wid.is_none() {
+            let saved = crate::LAST_ACTIVE_X11_WINDOW.load(Ordering::Relaxed);
+            if saved != 0 && !our_windows.contains(&saved) {
+                target_wid = Some(saved);
+            }
+        }
+
+        // For file content, check if tracked window is a file manager.
+        // If not, search for a file manager window (including minimized ones).
+        if content_type == "file" {
+            let is_file_manager = target_wid.map(|wid| {
+                std::process::Command::new("xdotool")
+                    .args(["getwindowname", &wid.to_string()])
+                    .output()
+                    .ok()
+                    .map(|o| {
+                        let name = String::from_utf8_lossy(&o.stdout).to_lowercase();
+                        name.contains("nautilus") || name.contains("dolphin")
+                            || name.contains("thunar") || name.contains("nemo")
+                            || name.contains("pcmanfm") || name.contains("files")
+                    })
+                    .unwrap_or(false)
+            }).unwrap_or(false);
+
+            if !is_file_manager {
+                // Search WITHOUT --onlyvisible so we also find minimized file
+                // browser windows.  Nautilus desktop windows are filtered out
+                // by name blacklist.
+                for class in ["org.gnome.Nautilus", "nautilus", "dolphin", "thunar", "nemo", "pcmanfm"] {
+                    if let Ok(output) = std::process::Command::new("xdotool")
+                        .args(["search", "--class", class])
+                        .output()
+                    {
+                        let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                        let wids: Vec<u64> = stdout
+                            .lines()
+                            .filter_map(|l| l.trim().parse::<u64>().ok())
+                            .filter(|wid| !our_windows.contains(wid))
+                            .collect();
+
+                        if wids.is_empty() { continue; }
+
+                        // Blacklist: GNOME internal helper windows (name matches
+                        // WM_CLASS) and Nautilus desktop manager windows.
+                        // Do NOT blacklist directory names — a folder named "tmp"
+                        // or "desktop" is a valid file browser window.
+                        let blacklist = ["org.gnome.nautilus", "nautilus", "x-nautilus-desktop"];
+                        let mut visible_candidates: Vec<u64> = Vec::new();
+                        let mut minimized_candidates: Vec<u64> = Vec::new();
+
+                        for wid in &wids {
+                            let name = std::process::Command::new("xdotool")
+                                .args(["getwindowname", &wid.to_string()])
+                                .output()
+                                .ok()
+                                .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_lowercase())
+                                .unwrap_or_default();
+
+                            if blacklist.iter().any(|b| name == *b) {
+                                continue;
+                            }
+
+                            // Check if minimized (iconic)
+                            let is_minimized = std::process::Command::new("xdotool")
+                                .args(["getwindowstate", &wid.to_string()])
+                                .output()
+                                .ok()
+                                .map(|o| String::from_utf8_lossy(&o.stdout).contains("ICONIC"))
+                                .unwrap_or(false);
+
+                            if is_minimized {
+                                minimized_candidates.push(*wid);
+                            } else {
+                                visible_candidates.push(*wid);
+                            }
+                        }
+
+                        // Prefer visible windows; fall back to minimized (will be un-minimized by windowactivate)
+                        let pool = if !visible_candidates.is_empty() { &visible_candidates } else { &minimized_candidates };
+                        if let Some(&wid) = pool.last() {
+                            target_wid = Some(wid);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        if let Some(wid) = target_wid {
+            crate::LAST_ACTIVE_X11_WINDOW.store(wid, Ordering::Relaxed);
+            if let Ok(output) = std::process::Command::new("xdotool")
+                .args(["getwindowname", &wid.to_string()])
+                .output()
+            {
+                let name = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            }
+        } else {
+        }
+
+        // Step 2: Hide our window (non-pinned only)
+        // Pinned mode: window is already set_focusable(false) — xdotool can
+        // activate the target window without hiding ours. No flicker.
+        if !crate::WINDOW_PINNED.load(Ordering::Relaxed) {
+            if let Some(window) = app_handle.get_webview_window("main") {
+                let _ = window.hide();
+                crate::IS_HIDDEN.store(false, std::sync::atomic::Ordering::Relaxed);
+                crate::app::window_manager::release_win_keys();
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(30)).await;
+        }
+
+        // Step 3: Explicitly activate the target window.
+        // On GNOME Shell, _NET_ACTIVE_WINDOW and actual keyboard focus can
+        // diverge, so we use both WM-level activation and direct X11 focus.
+        if let Some(wid) = target_wid {
+            // WM-level activation (un-minimizes, raises, sets _NET_ACTIVE_WINDOW)
+            let _ = std::process::Command::new("xdotool")
+                .args(["windowactivate", "--sync", &wid.to_string()])
+                .output();
+            // Direct X11 focus — bypasses WM focus management to ensure
+            // keyboard input routes to this window
+            let _ = std::process::Command::new("xdotool")
+                .args(["windowfocus", &wid.to_string()])
+                .output();
+            // Give GNOME Shell time to settle focus before we send keystroke
+            tokio::time::sleep(std::time::Duration::from_millis(150)).await;
+        }
+
+        return Ok(());
+    }
+
+    // Non-Linux: original behavior
     if crate::IS_MAIN_WINDOW_FOCUSED.load(Ordering::Relaxed) {
         let _ = restore_focus_before_paste(app_handle).await;
     }
 
-    // 2. Then handle the specific visibility logic based on pinned state
     if crate::WINDOW_PINNED.load(Ordering::Relaxed) {
-        // In pinned mode, stay visible but ensure window does NOT have focus
-        if let Some(window) = app_handle.get_webview_window("main") {
-            // Make sure the window doesn't steal focus back
-            let _ = window.set_focusable(false);
+        #[cfg(not(target_os = "linux"))]
+        {
+            // On Windows, set non-focusable + restore focus via Win32 API
+            if let Some(window) = app_handle.get_webview_window("main") {
+                let _ = window.set_focusable(false);
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
         }
-        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
     } else {
         // In auto-hide mode, hide the window now
         if let Some(window) = app_handle.get_webview_window("main") {
@@ -183,6 +355,7 @@ async fn handle_window_focus_for_paste(app_handle: &tauri::AppHandle) -> AppResu
     Ok(())
 }
 
+#[cfg(target_os = "windows")]
 async fn restore_focus_before_paste(_app_handle: &tauri::AppHandle) -> AppResult<()> {
     let last_hwnd_val = crate::LAST_ACTIVE_HWND.load(Ordering::Relaxed);
     if last_hwnd_val == 0 {
@@ -191,7 +364,6 @@ async fn restore_focus_before_paste(_app_handle: &tauri::AppHandle) -> AppResult
 
     {
         let target_hwnd = HWND(last_hwnd_val as _);
-        #[cfg(target_os = "windows")]
         unsafe {
             if !IsWindowVisible(target_hwnd).as_bool() {
                  return Err(AppError::Internal("Target window is no longer visible".to_string()));
@@ -224,6 +396,21 @@ async fn restore_focus_before_paste(_app_handle: &tauri::AppHandle) -> AppResult
     // Settling time for Windows to process focus change msg
     // Increased to 150ms for heavy games/apps
     tokio::time::sleep(std::time::Duration::from_millis(150)).await;
+    Ok(())
+}
+
+#[cfg(not(target_os = "windows"))]
+async fn restore_focus_before_paste(_app_handle: &tauri::AppHandle) -> AppResult<()> {
+    #[cfg(target_os = "linux")]
+    {
+        let last_wid = crate::LAST_ACTIVE_X11_WINDOW.load(Ordering::Relaxed);
+        if last_wid != 0 {
+            let _ = std::process::Command::new("xdotool")
+                .args(["windowactivate", "--sync", &last_wid.to_string()])
+                .output();
+            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        }
+    }
     Ok(())
 }
 
@@ -280,16 +467,36 @@ async fn copy_content_to_system_clipboard(
             if !content.starts_with("data:") && (content.starts_with('/') || content.contains(":\\"))
             {
                 if content_type == "image" {
-                    // For image type with local path, read pixels for better compatibility with chat apps
-                    let bytes = std::fs::read(content).map_err(AppError::from)?;
-                    let (primary_hash, _secondary_hash) = copy_image_bytes_to_clipboard(bytes, current_time)?;
-                    // Keep LAST_APP_SET_HASH as content_hash (path hash)
-                    // Store pixel/byte hash in HASH_ALT
-                    crate::LAST_APP_SET_HASH_ALT.store(primary_hash, Ordering::SeqCst);
+                    #[cfg(target_os = "linux")]
+                    {
+                        // On Linux, copy images as file URIs for Nautilus/GNOME file manager compatibility.
+                        // File managers expect text/uri-list + x-special/gnome-copied-files, not raw pixels.
+                        unsafe {
+                            crate::infrastructure::windows_api::win_clipboard::set_clipboard_files(vec![content.to_string()])
+                                .map_err(AppError::from)?;
+                        }
+                    }
+                    #[cfg(not(target_os = "linux"))]
+                    {
+                        // On Windows/macOS, read pixels for better compatibility with chat apps
+                        let bytes = std::fs::read(content).map_err(AppError::from)?;
+                        let (primary_hash, _secondary_hash) = copy_image_bytes_to_clipboard(bytes, current_time)?;
+                        // Keep LAST_APP_SET_HASH as content_hash (path hash)
+                        // Store pixel/byte hash in HASH_ALT
+                        crate::LAST_APP_SET_HASH_ALT.store(primary_hash, Ordering::SeqCst);
+                    }
                 } else {
-                    unsafe {
-                        crate::infrastructure::windows_api::win_clipboard::set_clipboard_files(vec![content.to_string()])
-                            .map_err(AppError::from)?;
+                    // Content may contain newline-separated paths for multiple files
+                    let paths: Vec<String> = content
+                        .lines()
+                        .filter(|s| !s.is_empty())
+                        .map(|s| s.to_string())
+                        .collect();
+                    if !paths.is_empty() {
+                        unsafe {
+                            crate::infrastructure::windows_api::win_clipboard::set_clipboard_files(paths)
+                                .map_err(AppError::from)?;
+                        }
                     }
                 }
             } else if content_type == "image" {
@@ -503,7 +710,6 @@ fn copy_image_bytes_to_clipboard(
 async fn copy_text_with_retry(
     content: &str,
 ) -> AppResult<()> {
-    println!("[DEBUG] Copying text to clipboard: {} chars", content.len());
     let mut retries = 3;
     while retries > 0 {
         let res = {
@@ -513,12 +719,10 @@ async fn copy_text_with_retry(
 
         match res {
             Ok(_) => {
-                println!("[DEBUG] Text copied to clipboard successfully");
                 return Ok(());
             }
             Err(_e) if retries > 1 => {
                 retries -= 1;
-                println!("[DEBUG] Clipboard set failed, retrying... ({} left)", retries);
                 tokio::time::sleep(std::time::Duration::from_millis(50)).await;
             }
             Err(e) => return Err(AppError::Internal(format!("Clipboard error: {}", e))),
@@ -536,8 +740,6 @@ async fn perform_paste_action(
     content_type: &str,
     move_to_top: Option<bool>,
 ) -> AppResult<()> {
-    println!("[DEBUG] perform_paste_action: pinned={}", crate::WINDOW_PINNED.load(Ordering::Relaxed));
-    
     // Settling time is now mostly handled in handle_window_focus_for_paste
     // But we add a small extra buffer here to be absolutely sure the focus is solid
     tokio::time::sleep(std::time::Duration::from_millis(40)).await;
@@ -562,7 +764,7 @@ async fn perform_paste_action(
     }
 
     // Get paste method from settings
-    let paste_method = state.settings_repo.get("app.paste_method").ok().flatten().unwrap_or_else(|| "shift_insert".to_string());
+    let paste_method = state.settings_repo.get("app.paste_method").ok().flatten().unwrap_or_else(|| "ctrl_v".to_string());
 
     // Send paste keystroke
     send_paste_keystroke(&paste_method, content, Some(content_type));
@@ -581,26 +783,23 @@ async fn perform_paste_action(
 
 async fn hide_window_after_paste(app_handle: &tauri::AppHandle) {
     if crate::WINDOW_PINNED.load(Ordering::Relaxed) {
-        // In pinned mode, keep window non-focusable and restore focus back to last app
-        if let Some(window) = app_handle.get_webview_window("main") {
-            let _ = window.set_focusable(false);
-        }
-        let _ = restore_focus_before_paste(app_handle).await;
+        // Pinned mode: window was never hidden — nothing to restore.
+        // Window stays visible with set_focusable(false) so it doesn't steal focus.
         return;
     }
 
+    // Non-pinned (auto-hide) mode: hide the window
     if let Some(window) = app_handle.get_webview_window("main") {
         let _ = window.set_focusable(false);
         let _ = window.hide();
         crate::IS_HIDDEN.store(false, std::sync::atomic::Ordering::Relaxed);
-        crate::NAVIGATION_ENABLED.store(false, Ordering::Relaxed); // Disable navigation like hide_window_cmd does
+        crate::NAVIGATION_ENABLED.store(false, Ordering::Relaxed);
         crate::app::window_manager::release_win_keys();
         tokio::time::sleep(std::time::Duration::from_millis(20)).await;
     }
 }
 
 pub fn send_paste_keystroke(method: &str, content: Option<&str>, content_type: Option<&str>) {
-    println!("[DEBUG] Sending paste keystroke using method: {}", method);
     #[cfg(target_os = "windows")]
     unsafe {
         use windows::Win32::UI::Input::KeyboardAndMouse::{
@@ -895,12 +1094,52 @@ pub fn send_paste_keystroke(method: &str, content: Option<&str>, content_type: O
         }
     }
 
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(target_os = "macos")]
     {
         std::process::Command::new("osascript")
             .args(["-e", "tell application \"System Events\" to keystroke \"v\" using command down"])
             .spawn()
             .ok();
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        let display = crate::infrastructure::linux_api::detect_display_server();
+        let is_wayland = display == crate::infrastructure::linux_api::DisplayServer::Wayland;
+        let shift = method == "shift_insert";
+
+        // Debug: show which window has focus before we send the keystroke
+        if !is_wayland {
+            let _ = std::process::Command::new("xdotool")
+                .args(["getactivewindow", "getwindowname"])
+                .output()
+                .map(|o| {
+                    let name = String::from_utf8_lossy(&o.stdout).trim().to_string();
+                });
+        }
+
+        // On Wayland, native tools first (xdotool only reaches XWayland apps, not native Wayland)
+        let tools: &[&str] = if is_wayland {
+            &["wtype", "ydotool", "xdotool"]
+        } else {
+            &["xdotool", "ydotool", "wtype"]
+        };
+
+        for tool in tools {
+            let args: &[&str] = match (*tool, shift) {
+                ("xdotool", true)  => &["key", "shift+Insert"],
+                ("xdotool", false) => &["key", "ctrl+v"],
+                ("ydotool", true)  => &["key", "42:1", "110:1", "110:0", "42:0"],
+                ("ydotool", false) => &["key", "29:1", "47:1", "47:0", "29:0"],
+                ("wtype", true)    => &["-M", "shift", "-k", "Insert", "-m", "shift"],
+                ("wtype", false)   => &["-M", "ctrl", "-k", "v", "-m", "ctrl"],
+                _ => continue,
+            };
+            if std::process::Command::new(*tool).args(args).spawn().is_ok() {
+                return;
+            }
+        }
+        println!("[WARN] No input simulation tool found (install xdotool for X11 or ydotool/wtype for Wayland)");
     }
 }
 

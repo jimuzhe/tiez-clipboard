@@ -65,9 +65,9 @@ const DefaultAppsSettingsGroup = ({
                                         if (found) return found.label;
                                         // Fallback: extract filename without .exe
                                         const filename = path.split(/[/\\]/).pop() || path;
-                                        return filename.replace(/\.exe$/i, '');
+                                        return filename.replace(/\.(exe|desktop)$/i, '');
                                     })()
-                                    : (defaultApps[type] ? `${t('system_default')} (${defaultApps[type].replace(/\.exe$/i, '')})` : t('not_configured'))}
+                                    : (defaultApps[type] ? `${t('system_default')} (${defaultApps[type].replace(/\.(exe|desktop)$/i, '')})` : t('not_configured'))}
                             </div>
                         </div>
                     ))}

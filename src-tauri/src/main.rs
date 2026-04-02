@@ -1,4 +1,4 @@
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+#![cfg_attr(all(not(debug_assertions), target_os = "windows"), windows_subsystem = "windows")]
 
 pub mod app;
 pub mod database;
@@ -33,7 +33,11 @@ fn main() {
             }
         }).build())
         .plugin(tauri_plugin_window_state::Builder::default().build())
-        .plugin(tauri_plugin_single_instance::init(|_app, _args, _cwd| {}))
+        .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+            if args.iter().any(|a| a == "--toggle") {
+                let _ = crate::app::window_manager::toggle_window_cmd(app.clone());
+            }
+        }))
         .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, Some(vec!["--minimized"])))
         .plugin(tauri_plugin_http::init())
         .setup(|app| {
@@ -180,6 +184,7 @@ fn main() {
     }
 
     // Cleanup Hooks on exit
+    #[cfg(target_os = "windows")]
     unsafe {
         let h_hook = HOOK_HANDLE.swap(std::ptr::null_mut(), Ordering::SeqCst);
         if !h_hook.is_null() {

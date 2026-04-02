@@ -1084,6 +1084,15 @@ dependencies = [
 
 [[package]]
 name = "dirs"
+version = "5.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "44c45a9d03d6676652bcb5e724c7e988de1acad23a711b5217ab9cbecbec2225"
+dependencies = [
+ "dirs-sys 0.4.1",
+]
+
+[[package]]
+name = "dirs"
 version = "6.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c3e8aa94d75141228480295a7d0e7feb620b1a5ad9f12bc40be62411e38cce4e"
@@ -1100,6 +1109,18 @@ dependencies = [
  "libc",
  "redox_users 0.4.6",
  "winapi",
+]
+
+[[package]]
+name = "dirs-sys"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "520f05a5cbd335fae5a99ff7a6ab8627577660ee5cfd6a94a6a929b52ff0321c"
+dependencies = [
+ "libc",
+ "option-ext",
+ "redox_users 0.4.6",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]
@@ -5724,10 +5745,13 @@ dependencies = [
  "axum",
  "axum-extra",
  "base64 0.22.1",
+ "cfg-if",
  "chrono",
+ "dirs 5.0.1",
  "dotenvy",
  "futures",
  "image",
+ "libc",
  "local-ip-address",
  "machine-uid",
  "mime_guess",
@@ -5762,6 +5786,8 @@ dependencies = [
  "windows-core 0.61.2",
  "windows-version",
  "winreg 0.55.0",
+ "x11-clipboard",
+ "x11rb",
 ]
 
 [[package]]
@@ -7265,6 +7291,16 @@ checksum = "502da5464ccd04011667b11c435cb992822c2c0dbde1770c988480d312a0db2e"
 dependencies = [
  "libc",
  "pkg-config",
+]
+
+[[package]]
+name = "x11-clipboard"
+version = "0.9.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "662d74b3d77e396b8e5beb00b9cad6a9eccf40b2ef68cc858784b14c41d535a3"
+dependencies = [
+ "libc",
+ "x11rb",
 ]
 
 [[package]]

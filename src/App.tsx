@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useCallback, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import ToastContainer from "./shared/components/ToastContainer";
 import ConfirmDialog from "./shared/components/ConfirmDialog";
 
@@ -38,6 +39,7 @@ import { usePinnedSort } from "./shared/hooks/usePinnedSort";
 import { useFilteredHistory } from "./shared/hooks/useFilteredHistory";
 import { useKeyboardNavigation } from "./shared/hooks/useKeyboardNavigation";
 import { useListSelectionReset } from "./shared/hooks/useListSelectionReset";
+import { useEdgeDockSlide } from "./shared/hooks/useEdgeDockSlide";
 import { useSearchFetchTrigger } from "./shared/hooks/useSearchFetchTrigger";
 import { useScrollToSelection } from "./shared/hooks/useScrollToSelection";
 import { useClipboardItemRenderer } from "./shared/hooks/useClipboardItemRenderer";
@@ -351,6 +353,22 @@ const App = () => {
   useEffect(() => {
     const handleKeydown = (event: KeyboardEvent) => {
       if (isRecording || isRecordingSequential || isRecordingRich || isRecordingSearch) return;
+
+      // ESC hides the window without quitting the app
+      if (event.key === 'Escape') {
+        const activeEl = document.activeElement as HTMLElement | null;
+        const isEditable = !!activeEl && (
+          activeEl.tagName === 'INPUT' ||
+          activeEl.tagName === 'TEXTAREA' ||
+          activeEl.isContentEditable
+        );
+        // If focused on an input, let the browser handle it (e.g. clear search)
+        if (isEditable) return;
+        event.preventDefault();
+        invoke("hide_window_cmd").catch(console.error);
+        return;
+      }
+
       if (!hotkey || hotkey === t('not_set')) return;
 
       const activeEl = document.activeElement as HTMLElement | null;
@@ -504,6 +522,43 @@ const App = () => {
   ]);
 
   useEffect(() => {
+    const unlisten = listen("open-settings", () => {
+      setShowSettings(true);
+      setShowTagManager(false);
+      setChatMode(false);
+      setShowEmojiPanel(false);
+    });
+
+    return () => {
+      unlisten.then((off) => off());
+    };
+  }, [setShowSettings, setShowTagManager, setChatMode, setShowEmojiPanel]);
+
+  // When the window gains focus (e.g. shown via hotkey on Linux/GNOME),
+  // ensure the webview document receives keyboard focus so ESC and other
+  // keydown listeners fire without requiring a click first.
+  useEffect(() => {
+    // body needs tabIndex to receive keyboard events
+    document.body.tabIndex = -1;
+    const appWindow = getCurrentWindow();
+    let unlisten: (() => void) | undefined;
+    appWindow.onFocusChanged(({ payload: focused }) => {
+      if (focused) {
+        // Only steal focus if nothing interactive is already focused
+        const el = document.activeElement as HTMLElement | null;
+        const isInteractive = el && (
+          el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' ||
+          el.tagName === 'SELECT' || el.isContentEditable
+        );
+        if (!isInteractive) {
+          document.body.focus();
+        }
+      }
+    }).then((fn) => { unlisten = fn; });
+    return () => { unlisten?.(); };
+  }, []);
+
+  useEffect(() => {
     if (!emojiPanelEnabled && showEmojiPanel) {
       setShowEmojiPanel(false);
     }
@@ -531,6 +586,8 @@ const App = () => {
   useWindowPinnedListener({
     onPinnedChange: setIsWindowPinned
   });
+
+  const edgeDockSlideRef = useEdgeDockSlide();
 
   useContextMenuBlock();
 
@@ -794,6 +851,7 @@ const App = () => {
   return (
     <div
       className="app-container"
+      ref={edgeDockSlideRef}
     >
       <AppHeader
         t={t}

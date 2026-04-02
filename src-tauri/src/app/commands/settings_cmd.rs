@@ -244,7 +244,15 @@ pub fn set_window_pinned(app_handle: AppHandle, state: State<'_, DbState>, pinne
     crate::WINDOW_PINNED.store(pinned, Ordering::Relaxed);
     if let Some(window) = app_handle.get_webview_window("main") {
         let _ = window.set_always_on_top(pinned);
+        #[cfg(target_os = "windows")]
         let _ = window.set_focusable(false);
+        #[cfg(not(target_os = "windows"))]
+        {
+            let _ = window.set_focusable(!pinned);
+            if !pinned {
+                let _ = window.set_focus();
+            }
+        }
         #[cfg(windows)]
         {
             use windows::Win32::Foundation::HWND;

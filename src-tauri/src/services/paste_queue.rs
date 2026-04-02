@@ -122,7 +122,7 @@ pub async fn paste_next_step(app_handle: tauri::AppHandle) {
             // Get paste method from settings
             let paste_method = {
                 let db_state = app_handle.state::<DbState>(); 
-                db_state.settings_repo.get("app.paste_method").ok().flatten().unwrap_or_else(|| "shift_insert".to_string())
+                db_state.settings_repo.get("app.paste_method").ok().flatten().unwrap_or_else(|| "ctrl_v".to_string())
             };
 
             // Send paste keystroke using centralized logic
@@ -164,7 +164,6 @@ pub async fn paste_next_step(app_handle: tauri::AppHandle) {
                         },
                     };
                     SendInput(&[alt_restore], std::mem::size_of::<INPUT>() as i32);
-                    println!("[DEBUG] Restored Alt key state for continuous sequential paste");
                 }
             }
 

@@ -21,3 +21,11 @@ target-codex-*/
 .DS_Store
 Thumbs.db
 .vscode/
+
+# Claude Code
+.specify/
+.specs/
+specs/
+.claude/
+CLAUDE.md
+pnpm-lock.yaml

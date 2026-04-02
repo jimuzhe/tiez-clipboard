@@ -708,8 +708,12 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
 
                     <div className="setting-item">
                         <props.LabelWithHint
-                            label={props.t('use_win_v_shortcut')}
-                            hint={props.t('use_win_v_shortcut_hint')}
+                            label={navigator.platform.toLowerCase().includes('linux')
+                                ? props.t('use_win_v_shortcut_linux')
+                                : props.t('use_win_v_shortcut')}
+                            hint={navigator.platform.toLowerCase().includes('linux')
+                                ? props.t('use_win_v_shortcut_hint_linux')
+                                : props.t('use_win_v_shortcut_hint')}
                             hintKey="use_win_v_shortcut"
                         />
                         <label className="switch">
