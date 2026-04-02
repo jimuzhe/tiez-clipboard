@@ -85,6 +85,8 @@ const App = () => {
   const {
     showSettings,
     setShowSettings,
+    settingsSubpage,
+    setSettingsSubpage,
     showTagManager,
     setShowTagManager,
     tagManagerEnabled,
@@ -154,6 +156,8 @@ const App = () => {
     setPrivacyProtection,
     setPrivacyProtectionKinds,
     setPrivacyProtectionCustomRules,
+    setCleanupRules,
+    setAppCleanupPolicies,
     captureFiles,
     setCaptureFiles,
     captureRichText,
@@ -359,6 +363,10 @@ const App = () => {
       return;
     }
     if (showSettings) {
+      if (settingsSubpage !== "home") {
+        setSettingsSubpage("home");
+        return;
+      }
       setShowSettings(false);
     }
   }, [
@@ -368,7 +376,9 @@ const App = () => {
     effectiveShowTagManager,
     setShowEmojiPanel,
     setShowSettings,
+    setSettingsSubpage,
     setShowTagManager,
+    settingsSubpage,
     showSettings
   ]);
 
@@ -491,6 +501,8 @@ const App = () => {
     setPrivacyProtection,
     setPrivacyProtectionKinds,
     setPrivacyProtectionCustomRules,
+    setCleanupRules,
+    setAppCleanupPolicies,
     setSilentStart,
     setFollowMouse,
     setShowAppBorder,
@@ -639,7 +651,7 @@ const App = () => {
 
   useToastListener({ pushToast });
 
-  useSettingsPanelReset({ showSettings, setCollapsedGroups });
+  useSettingsPanelReset({ showSettings, setCollapsedGroups, setSettingsSubpage });
 
   useTagManagerRefresh({
     showTagManager: effectiveShowTagManager,
@@ -893,6 +905,7 @@ const App = () => {
         setEditingTagsId={setEditingTagsId}
         theme={theme}
         colorMode={colorMode}
+        settingsTitle={showSettings && settingsSubpage === "advanced" ? t("advanced_settings") : t("settings")}
         typeFilter={typeFilter}
         setTypeFilter={setTypeFilter}
         onBack={handleHeaderBack}

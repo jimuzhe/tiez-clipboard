@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { MutableRefObject } from "react";
-import type { AiProfile } from "../../features/settings/types";
+import type { AiProfile, AppCleanupPolicy } from "../../features/settings/types";
 
 const DEFAULT_AI_KEY = import.meta.env.VITE_AI_DEFAULT_API_KEY ?? "";
 const AI_PRESET_IDS = new Set(["lc_flash_v1", "lc_think_v1", "lc_think_2601_v1"]);
@@ -22,6 +22,8 @@ interface UseSettingsPostInitOptions {
   setPrivacyProtection: (val: boolean) => void;
   setPrivacyProtectionKinds: (val: string[]) => void;
   setPrivacyProtectionCustomRules: (val: string) => void;
+  setCleanupRules: (val: string) => void;
+  setAppCleanupPolicies: (val: AppCleanupPolicy[]) => void;
   setSilentStart: (val: boolean) => void;
   setFollowMouse: (val: boolean) => void;
   setShowAppBorder: (val: boolean) => void;
@@ -99,6 +101,8 @@ export const useSettingsPostInit = ({
   setPrivacyProtection,
   setPrivacyProtectionKinds,
   setPrivacyProtectionCustomRules,
+  setCleanupRules,
+  setAppCleanupPolicies,
   setSilentStart,
   setFollowMouse,
   setShowAppBorder,
@@ -232,6 +236,32 @@ export const useSettingsPostInit = ({
     }
     if (settings["app.privacy_protection_custom_rules"] !== undefined) {
       setPrivacyProtectionCustomRules(settings["app.privacy_protection_custom_rules"] || "");
+    }
+    if (settings["app.cleanup_rules"] !== undefined) {
+      setCleanupRules(settings["app.cleanup_rules"] || "");
+    }
+    if (settings["app.app_cleanup_policies"]) {
+      try {
+        const parsed = JSON.parse(settings["app.app_cleanup_policies"]);
+        if (Array.isArray(parsed)) {
+          setAppCleanupPolicies(
+            parsed.filter(
+              (item): item is AppCleanupPolicy =>
+                !!item &&
+                typeof item === "object" &&
+                typeof item.id === "string" &&
+                typeof item.enabled === "boolean" &&
+                typeof item.appName === "string" &&
+                typeof item.appPath === "string" &&
+                (item.action === "ignore" || item.action === "clean") &&
+                Array.isArray(item.contentTypes) &&
+                typeof item.cleanupRules === "string"
+            )
+          );
+        }
+      } catch (e) {
+        console.warn("Invalid app cleanup policies:", e);
+      }
     }
     setSilentStart(settings["app.silent_start"] !== "false");
     setFollowMouse(settings["app.follow_mouse"] !== "false");
@@ -398,6 +428,8 @@ export const useSettingsPostInit = ({
     setPrivacyProtection,
     setPrivacyProtectionKinds,
     setPrivacyProtectionCustomRules,
+    setCleanupRules,
+    setAppCleanupPolicies,
     setSilentStart,
     setFollowMouse,
     setShowAppBorder,

@@ -44,6 +44,7 @@ interface AppHeaderProps {
   setEditingTagsId: (val: number | null) => void;
   theme: string;
   colorMode: string;
+  settingsTitle: string;
   typeFilter: string | null;
   setTypeFilter: (val: string | null) => void;
   onBack: () => void;
@@ -79,6 +80,7 @@ const AppHeader = ({
   setEditingTagsId,
   theme,
   colorMode,
+  settingsTitle,
   typeFilter,
   setTypeFilter,
   onBack,
@@ -113,7 +115,7 @@ const AppHeader = ({
               : showTagManager && tagManagerEnabled
                 ? (t('tag_manager') || '标签管理')
                 : showSettings
-                  ? t('settings')
+                  ? settingsTitle
                   : t('app_name')}
           </span>
         </div>

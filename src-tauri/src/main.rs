@@ -85,6 +85,8 @@ fn main() {
             app::commands::set_privacy_protection,
             app::commands::set_privacy_protection_kinds,
             app::commands::set_privacy_protection_custom_rules,
+            app::commands::set_cleanup_rules,
+            app::commands::set_app_cleanup_policies,
             app::commands::reset_settings,
             app::commands::get_mqtt_status,
             app::commands::get_mqtt_running,

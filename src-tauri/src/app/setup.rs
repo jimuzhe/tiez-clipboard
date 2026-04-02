@@ -182,6 +182,8 @@ pub struct StartupSettings {
     pub privacy_protection: bool,
     pub privacy_kinds: String,
     pub privacy_custom: String,
+    pub cleanup_rules: String,
+    pub app_cleanup_policies: String,
     pub sequential_mode: bool,
     pub sequential_hotkey: String,
     pub rich_paste_hotkey: String,
@@ -252,6 +254,14 @@ fn load_settings(repo: &impl SettingsRepository) -> StartupSettings {
             .get("app.privacy_protection_custom_rules")
             .unwrap_or(Some("".to_string()))
             .unwrap_or("".to_string()),
+        cleanup_rules: repo
+            .get("app.cleanup_rules")
+            .unwrap_or(Some("".to_string()))
+            .unwrap_or("".to_string()),
+        app_cleanup_policies: repo
+            .get("app.app_cleanup_policies")
+            .unwrap_or(Some("[]".to_string()))
+            .unwrap_or("[]".to_string()),
         sequential_mode: repo
             .get("app.sequential_mode")
             .unwrap_or(Some("false".to_string()))
@@ -360,6 +370,8 @@ fn setup_state(
                 .map(|x| x.trim().to_string())
                 .collect(),
         ),
+        cleanup_rules: std::sync::Mutex::new(s.cleanup_rules.clone()),
+        app_cleanup_policies: std::sync::Mutex::new(s.app_cleanup_policies.clone()),
         sequential_mode: AtomicBool::new(s.sequential_mode),
         sequential_paste_hotkey: std::sync::Mutex::new(s.sequential_hotkey.clone()),
         rich_paste_hotkey: std::sync::Mutex::new(s.rich_paste_hotkey.clone()),

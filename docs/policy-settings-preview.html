@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TieZ 复制策略原型</title>
+  <style>
+    :root {
+      --bg: #f6f0e7;
+      --bg-glow: rgba(220, 167, 73, 0.18);
+      --surface: rgba(255, 252, 247, 0.82);
+      --surface-strong: #fffaf1;
+      --surface-muted: #f3ebdf;
+      --line: rgba(92, 62, 24, 0.14);
+      --line-strong: rgba(92, 62, 24, 0.22);
+      --text: #2b2218;
+      --text-secondary: #6d5b49;
+      --accent: #c88a23;
+      --accent-soft: rgba(200, 138, 35, 0.12);
+      --danger: #a04c37;
+      --success: #2b7a55;
+      --radius-xl: 26px;
+      --radius-lg: 18px;
+      --radius-md: 12px;
+      --shadow-lg: 0 22px 60px rgba(80, 53, 18, 0.12);
+      --shadow-md: 0 10px 24px rgba(80, 53, 18, 0.08);
+      --font-display: "Georgia", "Times New Roman", serif;
+      --font-ui: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: var(--font-ui);
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, var(--bg-glow), transparent 28%),
+        radial-gradient(circle at bottom right, rgba(150, 98, 33, 0.08), transparent 24%),
+        linear-gradient(180deg, #faf6ef 0%, var(--bg) 100%);
+      padding: 34px 20px 48px;
+    }
+
+    .page {
+      max-width: 1380px;
+      margin: 0 auto;
+    }
+
+    .hero {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 26px;
+    }
+
+    .hero-kicker {
+      font-size: 12px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+    }
+
+    .hero h1 {
+      margin: 0;
+      font-family: var(--font-display);
+      font-size: clamp(34px, 5vw, 58px);
+      line-height: 0.94;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+    }
+
+    .hero p {
+      margin: 0;
+      max-width: 760px;
+      font-size: 15px;
+      line-height: 1.75;
+      color: var(--text-secondary);
+    }
+
+    .stage {
+      display: grid;
+      grid-template-columns: 0.95fr 1.25fr;
+      gap: 18px;
+      align-items: start;
+    }
+
+    .screen {
+      position: relative;
+      overflow: hidden;
+      border-radius: var(--radius-xl);
+      border: 1px solid rgba(255, 255, 255, 0.65);
+      background: var(--surface);
+      backdrop-filter: blur(14px) saturate(130%);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .screen::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.48), transparent 120px),
+        linear-gradient(135deg, rgba(200,138,35,0.05), transparent 38%);
+      pointer-events: none;
+    }
+
+    .screen-header {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 18px 20px 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .screen-title {
+      display: grid;
+      gap: 4px;
+    }
+
+    .screen-title strong {
+      font-size: 18px;
+      line-height: 1.1;
+    }
+
+    .screen-title span {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 32px;
+      padding: 0 12px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.65);
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 38px;
+      padding: 0 14px;
+      border-radius: 999px;
+      border: 1px solid var(--line-strong);
+      background: rgba(255,255,255,0.72);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .btn.primary {
+      background: linear-gradient(180deg, #d99a2d 0%, #bf7d17 100%);
+      color: #fffdf9;
+      border-color: rgba(129, 79, 8, 0.25);
+      box-shadow: 0 12px 22px rgba(191, 125, 23, 0.24);
+    }
+
+    .screen-body {
+      position: relative;
+      z-index: 1;
+      padding: 16px;
+    }
+
+    .hint-banner {
+      margin-bottom: 14px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: linear-gradient(180deg, rgba(200,138,35,0.1), rgba(200,138,35,0.05));
+      border: 1px solid rgba(200,138,35,0.18);
+      color: var(--text-secondary);
+      font-size: 12px;
+      line-height: 1.65;
+    }
+
+    .policy-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .policy-card {
+      padding: 14px;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(255,255,255,0.78), rgba(248,240,229,0.92));
+      box-shadow: var(--shadow-md);
+    }
+
+    .policy-card.active {
+      border-color: rgba(200,138,35,0.38);
+      background: linear-gradient(180deg, rgba(255,250,241,0.98), rgba(252,245,232,0.96));
+    }
+
+    .policy-top {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .policy-name {
+      margin: 0;
+      font-size: 15px;
+      line-height: 1.2;
+    }
+
+    .policy-sub {
+      margin-top: 4px;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 26px;
+      padding: 0 10px;
+      border-radius: 999px;
+      background: var(--surface-muted);
+      border: 1px solid rgba(92, 62, 24, 0.08);
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-secondary);
+    }
+
+    .badge.accent {
+      background: var(--accent-soft);
+      color: #8c5b10;
+      border-color: rgba(200,138,35,0.15);
+    }
+
+    .badge.success {
+      background: rgba(43, 122, 85, 0.12);
+      color: var(--success);
+    }
+
+    .badge.danger {
+      background: rgba(160, 76, 55, 0.12);
+      color: var(--danger);
+    }
+
+    .policy-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .icon-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 9px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.7);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .editor-shell {
+      display: grid;
+      gap: 14px;
+    }
+
+    .editor-block {
+      padding: 16px;
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(255,255,255,0.76), rgba(250,243,233,0.92));
+    }
+
+    .editor-block h3 {
+      margin: 0 0 6px;
+      font-size: 14px;
+    }
+
+    .editor-block p {
+      margin: 0 0 14px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      line-height: 1.65;
+    }
+
+    .field-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .field,
+    .field-full {
+      display: grid;
+      gap: 6px;
+    }
+
+    .field-full {
+      grid-column: 1 / -1;
+    }
+
+    .field label,
+    .field-full label {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-secondary);
+    }
+
+    .input,
+    .textarea,
+    .select {
+      width: 100%;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.72);
+      border-radius: 12px;
+      color: var(--text);
+      font: inherit;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
+    }
+
+    .input,
+    .select {
+      min-height: 40px;
+      padding: 0 12px;
+    }
+
+    .textarea {
+      min-height: 120px;
+      padding: 12px;
+      resize: none;
+      line-height: 1.65;
+    }
+
+    .segmented {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .segmented span {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 34px;
+      padding: 0 12px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.55);
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-secondary);
+    }
+
+    .segmented span.active {
+      background: var(--accent-soft);
+      color: #8c5b10;
+      border-color: rgba(200,138,35,0.2);
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      padding: 0 12px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.62);
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .chip.active {
+      background: linear-gradient(180deg, #edd2a0 0%, #e0ba78 100%);
+      border-color: rgba(160, 115, 29, 0.2);
+      color: #57370c;
+    }
+
+    .inline-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .test-launch {
+      padding: 14px 16px;
+      border-radius: 18px;
+      border: 1px dashed rgba(92, 62, 24, 0.2);
+      background: linear-gradient(180deg, rgba(255,255,255,0.58), rgba(248,241,232,0.84));
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .test-launch strong {
+      display: block;
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+
+    .test-launch span {
+      font-size: 12px;
+      color: var(--text-secondary);
+      line-height: 1.65;
+    }
+
+    .footer-note {
+      margin-top: 18px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      text-align: center;
+    }
+
+    @media (max-width: 1100px) {
+      .stage {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 720px) {
+      body {
+        padding: 20px 14px 34px;
+      }
+
+      .field-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .screen-header,
+      .screen-body {
+        padding-left: 14px;
+        padding-right: 14px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <section class="hero">
+      <div class="hero-kicker">TieZ / Advanced Preview</div>
+      <h1>复制策略应该像对象管理，不该像一堆正则输入框。</h1>
+      <p>
+        这个原型按你刚才认可的产品方向来做：先看策略列表，再进入单条策略编辑。
+        全局替换和按应用忽略记录都统一成“策略”，只是作用范围不同。
+      </p>
+    </section>
+
+    <section class="stage">
+      <article class="screen">
+        <header class="screen-header">
+          <div class="screen-title">
+            <strong>复制策略</strong>
+            <span>策略按顺序执行，首条命中即生效</span>
+          </div>
+          <button class="btn primary">+ 新建策略</button>
+        </header>
+        <div class="screen-body">
+          <div class="hint-banner">
+            不再区分“全局清洗”和“应用策略”两套入口。<br />
+            不选应用就是全局策略；选应用就是指定应用策略。
+          </div>
+
+          <div class="policy-list">
+            <section class="policy-card active">
+              <div class="policy-top">
+                <div>
+                  <h3 class="policy-name">全局 Token 清洗</h3>
+                  <div class="policy-sub">作用于全部应用，适合统一替换 API Key / Token 一类文本</div>
+                </div>
+                <div class="policy-actions">
+                  <span class="icon-btn">⋮</span>
+                </div>
+              </div>
+              <div class="badge-row">
+                <span class="badge success">启用中</span>
+                <span class="badge accent">全部应用</span>
+                <span class="badge accent">替换后记录</span>
+                <span class="badge">文本</span>
+                <span class="badge">代码</span>
+                <span class="badge">URL</span>
+              </div>
+            </section>
+
+            <section class="policy-card">
+              <div class="policy-top">
+                <div>
+                  <h3 class="policy-name">微信敏感复制忽略</h3>
+                  <div class="policy-sub">命中手机号和身份证格式时，直接不记录到历史中</div>
+                </div>
+                <div class="policy-actions">
+                  <span class="icon-btn">⋮</span>
+                </div>
+              </div>
+              <div class="badge-row">
+                <span class="badge success">启用中</span>
+                <span class="badge">微信</span>
+                <span class="badge">企业微信</span>
+                <span class="badge danger">不记录</span>
+                <span class="badge">文本</span>
+              </div>
+            </section>
+
+            <section class="policy-card">
+              <div class="policy-top">
+                <div>
+                  <h3 class="policy-name">浏览器复制脱敏</h3>
+                  <div class="policy-sub">针对 Chrome / Edge 的网页复制内容，替换邮箱与 Bearer 字段</div>
+                </div>
+                <div class="policy-actions">
+                  <span class="icon-btn">⋮</span>
+                </div>
+              </div>
+              <div class="badge-row">
+                <span class="badge">已停用</span>
+                <span class="badge">Chrome</span>
+                <span class="badge">Edge</span>
+                <span class="badge accent">替换后记录</span>
+                <span class="badge">文本</span>
+                <span class="badge">富文本</span>
+              </div>
+            </section>
+          </div>
+        </div>
+      </article>
+
+      <article class="screen">
+        <header class="screen-header">
+          <div class="screen-title">
+            <strong>编辑策略</strong>
+            <span>策略名称只是帮助识别，真正生效的是作用范围、动作和规则</span>
+          </div>
+          <span class="pill">自动保存预览</span>
+        </header>
+        <div class="screen-body">
+          <div class="editor-shell">
+            <section class="editor-block">
+              <h3>基本信息</h3>
+              <p>先定义这条策略针对谁生效，以及命中后要如何处理。</p>
+              <div class="field-grid">
+                <div class="field">
+                  <label>策略名称</label>
+                  <div class="input">微信敏感复制忽略</div>
+                </div>
+                <div class="field">
+                  <label>是否启用</label>
+                  <div class="segmented">
+                    <span class="active">启用</span>
+                    <span>停用</span>
+                  </div>
+                </div>
+                <div class="field">
+                  <label>作用范围</label>
+                  <div class="segmented">
+                    <span>全部应用</span>
+                    <span class="active">指定应用</span>
+                  </div>
+                </div>
+                <div class="field">
+                  <label>处理方式</label>
+                  <div class="segmented">
+                    <span>替换后记录</span>
+                    <span class="active">不记录</span>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section class="editor-block">
+              <h3>命中对象</h3>
+              <p>指定应用时支持多选。第一版建议内部按可执行路径保存，界面只展示应用名称。</p>
+              <div class="field-grid">
+                <div class="field-full">
+                  <label>目标应用</label>
+                  <div class="chips">
+                    <span class="chip active">微信</span>
+                    <span class="chip active">企业微信</span>
+                    <span class="chip">+ 添加应用</span>
+                  </div>
+                </div>
+                <div class="field-full">
+                  <label>内容类型</label>
+                  <div class="chips">
+                    <span class="chip active">文本</span>
+                    <span class="chip">代码</span>
+                    <span class="chip">URL</span>
+                    <span class="chip">富文本</span>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section class="editor-block">
+              <h3>规则配置</h3>
+              <p>当前为“不记录”模式，所以这里每行一个正则，命中任意一条就不会写入历史。</p>
+              <div class="field-grid">
+                <div class="field-full">
+                  <label>匹配规则</label>
+                  <div class="textarea">(?:\+?86)?[-\s\(]*1[3-9]\d[-\s\)]*\d{4}[-\s]*\d{4}
+\b[1-9]\d{5}[1-9]\d{3}((0\d)|(1[0-2]))(([0|1|2]\d)|3[0-1])\d{3}([0-9Xx])\b</div>
+                </div>
+              </div>
+              <div class="inline-row">
+                <span class="pill">命中任意规则即不记录</span>
+                <button class="btn">测试策略</button>
+              </div>
+            </section>
+
+            <div class="test-launch">
+              <div>
+                <strong>测试策略</strong>
+                <span>不把完整测试区塞进编辑页。点击后打开轻量弹窗，输入来源应用、内容类型和原文，直接看命中与输出结果。</span>
+              </div>
+              <button class="btn primary">打开测试</button>
+            </div>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <div class="footer-note">
+      原型文件位置：<code>D:\Github\tiez-clipboard\docs\policy-settings-preview.html</code>
+    </div>
+  </div>
+</body>
+</html>

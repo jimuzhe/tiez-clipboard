@@ -370,6 +370,34 @@ pub fn set_privacy_protection_custom_rules(
 }
 
 #[tauri::command]
+pub fn set_cleanup_rules(
+    state: State<'_, crate::app_state::SettingsState>,
+    db_state: State<'_, DbState>,
+    rules: String,
+) -> AppResult<()> {
+    let mut guard = state.cleanup_rules.lock().unwrap();
+    *guard = rules.clone();
+    db_state
+        .settings_repo
+        .set("app.cleanup_rules", &rules)
+        .map_err(AppError::from)
+}
+
+#[tauri::command]
+pub fn set_app_cleanup_policies(
+    state: State<'_, crate::app_state::SettingsState>,
+    db_state: State<'_, DbState>,
+    policies: String,
+) -> AppResult<()> {
+    let mut guard = state.app_cleanup_policies.lock().unwrap();
+    *guard = policies.clone();
+    db_state
+        .settings_repo
+        .set("app.app_cleanup_policies", &policies)
+        .map_err(AppError::from)
+}
+
+#[tauri::command]
 pub fn set_sound_enabled(
     state: State<'_, crate::app_state::SettingsState>,
     db_state: State<'_, DbState>,

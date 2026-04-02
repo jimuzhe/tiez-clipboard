@@ -156,6 +156,49 @@ impl PipelineStage for TransformationStage {
         // Normalization (already partially done but let's be thorough)
         entry.content = entry.content.trim().replace("\r\n", "\n");
 
+        let app_cleanup_policies_raw = settings.app_cleanup_policies.lock().unwrap().clone();
+        if !app_cleanup_policies_raw.trim().is_empty() {
+            let app_cleanup_policies = parse_app_cleanup_policies(&app_cleanup_policies_raw);
+            for policy in app_cleanup_policies {
+                if !app_cleanup_policy_matches(
+                    &policy,
+                    &ctx.source_app,
+                    ctx.source_app_path.as_deref(),
+                    &entry.content_type,
+                ) {
+                    continue;
+                }
+
+                if policy.action.eq_ignore_ascii_case("ignore") {
+                    ctx.should_stop = true;
+                    return;
+                }
+
+                if is_text_type(&entry.content_type) && !policy.cleanup_rules.trim().is_empty() {
+                    let rules = parse_cleanup_rules(&policy.cleanup_rules);
+                    if !rules.is_empty() {
+                        entry.content = apply_cleanup_rules(&entry.content, &rules)
+                            .trim()
+                            .replace("\r\n", "\n");
+                        entry.preview = build_entry_preview(&entry.content_type, &entry.content, None);
+                    }
+                }
+            }
+        }
+
+        if is_text_type(&entry.content_type) {
+            let cleanup_rules_raw = settings.cleanup_rules.lock().unwrap().clone();
+            if !cleanup_rules_raw.trim().is_empty() {
+                let cleanup_rules = parse_cleanup_rules(&cleanup_rules_raw);
+                if !cleanup_rules.is_empty() {
+                    entry.content = apply_cleanup_rules(&entry.content, &cleanup_rules)
+                        .trim()
+                        .replace("\r\n", "\n");
+                    entry.preview = build_entry_preview(&entry.content_type, &entry.content, None);
+                }
+            }
+        }
+
         // Sensitive Info
         let protect_kinds = settings.privacy_protection_kinds.lock().unwrap().clone();
         let custom_rules = settings.privacy_protection_custom_rules.lock().unwrap().clone();

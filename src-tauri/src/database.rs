@@ -185,6 +185,8 @@ pub fn seed_defaults(conn: &Connection) -> Result<()> {
     );
     let _ = conn.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('app.privacy_protection_kinds', 'phone,idcard,email,secret')", []);
     let _ = conn.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('app.privacy_protection_custom_rules', '')", []);
+    let _ = conn.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('app.cleanup_rules', '')", []);
+    let _ = conn.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('app.app_cleanup_policies', '[]')", []);
     let _ = conn.execute(
         "INSERT OR IGNORE INTO settings (key, value) VALUES ('app.use_win_v_shortcut', 'false')",
         [],

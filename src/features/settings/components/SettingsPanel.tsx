@@ -1,13 +1,13 @@
 
-import { memo, useState, useEffect } from "react";
+import { memo, useState, useEffect, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getVersion } from "@tauri-apps/api/app";
-import { HelpCircle } from "lucide-react";
+import { ChevronRight, HelpCircle } from "lucide-react";
 import { motion } from "framer-motion";
 import type { Locale } from "../../../shared/types";
-import type { DefaultAppsMap, InstalledAppOption } from "../../app/types";
-import type { AiProfile, AiProfileStatusMap, EditableAiProfile } from "../types";
+import type { DefaultAppsMap, InstalledAppOption, SettingsSubpage } from "../../app/types";
+import type { AiProfile, AiProfileStatusMap, AppCleanupPolicy, EditableAiProfile } from "../types";
 import AppSelectorModal from "./AppSelectorModal";
 import UpdateModal from "./UpdateModal";
 import type { UpdateModalData } from "../types";
@@ -21,6 +21,7 @@ import DefaultAppsSettingsGroup from "./groups/DefaultAppsSettingsGroup";
 import DataSettingsGroup from "./groups/DataSettingsGroup";
 import FileTransferSettingsGroup from "./groups/FileTransferSettingsGroup";
 import AiSettingsGroup from "./groups/AiSettingsGroup";
+import AdvancedSettingsGroup from "./groups/AdvancedSettingsGroup";
 import SettingsFooter from "./SettingsFooter";
 import { CLOUD_SYNC_ENABLED } from "../../../shared/config/edition";
 
@@ -42,6 +43,7 @@ interface SettingsPanelProps {
 
     // State
     collapsedGroups: Record<string, boolean>;
+    settingsSubpage: SettingsSubpage;
     autoStart: boolean;
     silentStart: boolean;
     persistent: boolean;
@@ -65,6 +67,10 @@ interface SettingsPanelProps {
     setPrivacyProtectionKinds: (val: string[]) => void;
     privacyProtectionCustomRules: string;
     setPrivacyProtectionCustomRules: (val: string) => void;
+    cleanupRules: string;
+    setCleanupRules: (val: string) => void;
+    appCleanupPolicies: AppCleanupPolicy[];
+    setAppCleanupPolicies: (val: AppCleanupPolicy[]) => void;
     hotkey: string;
     showHotkeyHint: boolean;
     winClipboardDisabled: boolean;
@@ -145,6 +151,7 @@ interface SettingsPanelProps {
 
     // Setters/Actions
     toggleGroup: (group: string) => void;
+    setSettingsSubpage: (val: SettingsSubpage) => void;
     setAutoStart: (val: boolean) => void;
     setSilentStart: (val: boolean) => void;
     setPersistent: (val: boolean) => void;
@@ -241,10 +248,10 @@ interface SettingsPanelProps {
 const SettingsPanel = (props: SettingsPanelProps) => {
     const {
         t, theme, language, colorMode,
-        collapsedGroups, autoStart, silentStart, persistent, persistentLimitEnabled, persistentLimit, deduplicate, captureFiles, captureRichText, richTextSnapshotPreview, deleteAfterPaste, moveToTopAfterPaste,
+        collapsedGroups, settingsSubpage, autoStart, silentStart, persistent, persistentLimitEnabled, persistentLimit, deduplicate, captureFiles, captureRichText, richTextSnapshotPreview, deleteAfterPaste, moveToTopAfterPaste,
         sequentialMode, sequentialHotkey, isRecordingSequential,
         richPasteHotkey, isRecordingRich, searchHotkey, isRecordingSearch,
-        privacyProtection, privacyProtectionKinds, setPrivacyProtectionKinds, privacyProtectionCustomRules, setPrivacyProtectionCustomRules, registryWinVEnabled, setRegistryWinVEnabled, showSearchBox, setShowSearchBox, scrollTopButtonEnabled, setScrollTopButtonEnabled, arrowKeySelection, setArrowKeySelection,
+        privacyProtection, privacyProtectionKinds, setPrivacyProtectionKinds, privacyProtectionCustomRules, setPrivacyProtectionCustomRules, cleanupRules, setCleanupRules, appCleanupPolicies, setAppCleanupPolicies, registryWinVEnabled, setRegistryWinVEnabled, showSearchBox, setShowSearchBox, scrollTopButtonEnabled, setScrollTopButtonEnabled, arrowKeySelection, setArrowKeySelection,
         soundEnabled, setSoundEnabled, pasteSoundEnabled, setPasteSoundEnabled,
         soundVolume, setSoundVolume,
         pasteMethod, setPasteMethod,
@@ -259,7 +266,7 @@ const SettingsPanel = (props: SettingsPanelProps) => {
         fileServerEnabled, fileServerPort, localIp, availableIps, setLocalIp, actualPort, fileTransferAutoOpen, showAutoCloseHint, fileServerAutoClose, fileTransferAutoCopy, fileTransferPath,
         installedApps, appSettings, defaultApps, showAppSelector, dataPath,
 
-        toggleGroup, setAutoStart, setSilentStart, setPersistent, setPersistentLimitEnabled, setPersistentLimit, setDeduplicate, setCaptureFiles, setCaptureRichText, setRichTextSnapshotPreview, setDeleteAfterPaste, setMoveToTopAfterPaste, saveAppSetting,
+        toggleGroup, setSettingsSubpage, setAutoStart, setSilentStart, setPersistent, setPersistentLimitEnabled, setPersistentLimit, setDeduplicate, setCaptureFiles, setCaptureRichText, setRichTextSnapshotPreview, setDeleteAfterPaste, setMoveToTopAfterPaste, saveAppSetting,
         setSequentialModeState, setIsRecordingSequential, updateSequentialHotkey,
         setIsRecordingRich, updateRichPasteHotkey,
         setIsRecordingSearch, updateSearchHotkey,
@@ -448,12 +455,86 @@ const SettingsPanel = (props: SettingsPanelProps) => {
         };
     }, []);
 
+    const openAdvancedSettingsWindow = useCallback(async () => {
+        try {
+            const { WebviewWindow } = await import("@tauri-apps/api/webviewWindow");
+            const existing = await WebviewWindow.getByLabel("advanced-settings");
+
+            if (existing) {
+                await existing.show().catch(console.error);
+                await existing.setFocus().catch(console.error);
+                return;
+            }
+
+            const win = new WebviewWindow("advanced-settings", {
+                url: "index.html?window=advanced-settings",
+                title: t("advanced_settings"),
+                width: 1120,
+                height: 760,
+                minWidth: 920,
+                minHeight: 620,
+                center: true,
+                resizable: true,
+                decorations: true,
+                transparent: false,
+                skipTaskbar: false,
+                alwaysOnTop: false,
+                focus: true
+            });
+
+            win.once("tauri://error", (event) => {
+                console.error("Failed to open advanced settings window:", event.payload);
+            });
+        } catch (error) {
+            console.error("Failed to open advanced settings window:", error);
+        }
+    }, [t]);
+
     return (
         <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}
         >
+            {settingsSubpage === "advanced" ? (
+                <>
+                    <AdvancedSettingsGroup
+                        t={t}
+                        LabelWithHint={LabelWithHint}
+                        cleanupRules={cleanupRules}
+                        setCleanupRules={setCleanupRules}
+                        appCleanupPolicies={appCleanupPolicies}
+                        setAppCleanupPolicies={setAppCleanupPolicies}
+                        installedApps={installedApps}
+                    />
+
+                    <AiProfileModal
+                        editingProfile={editingProfile}
+                        t={t}
+                        onClose={() => setEditingProfile(null)}
+                        onSave={handleSaveProfile}
+                        setEditingProfile={setEditingProfile}
+                    />
+
+                    <AppSelectorModal
+                        show={showAppSelector}
+                        installedApps={installedApps}
+                        theme={theme}
+                        colorMode={colorMode}
+                        t={t}
+                        onClose={() => setShowAppSelector(null)}
+                        onSave={saveAppSetting}
+                    />
+
+                    <UpdateModal
+                        data={updateModalData}
+                        t={t}
+                        onClose={() => setUpdateModalData(null)}
+                        setUpdateStatus={setUpdateStatus}
+                    />
+                </>
+            ) : (
+                <>
             {/* General Settings */}
             <GeneralSettingsGroup
                 t={t}
@@ -714,6 +795,20 @@ const SettingsPanel = (props: SettingsPanelProps) => {
                 dataPath={dataPath}
             />
 
+            <div className="settings-group">
+                <button
+                    type="button"
+                    className="group-header settings-nav-card"
+                    onClick={openAdvancedSettingsWindow}
+                >
+                    <div style={{ minWidth: 0, textAlign: "left" }}>
+                        <h3 style={{ margin: 0 }}>{t("advanced_settings")}</h3>
+                        <div className="settings-subpage-note">{t("advanced_settings_entry_desc")}</div>
+                    </div>
+                    <ChevronRight size={16} />
+                </button>
+            </div>
+
             <SettingsFooter
                 t={t}
                 appVersion={appVersion}
@@ -749,6 +844,8 @@ const SettingsPanel = (props: SettingsPanelProps) => {
                 onClose={() => setUpdateModalData(null)}
                 setUpdateStatus={setUpdateStatus}
             />
+                </>
+            )}
         </motion.div>
     );
 };

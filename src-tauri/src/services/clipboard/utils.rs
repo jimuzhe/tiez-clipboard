@@ -2,6 +2,7 @@ use crate::domain::models::ClipboardEntry;
 use crate::database::save_image_to_file;
 use base64::{engine::general_purpose, Engine as _};
 use regex::Regex;
+use serde::Deserialize;
 use reqwest::header::CONTENT_TYPE;
 use std::io::Read;
 use std::path::Path;
@@ -660,7 +661,11 @@ pub fn truncate_html_for_preview(html: &str) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{build_entry_preview, derive_rich_text_content, parse_cf_html, truncate_html_for_preview};
+    use super::{
+        app_cleanup_policy_matches, apply_cleanup_rules, build_entry_preview,
+        derive_rich_text_content, parse_app_cleanup_policies, parse_cf_html, parse_cleanup_rules,
+        truncate_html_for_preview, AppCleanupPolicy,
+    };
 
     #[test]
     fn rich_text_preview_prefers_readable_html_text() {
@@ -737,6 +742,58 @@ mod tests {
         assert!(parsed.starts_with("<table"));
         assert!(parsed.contains("<td>A</td>"));
     }
+
+    #[test]
+    fn cleanup_rules_parse_and_apply_replacements() {
+        let rules = parse_cleanup_rules(
+            r"(?i)token\s*:\s*\S+ => token: [REDACTED]
+\b1[3-9]\d{9}\b => [PHONE]",
+        );
+
+        let cleaned = apply_cleanup_rules("token: abc123 13812345678", &rules);
+
+        assert_eq!(cleaned, "token: [REDACTED] [PHONE]");
+    }
+
+    #[test]
+    fn app_cleanup_policy_parse_filters_disabled_or_unbound_items() {
+        let policies = parse_app_cleanup_policies(
+            r#"[
+                {"id":"1","enabled":true,"appName":"WeChat","contentTypes":["text"]},
+                {"id":"2","enabled":false,"appName":"Slack","contentTypes":["text"]},
+                {"id":"3","enabled":true,"contentTypes":["text"]}
+            ]"#,
+        );
+
+        assert_eq!(policies.len(), 1);
+        assert_eq!(policies[0].id, "1");
+    }
+
+    #[test]
+    fn app_cleanup_policy_match_prefers_path_and_respects_content_type() {
+        let policy = AppCleanupPolicy {
+            id: "1".to_string(),
+            enabled: true,
+            app_name: "WeChat".to_string(),
+            app_path: "C:\\Program Files\\Tencent\\WeChat.exe".to_string(),
+            action: "ignore".to_string(),
+            content_types: vec!["text".to_string(), "url".to_string()],
+            cleanup_rules: String::new(),
+        };
+
+        assert!(app_cleanup_policy_matches(
+            &policy,
+            "Different Name",
+            Some("C:\\Program Files\\Tencent\\WeChat.exe"),
+            "text",
+        ));
+        assert!(!app_cleanup_policy_matches(
+            &policy,
+            "WeChat",
+            Some("C:\\Program Files\\Tencent\\WeChat.exe"),
+            "image",
+        ));
+    }
 }
 
 pub fn detect_content_type(text: &str) -> String {
@@ -808,6 +865,108 @@ pub fn contains_sensitive_info(text: &str, kinds: &[String], custom_rules: &[Str
         if let Ok(re) = Regex::new(rule) { if re.is_match(text) { return true; } }
     }
     false
+}
+
+pub fn parse_cleanup_rules(raw_rules: &str) -> Vec<(Regex, String)> {
+    raw_rules
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty() && !line.starts_with('#'))
+        .filter_map(|line| {
+            let (pattern, replacement) = line.split_once("=>")?;
+            let pattern = pattern.trim();
+            if pattern.is_empty() {
+                return None;
+            }
+
+            let replacement = replacement
+                .trim()
+                .replace(r"\n", "\n")
+                .replace(r"\r", "\r")
+                .replace(r"\t", "\t");
+
+            Regex::new(pattern).ok().map(|regex| (regex, replacement))
+        })
+        .collect()
+}
+
+pub fn apply_cleanup_rules(text: &str, rules: &[(Regex, String)]) -> String {
+    rules.iter().fold(text.to_string(), |acc, (regex, replacement)| {
+        regex.replace_all(&acc, replacement.as_str()).into_owned()
+    })
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AppCleanupPolicy {
+    #[serde(default)]
+    pub id: String,
+    #[serde(default = "default_policy_enabled")]
+    pub enabled: bool,
+    #[serde(default)]
+    pub app_name: String,
+    #[serde(default)]
+    pub app_path: String,
+    #[serde(default = "default_policy_action")]
+    pub action: String,
+    #[serde(default = "default_policy_content_types")]
+    pub content_types: Vec<String>,
+    #[serde(default)]
+    pub cleanup_rules: String,
+}
+
+fn default_policy_enabled() -> bool {
+    true
+}
+
+fn default_policy_action() -> String {
+    "clean".to_string()
+}
+
+fn default_policy_content_types() -> Vec<String> {
+    vec![
+        "text".to_string(),
+        "code".to_string(),
+        "url".to_string(),
+        "rich_text".to_string(),
+    ]
+}
+
+pub fn parse_app_cleanup_policies(raw_policies: &str) -> Vec<AppCleanupPolicy> {
+    serde_json::from_str::<Vec<AppCleanupPolicy>>(raw_policies)
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|policy| {
+            policy.enabled
+                && (!policy.app_path.trim().is_empty() || !policy.app_name.trim().is_empty())
+        })
+        .collect()
+}
+
+pub fn app_cleanup_policy_matches(
+    policy: &AppCleanupPolicy,
+    source_app: &str,
+    source_app_path: Option<&str>,
+    content_type: &str,
+) -> bool {
+    let allowed = !policy.content_types.is_empty()
+        && policy
+            .content_types
+            .iter()
+            .any(|kind| kind.eq_ignore_ascii_case(content_type));
+    if !allowed {
+        return false;
+    }
+
+    let source_app = source_app.trim();
+    let source_app_path = source_app_path.unwrap_or("").trim();
+    let policy_path = policy.app_path.trim();
+    if !policy_path.is_empty() && !source_app_path.is_empty() {
+        return policy_path.eq_ignore_ascii_case(source_app_path);
+    }
+
+    let policy_name = policy.app_name.trim();
+    !policy_name.is_empty() && policy_name.eq_ignore_ascii_case(source_app)
 }
 
 pub fn embed_local_images(html: &str) -> String {

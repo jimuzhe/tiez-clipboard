@@ -234,7 +234,12 @@ const AppMainContent = ({
         initial={{ opacity: 0, x: 20 }}
         animate={{ opacity: 1, x: 0 }}
         className="settings-view"
-        style={{ display: "flex", flexDirection: "column", gap: "12px" }}
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: "12px",
+          maxWidth: settingsPanelProps.settingsSubpage === "advanced" ? "min(1120px, 100%)" : undefined
+        }}
       >
         <SettingsPanel {...settingsPanelProps} />
       </motion.div>
