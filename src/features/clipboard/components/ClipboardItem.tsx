@@ -1335,7 +1335,7 @@ const ClipboardItem = ({
                         >
                             <Tag size={12} />
                         </button>
-                        {(item.content_type === 'text' || item.content_type === 'rich_text') && aiEnabled && (
+                        {(item.content_type === 'text' || item.content_type === 'rich_text' || item.content_type === 'code' || item.content_type === 'url' || item.content_type === 'markdown') && aiEnabled && (
                             <button
                                 className={`btn-icon ai-btn ${isAIProcessing || showAIOptions ? 'active' : ''}`}
                                 onClick={(e) => {

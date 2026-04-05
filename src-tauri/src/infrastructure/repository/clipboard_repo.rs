@@ -737,7 +737,7 @@ impl SqliteClipboardRepository {
             .map_err(|e| e.to_string())?;
 
         let old_content = self.maybe_decrypt_text(&old_content_raw);
-        if old_content == content {
+        if old_content == content && content_type != "rich_text" {
             return Ok(());
         }
 

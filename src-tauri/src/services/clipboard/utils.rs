@@ -1704,6 +1704,9 @@ fn default_policy_content_types() -> Vec<String> {
         "code".to_string(),
         "url".to_string(),
         "rich_text".to_string(),
+        "image".to_string(),
+        "file".to_string(),
+        "video".to_string(),
     ]
 }
 
@@ -1724,11 +1727,16 @@ pub fn app_cleanup_policy_matches(
     source_app_path: Option<&str>,
     content_type: &str,
 ) -> bool {
-    let allowed = !policy.content_types.is_empty()
-        && policy
-            .content_types
-            .iter()
-            .any(|kind| kind.eq_ignore_ascii_case(content_type));
+    let allowed = if policy.action.eq_ignore_ascii_case("ignore") {
+        // If we are ignoring an app, we should be aggressive in matching unless types are specifically filtered
+        policy.content_types.is_empty() || policy.content_types.iter().any(|kind| kind.eq_ignore_ascii_case(content_type))
+    } else {
+        !policy.content_types.is_empty()
+            && policy
+                .content_types
+                .iter()
+                .any(|kind| kind.eq_ignore_ascii_case(content_type))
+    };
     if !allowed {
         return false;
     }
@@ -1737,11 +1745,34 @@ pub fn app_cleanup_policy_matches(
     let source_app_path = source_app_path.unwrap_or("").trim();
     let policy_path = policy.app_path.trim();
     if !policy_path.is_empty() && !source_app_path.is_empty() {
-        return policy_path.eq_ignore_ascii_case(source_app_path);
+        if policy_path.len() >= 2 && policy_path.starts_with('/') && policy_path.ends_with('/') {
+            let re_str = &policy_path[1..policy_path.len() - 1];
+            if let Ok(re) = Regex::new(re_str) {
+                if re.is_match(source_app_path) {
+                    return true;
+                }
+            }
+        }
+        if policy_path.eq_ignore_ascii_case(source_app_path) {
+            return true;
+        }
     }
 
     let policy_name = policy.app_name.trim();
-    !policy_name.is_empty() && policy_name.eq_ignore_ascii_case(source_app)
+    if !policy_name.is_empty() {
+        if policy_name.len() >= 2 && policy_name.starts_with('/') && policy_name.ends_with('/') {
+            let re_str = &policy_name[1..policy_name.len() - 1];
+            if let Ok(re) = Regex::new(re_str) {
+                if re.is_match(source_app) {
+                    return true;
+                }
+            }
+        }
+        if policy_name.eq_ignore_ascii_case(source_app) {
+            return true;
+        }
+    }
+    false
 }
 
 pub fn embed_local_images(html: &str) -> String {

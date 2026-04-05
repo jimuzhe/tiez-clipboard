@@ -466,7 +466,7 @@ const SettingsPanel = (props: SettingsPanelProps) => {
         <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            style={{ display: 'flex', flexDirection: 'column', gap: '4px', height: '100%', flex: 1 }}
+            style={{ display: 'flex', flexDirection: 'column', gap: '4px', minHeight: '100%', flex: 1 }}
         >
             {settingsSubpage === "advanced" ? (
                 <>

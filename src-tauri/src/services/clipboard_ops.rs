@@ -202,14 +202,16 @@ pub async fn copy_to_clipboard(
     let mut html_content: Option<String> = None;
 
     // 0. Resolve full content if ID is provided and content is placeholder/truncated
+    let mut current_type = content_type;
     if id != 0 {
         if id > 0 {
             // Fetch from Database
-            if let Ok(Some((full_content, _ctype, html))) =
+            if let Ok(Some((full_content, ctype, html))) =
                 state.repo.get_entry_content_with_html(id)
             {
                 content = full_content;
                 html_content = html;
+                current_type = ctype;
             }
         } else {
             // Fetch from Session
@@ -217,11 +219,12 @@ pub async fn copy_to_clipboard(
             if let Some(item) = session_items.iter().find(|i| i.id == id) {
                 content = item.content.clone();
                 html_content = item.html_content.clone();
+                current_type = item.content_type.clone();
             }
         }
     }
 
-    if content_type == "rich_text" {
+    if current_type == "rich_text" {
         let normalized =
             crate::services::clipboard::derive_rich_text_content(&content, html_content.as_deref());
         if !normalized.trim().is_empty() {
@@ -231,17 +234,17 @@ pub async fn copy_to_clipboard(
 
     // 1. Handle Window Visibility and Focus
     if paste {
-        remember_recent_paste(&app_handle, &content, &content_type, html_content.as_deref());
+        remember_recent_paste(&app_handle, &content, &current_type, html_content.as_deref());
         handle_window_focus_for_paste(&app_handle).await?;
     }
 
     // 2. Copy to system clipboard
     prepare_clipboard_payload(
         &content,
-        &content_type,
+        &current_type,
         html_content.as_deref(),
         paste_with_format
-            .unwrap_or(content_type == "rich_text" && html_content.as_deref().is_some()),
+            .unwrap_or(current_type == "rich_text" && html_content.as_deref().is_some()),
     )
     .await?;
 
@@ -253,7 +256,7 @@ pub async fn copy_to_clipboard(
             id,
             delete_after_use,
             Some(&content),
-            &content_type,
+            &current_type,
             move_to_top,
         )
         .await?;
@@ -289,24 +292,27 @@ pub async fn paste_content_transiently(
     let previous_clipboard = capture_clipboard_snapshot();
     let mut html_content: Option<String> = None;
 
+    let mut current_type = content_type;
     if id != 0 {
         if id > 0 {
-            if let Ok(Some((full_content, _ctype, html))) =
+            if let Ok(Some((full_content, ctype, html))) =
                 state.repo.get_entry_content_with_html(id)
             {
                 content = full_content;
                 html_content = html;
+                current_type = ctype;
             }
         } else {
             let session_items = session.inner().0.lock().unwrap();
             if let Some(item) = session_items.iter().find(|i| i.id == id) {
                 content = item.content.clone();
                 html_content = item.html_content.clone();
+                current_type = item.content_type.clone();
             }
         }
     }
 
-    if content_type == "rich_text" {
+    if current_type == "rich_text" {
         let normalized =
             crate::services::clipboard::derive_rich_text_content(&content, html_content.as_deref());
         if !normalized.trim().is_empty() {
@@ -314,15 +320,15 @@ pub async fn paste_content_transiently(
         }
     }
 
-    remember_recent_paste(&app_handle, &content, &content_type, html_content.as_deref());
+    remember_recent_paste(&app_handle, &content, &current_type, html_content.as_deref());
     handle_window_focus_for_paste(&app_handle).await?;
 
     prepare_clipboard_payload(
         &content,
-        &content_type,
+        &current_type,
         html_content.as_deref(),
         paste_with_format
-            .unwrap_or(content_type == "rich_text" && html_content.as_deref().is_some()),
+            .unwrap_or(current_type == "rich_text" && html_content.as_deref().is_some()),
     )
     .await?;
 
@@ -332,7 +338,7 @@ pub async fn paste_content_transiently(
         id,
         false,
         Some(&content),
-        &content_type,
+        &current_type,
         None,
     )
     .await;
@@ -1289,7 +1295,23 @@ fn handle_post_paste_actions(
     delete_after_use: bool,
     move_to_top: Option<bool>,
 ) -> AppResult<()> {
-    if delete_after_use {
+    let mut actual_delete = delete_after_use;
+    if actual_delete && id > 0 {
+        if let Ok(Some(entry)) = state.repo.get_entry_by_id(id) {
+            if entry.is_pinned || !entry.tags.is_empty() {
+                actual_delete = false;
+            }
+        }
+    }
+
+    if actual_delete {
+        // Handle session items cleanup
+        if id < 0 {
+            let session = app_handle.state::<SessionHistory>();
+            let mut session_items = session.inner().0.lock().unwrap();
+            session_items.retain(|item| item.id != id);
+        }
+
         // Cleanup file if needed
         let app_data = app_handle.state::<crate::app_state::AppDataDir>();
         let data_dir = app_data.0.lock().unwrap();

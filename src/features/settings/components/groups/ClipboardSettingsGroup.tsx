@@ -375,7 +375,11 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
                     </div>
                     <div className="setting-item">
                         <div className="item-label-group">
-                            <span className="item-label">{props.t('delete_after_paste')}</span>
+                            <props.LabelWithHint
+                            label={props.t('delete_after_paste')}
+                            hint={props.t('delete_after_paste_hint')}
+                            hintKey="delete_after_paste"
+                        />
                         </div>
                         <label className="switch">
                             <input

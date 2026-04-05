@@ -58,6 +58,7 @@ const SortableItem = ({
   index,
   renderItem,
   isFirst,
+  compactMode,
   onDragStart,
   onDragEnd
 }: {
@@ -65,6 +66,7 @@ const SortableItem = ({
   index: number;
   renderItem: RenderItem;
   isFirst?: boolean;
+  compactMode: boolean;
   onDragStart?: () => void;
   onDragEnd?: () => void;
 }) => {
@@ -83,7 +85,9 @@ const SortableItem = ({
         paddingTop: isFirst ? "4px" : undefined
       }}
     >
-      {renderItem(item, index, controls, true)}
+      <div style={{ paddingBottom: compactMode ? "2px" : "4px" }}>
+        {renderItem(item, index, controls, true)}
+      </div>
     </Reorder.Item>
   );
 };
@@ -300,6 +304,7 @@ const AppMainContent = ({
                       index={index}
                       renderItem={renderItemContent}
                       isFirst={index === 0}
+                      compactMode={compactMode}
                       onDragStart={handlePinnedDragStart}
                       onDragEnd={handlePinnedDragEnd}
                     />

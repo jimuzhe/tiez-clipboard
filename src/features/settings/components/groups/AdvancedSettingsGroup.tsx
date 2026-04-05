@@ -20,6 +20,7 @@ interface EditableRule {
     match: string;
     replace: string;
     label?: string;
+    actionType?: "replace" | "ignore";
 }
 
 interface SourceTarget {
@@ -32,7 +33,7 @@ interface SourceTarget {
     rawRules: string;
 }
 
-const DEFAULT_POLICY_CONTENT_TYPES = ["text", "code", "url", "rich_text"];
+const DEFAULT_POLICY_CONTENT_TYPES = ["text", "code", "url", "rich_text", "image", "file", "video"];
 
 const createPolicyId = () =>
     `policy_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -53,10 +54,12 @@ const parseRules = (rawRules: string): EditableRule[] => {
         }
 
         const [matchPart, replacePart = ""] = line.split(/=>/, 2);
+        const replaceValue = replacePart.trim();
         rules.push({
             match: matchPart.trim(),
-            replace: replacePart.trim(),
-            label: currentLabel ?? undefined
+            replace: replaceValue === "__IGNORE_CAPTURE__" ? "" : replaceValue,
+            label: currentLabel ?? undefined,
+            actionType: replaceValue === "__IGNORE_CAPTURE__" ? "ignore" : "replace"
         });
         currentLabel = null;
     }
@@ -71,7 +74,8 @@ const serializeRules = (rules: EditableRule[]): string =>
             if (rule.label?.trim()) {
                 lines.push(`# label: ${rule.label.trim()}`);
             }
-            lines.push(`${rule.match.trim()} => ${rule.replace}`);
+            const actualReplace = rule.actionType === "ignore" ? "__IGNORE_CAPTURE__" : rule.replace;
+            lines.push(`${rule.match.trim()} => ${actualReplace}`);
             return lines.join("\n");
         })
         .join("\n\n");
@@ -100,10 +104,7 @@ const AdvancedSettingsGroup = ({
     const [isStacked, setIsStacked] = useState(false);
     const workbenchRef = useRef<HTMLElement | null>(null);
 
-    const configuredAppPolicies = useMemo(
-        () => appCleanupPolicies.filter((policy) => policy.action !== "ignore"),
-        [appCleanupPolicies]
-    );
+    const configuredAppPolicies = appCleanupPolicies;
 
     const sourceTargets = useMemo(() => {
         const targets: SourceTarget[] = [
@@ -128,7 +129,7 @@ const AdvancedSettingsGroup = ({
                 label: appLabel,
                 appPath,
                 policyId: policy.id,
-                ruleCount: parseRules(rawRules).length,
+                ruleCount: policy.action === "ignore" ? 0 : parseRules(rawRules).length,
                 rawRules
             });
         });
@@ -261,15 +262,17 @@ const AdvancedSettingsGroup = ({
         ));
         const nextPolicies = [...appCleanupPolicies];
 
+        const nextContentTypes = existingIndex >= 0
+            ? Array.from(new Set([...(nextPolicies[existingIndex].contentTypes ?? []), ...DEFAULT_POLICY_CONTENT_TYPES]))
+            : [...DEFAULT_POLICY_CONTENT_TYPES];
+
         const nextPolicy: AppCleanupPolicy = {
             id: existingIndex >= 0 ? nextPolicies[existingIndex].id : (target.policyId ?? createPolicyId()),
             enabled: existingIndex >= 0 ? nextPolicies[existingIndex].enabled : true,
             appName: target.label,
             appPath,
-            action: "clean",
-            contentTypes: existingIndex >= 0
-                ? nextPolicies[existingIndex].contentTypes
-                : [...DEFAULT_POLICY_CONTENT_TYPES],
+            action: existingIndex >= 0 ? nextPolicies[existingIndex].action : "clean",
+            contentTypes: nextContentTypes,
             cleanupRules: serialized
         };
 
@@ -293,7 +296,7 @@ const AdvancedSettingsGroup = ({
 
     const addRule = () => {
         if (!selectedTarget) return;
-        const nextRules = [...draftRules, { match: "", replace: "" }];
+        const nextRules = [...draftRules, { match: "", replace: "", actionType: "replace" as const }];
         setDraftRules(nextRules);
         persistRulesForTarget(selectedTarget, nextRules);
         setExpandedRuleIndex(nextRules.length - 1);
@@ -307,6 +310,26 @@ const AdvancedSettingsGroup = ({
         if (expandedRuleIndex === ruleIndex) {
             setExpandedRuleIndex(nextRules.length > 0 ? Math.max(0, ruleIndex - 1) : null);
         }
+    };
+
+    const toggleTargetAction = () => {
+        if (!selectedTarget || selectedTarget.kind === "global") return;
+
+        const existingIndex = appCleanupPolicies.findIndex((policy) => (
+            selectedTarget.policyId ? policy.id === selectedTarget.policyId : policy.appPath === (selectedTarget.appPath ?? "")
+        ));
+        
+        if (existingIndex < 0) return;
+
+        const nextPolicies = [...appCleanupPolicies];
+        const nextAction = nextPolicies[existingIndex].action === "ignore" ? "clean" : "ignore";
+        nextPolicies[existingIndex] = {
+            ...nextPolicies[existingIndex],
+            action: nextAction,
+            contentTypes: Array.from(new Set([...(nextPolicies[existingIndex].contentTypes ?? []), ...DEFAULT_POLICY_CONTENT_TYPES]))
+        };
+
+        persistAppPolicies(nextPolicies);
     };
 
     const handleAddApp = (app: InstalledAppOption) => {
@@ -384,9 +407,11 @@ const AdvancedSettingsGroup = ({
                                 <span className="advanced-target-meta">
                                     <span className="advanced-target-name">{target.label}</span>
                                     <span className="advanced-target-sub">
-                                        {target.ruleCount > 0
-                                            ? `${target.ruleCount} ${t("advanced_rule_count_suffix")}`
-                                            : t("advanced_no_rules")}
+                                        {target.kind === "app" && appCleanupPolicies.find(p => p.id === target.policyId || p.appPath === target.appPath)?.action === "ignore"
+                                            ? t("app_cleanup_policy_ignore")
+                                            : target.ruleCount > 0
+                                                ? `${target.ruleCount} ${t("advanced_rule_count_suffix")}`
+                                                : t("advanced_no_rules")}
                                     </span>
                                 </span>
 
@@ -414,99 +439,152 @@ const AdvancedSettingsGroup = ({
 
                 <div className="advanced-editor">
                     <div className="advanced-editor-toolbar">
-                        <div>
-                            <div className="advanced-editor-title">
-                                {selectedTarget?.label ?? t("advanced_target_global")}
-                            </div>
-                            <div className="advanced-editor-subtitle">
-                                {selectedTarget?.kind === "global"
-                                    ? t("advanced_global_rules_hint")
-                                    : t("advanced_app_rules_hint")}
-                            </div>
-                        </div>
-
-                        <button type="button" className="btn-icon advanced-add-rule-btn" onClick={addRule}>
-                            <Plus size={14} />
-                            <span>{t("advanced_add_rule")}</span>
-                        </button>
+                        {selectedTarget?.kind === "global" || (appCleanupPolicies.find(p => p.id === selectedTarget.policyId || p.appPath === selectedTarget.appPath)?.action !== "ignore") ? (
+                            <button type="button" className="btn-icon advanced-add-rule-btn" onClick={addRule}>
+                                <Plus size={14} />
+                                <span>{t("advanced_add_rule")}</span>
+                            </button>
+                        ) : null}
                     </div>
 
+                    {selectedTarget?.kind === "app" && (
+                        <div className="advanced-action-toggle">
+                            <div className="advanced-action-info">
+                                <span className="advanced-action-label">记录此应用的内容？</span>
+                                <span className="advanced-action-hint">
+                                    {appCleanupPolicies.find(p => p.id === selectedTarget.policyId || p.appPath === selectedTarget.appPath)?.action === "ignore"
+                                        ? "当前已关闭记录，来自该应用的剪贴板内容将被忽略"
+                                        : "当前已开启记录，您可以点击上方按钮添加清洗或拦截规则"
+                                    }
+                                </span>
+                            </div>
+                            <button 
+                                type="button" 
+                                className={`advanced-action-switch ${appCleanupPolicies.find(p => p.id === selectedTarget.policyId || p.appPath === selectedTarget.appPath)?.action !== "ignore" ? "active" : ""}`}
+                                onClick={toggleTargetAction}
+                            >
+                                <span className="advanced-action-switch-track">
+                                    <span className="advanced-action-switch-thumb" />
+                                </span>
+                                <span className="advanced-action-switch-label">
+                                    {appCleanupPolicies.find(p => p.id === selectedTarget.policyId || p.appPath === selectedTarget.appPath)?.action !== "ignore"
+                                        ? "开启"
+                                        : "关闭"
+                                    }
+                                </span>
+                            </button>
+                        </div>
+                    )}
+
                     <div className="advanced-rule-list">
-                        {draftRules.length === 0 && (
-                            <div className="advanced-empty-state">
-                                <div className="advanced-empty-title">{t("advanced_empty_rules_title")}</div>
+                        {selectedTarget?.kind === "app" && appCleanupPolicies.find(p => p.id === selectedTarget.policyId || p.appPath === selectedTarget.appPath)?.action === "ignore" ? (
+                            <div className="advanced-empty-state ignore-mode">
+                                <div className="advanced-empty-title">已停止记录</div>
                                 <div className="advanced-empty-text">
-                                    {selectedTarget?.kind === "global"
-                                        ? t("advanced_empty_rules_global")
-                                        : t("advanced_empty_rules_app")}
+                                    当前应用已被设置为忽略，记录功能已关闭。
                                 </div>
                             </div>
-                        )}
-
-                        {draftRules.map((rule, index) => {
-                            const expanded = expandedRuleIndex === index;
-                            return (
-                                <div key={`${selectedTarget?.id ?? "target"}-${index}`} className="advanced-rule-card">
-                                    <button
-                                        type="button"
-                                        className="advanced-rule-header"
-                                        onClick={() => setExpandedRuleIndex(expanded ? null : index)}
-                                    >
-                                        <span className="advanced-rule-title">
-                                            {rule.label?.trim() || `${t("advanced_rule_label")} ${index + 1}`}
-                                        </span>
-                                        {expanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
-                                    </button>
-
-                                    {expanded && (
-                                        <div className="advanced-rule-body">
-                                            <div className="advanced-rule-field">
-                                                <label>{t("advanced_rule_label_name")}</label>
-                                                <input
-                                                    type="text"
-                                                    className="search-input advanced-rule-input"
-                                                    value={rule.label ?? ""}
-                                                    placeholder={`${t("advanced_rule_label")} ${index + 1}`}
-                                                    onChange={(e) => updateRule(index, { label: e.target.value })}
-                                                />
-                                            </div>
-                                            <div className="advanced-rule-field">
-                                                <label>{t("advanced_match_label")}</label>
-                                                <textarea
-                                                    className="search-input advanced-rule-textarea"
-                                                    value={rule.match}
-                                                    placeholder={t("advanced_match_placeholder")}
-                                                    onFocus={focusEditorWindow}
-                                                    onChange={(e) => updateRule(index, { match: e.target.value })}
-                                                />
-                                            </div>
-
-                                            <div className="advanced-rule-field">
-                                                <label>{t("advanced_replace_label")}</label>
-                                                <textarea
-                                                    className="search-input advanced-rule-textarea"
-                                                    value={rule.replace}
-                                                    placeholder={t("advanced_replace_placeholder")}
-                                                    onFocus={focusEditorWindow}
-                                                    onChange={(e) => updateRule(index, { replace: e.target.value })}
-                                                />
-                                            </div>
-
-                                            <div className="advanced-rule-actions">
-                                                <button
-                                                    type="button"
-                                                    className="btn-icon advanced-delete-btn"
-                                                    onClick={() => deleteRule(index)}
-                                                >
-                                                    <Trash2 size={14} />
-                                                    <span>{t("delete")}</span>
-                                                </button>
-                                            </div>
+                        ) : (
+                            <>
+                                {draftRules.length === 0 && (
+                                    <div className="advanced-empty-state">
+                                        <div className="advanced-empty-title">{t("advanced_empty_rules_title")}</div>
+                                        <div className="advanced-empty-text">
+                                            {selectedTarget?.kind === "global"
+                                                ? t("advanced_empty_rules_global")
+                                                : t("advanced_empty_rules_app")}
                                         </div>
-                                    )}
-                                </div>
-                            );
-                        })}
+                                    </div>
+                                )}
+
+                                {draftRules.map((rule, index) => {
+                                    const expanded = expandedRuleIndex === index;
+                                    return (
+                                        <div key={`${selectedTarget?.id ?? "target"}-${index}`} className="advanced-rule-card">
+                                            <button
+                                                type="button"
+                                                className="advanced-rule-header"
+                                                onClick={() => setExpandedRuleIndex(expanded ? null : index)}
+                                            >
+                                                <span className="advanced-rule-title">
+                                                    {rule.label?.trim() || `${t("advanced_rule_label")} ${index + 1}`}
+                                                </span>
+                                                {expanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+                                            </button>
+
+                                            {expanded && (
+                                                <div className="advanced-rule-body">
+                                                    <div className="advanced-rule-field">
+                                                        <label>{t("advanced_rule_label_name")}</label>
+                                                        <input
+                                                            type="text"
+                                                            className="search-input advanced-rule-input"
+                                                            value={rule.label ?? ""}
+                                                            placeholder={`${t("advanced_rule_label")} ${index + 1}`}
+                                                            onChange={(e) => updateRule(index, { label: e.target.value })}
+                                                        />
+                                                    </div>
+                                                    <div className="advanced-rule-field">
+                                                        <label>{t("advanced_match_label")}</label>
+                                                        <textarea
+                                                            className="search-input advanced-rule-textarea"
+                                                            value={rule.match}
+                                                            placeholder={t("advanced_match_placeholder")}
+                                                            onFocus={focusEditorWindow}
+                                                            onChange={(e) => updateRule(index, { match: e.target.value })}
+                                                        />
+                                                    </div>
+
+                                                    <div className="advanced-rule-field">
+                                                        <label>命中后动作</label>
+                                                        <div className="advanced-rule-action-tabs">
+                                                            <button 
+                                                                type="button" 
+                                                                className={`advanced-rule-action-tab ${rule.actionType === "replace" ? "active" : ""}`}
+                                                                onClick={() => updateRule(index, { actionType: "replace" })}
+                                                            >
+                                                                {t("advanced_replace_label")}
+                                                            </button>
+                                                            <button 
+                                                                type="button" 
+                                                                className={`advanced-rule-action-tab ${rule.actionType === "ignore" ? "active" : ""}`}
+                                                                onClick={() => updateRule(index, { actionType: "ignore" })}
+                                                            >
+                                                                {t("app_cleanup_policy_ignore")}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+
+                                                    {rule.actionType === "replace" && (
+                                                        <div className="advanced-rule-field">
+                                                            <label>{t("advanced_replace_label")}</label>
+                                                            <textarea
+                                                                className="search-input advanced-rule-textarea"
+                                                                value={rule.replace}
+                                                                placeholder={t("advanced_replace_placeholder")}
+                                                                onFocus={focusEditorWindow}
+                                                                onChange={(e) => updateRule(index, { replace: e.target.value })}
+                                                            />
+                                                        </div>
+                                                    )}
+
+                                                    <div className="advanced-rule-actions">
+                                                        <button
+                                                            type="button"
+                                                            className="btn-icon advanced-delete-btn"
+                                                            onClick={() => deleteRule(index)}
+                                                        >
+                                                            <Trash2 size={14} />
+                                                            <span>{t("delete")}</span>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </>
+                        )}
                     </div>
                 </div>
             </section>

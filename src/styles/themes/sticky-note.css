@@ -34,7 +34,7 @@ body.theme-sticky-note {
 
   --radius-window: 8px;
   --radius-panel: 12px;
-  --radius-card: 6px;
+  --radius-card: 8px;
   --radius-control: 8px;
 
   --shell-background: linear-gradient(180deg, #fff9cf 0%, #fff2ab 100%);
@@ -62,7 +62,7 @@ body.theme-sticky-note {
   --button-active-filled-shadow: 0 10px 22px rgba(240, 167, 11, 0.24);
 
   --card-border: none;
-  --card-radius: 6px 6px 12px 6px;
+  --card-radius: 8px;
   --card-shadow: 0 4px 16px rgba(93, 64, 55, 0.08);
   --card-hover-shadow: 0 12px 24px rgba(93, 64, 55, 0.14);
   --card-hover-transform: translateY(-2px) rotate(0deg);
@@ -230,6 +230,4 @@ body.dark-mode.theme-sticky-note .history-item {
   background: #3a3a3c !important;
 }
 
-.theme-sticky-note .settings-group {
-  overflow: hidden !important;
-}
+

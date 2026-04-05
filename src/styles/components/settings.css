@@ -502,6 +502,117 @@
   border-bottom: 1px solid var(--panel-divider-color);
 }
 
+.advanced-action-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 14px;
+  background: rgba(var(--accent-color-rgb), 0.03);
+  border-bottom: 1px solid var(--panel-divider-color);
+}
+
+.advanced-action-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.advanced-action-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.advanced-action-hint {
+  font-size: 10px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.advanced-action-switch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px 4px 6px;
+  background: var(--bg-input);
+  border: 1px solid var(--panel-divider-color);
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-shrink: 0;
+}
+
+.advanced-action-switch:hover {
+  background: var(--bg-element);
+  border-color: rgba(var(--accent-color-rgb), 0.2);
+}
+
+.advanced-action-switch.active {
+  background: rgba(var(--accent-color-rgb), 0.08);
+  border-color: rgba(var(--accent-color-rgb), 0.25);
+  box-shadow: 0 0 0 2px rgba(var(--accent-color-rgb), 0.04);
+}
+
+.advanced-action-switch-track {
+  position: relative;
+  width: 26px;
+  height: 14px;
+  background: var(--text-secondary);
+  border-radius: 10px;
+  opacity: 0.2;
+  transition: all 0.2s ease;
+}
+
+.advanced-action-switch.active .advanced-action-switch-track {
+  background: var(--accent-color);
+  opacity: 0.8;
+}
+
+.advanced-action-switch-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 10px;
+  height: 10px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.advanced-action-switch.active .advanced-action-switch-thumb {
+  transform: translateX(12px);
+}
+
+.advanced-action-switch-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  transition: color 0.2s ease;
+}
+
+.advanced-action-switch.active .advanced-action-switch-label {
+  color: var(--accent-color);
+}
+
+.advanced-empty-state.ignore-mode {
+  border-style: solid;
+  border-color: rgba(var(--accent-color-rgb), 0.1);
+  background: rgba(var(--accent-color-rgb), 0.015);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 60px 40px !important;
+  margin: 10px 0;
+}
+
+
 .advanced-editor-title {
   font-size: 14px;
   font-weight: 700;
@@ -638,6 +749,39 @@
   padding: 8px 10px !important;
   line-height: 1.5;
   resize: vertical;
+}
+
+.advanced-rule-action-tabs {
+  display: flex;
+  background: var(--bg-input);
+  border: 1px solid var(--panel-divider-color);
+  padding: 2px;
+  border-radius: 8px;
+  gap: 2px;
+}
+
+.advanced-rule-action-tab {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.advanced-rule-action-tab:hover {
+  background: rgba(var(--accent-color-rgb), 0.05);
+  color: var(--text-primary);
+}
+
+.advanced-rule-action-tab.active {
+  background: var(--accent-color);
+  color: #fff;
+  box-shadow: 0 2px 4px rgba(var(--accent-color-rgb), 0.2);
 }
 
 .advanced-rule-actions {
