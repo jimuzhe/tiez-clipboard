@@ -1,7 +1,7 @@
 {
   "name": "tiez-app",
   "private": true,
-  "version": "0.3.2",
+  "version": "0.3.3",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -19,6 +19,8 @@
     "@tauri-apps/api": "^2.10.1",
     "@tauri-apps/plugin-dialog": "^2.6.0",
     "@tauri-apps/plugin-opener": "^2",
+    "@tauri-apps/plugin-process": "^2.3.1",
+    "@tauri-apps/plugin-updater": "^2.10.1",
     "@types/prismjs": "^1.26.5",
     "@types/react-window": "^1.8.8",
     "clsx": "^2.1.1",
@@ -38,7 +40,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.40.0",
-    "@tauri-apps/cli": "^2",
+    "@tauri-apps/cli": "^2.10.1",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "@types/react-select": "^5.0.0",

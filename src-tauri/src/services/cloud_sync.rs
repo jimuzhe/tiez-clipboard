@@ -2604,60 +2604,6 @@ async fn fetch_webdav_settings_snapshot(
     .await
 }
 
-async fn pull_remote_settings_snapshot(
-    app: &AppHandle,
-    client: &Client,
-    cfg: &CloudSyncConfig,
-    settings_path: &str,
-) -> AppResult<usize> {
-    let db_state = app
-        .try_state::<DbState>()
-        .ok_or_else(|| AppError::Internal("DB state unavailable".to_string()))?;
-    let last_applied_ts = db_state
-        .settings_repo
-        .get("cloud_sync_settings_applied_at")
-        .ok()
-        .flatten()
-        .and_then(|v| v.parse::<i64>().ok())
-        .unwrap_or(0);
-
-    let ids = list_webdav_snapshot_ids(client, cfg, settings_path).await?;
-    let mut latest: Option<WebDavSettingsSnapshot> = None;
-    for device_id in ids.into_iter().take(MAX_REMOTE_SNAPSHOTS) {
-        if crate::app::system::is_same_device_id(&device_id, &cfg.device_id) {
-            continue;
-        }
-        if let Some(snapshot) =
-            fetch_webdav_settings_snapshot(client, cfg, settings_path, &device_id).await?
-        {
-            let replace = latest
-                .as_ref()
-                .map(|cur| snapshot.updated_at > cur.updated_at)
-                .unwrap_or(true);
-            if replace {
-                latest = Some(snapshot);
-            }
-        }
-    }
-
-    let Some(snapshot) = latest else {
-        return Ok(0);
-    };
-    if snapshot.updated_at <= last_applied_ts {
-        return Ok(0);
-    }
-
-    let changed = apply_synced_settings(app, &snapshot.settings)?;
-    db_state
-        .settings_repo
-        .set(
-            "cloud_sync_settings_applied_at",
-            &snapshot.updated_at.to_string(),
-        )
-        .map_err(AppError::from)?;
-    Ok(changed)
-}
-
 fn should_run_periodic_snapshot(last_ts: i64, now: i64, interval_secs: i64) -> bool {
     if last_ts <= 0 {
         return true;
@@ -2929,8 +2875,6 @@ async fn sync_once_webdav(app: &AppHandle, cfg: &CloudSyncConfig) -> AppResult<C
             device.snapshot_updated_at = device.snapshot_updated_at.max(now_ms());
             device.snapshot_op_seq = device.snapshot_op_seq.max(latest_op_seq);
         });
-        sync_head_dirty = true;
-
         // Also push local settings when pushing snapshots
         let local_settings =
             upload_webdav_settings_snapshot(app, &client, cfg, &paths.settings_path).await?;

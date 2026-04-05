@@ -744,10 +744,35 @@
   color: var(--text-secondary);
 }
 
+.advanced-rule-input,
 .advanced-rule-textarea {
-  min-height: 84px;
-  padding: 8px 10px !important;
+  width: 100%;
+  border: var(--input-border);
+  border-radius: var(--input-radius);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  box-shadow: var(--input-shadow);
+  padding: 10px 12px !important;
+  font-size: 13px;
   line-height: 1.5;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.advanced-rule-input {
+  min-height: 40px;
+}
+
+.advanced-rule-input:focus,
+.advanced-rule-textarea:focus {
+  outline: none;
+  border-color: rgba(var(--accent-color-rgb), 0.28);
+  box-shadow:
+    0 0 0 1px rgba(var(--accent-color-rgb), 0.18),
+    var(--input-shadow);
+}
+
+.advanced-rule-textarea {
+  min-height: 96px;
   resize: vertical;
 }
 
@@ -1082,7 +1107,9 @@
 body.theme-mica .settings-view select.search-input,
 body.theme-acrylic .settings-view select.search-input,
 body.theme-mica .settings-view input.search-input,
-body.theme-acrylic .settings-view input.search-input {
+body.theme-acrylic .settings-view input.search-input,
+body.theme-mica .settings-view textarea.search-input,
+body.theme-acrylic .settings-view textarea.search-input {
   background: var(--bg-input) !important;
   color: var(--text-primary) !important;
   border: var(--input-border) !important;

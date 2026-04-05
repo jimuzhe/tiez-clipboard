@@ -521,6 +521,7 @@ const AdvancedSettingsGroup = ({
                                                             className="search-input advanced-rule-input"
                                                             value={rule.label ?? ""}
                                                             placeholder={`${t("advanced_rule_label")} ${index + 1}`}
+                                                            onFocus={focusEditorWindow}
                                                             onChange={(e) => updateRule(index, { label: e.target.value })}
                                                         />
                                                     </div>

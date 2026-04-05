@@ -9,8 +9,8 @@ import type { Locale } from "../../../shared/types";
 import type { DefaultAppsMap, InstalledAppOption, SettingsSubpage } from "../../app/types";
 import type { AiProfile, AiProfileStatusMap, AppCleanupPolicy, EditableAiProfile } from "../types";
 import AppSelectorModal from "./AppSelectorModal";
-import UpdateModal from "./UpdateModal";
-import type { UpdateModalData } from "../types";
+
+
 import AiProfileModal from "./AiProfileModal";
 import GeneralSettingsGroup from "./groups/GeneralSettingsGroup";
 import ClipboardSettingsGroup from "./groups/ClipboardSettingsGroup";
@@ -302,7 +302,6 @@ const SettingsPanel = (props: SettingsPanelProps) => {
     const [editingProfile, setEditingProfile] = useState<EditableAiProfile | null>(null);
     const [profileStatuses, setProfileStatuses] = useState<AiProfileStatusMap>({});
     const [updateStatus, setUpdateStatus] = useState<string>("");
-    const [updateModalData, setUpdateModalData] = useState<UpdateModalData | null>(null);
     const [openHints, setOpenHints] = useState<Set<string>>(new Set());
     const [privacyKindsOpen, setPrivacyKindsOpen] = useState(false);
     const [privacyRulesOpen, setPrivacyRulesOpen] = useState(false);
@@ -497,12 +496,6 @@ const SettingsPanel = (props: SettingsPanelProps) => {
                         onSave={saveAppSetting}
                     />
 
-                    <UpdateModal
-                        data={updateModalData}
-                        t={t}
-                        onClose={() => setUpdateModalData(null)}
-                        setUpdateStatus={setUpdateStatus}
-                    />
                 </>
             ) : (
                 <>
@@ -787,7 +780,7 @@ const SettingsPanel = (props: SettingsPanelProps) => {
                 appVersion={appVersion}
                 updateStatus={updateStatus}
                 setUpdateStatus={setUpdateStatus}
-                setUpdateModalData={setUpdateModalData}
+                
                 onResetSettings={handleResetSettings}
                 emailCopied={emailCopied}
                 setEmailCopied={setEmailCopied}
@@ -811,12 +804,6 @@ const SettingsPanel = (props: SettingsPanelProps) => {
                 onSave={saveAppSetting}
             />
 
-            <UpdateModal
-                data={updateModalData}
-                t={t}
-                onClose={() => setUpdateModalData(null)}
-                setUpdateStatus={setUpdateStatus}
-            />
                 </>
             )}
         </motion.div>

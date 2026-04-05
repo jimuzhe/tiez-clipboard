@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "TieZ",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "identifier": "com.tiez.app",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -122,7 +122,9 @@
                 }
               ]
             },
-            "window-state:default"
+            "window-state:default",
+            "updater:default",
+            "process:allow-restart"
           ]
         }
       ]
@@ -154,6 +156,14 @@
         "displayLanguageSelector": true,
         "startMenuFolder": "TieZ"
       }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDQwMjAxQ0ZFRTUwNDk5QjEKUldTeG1RVGwvaHdnUUthT2dXbHpOWG8xdm1ObStjaHVJMkg5aitZMDgvUnI4L2dLQUFwQUJtQjAK",
+      "endpoints": [
+        "https://tiez.name666.top/api/checkUpdate?version={{current_version}}"
+      ]
     }
   }
 }

@@ -26,7 +26,6 @@ interface AppHeaderProps {
   setShowEmojiPanel: (val: boolean) => void;
   emojiPanelEnabled: boolean;
   chatMode: boolean;
-  setChatMode: (val: boolean) => void;
   fileServerEnabled: boolean;
   isWindowPinned: boolean;
   setIsWindowPinned: (val: boolean) => void;
@@ -62,7 +61,6 @@ const AppHeader = ({
   setShowEmojiPanel,
   emojiPanelEnabled,
   chatMode,
-  setChatMode,
   fileServerEnabled,
   isWindowPinned,
   setIsWindowPinned,

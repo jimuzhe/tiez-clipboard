@@ -325,21 +325,6 @@ fn save_image_bytes_to_attachments(
     }
 }
 
-fn truncate_chars_with_suffix(text: &str, max_chars: usize, suffix: &str) -> String {
-    if text.chars().count() <= max_chars {
-        return text.to_string();
-    }
-    let cut = text
-        .char_indices()
-        .nth(max_chars)
-        .map(|(idx, _)| idx)
-        .unwrap_or(text.len());
-    let mut out = String::with_capacity(cut + suffix.len());
-    out.push_str(&text[..cut]);
-    out.push_str(suffix);
-    out
-}
-
 fn collapse_preview_whitespace(text: &str) -> String {
     static WHITESPACE_RE: OnceLock<Regex> = OnceLock::new();
 
@@ -1176,7 +1161,7 @@ mod tests {
         infer_rich_html_from_plain_text, normalize_clipboard_plain_text,
         parse_app_cleanup_policies, parse_cf_html, parse_cleanup_rules,
         split_rich_html_and_image_fallback, split_rich_html_and_named_formats,
-        truncate_html_for_preview, AppCleanupPolicy,
+        truncate_html_for_preview, AppCleanupPolicy, HTML_TRUNCATION_SUFFIX,
     };
 
     #[test]
@@ -1513,6 +1498,50 @@ mod tests {
             "image",
         ));
     }
+
+    #[test]
+    fn app_cleanup_policy_match_accepts_executable_name_variant() {
+        let policy = AppCleanupPolicy {
+            id: "1".to_string(),
+            enabled: true,
+            app_name: "Codex".to_string(),
+            app_path: String::new(),
+            action: "clean".to_string(),
+            content_types: vec!["text".to_string()],
+            cleanup_rules: String::new(),
+        };
+
+        assert!(app_cleanup_policy_matches(
+            &policy,
+            "Codex.exe",
+            Some(
+                "C:\\Program Files\\WindowsApps\\OpenAI.Codex_26.305.950.0_x64__2p2nqsd0c76g0\\app\\Codex.exe",
+            ),
+            "text",
+        ));
+    }
+
+    #[test]
+    fn app_cleanup_policy_match_accepts_windows_app_id_variant() {
+        let policy = AppCleanupPolicy {
+            id: "1".to_string(),
+            enabled: true,
+            app_name: "Codex".to_string(),
+            app_path: "OpenAI.Codex_2p2nqsd0c76g0!App".to_string(),
+            action: "clean".to_string(),
+            content_types: vec!["text".to_string()],
+            cleanup_rules: String::new(),
+        };
+
+        assert!(app_cleanup_policy_matches(
+            &policy,
+            "Codex.exe",
+            Some(
+                "C:\\Program Files\\WindowsApps\\OpenAI.Codex_26.305.950.0_x64__2p2nqsd0c76g0\\app\\Codex.exe",
+            ),
+            "text",
+        ));
+    }
 }
 
 pub fn detect_content_type(text: &str) -> String {
@@ -1674,6 +1703,7 @@ pub fn apply_cleanup_rules(text: &str, rules: &[(Regex, String)]) -> String {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AppCleanupPolicy {
+    #[cfg_attr(not(test), allow(dead_code))]
     #[serde(default)]
     pub id: String,
     #[serde(default = "default_policy_enabled")]
@@ -1708,6 +1738,65 @@ fn default_policy_content_types() -> Vec<String> {
         "file".to_string(),
         "video".to_string(),
     ]
+}
+
+fn normalize_executable_name(value: &str) -> Option<String> {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+
+    let segment = trimmed
+        .rsplit(['\\', '/'])
+        .next()
+        .unwrap_or(trimmed)
+        .trim();
+    if segment.is_empty() {
+        return None;
+    }
+
+    let lower = segment.to_ascii_lowercase();
+    let normalized = lower.strip_suffix(".exe").unwrap_or(&lower).trim();
+    if normalized.is_empty() {
+        None
+    } else {
+        Some(normalized.to_string())
+    }
+}
+
+fn executable_name_matches(left: &str, right: &str) -> bool {
+    match (
+        normalize_executable_name(left),
+        normalize_executable_name(right),
+    ) {
+        (Some(left), Some(right)) => left == right,
+        _ => false,
+    }
+}
+
+fn app_id_matches_process_path(app_id: &str, process_path: &str) -> bool {
+    let trimmed_app_id = app_id.trim();
+    let trimmed_process_path = process_path.trim();
+    if trimmed_app_id.is_empty()
+        || trimmed_process_path.is_empty()
+        || !trimmed_app_id.contains('!')
+    {
+        return false;
+    }
+
+    let package_family = trimmed_app_id.split('!').next().unwrap_or("").trim();
+    let Some((package_name, publisher_id)) = package_family.rsplit_once('_') else {
+        return false;
+    };
+
+    let normalized_path = trimmed_process_path.replace('/', "\\").to_ascii_lowercase();
+    let package_name = package_name.trim().to_ascii_lowercase();
+    let publisher_id = publisher_id.trim().to_ascii_lowercase();
+
+    !package_name.is_empty()
+        && !publisher_id.is_empty()
+        && normalized_path.contains(&package_name)
+        && normalized_path.contains(&publisher_id)
 }
 
 pub fn parse_app_cleanup_policies(raw_policies: &str) -> Vec<AppCleanupPolicy> {
@@ -1756,6 +1845,11 @@ pub fn app_cleanup_policy_matches(
         if policy_path.eq_ignore_ascii_case(source_app_path) {
             return true;
         }
+        if executable_name_matches(policy_path, source_app_path)
+            || app_id_matches_process_path(policy_path, source_app_path)
+        {
+            return true;
+        }
     }
 
     let policy_name = policy.app_name.trim();
@@ -1771,6 +1865,16 @@ pub fn app_cleanup_policy_matches(
         if policy_name.eq_ignore_ascii_case(source_app) {
             return true;
         }
+        if executable_name_matches(policy_name, source_app)
+            || executable_name_matches(policy_name, source_app_path)
+        {
+            return true;
+        }
+    }
+
+    if !policy_path.is_empty() && !source_app.is_empty() && executable_name_matches(policy_path, source_app)
+    {
+        return true;
     }
     false
 }

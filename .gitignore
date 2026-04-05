@@ -11,6 +11,18 @@ dist/
 src-tauri/target/
 target-codex-*/
 
+# Tauri signer keys (PRIVATE)
+signer.key
+signer.key.pub
+.tauri/
+src-tauri/signer.key
+src-tauri/signer.key.pub
+
+# Local builds
+*.exe
+*.msi
+*.zip
+
 # Runtime files
 *.db
 *.log
@@ -21,3 +33,4 @@ target-codex-*/
 .DS_Store
 Thumbs.db
 .vscode/
+docs/CLOUD-SYNC-IMPLEMENTATION.md

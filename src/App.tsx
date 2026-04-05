@@ -971,7 +971,7 @@ const App = () => {
         setShowEmojiPanel={setShowEmojiPanel}
         emojiPanelEnabled={emojiPanelEnabled}
         chatMode={chatMode}
-        setChatMode={setChatMode}
+        
         fileServerEnabled={fileServerEnabled}
         isWindowPinned={isWindowPinned}
         setIsWindowPinned={setIsWindowPinned}

@@ -1,13 +1,13 @@
 import { Github, MessageSquare, RotateCcw } from "lucide-react";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import type { UpdateModalData } from "../types";
+import { check } from "@tauri-apps/plugin-updater";
+import { relaunch } from "@tauri-apps/plugin-process";
 
 interface SettingsFooterProps {
     t: (key: string) => string;
     appVersion: string;
     updateStatus: string;
     setUpdateStatus: (val: string) => void;
-    setUpdateModalData: (val: UpdateModalData | null) => void;
     onResetSettings: () => void;
     emailCopied: boolean;
     setEmailCopied: (val: boolean) => void;
@@ -18,7 +18,6 @@ const SettingsFooter = ({
     appVersion,
     updateStatus,
     setUpdateStatus,
-    setUpdateModalData,
     onResetSettings,
     emailCopied,
     setEmailCopied
@@ -107,38 +106,18 @@ const SettingsFooter = ({
                         if (updateStatus) return;
                         setUpdateStatus(t('checking'));
                         try {
-                            const response = await fetch('https://tiez.name666.top/api/v1/latest-version?t=' + Date.now());
-                            if (!response.ok) throw new Error('Update server unreachable');
-
-                            const data = await response.json();
-                            const remoteVersion = data.version;
-                            const currentVersion = appVersion || '0.0.0';
-
-                            const v1 = remoteVersion.split('.').map(Number);
-                            const v2 = currentVersion.split('.').map(Number);
-                            let isNewer = false;
-                            for (let i = 0; i < Math.max(v1.length, v2.length); i++) {
-                                const num1 = v1[i] || 0;
-                                const num2 = v2[i] || 0;
-                                if (num1 > num2) { isNewer = true; break; }
-                                if (num1 < num2) { break; }
-                            }
-
-                            if (isNewer) {
-                                setUpdateStatus('');
-                                // Use releaseNotes directly as it's a string from the new API
-                                const notes = data.releaseNotes || t('no_release_notes');
-                                setUpdateModalData({
-                                    version: remoteVersion,
-                                    notes: notes,
-                                    downloadUrl: data.downloadUrl
-                                });
+                            const update = await check();
+                            if (update) {
+                                setUpdateStatus(t('downloading'));
+                                await update.downloadAndInstall();
+                                // Native relaunch for seamless update experience
+                                await relaunch();
                             } else {
                                 setUpdateStatus(t('up_to_date'));
                                 setTimeout(() => setUpdateStatus(''), 3000);
                             }
                         } catch (err) {
-                            console.error('Update check failed:', err);
+                            console.error('Update check/install failed:', err);
                             setUpdateStatus(t('checking_failed'));
                             setTimeout(() => setUpdateStatus(''), 3000);
                         }
