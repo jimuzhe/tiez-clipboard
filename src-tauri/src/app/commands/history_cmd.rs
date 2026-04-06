@@ -340,7 +340,11 @@ pub fn get_clipboard_content(
 }
 
 #[tauri::command]
-pub fn update_pinned_order(app_handle: AppHandle, state: State<'_, DbState>, orders: Vec<(i64, i64)>) -> AppResult<()> {
+pub fn update_pinned_order(
+    app_handle: AppHandle,
+    state: State<'_, DbState>,
+    orders: Vec<(i64, i64)>,
+) -> AppResult<()> {
     state
         .repo
         .update_pinned_order(orders)

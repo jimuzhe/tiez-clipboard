@@ -1,6 +1,6 @@
 use crate::app_state::{AppDataDir, PasteQueue, SessionHistory, SettingsState};
-use crate::database::{calc_image_hash, is_text_type};
 use crate::database::DbState;
+use crate::database::{calc_image_hash, is_text_type};
 use crate::domain::models::ClipboardEntry;
 use crate::infrastructure::windows_api::window_tracker::{
     get_clipboard_source_app_info, ActiveAppInfo,
@@ -427,8 +427,7 @@ impl PipelineStage for ValidationStage {
                             htmls_equivalent(
                                 item.html_content.as_deref(),
                                 entry.html_content.as_deref(),
-                            ) || (recent_self_copy_window
-                                && item_normalized == normalized_content)
+                            ) || (recent_self_copy_window && item_normalized == normalized_content)
                         } else {
                             true
                         };

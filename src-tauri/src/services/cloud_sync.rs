@@ -18,6 +18,7 @@ use std::sync::{Mutex, OnceLock};
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::time::sleep;
+use urlencoding::decode;
 
 const DEFAULT_INTERVAL_SECS: u64 = 120;
 const MIN_INTERVAL_SECS: u64 = 5;
@@ -485,8 +486,104 @@ fn is_setting_sync_eligible(key: &str) -> bool {
     )
 }
 
+fn decode_uri_component_safely(value: &str, rounds: usize) -> String {
+    let mut out = value.to_string();
+    for _ in 0..rounds {
+        if !out.contains('%') {
+            break;
+        }
+
+        let Ok(decoded) = decode(&out) else {
+            break;
+        };
+        let decoded = decoded.into_owned();
+        if decoded == out {
+            break;
+        }
+        out = decoded;
+    }
+    out
+}
+
+fn strip_query_and_hash(value: &str) -> &str {
+    let query = value.find('?');
+    let hash = value.find('#');
+    match (query, hash) {
+        (Some(q), Some(h)) => &value[..q.min(h)],
+        (Some(q), None) => &value[..q],
+        (None, Some(h)) => &value[..h],
+        (None, None) => value,
+    }
+}
+
+fn looks_like_windows_drive_path(value: &str) -> bool {
+    let bytes = value.as_bytes();
+    bytes.len() > 2
+        && bytes[0].is_ascii_alphabetic()
+        && bytes[1] == b':'
+        && matches!(bytes[2], b'/' | b'\\')
+}
+
+fn normalize_local_image_path(raw: &str) -> Option<std::path::PathBuf> {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+
+    let lower = trimmed.to_ascii_lowercase();
+    if lower.starts_with("data:")
+        || lower.starts_with("http://")
+        || lower.starts_with("https://")
+        || lower.starts_with("//")
+        || lower.starts_with("asset:")
+        || lower.starts_with("tauri:")
+        || lower.starts_with("blob:")
+    {
+        return None;
+    }
+
+    let stripped = strip_query_and_hash(trimmed).trim();
+    if stripped.is_empty() {
+        return None;
+    }
+
+    let mut candidate = decode_uri_component_safely(stripped, 2);
+    if candidate.to_ascii_lowercase().starts_with("file://") {
+        candidate = candidate[7..].to_string();
+
+        if candidate.eq_ignore_ascii_case("localhost") {
+            return None;
+        }
+        if candidate.to_ascii_lowercase().starts_with("localhost/")
+            || candidate.to_ascii_lowercase().starts_with("localhost\\")
+        {
+            candidate = candidate["localhost".len()..].to_string();
+        }
+    }
+
+    let candidate = strip_query_and_hash(candidate.trim()).trim();
+    if candidate.is_empty() || candidate.starts_with("//") || candidate.starts_with("\\\\") {
+        return None;
+    }
+
+    let normalized = if (candidate.starts_with('/') || candidate.starts_with('\\'))
+        && looks_like_windows_drive_path(&candidate[1..])
+    {
+        &candidate[1..]
+    } else {
+        candidate
+    };
+
+    if normalized.starts_with('/') || looks_like_windows_drive_path(normalized) {
+        Some(std::path::PathBuf::from(normalized))
+    } else {
+        None
+    }
+}
+
 fn to_data_url_from_path(path: &str) -> Option<String> {
-    let file_path = Path::new(path);
+    let file_path_buf = normalize_local_image_path(path)?;
+    let file_path = file_path_buf.as_path();
     if !file_path.exists() || !file_path.is_file() {
         return None;
     }
@@ -504,6 +601,23 @@ fn to_data_url_from_path(path: &str) -> Option<String> {
     Some(format!("data:{};base64,{}", mime, payload))
 }
 
+fn rewrite_rich_html_img_sources_to_data_url(html: &str) -> String {
+    static IMG_SRC_RE: OnceLock<Regex> = OnceLock::new();
+    let re = IMG_SRC_RE.get_or_init(|| {
+        Regex::new(r#"(?is)(<img\b[^>]*?\bsrc\s*=\s*["'])([^"']+)(["'][^>]*>)"#)
+            .expect("valid rich html img src regex")
+    });
+
+    re.replace_all(html, |caps: &regex::Captures| {
+        let Some(data_url) = to_data_url_from_path(&caps[2]) else {
+            return caps[0].to_string();
+        };
+
+        format!("{}{}{}", &caps[1], data_url, &caps[3])
+    })
+    .to_string()
+}
+
 fn rewrite_rich_fallback_payload_to_data_url(html: &str) -> String {
     let Some(start) = html.rfind(RICH_IMAGE_FALLBACK_PREFIX) else {
         return html.to_string();
@@ -515,11 +629,7 @@ fn rewrite_rich_fallback_payload_to_data_url(html: &str) -> String {
 
     let marker_end = marker_start + end_rel;
     let payload = html[marker_start..marker_end].trim();
-    if payload.is_empty()
-        || payload.starts_with("data:image/")
-        || payload.starts_with("http://asset.localhost/")
-        || payload.starts_with("https://asset.localhost/")
-    {
+    if payload.is_empty() || payload.starts_with("data:image/") {
         return html.to_string();
     }
 
@@ -533,6 +643,11 @@ fn rewrite_rich_fallback_payload_to_data_url(html: &str) -> String {
         data_url,
         &html[marker_end..]
     )
+}
+
+fn rewrite_rich_html_resources_for_sync(html: &str) -> String {
+    let html = rewrite_rich_html_img_sources_to_data_url(html);
+    rewrite_rich_fallback_payload_to_data_url(&html)
 }
 
 fn encode_emoji_favorites_setting(raw: &str) -> Option<String> {
@@ -730,7 +845,7 @@ fn normalize_item_for_sync(mut item: CloudSyncItem) -> Option<CloudSyncItem> {
 
     if item.content_type == "rich_text" {
         if let Some(html) = item.html_content.as_ref() {
-            item.html_content = Some(rewrite_rich_fallback_payload_to_data_url(html));
+            item.html_content = Some(rewrite_rich_html_resources_for_sync(html));
         }
     }
 
@@ -3251,10 +3366,16 @@ fn merge_remote_emojis(app: &AppHandle, remote_json: &str) -> AppResult<()> {
 #[cfg(test)]
 mod tests {
     use super::{
-        content_blob_kind, encode_webdav_relative_path, normalize_webdav_base_path,
+        content_blob_kind, encode_webdav_relative_path, normalize_item_for_sync,
+        normalize_webdav_base_path, rewrite_rich_html_resources_for_sync,
         should_store_content_in_blob, webdav_blob_relative_path, webdav_collection_url_for,
         webdav_resource_url_for, CloudSyncConfig, CloudSyncItem, CloudSyncProvider,
+        RICH_IMAGE_FALLBACK_PREFIX, RICH_IMAGE_FALLBACK_SUFFIX,
     };
+    use base64::Engine;
+    use std::fs;
+    use std::path::{Path, PathBuf};
+    use std::time::{SystemTime, UNIX_EPOCH};
 
     fn test_cfg(webdav_url: &str) -> CloudSyncConfig {
         CloudSyncConfig {
@@ -3271,6 +3392,53 @@ mod tests {
             webdav_username: String::new(),
             webdav_password: String::new(),
             webdav_base_path: "tiez-sync".to_string(),
+        }
+    }
+
+    fn create_test_image_file(name: &str) -> PathBuf {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos();
+        let dir =
+            std::env::temp_dir().join(format!("tiez_cloud_sync_{}_{}", std::process::id(), unique));
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join(name);
+        fs::write(&path, b"tiez-image").unwrap();
+        path
+    }
+
+    fn cleanup_test_path(path: &Path) {
+        if let Some(dir) = path.parent() {
+            let _ = fs::remove_dir_all(dir);
+        }
+    }
+
+    fn file_url_for(path: &Path) -> String {
+        let raw = path.to_string_lossy().replace('\\', "/");
+        if raw.starts_with('/') {
+            format!("file://{}", raw)
+        } else {
+            format!("file:///{}", raw)
+        }
+    }
+
+    fn rich_text_item_with_html(html: String) -> CloudSyncItem {
+        CloudSyncItem {
+            content_type: "rich_text".to_string(),
+            content: "plain text".to_string(),
+            content_hash: 0,
+            content_blob_hash: None,
+            deleted_at: 0,
+            html_content: Some(html),
+            html_blob_hash: None,
+            source_app: "TieZ".to_string(),
+            timestamp: 1,
+            preview: String::new(),
+            is_pinned: false,
+            pinned_order: 0,
+            tags: Vec::new(),
+            use_count: 0,
         }
     }
 
@@ -3357,5 +3525,73 @@ mod tests {
         };
         assert!(should_store_content_in_blob(&item));
         assert_eq!(content_blob_kind(&item.content_type), "image");
+    }
+
+    #[test]
+    fn rewrites_file_url_img_src_to_data_url_before_sync() {
+        let path = create_test_image_file("rich_file_url.png");
+        let expected_b64 = base64::engine::general_purpose::STANDARD.encode(b"tiez-image");
+        let html = format!(
+            "<div><img src=\"{}?cache=1#preview\" alt=\"test\" /></div>",
+            file_url_for(&path)
+        );
+
+        let normalized = normalize_item_for_sync(rich_text_item_with_html(html))
+            .expect("rich text should normalize");
+        let normalized_html = normalized.html_content.expect("html should exist");
+
+        assert!(normalized_html.contains(&format!("data:image/png;base64,{}", expected_b64)));
+        assert!(!normalized_html.contains("file:///"));
+
+        cleanup_test_path(&path);
+    }
+
+    #[test]
+    fn rewrites_rich_fallback_local_path_to_data_url_before_sync() {
+        let path = create_test_image_file("rich_fallback.png");
+        let expected_b64 = base64::engine::general_purpose::STANDARD.encode(b"tiez-image");
+        let html = format!(
+            "<p>hello</p>{}{}{}",
+            RICH_IMAGE_FALLBACK_PREFIX,
+            path.to_string_lossy(),
+            RICH_IMAGE_FALLBACK_SUFFIX
+        );
+
+        let normalized = rewrite_rich_html_resources_for_sync(&html);
+
+        assert!(normalized.contains(&format!("data:image/png;base64,{}", expected_b64)));
+        assert!(!normalized.contains(&path.to_string_lossy().to_string()));
+
+        cleanup_test_path(&path);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn rewrites_windows_drive_img_src_to_data_url_before_sync() {
+        let path = create_test_image_file("rich_windows_drive.png");
+        let expected_b64 = base64::engine::general_purpose::STANDARD.encode(b"tiez-image");
+        let raw_path = path.to_string_lossy().to_string();
+        let html = format!("<img src=\"{}\" />", raw_path);
+
+        let normalized = rewrite_rich_html_resources_for_sync(&html);
+
+        assert!(normalized.contains(&format!("data:image/png;base64,{}", expected_b64)));
+        assert!(!normalized.contains(&raw_path));
+
+        cleanup_test_path(&path);
+    }
+
+    #[test]
+    fn keeps_data_and_https_img_sources_unchanged() {
+        let data_url = "data:image/png;base64,QUJDRA==";
+        let remote_url = "https://example.com/image.png";
+        let html = format!(
+            "<div><img src=\"{}\" /><img src=\"{}\" /></div>",
+            data_url, remote_url
+        );
+
+        let normalized = rewrite_rich_html_resources_for_sync(&html);
+
+        assert_eq!(normalized, html);
     }
 }

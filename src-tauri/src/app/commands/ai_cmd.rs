@@ -58,7 +58,7 @@ fn apply_optional_http_referer(request: reqwest::RequestBuilder) -> reqwest::Req
 fn sanitize_input(content: &str) -> AppResult<String> {
     // Note: We used to have an injection check here, but it's too aggressive for a general purpose clipboard
     // where users might be copying technical text about AI. The limit is increased to 10000 characters.
-    Ok(content.chars().take(10000).collect()) 
+    Ok(content.chars().take(10000).collect())
 }
 
 fn build_system_prompt(action_type: &str) -> String {

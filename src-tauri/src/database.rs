@@ -82,21 +82,20 @@ pub fn calc_image_hash_from_rgba(width: u32, height: u32, rgba: &[u8]) -> Option
 
 pub fn calc_image_hash(base64_data: &str) -> Option<i64> {
     let trimmed = base64_data.trim();
-    let bytes = if !trimmed.starts_with("data:")
-        && (trimmed.starts_with('/') || trimmed.contains(":\\"))
-    {
-        std::fs::read(trimmed).ok()?
-    } else {
-        let parts: Vec<&str> = trimmed.splitn(2, ',').collect();
-        let payload = if parts.len() == 2 { parts[1] } else { trimmed };
-        let payload_clean = payload.replace("\r", "").replace("\n", "");
-        if payload_clean.trim().is_empty() {
-            return None;
-        }
-        base64::engine::general_purpose::STANDARD
-            .decode(payload_clean)
-            .ok()?
-    };
+    let bytes =
+        if !trimmed.starts_with("data:") && (trimmed.starts_with('/') || trimmed.contains(":\\")) {
+            std::fs::read(trimmed).ok()?
+        } else {
+            let parts: Vec<&str> = trimmed.splitn(2, ',').collect();
+            let payload = if parts.len() == 2 { parts[1] } else { trimmed };
+            let payload_clean = payload.replace("\r", "").replace("\n", "");
+            if payload_clean.trim().is_empty() {
+                return None;
+            }
+            base64::engine::general_purpose::STANDARD
+                .decode(payload_clean)
+                .ok()?
+        };
 
     // Prefer a visual fingerprint so the same image still deduplicates after
     // apps like WeChat re-encode PNG/DIB payloads during paste.

@@ -275,8 +275,10 @@ pub fn extract_animated_image_data_url_from_html(html: &str) -> Option<String> {
 
     let img_tag_re = IMG_TAG_RE.get_or_init(|| Regex::new(r"(?is)<img\b[^>]*>").unwrap());
     let img_attr_re = IMG_ATTR_RE.get_or_init(|| {
-        Regex::new(r#"(?is)(src|data-src|data-original|data-actualsrc|srcset)\s*=\s*["']([^"']+)["']"#)
-            .unwrap()
+        Regex::new(
+            r#"(?is)(src|data-src|data-original|data-actualsrc|srcset)\s*=\s*["']([^"']+)["']"#,
+        )
+        .unwrap()
     });
 
     for tag in img_tag_re.find_iter(html) {
@@ -345,7 +347,9 @@ pub fn build_clipboard_text_fingerprint(
     html_content: Option<&str>,
 ) -> String {
     match content_type {
-        "rich_text" => collapse_preview_whitespace(&derive_rich_text_content(content, html_content)),
+        "rich_text" => {
+            collapse_preview_whitespace(&derive_rich_text_content(content, html_content))
+        }
         "text" | "code" | "url" => {
             collapse_preview_whitespace(&normalize_clipboard_plain_text(content))
         }
@@ -1157,10 +1161,9 @@ mod tests {
         app_cleanup_policy_matches, apply_cleanup_rules, attach_rich_image_fallback,
         attach_rich_named_formats, build_entry_preview, collapse_preview_whitespace,
         derive_rich_text_content, extract_animated_image_data_url_from_html,
-        extract_animated_image_data_url_from_text,
-        infer_rich_html_from_plain_text, normalize_clipboard_plain_text,
-        parse_app_cleanup_policies, parse_cf_html, parse_cleanup_rules,
-        split_rich_html_and_image_fallback, split_rich_html_and_named_formats,
+        extract_animated_image_data_url_from_text, infer_rich_html_from_plain_text,
+        normalize_clipboard_plain_text, parse_app_cleanup_policies, parse_cf_html,
+        parse_cleanup_rules, split_rich_html_and_image_fallback, split_rich_html_and_named_formats,
         truncate_html_for_preview, AppCleanupPolicy, HTML_TRUNCATION_SUFFIX,
     };
 
@@ -1292,10 +1295,7 @@ mod tests {
 
     #[test]
     fn truncated_html_preview_keeps_rich_image_fallback_marker() {
-        let base_html = format!(
-            "<div><p>GIF 标题</p><p>{}</p></div>",
-            "内容".repeat(3000)
-        );
+        let base_html = format!("<div><p>GIF 标题</p><p>{}</p></div>", "内容".repeat(3000));
         let html = attach_rich_image_fallback(
             &base_html,
             "data:image/gif;base64,R0lGODlhAQABAPAAAP///wAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==",
@@ -1746,11 +1746,7 @@ fn normalize_executable_name(value: &str) -> Option<String> {
         return None;
     }
 
-    let segment = trimmed
-        .rsplit(['\\', '/'])
-        .next()
-        .unwrap_or(trimmed)
-        .trim();
+    let segment = trimmed.rsplit(['\\', '/']).next().unwrap_or(trimmed).trim();
     if segment.is_empty() {
         return None;
     }
@@ -1777,9 +1773,7 @@ fn executable_name_matches(left: &str, right: &str) -> bool {
 fn app_id_matches_process_path(app_id: &str, process_path: &str) -> bool {
     let trimmed_app_id = app_id.trim();
     let trimmed_process_path = process_path.trim();
-    if trimmed_app_id.is_empty()
-        || trimmed_process_path.is_empty()
-        || !trimmed_app_id.contains('!')
+    if trimmed_app_id.is_empty() || trimmed_process_path.is_empty() || !trimmed_app_id.contains('!')
     {
         return false;
     }
@@ -1818,7 +1812,11 @@ pub fn app_cleanup_policy_matches(
 ) -> bool {
     let allowed = if policy.action.eq_ignore_ascii_case("ignore") {
         // If we are ignoring an app, we should be aggressive in matching unless types are specifically filtered
-        policy.content_types.is_empty() || policy.content_types.iter().any(|kind| kind.eq_ignore_ascii_case(content_type))
+        policy.content_types.is_empty()
+            || policy
+                .content_types
+                .iter()
+                .any(|kind| kind.eq_ignore_ascii_case(content_type))
     } else {
         !policy.content_types.is_empty()
             && policy
@@ -1872,7 +1870,9 @@ pub fn app_cleanup_policy_matches(
         }
     }
 
-    if !policy_path.is_empty() && !source_app.is_empty() && executable_name_matches(policy_path, source_app)
+    if !policy_path.is_empty()
+        && !source_app.is_empty()
+        && executable_name_matches(policy_path, source_app)
     {
         return true;
     }

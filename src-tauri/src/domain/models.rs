@@ -20,7 +20,7 @@ pub struct ClipboardEntry {
     #[serde(default)]
     pub is_external: bool, // New field to track if content is a file path
     #[serde(default)]
-    pub pinned_order: i64,  // For manual sorting of pinned items
+    pub pinned_order: i64, // For manual sorting of pinned items
     #[serde(default = "default_true")]
     pub file_preview_exists: bool, // Transient field: does the file exist on disk?
 }
