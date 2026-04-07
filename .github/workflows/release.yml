@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch: # 添加这一行，启用手动触发
 
 jobs:
   publish-tauri:
