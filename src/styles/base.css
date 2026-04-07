@@ -300,23 +300,49 @@ body.dark-mode {
 }
 
 body {
+  position: relative;
+  margin: 0;
   background-color: transparent;
   color: var(--text-primary);
   height: 100vh;
   overflow: hidden;
 }
 
+/* Fix react-select accessibility nodes becoming visible in production builds */
+div[id^="react-select-"][id$="-live-region"],
+.app-selector [class*='a11yText'],
+.app-selector span[aria-live],
+.app-selector span[role='log'],
+.app-selector [id='aria-selection'],
+.app-selector [id='aria-focused'],
+.app-selector [id='aria-results'],
+.app-selector [id='aria-guidance'] {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
 html,
 body {
+  width: 100%;
+  height: 100%;
   border-radius: var(--shell-radius);
   overflow: hidden;
-  background-color: transparent;
+  background-color: transparent !important;
 }
 
 #root {
   height: 100vh;
   display: flex;
   flex-direction: column;
+  position: relative;
+  isolation: isolate;
   background: var(--shell-background);
   border: var(--shell-border);
   border-radius: var(--shell-radius);
@@ -324,6 +350,7 @@ body {
   box-shadow: var(--shell-shadow);
   backdrop-filter: var(--shell-backdrop-filter);
   -webkit-backdrop-filter: var(--shell-backdrop-filter);
+  background-clip: padding-box;
 }
 
 :root.hide-app-border #root,
@@ -340,4 +367,6 @@ body.hide-app-border #root {
   display: flex;
   flex-direction: column;
   height: 100%;
+  border-radius: inherit;
+  overflow: hidden;
 }

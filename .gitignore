@@ -1,42 +1,34 @@
-# Environment files
-.env
-.env.*
-!.env.example
-
-# Node / frontend
-node_modules/
-dist/
-
-# Tauri / Rust build outputs
-src-tauri/target/
-target-codex-*/
-
-# Tauri signer keys (PRIVATE)
-signer.key
-signer.key.pub
-.tauri/
-src-tauri/signer.key
-src-tauri/signer.key.pub
-
-# Local builds
-*.exe
-*.msi
-*.zip
-
-# Runtime files
-*.db
+# Logs
+logs
 *.log
-*.tmp
-*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 
-# OS/editor
+node_modules
+dist
+dist-ssr
+artifacts
+*.local
+.env
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
 .DS_Store
-Thumbs.db
-.vscode/
-docs/CLOUD-SYNC-IMPLEMENTATION.md
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
 
-# Junk / Logs
-artifacts/
-conflicts.txt
-git_graph.txt
-git_log_out.txt
+# Excel temporary lock files
+~$*.xlsx
+~$*.xls
+
+# Tauri Updater Keys
+src-tauri/*.key
+src-tauri/*.key.pub

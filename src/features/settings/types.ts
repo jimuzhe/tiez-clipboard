@@ -2,6 +2,10 @@ export interface UpdateModalData {
   version: string;
   notes: string;
   downloadUrl: string;
+  downloadUrlMacArm?: string;
+  downloadUrlMacIntel?: string;
+  rawManifest?: any;
+  contentLength?: number;
 }
 
 export interface AiProfile {

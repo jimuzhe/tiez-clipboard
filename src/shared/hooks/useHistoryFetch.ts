@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { Dispatch, SetStateAction } from "react";
 import type { ClipboardEntry } from "../types";
+import { isTauriRuntime } from "../lib/tauriRuntime";
 
 interface UseHistoryFetchOptions {
   debouncedSearch: string;
@@ -49,6 +50,15 @@ export const useHistoryFetch = ({
   }, [historyLength]);
   const fetchHistory = useCallback(
     async (reset = false) => {
+      if (!isTauriRuntime()) {
+        if (reset) {
+          setHistory([]);
+          setCurrentOffset(0);
+        }
+        setHasMore(false);
+        return;
+      }
+
       const seq = ++fetchSeqRef.current;
       try {
         if (reset) {
@@ -159,4 +169,3 @@ export const useHistoryFetch = ({
 
   return { fetchHistory, loadMoreHistory };
 };
-

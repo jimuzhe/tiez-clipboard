@@ -1,54 +1,64 @@
-name: "Publish Release"
-
+name: Release
 on:
   push:
     tags:
       - 'v*'
-  workflow_dispatch: # 添加这一行，启用手动触发
 
 jobs:
-  publish-tauri:
-    permissions:
-      contents: write
+  release:
+    environment: macos-release
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - platform: 'windows-latest' 
-            args: ''
+        platform: [macos-13, macos-14] # macos-13 is Intel, macos-14 is Apple Silicon
 
     runs-on: ${{ matrix.platform }}
+    env:
+      VITE_AI_DEFAULT_API_KEY: ${{ secrets.VITE_AI_DEFAULT_API_KEY }}
+      TIEZ_ANNOUNCEMENT_PING_URL: ${{ vars.TIEZ_ANNOUNCEMENT_PING_URL }}
+      VITE_TIEZ_ANNOUNCEMENT_PING_URL: ${{ vars.TIEZ_ANNOUNCEMENT_PING_URL }}
+      TIEZ_UPDATE_ENDPOINT: ${{ vars.TIEZ_UPDATE_ENDPOINT }}
+      VITE_TIEZ_UPDATE_ENDPOINT: ${{ vars.VITE_TIEZ_UPDATE_ENDPOINT }}
+      TIEZ_UPDATER_PUBLIC_KEY: ${{ vars.TIEZ_UPDATER_PUBLIC_KEY }}
     steps:
       - uses: actions/checkout@v4
 
       - name: setup node
         uses: actions/setup-node@v4
         with:
-          node-version: lts/*
+          node-version: 20
 
       - name: install Rust stable
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@v1
         with:
-          targets: x86_64-pc-windows-msvc
+          toolchain: stable
 
       - name: install dependencies (ubuntu only)
         if: matrix.platform == 'ubuntu-22.04'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libnm-dev libayatana-appindicator3-dev librsvg2-dev patchelf
-
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libnm-dev libsoup2.4-dev curl wget libappindicator3-dev librsvg2-dev patchelf
+      
       - name: install frontend dependencies
         run: npm install
+
+      - name: prepare release config
+        run: node scripts/configure-release.mjs
 
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          VITE_AI_DEFAULT_API_KEY: ${{ secrets.VITE_AI_DEFAULT_API_KEY }}
+          TIEZ_ANNOUNCEMENT_PING_URL: ${{ vars.TIEZ_ANNOUNCEMENT_PING_URL }}
+          VITE_TIEZ_ANNOUNCEMENT_PING_URL: ${{ vars.TIEZ_ANNOUNCEMENT_PING_URL }}
+          TIEZ_UPDATE_ENDPOINT: ${{ vars.TIEZ_UPDATE_ENDPOINT }}
+          VITE_TIEZ_UPDATE_ENDPOINT: ${{ vars.VITE_TIEZ_UPDATE_ENDPOINT }}
+          TIEZ_UPDATER_PUBLIC_KEY: ${{ vars.TIEZ_UPDATER_PUBLIC_KEY }}
         with:
-          tagName: v__VERSION__ 
-          releaseName: "TieZ v__VERSION__"
-          releaseBody: "建议更新新版本"
+          tagName: v__VERSION__ # tauri-action 会自动替换 __VERSION__
+          releaseName: 'TieZ v__VERSION__'
+          releaseBody: 'See the assets to download and install this version.'
           releaseDraft: true
           prerelease: false
-          args: ${{ matrix.args }}

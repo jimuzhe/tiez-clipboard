@@ -1,10 +1,57 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TieZ</title>
+    <title>贴汁</title>
+    <script>
+      // Immediate theme application to prevent flash
+      (function() {
+        try {
+          var theme = localStorage.getItem('tiez_theme') || 'mica';
+          var colorMode = localStorage.getItem('tiez_color_mode') || 'system';
+          var compactMode = localStorage.getItem('tiez_compact_mode') === 'true';
+          
+          // Apply theme class
+          if (theme !== 'retro') {
+            document.documentElement.classList.add('theme-' + theme);
+          }
+          
+          // Apply compact mode
+          if (compactMode) {
+            document.documentElement.classList.add('compact-mode');
+          }
+          
+          // Apply color mode
+          if (colorMode === 'dark') {
+            document.documentElement.classList.add('dark-mode');
+          } else if (colorMode === 'light') {
+            document.documentElement.classList.add('light-mode');
+          } else {
+            // System mode - check preference
+            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+              document.documentElement.classList.add('dark-mode');
+            } else {
+              document.documentElement.classList.add('light-mode');
+            }
+          }
+        } catch (e) {
+          // Silently fail if localStorage is not available
+        }
+      })();
+    </script>
+    <style>
+      body.window-hidden *,
+      body.window-hidden *::before,
+      body.window-hidden *::after {
+        animation: none !important;
+        animation-play-state: paused !important;
+        transition: none !important;
+      }
+    </style>
   </head>
+
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>

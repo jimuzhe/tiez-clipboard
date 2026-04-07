@@ -26,7 +26,7 @@ body.compact-preview #root::before {
     background: none !important;
 }
 
-body.compact-preview #root>* {
+body.compact-preview #root > * {
     position: static !important;
     z-index: auto !important;
 }
@@ -66,6 +66,8 @@ body.compact-preview #root>* {
     border-radius: 0 !important;
 }
 
+.compact-preview-root .compact-popover-portal.compact-preview-image {
+}
 
 .compact-preview-root .compact-popover-portal.compact-preview-media {
     min-width: 260px;
@@ -104,11 +106,11 @@ body.compact-preview #root>* {
     padding: 0;
 }
 
-.compact-preview-root .rich-text-preview> :first-child {
+.compact-preview-root .rich-text-preview > :first-child {
     margin-top: 0 !important;
 }
 
-.compact-preview-root .rich-text-preview> :last-child {
+.compact-preview-root .rich-text-preview > :last-child {
     margin-bottom: 0 !important;
 }
 

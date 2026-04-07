@@ -207,43 +207,6 @@ body.dark-mode.theme-acrylic {
   --menu-border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-body.windows-10.theme-acrylic #root,
-body.windows-10.dark-mode.theme-acrylic #root,
-body.windows-10:not(.light-mode).theme-acrylic #root {
-  background: rgba(252, 252, 252, calc(0.78 * var(--surface-opacity-scale, 1))) !important;
-  box-shadow: none !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-}
-
-body.windows-10.dark-mode.theme-acrylic #root,
-body.windows-10:not(.light-mode).theme-acrylic #root {
-  background: rgba(20, 20, 20, calc(0.76 * var(--surface-opacity-scale, 1))) !important;
-}
-
-body.windows-10.theme-acrylic,
-body.windows-10.dark-mode.theme-acrylic,
-body.windows-10:not(.light-mode).theme-acrylic {
-  --shell-backdrop-filter: none;
-  --shell-shadow: none;
-  --panel-shadow: none;
-  --menu-shadow: none;
-  --button-hover-shadow: none;
-  --button-active-shadow: none;
-  --button-active-filled-shadow: none;
-  --card-hover-shadow: none;
-  --card-selected-shadow: none;
-}
-
-body.windows-10.theme-acrylic::before,
-body.windows-10.dark-mode.theme-acrylic::before,
-body.windows-10:not(.light-mode).theme-acrylic::before,
-body.windows-10.theme-acrylic #root::before,
-body.windows-10.dark-mode.theme-acrylic #root::before,
-body.windows-10:not(.light-mode).theme-acrylic #root::before {
-  display: none !important;
-}
-
 body.compact-preview.theme-acrylic #root,
 body.theme-acrylic.compact-preview #root,
 body.dark-mode.compact-preview.theme-acrylic #root {

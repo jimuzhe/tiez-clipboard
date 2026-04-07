@@ -45,20 +45,16 @@ fn clean_url(url: &str) -> String {
     url.trim().trim_end_matches('/').to_string()
 }
 
-fn apply_optional_http_referer(request: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
-    if let Ok(referer) = std::env::var("AI_HTTP_REFERER") {
-        let trimmed = referer.trim();
-        if !trimmed.is_empty() {
-            return request.header("HTTP-Referer", trimmed.to_string());
+fn sanitize_input(content: &str) -> AppResult<String> {
+    let forbidden = ["忽略以上", "system prompt", "你是", "以上指令"];
+    for word in forbidden {
+        if content.contains(word) {
+            return Err(AppError::Validation(
+                "Input contains potential injection keywords".to_string(),
+            ));
         }
     }
-    request
-}
-
-fn sanitize_input(content: &str) -> AppResult<String> {
-    // Note: We used to have an injection check here, but it's too aggressive for a general purpose clipboard
-    // where users might be copying technical text about AI. The limit is increased to 10000 characters.
-    Ok(content.chars().take(10000).collect())
+    Ok(content.chars().take(2000).collect()) // 长度限制
 }
 
 fn build_system_prompt(action_type: &str) -> String {
@@ -143,12 +139,11 @@ pub async fn check_ai_connectivity(
         "max_tokens": 1
     });
 
-    let request = client
+    let response = client
         .post(&api_url)
         .header("Authorization", format!("Bearer {}", api_key))
-        .header("X-Title", "TieZ Clipboard");
-
-    let response = apply_optional_http_referer(request)
+        .header("HTTP-Referer", "https://github.com/jimuzhe/tiez")
+        .header("X-Title", "TieZ Clipboard")
         .json(&request_body)
         .send()
         .await
@@ -288,9 +283,16 @@ pub async fn call_ai(
         (key, url, mdl, lang, persistent, thinking, thinking_budget)
     };
 
-    if api_key.is_empty() {
+    // Determine final API key: UI Setting > Environment Var
+    let final_api_key = if api_key.is_empty() {
+        crate::build_config::default_ai_api_key()
+    } else {
+        api_key
+    };
+
+    if final_api_key.is_empty() {
         return Err(AppError::Validation(
-            "AI API Key is not set in settings.".to_string(),
+            "AI API Key is not set in settings or environment.".to_string(),
         ));
     }
 
@@ -368,12 +370,14 @@ pub async fn call_ai(
         presence_penalty: presence_penalty,
     };
 
-    let request = client
-        .post(&api_url)
-        .header("Authorization", format!("Bearer {}", api_key))
-        .header("X-Title", "TieZ Clipboard");
+    let referer = std::env::var("AI_HTTP_REFERER")
+        .unwrap_or_else(|_| "https://github.com/jimuzhe/tiez".to_string());
 
-    let response = apply_optional_http_referer(request)
+    let response = client
+        .post(&api_url)
+        .header("Authorization", format!("Bearer {}", final_api_key))
+        .header("HTTP-Referer", referer)
+        .header("X-Title", "TieZ Clipboard")
         .json(&request_body)
         .send()
         .await
@@ -449,34 +453,41 @@ pub async fn call_ai(
             ai_response.replace('\n', " ")
         };
 
-        // Update database only if persistence is enabled
-        if persistent {
-            state
-                .repo
-                .update_entry_content(id, &ai_response, &preview)
-                .map_err(|e| format!("Database update failed: {}", e))?;
-        }
-
-        // Sync Session History and Emit Update
+        // 1. Update Session History (Memory State) - ALWAYS do this
         use crate::app_state::SessionHistory;
+        let mut updated_item_found = false;
         if let Some(session) = app_handle.try_state::<SessionHistory>() {
             let mut history = session.0.lock().unwrap();
             if let Some(item) = history.iter_mut().find(|i| i.id == id) {
                 item.content = ai_response.clone();
                 item.preview = preview.clone();
-                // Clear rich text so AI result is shown
-                if item.content_type == "rich_text" {
+                if item.content_type != "image" {
                     item.content_type = "text".to_string();
                     item.html_content = None;
                 }
-                // Emit update event from session item
-                let _ = app_handle.emit("clipboard-updated", item.clone());
-            } else if persistent {
-                // If persistent and not in session, fetch from DB to emit
+                updated_item_found = true;
+
+                // For session items (id < 0) or when persistence is off, emit the updated item directly from memory
+                if !persistent || id < 0 {
+                    let _ = app_handle.emit("clipboard-updated", item.clone());
+                }
+            }
+        }
+
+        // 2. Update Database (if item is persistent and persistence is enabled)
+        if persistent && id > 0 {
+            if let Err(e) = state.repo.update_entry_content(id, &ai_response, &preview) {
+                println!("[AI ERROR] Database update failed: {}", e);
+            } else {
+                // Emit update event from database to ensure consistency for persistent items
                 if let Ok(Some(updated_entry)) = state.repo.get_entry_by_id(id) {
                     let _ = app_handle.emit("clipboard-updated", updated_entry);
                 }
             }
+        } else if !updated_item_found {
+            // Fallback: If item wasn't in session or DB, but we have an ID, something is wrong,
+            // but we still return the response to the frontend.
+            println!("[AI WARNING] Item {} not found in session for update", id);
         }
 
         // Return response directly. Frontend will update local state to avoid race conditions.

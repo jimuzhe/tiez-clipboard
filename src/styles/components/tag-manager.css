@@ -1,16 +1,20 @@
 .themed-tag-manager {
   --tm-gap: 4px;
-  --tm-sidebar-width: clamp(186px, 25%, 218px);
+  /* --tag-sidebar-width is injected by JS via inline style */
   --tm-sidebar-collapsed-width: 56px;
+  position: relative;
   display: flex !important;
   height: 100% !important;
   min-height: 0 !important;
   gap: var(--tm-gap) !important;
-  padding: 12px !important;
+  padding: 4px 0 !important; /* Managed by items margin internally */
   background: var(--bg-content) !important;
   color: var(--text-primary) !important;
   font-family: var(--font-main) !important;
-  box-sizing: border-box;
+  box-sizing: border-box !important;
+  width: 100% !important;
+  overflow: hidden !important;
+  border-radius: 12px !important; /* Added rounded corners to root container */
 }
 
 .theme-mica.themed-tag-manager,
@@ -27,13 +31,17 @@
 .themed-tag-manager .tag-sidebar,
 .themed-tag-manager .tag-content {
   border: var(--panel-border) !important;
-  border-radius: var(--panel-radius) !important;
+  border-radius: 12px !important;
   background: var(--bg-panel) !important;
   box-shadow: var(--panel-shadow) !important;
+  margin-inline: 4px !important; /* Reduced from 8px to 4px */
+  box-sizing: border-box !important;
 }
 
 .themed-tag-manager .tag-sidebar {
-  width: var(--tm-sidebar-width) !important;
+  width: calc(var(--tag-sidebar-width, 160px) - 4px) !important; /* Adjusted */
+  min-width: 120px !important;
+  max-width: 320px !important;
   min-height: 0 !important;
   flex-shrink: 0 !important;
   display: flex !important;
@@ -42,6 +50,8 @@
 }
 
 .themed-tag-manager.sidebar-collapsed .tag-sidebar {
+  min-width: unset !important;
+  max-width: unset !important;
   width: var(--tm-sidebar-collapsed-width) !important;
 }
 
@@ -55,7 +65,7 @@
 
 .themed-tag-manager .sidebar-header {
   min-height: 48px !important;
-  padding: 12px 14px !important;
+  padding: 12px !important; /* Unified to 12px */
   display: flex !important;
   align-items: center !important;
   justify-content: space-between !important;
@@ -109,7 +119,7 @@
 .themed-tag-manager .tag-search-box {
   position: relative !important;
   min-height: 38px !important;
-  margin: 10px 12px 0 !important;
+  margin: 4px 4px 0 !important; /* Reduced top margin from 10 to 4 */
   padding: 0 10px !important;
   display: flex !important;
   align-items: center !important;
@@ -198,7 +208,7 @@
   min-height: 0 !important;
   overflow-y: auto !important;
   overflow-x: hidden !important;
-  padding: 10px 8px 12px !important;
+  padding: 10px 0 4px !important; /* Reduced bottom padding from 12 to 4 */
 }
 
 .themed-tag-manager .tag-item {
@@ -207,8 +217,9 @@
   align-items: center !important;
   gap: 10px !important;
   min-height: 38px !important;
-  margin-bottom: 4px !important;
+  margin: 0 2px 2px !important; /* Reduced bottom margin from 4 to 2 */
   padding: 8px 10px !important;
+  border-radius: 10px !important; /* Rounded items */
   border: 1px solid transparent !important;
   border-radius: var(--data-panel-radius) !important;
   background: transparent !important;
@@ -319,7 +330,7 @@
 
 .themed-tag-manager .tag-item:hover .tag-name,
 .themed-tag-manager .tag-item.active .tag-name {
-  padding-right: 52px !important;
+  padding-right: 64px !important; /* Increased to avoid icon overlap */
 }
 
 .themed-tag-manager .tag-hover-actions > span {
@@ -398,13 +409,49 @@
   transform: translateY(-50%) !important;
 }
 
+.themed-tag-manager .tag-divider {
+  width: 4px !important; /* Fixed: should be 4px wide in row mode */
+  margin: 0 !important;
+  height: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: transparent !important;
+  cursor: col-resize !important;
+  transition: background 0.16s ease !important;
+  flex-shrink: 0 !important;
+  z-index: 10 !important;
+}
+
+.themed-tag-manager .tag-divider:hover,
+.themed-tag-manager .tag-divider.active {
+  background: rgba(var(--accent-color-rgb), 0.08) !important;
+}
+
+.themed-tag-manager .tag-divider-handle {
+  width: 1px !important;
+  height: 32px !important;
+  border-radius: var(--radius-pill) !important;
+  background: rgba(var(--accent-color-rgb), 0.35) !important;
+  transition: opacity 0.16s ease, height 0.16s ease !important;
+  opacity: 0.45 !important;
+}
+
+.themed-tag-manager .tag-divider:hover .tag-divider-handle,
+.themed-tag-manager .tag-divider.active .tag-divider-handle {
+  opacity: 0.9 !important;
+  height: 48px !important;
+}
+
 .themed-tag-manager .tag-content {
-  flex: 1 !important;
-  min-width: 0 !important;
+  position: relative !important;
+  flex: 1 !important; /* Ensure it takes remaining space */
+  min-width: 160px !important;
   min-height: 0 !important;
   display: flex !important;
   flex-direction: column !important;
-  overflow: hidden !important;
+  overflow: hidden !important; /* Clips children to the rounded corners */
+  border-radius: 12px !important; /* Explicitly rounded corners */
   container-type: inline-size;
 }
 
@@ -717,12 +764,14 @@
   display: -webkit-box !important;
   -webkit-box-orient: vertical !important;
   -webkit-line-clamp: 4 !important;
+  line-clamp: 4 !important;
   overflow: hidden !important;
   min-height: 0 !important;
 }
 
 .themed-tag-manager .items-list .card-body-text {
   -webkit-line-clamp: 3 !important;
+  line-clamp: 3 !important;
 }
 
 .themed-tag-manager.stacked-layout .items-area {
@@ -747,6 +796,7 @@
 .themed-tag-manager.stacked-layout .items-grid .card-body-text {
   font-size: 12px !important;
   -webkit-line-clamp: 3 !important;
+  line-clamp: 3 !important;
 }
 
 .themed-tag-manager.stacked-layout .items-grid .card-divider {
@@ -777,6 +827,7 @@
   font-size: 12px !important;
   line-height: 1.35 !important;
   -webkit-line-clamp: 2 !important;
+  line-clamp: 2 !important;
 }
 
 .themed-tag-manager.stacked-layout .items-list .card-media {
@@ -957,6 +1008,35 @@
   }
 }
 
+/* 🚀 彻底解决堆叠模式下的左右边距不对称问题 🚀 */
+.themed-tag-manager.stacked-layout {
+  flex-direction: column !important;
+  gap: 0 !important; /* Removed gap to tighten vertical space */
+}
+
+.themed-tag-manager.stacked-layout .tag-sidebar,
+.themed-tag-manager.stacked-layout .tag-content {
+  width: calc(100% - 8px) !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  flex: none !important;
+  margin-inline: 4px !important;
+  border-radius: 12px !important; /* Force all corners to be rounded */
+}
+
+.themed-tag-manager.stacked-layout .tag-content {
+  flex: 1 !important; /* Let it grow but keep vertical margin */
+  margin-bottom: 12px !important;
+  min-height: 200px !important;
+}
+
+.themed-tag-manager.stacked-layout .tag-divider {
+  width: calc(100% - 8px) !important;
+  margin-inline: 4px !important;
+  height: 2px !important; /* Thinned from 4 to 2 */
+  cursor: row-resize !important;
+}
+
 @media (max-width: 340px) {
   .themed-tag-manager {
     flex-direction: column !important;
@@ -966,12 +1046,17 @@
 
   .themed-tag-manager .tag-sidebar {
     width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
     height: var(--tm-sidebar-height, 180px) !important;
     max-height: none !important;
+    flex-shrink: 0 !important;
   }
 
   .themed-tag-manager.sidebar-collapsed .tag-sidebar {
     width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
     height: auto !important;
   }
 
@@ -990,6 +1075,9 @@
 
   .themed-tag-manager .tag-content {
     flex: 1 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
     min-height: 0 !important;
   }
 

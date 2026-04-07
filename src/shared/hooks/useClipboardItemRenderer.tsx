@@ -18,8 +18,8 @@ interface UseClipboardItemRendererOptions {
   theme: string;
   language: Locale;
   t: (key: string) => string;
-  compactMode: boolean;
   showSourceAppIcon: boolean;
+  compactMode: boolean;
   richTextSnapshotPreview: boolean;
   sensitiveMaskPrefixVisible: number;
   sensitiveMaskSuffixVisible: number;
@@ -33,7 +33,9 @@ interface UseClipboardItemRendererOptions {
     id: number,
     content: string,
     contentType: string,
-    pasteWithFormat?: boolean
+    pasteWithFormat?: boolean,
+    isPinned?: boolean,
+    tags?: string[]
   ) => Promise<void>;
   setSelectedIndex: Dispatch<SetStateAction<number>>;
   setRevealedIds: Dispatch<SetStateAction<Set<number>>>;
@@ -65,8 +67,8 @@ export const useClipboardItemRenderer = ({
   theme,
   language,
   t,
-  compactMode,
   showSourceAppIcon,
+  compactMode,
   richTextSnapshotPreview,
   sensitiveMaskPrefixVisible,
   sensitiveMaskSuffixVisible,
@@ -112,16 +114,16 @@ export const useClipboardItemRenderer = ({
           theme={theme}
           language={language}
           t={t}
-          quickPasteHint={quickPasteHintsById[item.id]}
-          compactMode={compactMode}
           showSourceAppIcon={showSourceAppIcon}
+          compactMode={compactMode}
           richTextSnapshotPreview={richTextSnapshotPreview}
           sensitiveMaskPrefixVisible={sensitiveMaskPrefixVisible}
           sensitiveMaskSuffixVisible={sensitiveMaskSuffixVisible}
           sensitiveMaskEmailDomain={sensitiveMaskEmailDomain}
+          quickPasteHint={quickPasteHintsById[item.id]}
           onSelect={() => setSelectedIndex(index)}
           onCopy={(withFormat) =>
-            copyToClipboard(item.id, item.content, item.content_type, withFormat)
+            copyToClipboard(item.id, item.content, item.content_type, withFormat, item.is_pinned, item.tags || [])
           }
           onToggleReveal={(e) => {
             e.stopPropagation();
@@ -190,8 +192,8 @@ export const useClipboardItemRenderer = ({
       theme,
       language,
       t,
-      compactMode,
       showSourceAppIcon,
+      compactMode,
       richTextSnapshotPreview,
       sensitiveMaskPrefixVisible,
       sensitiveMaskSuffixVisible,
@@ -216,5 +218,3 @@ export const useClipboardItemRenderer = ({
 
   return { renderItemContent };
 };
-
-

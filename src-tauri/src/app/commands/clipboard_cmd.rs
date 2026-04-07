@@ -30,7 +30,7 @@ pub fn toggle_clipboard_pin(
     app_data_dir: State<'_, AppDataDir>,
     id: i64,
     is_pinned: bool,
-) -> AppResult<i64> {
+) -> AppResult<()> {
     let mut real_id = id;
     let mut entry_to_save = None;
 
@@ -44,36 +44,39 @@ pub fn toggle_clipboard_pin(
         }
     }
 
-    let conn = state.conn.lock().unwrap();
+    {
+        let conn = state.conn.lock().unwrap();
 
-    if let Some(entry) = entry_to_save {
-        let data_dir = app_data_dir.0.lock().unwrap().clone();
-        if let Ok(new_id) = state.repo.save_with_conn(&conn, &entry, Some(&data_dir)) {
-            real_id = new_id;
-            if let Ok(deleted_ids) = state.repo.enforce_limit_with_conn(&conn, Some(&data_dir)) {
-                for deleted_id in deleted_ids {
-                    let _ = app_handle.emit("clipboard-removed", deleted_id);
+        if let Some(entry) = entry_to_save {
+            let data_dir = app_data_dir.0.lock().unwrap().clone();
+            if let Ok(new_id) = state.repo.save_with_conn(&conn, &entry, Some(&data_dir)) {
+                real_id = new_id;
+                if let Ok(deleted_ids) = state.repo.enforce_limit_with_conn(&conn, Some(&data_dir))
+                {
+                    for deleted_id in deleted_ids {
+                        let _ = app_handle.emit("clipboard-removed", deleted_id);
+                    }
                 }
-            }
-            {
-                let mut session_items = session.inner().0.lock().unwrap();
-                if let Some(item) = session_items.iter_mut().find(|i| i.id == id) {
-                    item.id = new_id;
+                {
+                    let mut session_items = session.inner().0.lock().unwrap();
+                    if let Some(item) = session_items.iter_mut().find(|i| i.id == id) {
+                        item.id = new_id;
+                    }
                 }
             }
         }
+
+        if real_id > 0 {
+            state
+                .repo
+                .toggle_pin_with_conn(&conn, real_id, is_pinned)
+                .map_err(AppError::from)?;
+        }
     }
 
-    if real_id > 0 {
-        state
-            .repo
-            .toggle_pin_with_conn(&conn, real_id, is_pinned)
-            .map_err(AppError::from)?;
-    }
-    drop(conn);
     let _ = app_handle.emit("clipboard-changed", ());
     crate::services::cloud_sync::request_cloud_sync(app_handle);
-    Ok(real_id)
+    Ok(())
 }
 
 #[tauri::command]

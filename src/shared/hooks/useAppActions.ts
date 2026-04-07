@@ -37,8 +37,10 @@ export const useAppActions = ({
         ];
         if (key === "mqtt_enabled" && value === "true") {
           await invoke("restart_mqtt_client");
+          console.log("MQTT client restarted due to mqtt_enabled toggle");
         } else if (mqttKeys.includes(key) && mqttEnabled) {
           await invoke("restart_mqtt_client");
+          console.log(`MQTT client restarted due to ${key} change`);
         }
       } catch (err) {
         console.error("MQTT Set save failed", err);
@@ -83,6 +85,9 @@ export const useAppActions = ({
   const saveCloudSync = useCallback(
     async (key: string, value: string) => {
       try {
+        if (key === "cloud_sync_enabled" && value === "false") {
+          await invoke("stop_cloud_sync_client");
+        }
         await invoke("save_setting", { key, value });
         const cloudKeys = [
           "cloud_sync_enabled",
@@ -98,7 +103,9 @@ export const useAppActions = ({
           "cloud_sync_webdav_base_path"
         ];
         if (key === "cloud_sync_enabled") {
-          await invoke("restart_cloud_sync_client");
+          if (value !== "false") {
+            await invoke("restart_cloud_sync_client");
+          }
         } else if (cloudKeys.includes(key) && cloudSyncEnabled) {
           await invoke("restart_cloud_sync_client");
         }

@@ -79,7 +79,7 @@ fn file_transfer_theme_variants(theme: &str) -> (&'static str, &'static str, &'s
             --panel-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
             --input-border: 1px solid #d5c4a1;
             --input-radius: 2px;
-            --input-shadow: inset 0 1px 3px rgba(0,0,0,0.03);
+            --input-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.03);
             --button-border: 1px solid rgba(139, 90, 43, 0.3);
             --button-radius: 4px;
             --button-shadow: none;
@@ -320,10 +320,7 @@ pub fn render_index(theme: &str, color_mode: &str, logo_base64: &str) -> String 
             --radius: 0px;
             --bubble-received-bg: #ffffff;
             --app-height: 100vh;
-            --footer-shift: 0px;
-            --composer-height: 76px;
-            --control-height: clamp(40px, 6.6vh, 58px);
-            --side-width: clamp(72px, 14vw, 92px);
+            --vv-bottom: 0px;
         }}
 
         @media (prefers-color-scheme: dark) {{
@@ -374,10 +371,6 @@ pub fn render_index(theme: &str, color_mode: &str, logo_base64: &str) -> String 
             height: 100dvh;
             height: var(--app-height);
             overflow: hidden;
-            position: fixed;
-            inset: 0;
-            width: 100%;
-            overscroll-behavior: none;
             transition: background 0.3s;
         }}
 
@@ -407,18 +400,10 @@ pub fn render_index(theme: &str, color_mode: &str, logo_base64: &str) -> String 
         .status-dot {{ width: 8px; height: 8px; background: #4caf50; border-radius: 50%; box-shadow: 0 0 5px #4caf50; }}
 
         #chat-box {{
-            flex: 1; min-height: 0; overflow-y: auto; padding: 16px;
+            flex: 1; overflow-y: auto; padding: 16px;
             display: flex; flex-direction: column; gap: 16px;
             scroll-behavior: smooth;
-            -webkit-overflow-scrolling: touch;
-            overscroll-behavior: contain;
-            scrollbar-width: none;
-            padding-bottom: calc(var(--composer-height) + var(--footer-shift) + env(safe-area-inset-bottom) + 16px);
-            scroll-padding-bottom: calc(var(--composer-height) + var(--footer-shift) + env(safe-area-inset-bottom) + 12px);
-        }}
-
-        #chat-box::-webkit-scrollbar {{
-            display: none;
+            padding-bottom: calc(100px + max(env(safe-area-inset-bottom), var(--vv-bottom)));
         }}
 
         .timestamp {{
@@ -544,24 +529,20 @@ pub fn render_index(theme: &str, color_mode: &str, logo_base64: &str) -> String 
         .progress-inner {{ height: 100%; background: var(--accent-color); width: 0%; transition: width 0.2s; }}
 
         footer {{
-            padding: 8px 16px;
-            padding-bottom: calc(8px + env(safe-area-inset-bottom));
-            background: transparent;
-            border-top: none;
-            display: flex; gap: 12px; align-items: center;
+            padding: 10px 16px;
+            padding-bottom: calc(10px + max(env(safe-area-inset-bottom), var(--vv-bottom)));
+            background: var(--bg-panel);
+            border-top: 2px solid var(--border-dark);
+            display: flex; gap: 12px; align-items: flex-end;
             flex-shrink: 0;
             z-index: 10;
-            transform: translateY(calc(-1 * var(--footer-shift)));
-            transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
-            will-change: transform;
         }}
         .theme-mica footer, .theme-acrylic footer {{
-            background: transparent;
-            backdrop-filter: none;
-            border-top: none;
+            background: rgba(255,255,255,0.7); backdrop-filter: blur(20px);
+            border-top: 1px solid rgba(0,0,0,0.1);
         }}
         @media (prefers-color-scheme: dark) {{
-            .theme-mica footer, .theme-acrylic footer {{ background: transparent; }}
+            .theme-mica footer, .theme-acrylic footer {{ background: rgba(30,30,30,0.7); }}
         }}
         
         .retro-btn {{
@@ -571,7 +552,7 @@ pub fn render_index(theme: &str, color_mode: &str, logo_base64: &str) -> String 
             display: flex; align-items: center; justify-content: center;
             cursor: pointer; color: var(--text-primary);
             transition: all 0.1s;
-            height: var(--control-height);
+            height: 40px;
             flex-shrink: 0;
             border-radius: var(--button-radius, var(--radius));
         }}
@@ -588,11 +569,10 @@ pub fn render_index(theme: &str, color_mode: &str, logo_base64: &str) -> String 
             .theme-mica .retro-btn, .theme-acrylic .retro-btn {{ background: rgba(255,255,255,0.1); }}
         }}
 
-        .add-btn {{ width: var(--side-width); min-width: var(--side-width); padding: 0; font-size: 24px; font-weight: 900; }}
+        .add-btn {{ width: 40px; font-size: 24px; font-weight: 900; }}
         .send-btn {{
-            width: var(--side-width);
-            min-width: var(--side-width);
-            padding: 0;
+            min-width: 72px;
+            padding: 0 16px;
             background: var(--send-button-background, var(--accent-color));
             color: var(--send-button-color, #ffffff);
             border: var(--send-button-border, var(--button-border, 2px solid var(--border-dark)));
@@ -600,15 +580,13 @@ pub fn render_index(theme: &str, color_mode: &str, logo_base64: &str) -> String 
         }}
         
         .text-input {{ 
-            flex: 1; height: var(--control-height); min-height: var(--control-height); max-height: 100px; padding: calc((var(--control-height) - 20px) / 2) 12px;
+            flex: 1; height: 40px; min-height: 40px; max-height: 100px; padding: 10px 12px;
             background: var(--bg-input); border: var(--input-border, 2px solid var(--border-dark));
             box-shadow: var(--input-shadow, inset 2px 2px 0 rgba(0,0,0,0.1));
             font-size: 14px; font-family: var(--content-font-family, var(--font-mono));
             color: var(--text-primary); outline: none;
             border-radius: var(--input-radius, var(--radius)); -webkit-appearance: none;
             resize: none; overflow-y: auto; line-height: 20px;
-            display: block;
-            margin: 0;
         }}
         .theme-mica .text-input, .theme-acrylic .text-input {{ box-shadow: none; border-width: 1px; }}
         @media (prefers-color-scheme: dark) {{
@@ -738,8 +716,6 @@ pub fn render_index(theme: &str, color_mode: &str, logo_base64: &str) -> String 
         const textInput = document.getElementById('text-input');
         const sendBtn = document.getElementById('send-btn');
         const chatBox = document.getElementById('chat-box');
-        const footer = document.querySelector('footer');
-        const fsTextarea = document.getElementById('fs-textarea');
         
         const now = new Date();
         document.getElementById('time-now').innerText = `${{now.getHours().toString().padStart(2,'0')}}:${{now.getMinutes().toString().padStart(2,'0')}}`;
@@ -757,31 +733,18 @@ pub fn render_index(theme: &str, color_mode: &str, logo_base64: &str) -> String 
             chatBox.scrollTop = chatBox.scrollHeight;
         }}
 
-        function syncComposerMetrics() {{
-            if (!footer) return;
-            const composerHeight = Math.ceil(footer.getBoundingClientRect().height);
-            document.documentElement.style.setProperty('--composer-height', `${{composerHeight}}px`);
-        }}
-
         function syncViewportMetrics() {{
             const root = document.documentElement;
             const vv = window.visualViewport;
-            const activeElement = document.activeElement;
-            const mainInputFocused = activeElement === textInput;
             if (!vv) {{
                 root.style.setProperty('--app-height', `${{window.innerHeight}}px`);
-                root.style.setProperty('--footer-shift', '0px');
-                syncComposerMetrics();
+                root.style.setProperty('--vv-bottom', '0px');
                 return;
             }}
 
-            const layoutHeight = Math.max(window.innerHeight, vv.height + vv.offsetTop);
-            const overlap = Math.max(0, layoutHeight - (vv.height + vv.offsetTop));
-            const footerShift = mainInputFocused && overlap > 80 ? overlap : 0;
-
-            root.style.setProperty('--app-height', `${{Math.round(layoutHeight)}}px`);
-            root.style.setProperty('--footer-shift', `${{Math.round(footerShift)}}px`);
-            syncComposerMetrics();
+            root.style.setProperty('--app-height', `${{Math.round(vv.height)}}px`);
+            const bottomInset = Math.max(0, window.innerHeight - (vv.height + vv.offsetTop));
+            root.style.setProperty('--vv-bottom', `${{Math.round(bottomInset)}}px`);
         }}
 
         function normalizeFileName(name) {{
@@ -902,24 +865,17 @@ pub fn render_index(theme: &str, color_mode: &str, logo_base64: &str) -> String 
         textInput.addEventListener('focus', () => {{
             setTimeout(() => {{
                 syncViewportMetrics();
-                textInput.scrollIntoView({{ block: 'nearest', inline: 'nearest' }});
                 scrollToBottom();
             }}, 80);
         }});
 
-        textInput.addEventListener('blur', () => {{
-            setTimeout(syncViewportMetrics, 120);
-        }});
-
         window.addEventListener('resize', syncViewportMetrics);
         window.addEventListener('orientationchange', syncViewportMetrics);
-        window.addEventListener('load', syncComposerMetrics);
         if (window.visualViewport) {{
             window.visualViewport.addEventListener('resize', syncViewportMetrics);
             window.visualViewport.addEventListener('scroll', syncViewportMetrics);
         }}
         syncViewportMetrics();
-        syncComposerMetrics();
 
         // WebSocket Setup
         let socket;
@@ -1073,6 +1029,8 @@ pub fn render_index(theme: &str, color_mode: &str, logo_base64: &str) -> String 
 </html>
     "#,
         theme = theme,
+        mode_class = mode_class,
+        theme_css = theme_css,
         logo_base64 = logo_base64
     )
 }

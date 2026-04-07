@@ -30,7 +30,7 @@ const AppSelectorModal = ({ show, installedApps, theme, colorMode, t, onClose, o
                         display: 'flex',
                         flexDirection: 'column',
                         maxHeight: '90vh',
-                        overflowY: 'auto'
+                        overflow: 'visible'
                     }}
                     onClick={(e) => e.stopPropagation()}
                 >

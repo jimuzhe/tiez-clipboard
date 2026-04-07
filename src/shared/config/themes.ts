@@ -7,9 +7,6 @@ export interface ThemeDefinition {
   supportsSurfaceOpacity?: boolean;
 }
 
-// Theme authoring guide: docs/THEME-SYSTEM.md
-// Add new themes here. In most cases, adding a CSS file under src/styles/themes
-// and one entry here is enough to make it available in the app.
 export const THEMES: ThemeDefinition[] = [
   {
     id: "retro",

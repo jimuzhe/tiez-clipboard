@@ -3,9 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
 import type { InstalledAppOption } from "../../../app/types";
-import type { AppCleanupPolicy } from "../../types";
-
-
+import type { AppCleanupPolicy, AppCleanupPolicyAction } from "../../types";
 
 interface AdvancedSettingsGroupProps {
     t: (key: string) => string;
@@ -20,7 +18,7 @@ interface EditableRule {
     match: string;
     replace: string;
     label?: string;
-    actionType?: "replace" | "ignore";
+    action?: "clean" | "ignore";
 }
 
 interface SourceTarget {
@@ -31,17 +29,19 @@ interface SourceTarget {
     policyId?: string;
     ruleCount: number;
     rawRules: string;
+    action: AppCleanupPolicyAction;
 }
 
-const DEFAULT_POLICY_CONTENT_TYPES = ["text", "code", "url", "rich_text", "image", "file", "video"];
+const DEFAULT_POLICY_CONTENT_TYPES = ["text", "code", "url", "rich_text"];
 
 const createPolicyId = () =>
     `policy_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
 const parseRules = (rawRules: string): EditableRule[] => {
-    const lines = rawRules.split(/\r?\n/).map((l) => l.trim());
+    const lines = rawRules.split(/\r?\n/).map((line) => line.trim());
     const rules: EditableRule[] = [];
     let currentLabel: string | null = null;
+    let currentAction: "clean" | "ignore" | undefined = undefined;
 
     for (const line of lines) {
         if (line.length === 0) continue;
@@ -50,19 +50,25 @@ const parseRules = (rawRules: string): EditableRule[] => {
             if (labelMatch) {
                 currentLabel = labelMatch[1].trim();
             }
+            const actionMatch = line.match(/^#\s*action:\s*(.*)$/i);
+            if (actionMatch) {
+                const actValue = actionMatch[1].trim().toLowerCase();
+                currentAction = actValue === "ignore" ? "ignore" : "clean";
+            }
             continue;
         }
 
         const [matchPart, replacePart = ""] = line.split(/=>/, 2);
-        const replaceValue = replacePart.trim();
         rules.push({
             match: matchPart.trim(),
-            replace: replaceValue === "__IGNORE_CAPTURE__" ? "" : replaceValue,
+            replace: replacePart.trim(),
             label: currentLabel ?? undefined,
-            actionType: replaceValue === "__IGNORE_CAPTURE__" ? "ignore" : "replace"
+            action: currentAction ?? "clean"
         });
         currentLabel = null;
+        currentAction = undefined;
     }
+
     return rules;
 };
 
@@ -74,8 +80,10 @@ const serializeRules = (rules: EditableRule[]): string =>
             if (rule.label?.trim()) {
                 lines.push(`# label: ${rule.label.trim()}`);
             }
-            const actualReplace = rule.actionType === "ignore" ? "__IGNORE_CAPTURE__" : rule.replace;
-            lines.push(`${rule.match.trim()} => ${actualReplace}`);
+            if (rule.action === "ignore") {
+                lines.push("# action: ignore");
+            }
+            lines.push(`${rule.match.trim()} => ${rule.replace}`);
             return lines.join("\n");
         })
         .join("\n\n");
@@ -104,7 +112,10 @@ const AdvancedSettingsGroup = ({
     const [isStacked, setIsStacked] = useState(false);
     const workbenchRef = useRef<HTMLElement | null>(null);
 
-    const configuredAppPolicies = appCleanupPolicies;
+    const configuredAppPolicies = useMemo(
+        () => appCleanupPolicies,
+        [appCleanupPolicies]
+    );
 
     const sourceTargets = useMemo(() => {
         const targets: SourceTarget[] = [
@@ -113,7 +124,8 @@ const AdvancedSettingsGroup = ({
                 kind: "global",
                 label: t("advanced_target_global"),
                 ruleCount: parseRules(cleanupRules).length,
-                rawRules: cleanupRules
+                rawRules: cleanupRules,
+                action: "clean"
             }
         ];
 
@@ -129,8 +141,9 @@ const AdvancedSettingsGroup = ({
                 label: appLabel,
                 appPath,
                 policyId: policy.id,
-                ruleCount: policy.action === "ignore" ? 0 : parseRules(rawRules).length,
-                rawRules
+                ruleCount: parseRules(rawRules).length,
+                rawRules,
+                action: policy.action
             });
         });
 
@@ -175,8 +188,6 @@ const AdvancedSettingsGroup = ({
         setExpandedRuleIndex(nextRules.length > 0 ? 0 : null);
     }, [selectedTarget?.id]);
 
-    // App icons fetching removed for minimalist style
-
     useEffect(() => {
         const mediaQuery = window.matchMedia("(max-width: 340px)");
         const updateLayoutMode = () => {
@@ -195,6 +206,7 @@ const AdvancedSettingsGroup = ({
         const handleMouseMove = (event: MouseEvent) => {
             const bounds = workbenchRef.current?.getBoundingClientRect();
             if (!bounds) return;
+
             if (isStacked) {
                 const maxHeight = Math.max(140, bounds.height - 220);
                 const nextHeight = Math.min(Math.max(event.clientY - bounds.top, 120), maxHeight);
@@ -225,26 +237,24 @@ const AdvancedSettingsGroup = ({
         };
     }, [isResizing, isStacked]);
 
+    const persistAppPolicies = (nextPolicies: AppCleanupPolicy[]) => {
+        setAppCleanupPolicies(nextPolicies);
+        invoke("set_app_cleanup_policies", { policies: JSON.stringify(nextPolicies) }).catch(console.error);
+    };
+
     const handleDeleteTarget = (event: React.MouseEvent, target: SourceTarget) => {
         event.stopPropagation();
         if (target.kind === "global") return;
 
-        // Filter out the app policy. Since rules are inside the policy, they are deleted automatically.
-        const nextPolicies = appCleanupPolicies.filter(p => (
-            p.id !== target.policyId && (p.appPath !== target.appPath || !target.appPath)
+        const nextPolicies = appCleanupPolicies.filter((policy) => (
+            policy.id !== target.policyId && (policy.appPath !== target.appPath || !target.appPath)
         ));
-        
+
         persistAppPolicies(nextPolicies);
-        
-        // If the deleted target was selected, switch back to global
+
         if (selectedSourceId === target.id) {
             setSelectedSourceId("global");
         }
-    };
-
-    const persistAppPolicies = (nextPolicies: AppCleanupPolicy[]) => {
-        setAppCleanupPolicies(nextPolicies);
-        invoke("set_app_cleanup_policies", { policies: JSON.stringify(nextPolicies) }).catch(console.error);
     };
 
     const persistRulesForTarget = (target: SourceTarget, nextRules: EditableRule[]) => {
@@ -262,17 +272,15 @@ const AdvancedSettingsGroup = ({
         ));
         const nextPolicies = [...appCleanupPolicies];
 
-        const nextContentTypes = existingIndex >= 0
-            ? Array.from(new Set([...(nextPolicies[existingIndex].contentTypes ?? []), ...DEFAULT_POLICY_CONTENT_TYPES]))
-            : [...DEFAULT_POLICY_CONTENT_TYPES];
-
         const nextPolicy: AppCleanupPolicy = {
             id: existingIndex >= 0 ? nextPolicies[existingIndex].id : (target.policyId ?? createPolicyId()),
             enabled: existingIndex >= 0 ? nextPolicies[existingIndex].enabled : true,
             appName: target.label,
             appPath,
             action: existingIndex >= 0 ? nextPolicies[existingIndex].action : "clean",
-            contentTypes: nextContentTypes,
+            contentTypes: existingIndex >= 0
+                ? nextPolicies[existingIndex].contentTypes
+                : [...DEFAULT_POLICY_CONTENT_TYPES],
             cleanupRules: serialized
         };
 
@@ -281,6 +289,25 @@ const AdvancedSettingsGroup = ({
         } else {
             nextPolicies.push(nextPolicy);
         }
+
+        persistAppPolicies(nextPolicies);
+    };
+
+    const updatePolicyAction = (action: AppCleanupPolicyAction) => {
+        if (!selectedTarget || selectedTarget.kind === "global") return;
+
+        const appPath = selectedTarget.appPath ?? "";
+        const existingIndex = appCleanupPolicies.findIndex((policy) => (
+            selectedTarget.policyId ? policy.id === selectedTarget.policyId : policy.appPath === appPath
+        ));
+
+        if (existingIndex < 0) return;
+
+        const nextPolicies = [...appCleanupPolicies];
+        nextPolicies[existingIndex] = {
+            ...nextPolicies[existingIndex],
+            action
+        };
 
         persistAppPolicies(nextPolicies);
     };
@@ -296,7 +323,7 @@ const AdvancedSettingsGroup = ({
 
     const addRule = () => {
         if (!selectedTarget) return;
-        const nextRules = [...draftRules, { match: "", replace: "", actionType: "replace" as const }];
+        const nextRules = [...draftRules, { match: "", replace: "", action: undefined }];
         setDraftRules(nextRules);
         persistRulesForTarget(selectedTarget, nextRules);
         setExpandedRuleIndex(nextRules.length - 1);
@@ -310,26 +337,6 @@ const AdvancedSettingsGroup = ({
         if (expandedRuleIndex === ruleIndex) {
             setExpandedRuleIndex(nextRules.length > 0 ? Math.max(0, ruleIndex - 1) : null);
         }
-    };
-
-    const toggleTargetAction = () => {
-        if (!selectedTarget || selectedTarget.kind === "global") return;
-
-        const existingIndex = appCleanupPolicies.findIndex((policy) => (
-            selectedTarget.policyId ? policy.id === selectedTarget.policyId : policy.appPath === (selectedTarget.appPath ?? "")
-        ));
-        
-        if (existingIndex < 0) return;
-
-        const nextPolicies = [...appCleanupPolicies];
-        const nextAction = nextPolicies[existingIndex].action === "ignore" ? "clean" : "ignore";
-        nextPolicies[existingIndex] = {
-            ...nextPolicies[existingIndex],
-            action: nextAction,
-            contentTypes: Array.from(new Set([...(nextPolicies[existingIndex].contentTypes ?? []), ...DEFAULT_POLICY_CONTENT_TYPES]))
-        };
-
-        persistAppPolicies(nextPolicies);
     };
 
     const handleAddApp = (app: InstalledAppOption) => {
@@ -356,8 +363,6 @@ const AdvancedSettingsGroup = ({
 
     return (
         <div className="settings-subpage advanced-settings-page">
-            {/* Header is handled by AppHeader */}
-
             <section
                 ref={workbenchRef}
                 className={`advanced-workbench ${isStacked ? "stacked-layout" : ""}`}
@@ -404,22 +409,22 @@ const AdvancedSettingsGroup = ({
                                 className={`advanced-target-item ${selectedTarget?.id === target.id ? "active" : ""}`}
                                 onClick={() => setSelectedSourceId(target.id)}
                             >
-                                <span className="advanced-target-meta">
-                                    <span className="advanced-target-name">{target.label}</span>
-                                    <span className="advanced-target-sub">
-                                        {target.kind === "app" && appCleanupPolicies.find(p => p.id === target.policyId || p.appPath === target.appPath)?.action === "ignore"
-                                            ? t("app_cleanup_policy_ignore")
-                                            : target.ruleCount > 0
-                                                ? `${target.ruleCount} ${t("advanced_rule_count_suffix")}`
-                                                : t("advanced_no_rules")}
+                                    <span className="advanced-target-meta">
+                                        <span className="advanced-target-name">{target.label}</span>
+                                        <span className="advanced-target-sub">
+                                            {target.action === "ignore"
+                                                ? t("app_cleanup_policy_ignore")
+                                                : (target.ruleCount > 0
+                                                    ? `${target.ruleCount} ${t("advanced_rule_count_suffix")}`
+                                                    : t("advanced_no_rules"))}
+                                        </span>
                                     </span>
-                                </span>
 
                                 {target.kind !== "global" && (
                                     <button
                                         type="button"
                                         className="advanced-target-delete"
-                                        onClick={(e) => handleDeleteTarget(e, target)}
+                                        onClick={(event) => handleDeleteTarget(event, target)}
                                         title={t("delete")}
                                     >
                                         <Trash2 size={14} />
@@ -439,49 +444,52 @@ const AdvancedSettingsGroup = ({
 
                 <div className="advanced-editor">
                     <div className="advanced-editor-toolbar">
-                        {selectedTarget?.kind === "global" || (appCleanupPolicies.find(p => p.id === selectedTarget.policyId || p.appPath === selectedTarget.appPath)?.action !== "ignore") ? (
+                        <div style={{ flex: 1 }}>
+                            <div className="advanced-editor-title" style={{ fontSize: "16px", fontWeight: 700 }}>
+                                {selectedTarget?.kind === "global" ? t("advanced_target_global") : (t("app_cleanup_policy_record_title") || "记录此应用的内容？")}
+                            </div>
+                            <div className="advanced-editor-subtitle" style={{ marginTop: "4px", opacity: 0.7 }}>
+                                {selectedTarget?.action !== "ignore"
+                                    ? (t("app_cleanup_policy_record_on_hint") || "当前已开启记录，您可以点击上方按钮添加清洗或拦截规则")
+                                    : (t("app_cleanup_policy_record_off_hint") || "当前已暂停记录来自此应用的内容")}
+                            </div>
+                        </div>
+
+                        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+                            {selectedTarget?.kind === "app" && (
+                                <div className="advanced-record-toggle" style={{ background: "transparent", padding: 0 }}>
+                                    <label className="switch">
+                                        <input
+                                            className="cb"
+                                            type="checkbox"
+                                            checked={selectedTarget.action !== "ignore"}
+                                            onChange={(e) => updatePolicyAction(e.target.checked ? "clean" : "ignore")}
+                                        />
+                                        <div className="toggle">
+                                            <div className="left" />
+                                            <div className="right" />
+                                        </div>
+                                    </label>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    <div style={{ padding: "0 24px", display: "flex", justifyContent: "flex-end", marginBottom: "8px" }}>
+                        {selectedTarget && selectedTarget.action !== "ignore" && (
                             <button type="button" className="btn-icon advanced-add-rule-btn" onClick={addRule}>
                                 <Plus size={14} />
                                 <span>{t("advanced_add_rule")}</span>
                             </button>
-                        ) : null}
+                        )}
                     </div>
 
-                    {selectedTarget?.kind === "app" && (
-                        <div className="advanced-action-toggle">
-                            <div className="advanced-action-info">
-                                <span className="advanced-action-label">记录此应用的内容？</span>
-                                <span className="advanced-action-hint">
-                                    {appCleanupPolicies.find(p => p.id === selectedTarget.policyId || p.appPath === selectedTarget.appPath)?.action === "ignore"
-                                        ? "当前已关闭记录，来自该应用的剪贴板内容将被忽略"
-                                        : "当前已开启记录，您可以点击上方按钮添加清洗或拦截规则"
-                                    }
-                                </span>
-                            </div>
-                            <button 
-                                type="button" 
-                                className={`advanced-action-switch ${appCleanupPolicies.find(p => p.id === selectedTarget.policyId || p.appPath === selectedTarget.appPath)?.action !== "ignore" ? "active" : ""}`}
-                                onClick={toggleTargetAction}
-                            >
-                                <span className="advanced-action-switch-track">
-                                    <span className="advanced-action-switch-thumb" />
-                                </span>
-                                <span className="advanced-action-switch-label">
-                                    {appCleanupPolicies.find(p => p.id === selectedTarget.policyId || p.appPath === selectedTarget.appPath)?.action !== "ignore"
-                                        ? "开启"
-                                        : "关闭"
-                                    }
-                                </span>
-                            </button>
-                        </div>
-                    )}
-
                     <div className="advanced-rule-list">
-                        {selectedTarget?.kind === "app" && appCleanupPolicies.find(p => p.id === selectedTarget.policyId || p.appPath === selectedTarget.appPath)?.action === "ignore" ? (
-                            <div className="advanced-empty-state ignore-mode">
-                                <div className="advanced-empty-title">已停止记录</div>
+                        {selectedTarget?.action === "ignore" ? (
+                            <div className="advanced-empty-state">
+                                <div className="advanced-empty-title">{t("app_cleanup_policy_ignore")}</div>
                                 <div className="advanced-empty-text">
-                                    当前应用已被设置为忽略，记录功能已关闭。
+                                    {t("app_cleanup_policy_ignore_hint") || "来自此应用的剪贴板内容将不会被记录。"}
                                 </div>
                             </div>
                         ) : (
@@ -520,49 +528,53 @@ const AdvancedSettingsGroup = ({
                                                             type="text"
                                                             className="search-input advanced-rule-input"
                                                             value={rule.label ?? ""}
-                                                            placeholder={`${t("advanced_rule_label")} ${index + 1}`}
-                                                            onFocus={focusEditorWindow}
+                                                            placeholder={rule.label?.trim() || `${t("advanced_rule_label")} ${index + 1}`}
                                                             onChange={(e) => updateRule(index, { label: e.target.value })}
                                                         />
                                                     </div>
+
                                                     <div className="advanced-rule-field">
                                                         <label>{t("advanced_match_label")}</label>
                                                         <textarea
                                                             className="search-input advanced-rule-textarea"
                                                             value={rule.match}
-                                                            placeholder={t("advanced_match_placeholder")}
+                                                            style={{ minHeight: "80px" }}
+                                                            placeholder={t("advanced_match_placeholder") || "输入正则匹配，例如：(?i)(token\\s*[:=]\\s*)\\S+"}
                                                             onFocus={focusEditorWindow}
                                                             onChange={(e) => updateRule(index, { match: e.target.value })}
                                                         />
                                                     </div>
 
                                                     <div className="advanced-rule-field">
-                                                        <label>命中后动作</label>
-                                                        <div className="advanced-rule-action-tabs">
-                                                            <button 
-                                                                type="button" 
-                                                                className={`advanced-rule-action-tab ${rule.actionType === "replace" ? "active" : ""}`}
-                                                                onClick={() => updateRule(index, { actionType: "replace" })}
+                                                        <label>{t("app_cleanup_policy_action") || "命中后动作"}</label>
+                                                        <div className="settings-inline-choice-row" style={{ maxWidth: "100%" }}>
+                                                            <button
+                                                                type="button"
+                                                                className={`btn settings-inline-choice-btn ${rule.action === "clean" ? "primary" : ""}`}
+                                                                style={{ flex: 1 }}
+                                                                onClick={() => updateRule(index, { action: "clean" })}
                                                             >
-                                                                {t("advanced_replace_label")}
+                                                                {t("advanced_rule_action_replace")}
                                                             </button>
-                                                            <button 
-                                                                type="button" 
-                                                                className={`advanced-rule-action-tab ${rule.actionType === "ignore" ? "active" : ""}`}
-                                                                onClick={() => updateRule(index, { actionType: "ignore" })}
+                                                            <button
+                                                                type="button"
+                                                                className={`btn settings-inline-choice-btn ${rule.action === "ignore" ? "primary" : ""}`}
+                                                                style={{ flex: 1 }}
+                                                                onClick={() => updateRule(index, { action: "ignore" })}
                                                             >
-                                                                {t("app_cleanup_policy_ignore")}
+                                                                {t("advanced_rule_action_ignore")}
                                                             </button>
                                                         </div>
                                                     </div>
 
-                                                    {rule.actionType === "replace" && (
+                                                    {rule.action === "clean" && (
                                                         <div className="advanced-rule-field">
-                                                            <label>{t("advanced_replace_label")}</label>
+                                                            <label>{t("advanced_replace_label") || "替换"}</label>
                                                             <textarea
                                                                 className="search-input advanced-rule-textarea"
                                                                 value={rule.replace}
-                                                                placeholder={t("advanced_replace_placeholder")}
+                                                                style={{ minHeight: "80px" }}
+                                                                placeholder={t("advanced_replace_placeholder") || "输入替换文本，例如：$1[REDACTED]"}
                                                                 onFocus={focusEditorWindow}
                                                                 onChange={(e) => updateRule(index, { replace: e.target.value })}
                                                             />

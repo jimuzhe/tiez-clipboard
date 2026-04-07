@@ -1,7 +1,6 @@
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-
 pub mod app;
 pub mod app_state;
+pub mod build_config;
 pub mod database;
 pub mod domain;
 pub mod error;
@@ -12,19 +11,18 @@ pub mod migration;
 pub mod services;
 
 use crate::app::setup;
+use crate::error::AppResult;
 use crate::global_state::*;
-use std::sync::atomic::Ordering;
 
-fn main() {
-    // 显式安装 rustls 的 crypto provider，防止 rumqttc 因缺少 provider 而 panic
+fn main() -> AppResult<()> {
+    // Install rustls crypto provider explicitly because rumqttc is built with
+    // `use-rustls-no-provider` and will panic if no provider is registered.
     let _ = rustls::crypto::ring::default_provider().install_default();
 
-    let _ = dotenvy::dotenv();
-
-    let app = tauri::Builder::default()
+    let builder = tauri::Builder::default()
+        .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
-        .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
@@ -32,13 +30,14 @@ fn main() {
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
                 .with_handler(|app, shortcut, event| {
-                    if event.state() == tauri_plugin_global_shortcut::ShortcutState::Pressed {
-                        setup::handle_global_shortcut(app, shortcut);
-                    }
+                    setup::handle_global_shortcut(app, shortcut, event.state());
                 })
                 .build(),
-        )
-        .plugin(tauri_plugin_window_state::Builder::default().build())
+        );
+
+    let builder = builder.plugin(tauri_plugin_window_state::Builder::default().build());
+
+    let app = builder
         .plugin(tauri_plugin_single_instance::init(|_app, _args, _cwd| {}))
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
@@ -76,6 +75,7 @@ fn main() {
             app::commands::set_sequential_hotkey,
             app::commands::set_rich_paste_hotkey,
             app::commands::set_search_hotkey,
+            app::commands::set_quick_paste_modifier,
             app::commands::set_deduplication,
             app::commands::save_setting,
             app::commands::set_ignore_blur,
@@ -85,6 +85,7 @@ fn main() {
             app::commands::set_persistence,
             app::commands::set_capture_files,
             app::commands::set_capture_rich_text,
+            app::commands::set_rich_text_snapshot_preview,
             app::commands::set_auto_copy_file,
             app::commands::set_silent_start,
             app::commands::set_delete_after_paste,
@@ -100,14 +101,20 @@ fn main() {
             app::commands::get_cloud_sync_status,
             app::commands::restart_cloud_sync_client,
             app::commands::request_cloud_sync,
+            app::commands::stop_cloud_sync_client,
             app::commands::cloud_sync_now,
             app::commands::set_sound_enabled,
             app::commands::set_file_transfer_auto_open,
             app::commands::set_arrow_key_selection,
             app::commands::set_tray_visible,
+            app::commands::set_dock_visible,
             app::commands::set_edge_docking,
-            app::commands::set_follow_mouse,
             app::commands::get_data_path,
+            app::commands::scan_installed_apps,
+            app::commands::get_system_default_app,
+            app::commands::get_associated_apps,
+            app::commands::get_executable_icon,
+            app::commands::get_file_icon,
             app::commands::open_folder,
             app::commands::open_data_folder,
             app::commands::open_file_with_default_app,
@@ -115,34 +122,26 @@ fn main() {
             app::commands::set_data_path,
             app::commands::toggle_autostart,
             app::commands::is_autostart_enabled,
-            app::commands::set_windows_clipboard_history,
-            app::commands::get_windows_clipboard_history,
-            app::commands::set_win_clipboard_disabled,
-            app::commands::trigger_registry_win_v_optimization,
-            app::commands::is_registry_win_v_optimized,
-            app::commands::restart_explorer,
-            app::commands::restart_as_admin,
-            app::commands::check_is_admin,
+            app::commands::get_app_arch,
             app::commands::quit,
             app::commands::relaunch,
+            app::commands::check_macos_permissions,
+            app::commands::request_macos_permissions,
             app::commands::set_theme,
-            app::commands::get_platform_info,
             app::commands::send_system_notification,
             app::commands::register_hotkey,
             app::commands::test_hotkey_available,
+            app::commands::download_and_install_update,
             app::commands::toggle_clipboard_pin,
             app::commands::update_tags,
             app::commands::add_manual_item,
             app::commands::update_item_content,
             app::commands::save_emoji_favorite,
             app::commands::remove_emoji_favorite,
-            app::commands::list_emoji_favorites,
             app::commands::save_emoji_favorite_data_url,
             app::commands::save_emoji_favorite_url,
             app::commands::get_file_size,
             app::commands::save_file_copy,
-            services::clipboard_ops::paste_text_directly,
-            services::clipboard_ops::paste_content_transiently,
             services::file_transfer::send_chat_message,
             services::file_transfer::get_chat_history,
             services::file_transfer::send_file_to_client,
@@ -150,6 +149,7 @@ fn main() {
             services::file_transfer::get_local_ip_addr,
             services::file_transfer::get_available_ips,
             services::file_transfer::get_file_server_status,
+            services::file_transfer::get_download_url,
             services::file_transfer::toggle_file_server,
             services::file_transfer::get_active_file_transfer_path,
             services::paste_queue::get_paste_queue,
@@ -158,12 +158,7 @@ fn main() {
             app::commands::get_tag_colors,
             app::commands::set_tag_color,
             app::commands::call_ai,
-            app::commands::check_ai_connectivity,
-            infrastructure::windows_api::apps::get_system_default_app,
-            infrastructure::windows_api::apps::get_executable_icon,
-            infrastructure::windows_api::apps::get_file_icon,
-            infrastructure::windows_api::apps::scan_installed_apps,
-            infrastructure::windows_api::apps::get_associated_apps
+            app::commands::check_ai_connectivity
         ])
         .on_window_event(|window, event| {
             setup::handle_window_event(window, event);
@@ -173,26 +168,17 @@ fn main() {
     match app {
         Ok(app) => {
             info!(">>> [STARTUP] Tauri app built successfully.");
-            app.run(|_app_handle, _event| {});
+            app.run(|app_handle, event| {
+                #[cfg(target_os = "macos")]
+                if let tauri::RunEvent::Reopen { .. } = event {
+                    let _ = crate::app::window_manager::focus_clipboard_window(app_handle.clone());
+                }
+            });
+            Ok(())
         }
         Err(e) => {
             error!(">>> [STARTUP] Failed to build tauri app: {}", e);
-        }
-    }
-
-    // Cleanup Hooks on exit
-    unsafe {
-        let h_hook = HOOK_HANDLE.swap(std::ptr::null_mut(), Ordering::SeqCst);
-        if !h_hook.is_null() {
-            let _ = windows::Win32::UI::WindowsAndMessaging::UnhookWindowsHookEx(
-                windows::Win32::UI::WindowsAndMessaging::HHOOK(h_hook as _),
-            );
-        }
-        let h_mouse = HOOK_MOUSE_HANDLE.swap(std::ptr::null_mut(), Ordering::SeqCst);
-        if !h_mouse.is_null() {
-            let _ = windows::Win32::UI::WindowsAndMessaging::UnhookWindowsHookEx(
-                windows::Win32::UI::WindowsAndMessaging::HHOOK(h_mouse as _),
-            );
+            Err(e.into())
         }
     }
 }

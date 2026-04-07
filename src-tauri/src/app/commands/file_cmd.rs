@@ -8,6 +8,7 @@ use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 use tauri::State;
+use urlencoding::decode;
 
 #[derive(Serialize)]
 pub struct FileSize {
@@ -35,6 +36,7 @@ fn normalize_image_ext(ext: &str) -> Option<&'static str> {
         "jpg" | "jpeg" => Some("jpg"),
         "webp" => Some("webp"),
         "gif" => Some("gif"),
+        "avif" => Some("avif"),
         _ => None,
     }
 }
@@ -64,6 +66,7 @@ pub(crate) fn image_ext_from_mime(mime: &str) -> Option<&'static str> {
         "image/webp" => Some("webp"),
         "image/jpeg" => Some("jpg"),
         "image/png" => Some("png"),
+        "image/avif" => Some("avif"),
         _ => None,
     }
 }
@@ -75,6 +78,49 @@ fn image_ext_from_url(url: &reqwest::Url) -> Option<&'static str> {
         .and_then(|s| s.to_str())
         .unwrap_or("");
     normalize_image_ext(ext)
+}
+
+fn normalize_emoji_source_path(raw: &str) -> AppResult<String> {
+    let trimmed = raw.trim().trim_matches('"').trim_matches('\'');
+    if trimmed.is_empty() {
+        return Err(AppError::Validation("source_path is empty".to_string()));
+    }
+
+    let mut normalized = if trimmed.starts_with("file://") {
+        let path_raw = trimmed.trim_start_matches("file://");
+        let decoded = decode(path_raw)
+            .map(|p| p.into_owned())
+            .unwrap_or_else(|_| path_raw.to_string());
+
+        if decoded.chars().nth(1) == Some(':') {
+            decoded
+        } else if decoded.starts_with('/') && decoded.chars().nth(2) == Some(':') {
+            decoded[1..].to_string()
+        } else if !decoded.starts_with('/') && !decoded.starts_with('\\') {
+            format!("//{}", decoded)
+        } else {
+            decoded
+        }
+    } else {
+        decode(trimmed)
+            .map(|p| p.into_owned())
+            .unwrap_or_else(|_| trimmed.to_string())
+    };
+
+    normalized = normalized
+        .split('?')
+        .next()
+        .unwrap_or(&normalized)
+        .split('#')
+        .next()
+        .unwrap_or(&normalized)
+        .to_string();
+
+    if normalized.is_empty() {
+        return Err(AppError::Validation("source_path is empty".to_string()));
+    }
+
+    Ok(normalized)
 }
 
 pub(crate) fn save_emoji_favorite_bytes_to_dir(
@@ -103,46 +149,21 @@ pub(crate) fn save_emoji_favorite_bytes_to_dir(
     Ok(target_path.to_string_lossy().to_string())
 }
 
-pub(crate) fn list_emoji_favorite_paths_in_dir(data_dir: &Path) -> AppResult<Vec<String>> {
-    let favorites_dir = data_dir.join("emoji_favorites");
-    if !favorites_dir.exists() {
-        return Ok(Vec::new());
-    }
-
-    let mut paths = Vec::new();
-    for entry in std::fs::read_dir(&favorites_dir).map_err(AppError::from)? {
-        let path = entry.map_err(AppError::from)?.path();
-        if !path.is_file() {
-            continue;
-        }
-        let ext = path.extension().and_then(|s| s.to_str()).unwrap_or("");
-        if normalize_image_ext(ext).is_some() {
-            paths.push(path.to_string_lossy().to_string());
-        }
-    }
-
-    paths.sort();
-    Ok(paths)
-}
-
 #[tauri::command]
 pub async fn save_emoji_favorite(
     app_data: State<'_, AppDataDir>,
     source_path: String,
 ) -> AppResult<String> {
-    let source_path = source_path.trim();
-    if source_path.is_empty() {
-        return Err(AppError::Validation("source_path is empty".to_string()));
-    }
+    let source_path = normalize_emoji_source_path(&source_path)?;
 
-    let ext = match image_ext_from_filename(source_path) {
+    let ext = match image_ext_from_filename(&source_path) {
         Some(ext) => ext,
         None => {
             return Err(AppError::Validation("unsupported file type".to_string()));
         }
     };
 
-    let bytes = std::fs::read(source_path).map_err(AppError::from)?;
+    let bytes = std::fs::read(&source_path).map_err(AppError::from)?;
 
     let data_dir = app_data.0.lock().unwrap().clone();
     save_emoji_favorite_bytes_to_dir(&data_dir, &bytes, ext)
@@ -168,12 +189,6 @@ pub async fn remove_emoji_favorite(app_data: State<'_, AppDataDir>, path: String
     }
 
     Ok(())
-}
-
-#[tauri::command]
-pub fn list_emoji_favorites(app_data: State<'_, AppDataDir>) -> AppResult<Vec<String>> {
-    let data_dir = app_data.0.lock().unwrap().clone();
-    list_emoji_favorite_paths_in_dir(&data_dir)
 }
 
 #[tauri::command]
@@ -223,7 +238,6 @@ pub(crate) async fn save_emoji_favorite_url_to_dir(
     if trimmed.is_empty() {
         return Err(AppError::Validation("url is empty".to_string()));
     }
-
     let parsed = reqwest::Url::parse(trimmed)
         .map_err(|_| AppError::Validation("invalid url".to_string()))?;
     let scheme = parsed.scheme();
@@ -232,9 +246,12 @@ pub(crate) async fn save_emoji_favorite_url_to_dir(
     }
 
     let client = reqwest::Client::builder()
+        .user_agent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
         .redirect(reqwest::redirect::Policy::limited(10))
         .build()
-        .map_err(|e| AppError::Network(e.to_string()))?;
+        .map_err(|e| {
+            AppError::Network(e.to_string())
+        })?;
 
     let response = client
         .get(parsed.clone())
@@ -256,7 +273,6 @@ pub(crate) async fn save_emoji_favorite_url_to_dir(
         .unwrap_or("")
         .to_string();
     let mime = mime.split(';').next().unwrap_or("").trim().to_string();
-
     let bytes = response
         .bytes()
         .await

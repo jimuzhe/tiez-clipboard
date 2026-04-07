@@ -31,29 +31,38 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { ClipboardItemProps } from "../types";
-import { formatSensitivePreview, getConciseTime, getTagColor, getTagTextColor } from "../../../shared/lib/utils";
+import {
+    formatSensitivePreview,
+    getConciseTime,
+    getTagColor,
+    getTagTextColor
+} from "../../../shared/lib/utils";
 import HtmlContent from "../../../shared/components/HtmlContent";
 import { toTauriLocalImageSrc } from "../../../shared/lib/localImageSrc";
 import { getRichTextSnapshotDataUrl } from "../../../shared/lib/richTextSnapshot";
-import { getFileIcon as getFileIconDataUrl, peekFileIcon } from "../../../shared/lib/fileIcon";
+import { getFileIcon as getSystemFileIcon, peekFileIcon } from "../../../shared/lib/fileIcon";
 import { getSourceAppIcon, peekSourceAppIcon } from "../../../shared/lib/sourceAppIcon";
+import { registerCompactPreviewControls } from "../lib/compactPreviewControls";
 
 const COMPACT_PREVIEW_LABEL = "compact-preview";
 const RICH_IMAGE_FALLBACK_PREFIX = "<!--TIEZ_RICH_IMAGE:";
 const RICH_IMAGE_FALLBACK_SUFFIX = "-->";
 const TABULAR_RICH_HTML_RE = /<(table|tr|td|th|thead|tbody|tfoot|colgroup|col)\b/i;
 const SPREADSHEET_SOURCE_RE = /\b(excel|et|wps|sheet|spreadsheet|calc)\b/i;
-const SPREADSHEET_EXECUTABLE_RE = /(?:^|[\\/])(excel|et|wps|wpssheet|soffice)\.exe$/i;
+const SPREADSHEET_APP_RE = /(?:^|[\\/])(excel|et|wps|wpssheet|soffice)(?:\.exe|\.app)?$/i;
 const STANDALONE_COLOR_RE = /^(#(?:[0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})|(?:rgb|hsl)a?\(\s*[^)]+\s*\))$/i;
 const COMPACT_PREVIEW_DEBUG = false;
-const RICH_PREVIEW_DEBUG = import.meta.env.DEV;
+const IS_MACOS =
+    typeof navigator !== "undefined" &&
+    (/Mac|iPhone|iPad|iPod/i.test(navigator.userAgent) || /Mac/i.test(navigator.platform));
+const COMPACT_PREVIEW_WINDOW_SUPPORTED = true;
+const COMPACT_PREVIEW_WARMUP_SUPPORTED = !IS_MACOS;
 const compactPreviewLog = (...args: unknown[]) => {
     if (!COMPACT_PREVIEW_DEBUG) return;
     const ts = new Date().toISOString();
     console.log(`[CompactPreview][Main][${ts}]`, ...args);
 };
 const richPreviewFailureLog = (stage: string, detail?: Record<string, unknown>) => {
-    if (!RICH_PREVIEW_DEBUG) return;
     console.warn("[RichTextPreview][MainList]", stage, detail || {});
 };
 type CompactPreviewAnchor = {
@@ -105,7 +114,7 @@ const isSpreadsheetLikeSource = (...candidates: Array<string | undefined>): bool
     return candidates.some((candidate) => {
         const value = (candidate || "").trim();
         if (!value) return false;
-        return SPREADSHEET_EXECUTABLE_RE.test(value) || SPREADSHEET_SOURCE_RE.test(value);
+        return SPREADSHEET_APP_RE.test(value) || SPREADSHEET_SOURCE_RE.test(value);
     });
 };
 
@@ -137,7 +146,7 @@ const loadWebviewWindowModule = async () => import("@tauri-apps/api/webviewWindo
 
 const setIgnoreBlurSafe = (ignore: boolean) => {
     compactPreviewLog("set_ignore_blur", { ignore });
-    invoke("set_ignore_blur", { ignore }).catch(() => {});
+    invoke("set_ignore_blur", { ignore }).catch(() => { });
 };
 
 const clearCompactPreviewPendingState = () => {
@@ -272,11 +281,11 @@ const placeAndShowPendingCompactPreview = async (
     const avoidRect =
         mainOuter && mainSize
             ? {
-                  left: mainOuter.x,
-                  top: mainOuter.y,
-                  right: mainOuter.x + mainSize.width,
-                  bottom: mainOuter.y + mainSize.height
-              }
+                left: mainOuter.x,
+                top: mainOuter.y,
+                right: mainOuter.x + mainSize.width,
+                bottom: mainOuter.y + mainSize.height
+            }
             : null;
 
     const target = pickPreviewPosition(
@@ -306,12 +315,15 @@ const placeAndShowPendingCompactPreview = async (
         await compactPreviewWindow.setPosition(new PhysicalPosition(target.x, target.y));
         await compactPreviewWindow.show();
         // Force top-most z-order refresh so preview is not occluded by the main top-most window.
-        try {
-            await compactPreviewWindow.setAlwaysOnTop(false);
-            await compactPreviewWindow.setAlwaysOnTop(true);
-            compactPreviewLog("refresh always-on-top stacking done");
-        } catch (stackErr) {
-            compactPreviewLog("refresh always-on-top stacking failed", stackErr);
+        // macOS skips this toggle because frequent style-mask sync can cause UI stalls.
+        if (!IS_MACOS) {
+            try {
+                await compactPreviewWindow.setAlwaysOnTop(false);
+                await compactPreviewWindow.setAlwaysOnTop(true);
+                compactPreviewLog("refresh always-on-top stacking done");
+            } catch (stackErr) {
+                compactPreviewLog("refresh always-on-top stacking failed", stackErr);
+            }
         }
         const visible = await compactPreviewWindow.isVisible().catch(() => null);
         compactPreviewLog("preview window shown", { visible, target });
@@ -346,6 +358,10 @@ const hideCompactPreviewGlobal = async () => {
         compactPreviewMounted = false;
         compactPreviewMountedPromise = null;
     }
+};
+
+const forceHideCompactPreviewWindow = () => {
+    void hideCompactPreviewGlobal();
 };
 
 const seekVideoPreviewFrame = (video: HTMLVideoElement | null) => {
@@ -465,10 +481,10 @@ const tryReuseExistingCompactPreviewWindow = async (): Promise<WebviewWindow | n
         compactPreviewMountedPromise = Promise.resolve(true);
         try {
             await existing.setIgnoreCursorEvents(true);
-        } catch {}
+        } catch { }
         try {
             await existing.setAlwaysOnTop(true);
-        } catch {}
+        } catch { }
         return existing;
     } catch (err) {
         compactPreviewLog("reuse compact preview window by label failed", err);
@@ -477,6 +493,7 @@ const tryReuseExistingCompactPreviewWindow = async (): Promise<WebviewWindow | n
 };
 
 const ensureCompactPreviewWindow = async (): Promise<WebviewWindow | null> => {
+    if (!COMPACT_PREVIEW_WINDOW_SUPPORTED) return null;
     if (compactPreviewWindow) {
         compactPreviewMounted = true;
         compactPreviewMountedPromise = Promise.resolve(true);
@@ -561,6 +578,31 @@ const ensureCompactPreviewWindow = async (): Promise<WebviewWindow | null> => {
     return compactPreviewReady;
 };
 
+/**
+ * Pre-warm the compact preview window so it's ready before the user hovers.
+ * On macOS we deliberately skip warmup to reduce startup-time UI stalls.
+ */
+const warmupCompactPreviewWindow = () => {
+    if (!COMPACT_PREVIEW_WINDOW_SUPPORTED || !COMPACT_PREVIEW_WARMUP_SUPPORTED) return;
+    // Only warm up if not already created/creating
+    if (compactPreviewWindow || compactPreviewCreating || compactPreviewReady) return;
+    compactPreviewLog("warmup: pre-creating compact preview window");
+    // Fire and forget - creates the window in the background
+    ensureCompactPreviewWindow().catch((err) => {
+        compactPreviewLog("warmup: failed", err);
+    });
+};
+
+const isCompactPreviewWindowSupported = () => COMPACT_PREVIEW_WINDOW_SUPPORTED;
+const isCompactPreviewWarmupSupported = () => COMPACT_PREVIEW_WARMUP_SUPPORTED;
+
+registerCompactPreviewControls({
+    forceHide: forceHideCompactPreviewWindow,
+    warmup: warmupCompactPreviewWindow,
+    supported: isCompactPreviewWindowSupported,
+    warmupSupported: isCompactPreviewWarmupSupported,
+});
+
 const getIcon = (type: string) => {
     switch (type) {
         case "text": return <FileText size={14} />;
@@ -637,7 +679,6 @@ const getFallbackFileIcon = (filePath: string) => {
 const ClipboardItem = ({
     item,
     isSelected,
-    windowPinned,
     isSensitiveHidden,
     isRevealed,
     isEditingTags,
@@ -645,7 +686,6 @@ const ClipboardItem = ({
     theme,
     language,
     t,
-    quickPasteHint,
     isAIProcessing,
     onSelect,
     onCopy,
@@ -668,12 +708,14 @@ const ClipboardItem = ({
     sensitiveMaskPrefixVisible = 3,
     sensitiveMaskSuffixVisible = 3,
     sensitiveMaskEmailDomain = false,
+    quickPasteHint,
     dragControls,
     id,
     compactMode,
     className,
     disableLayout
 }: ClipboardItemProps & { compactMode?: boolean, className?: string }) => {
+    const itemRef = useRef<HTMLDivElement | null>(null);
     const tagInputRef = useRef<HTMLInputElement>(null);
     const [localTagInput, setLocalTagInput] = useState(tagInput);
     const [localAiOptionsOpen, setLocalAiOptionsOpen] = useState(!!aiOptionsOpen);
@@ -681,7 +723,7 @@ const ClipboardItem = ({
     const [richImageFallbackFailed, setRichImageFallbackFailed] = useState(false);
     const [sourceAppIcon, setSourceAppIcon] = useState<string | null>(() => peekSourceAppIcon(item.source_app_path) ?? null);
     const filePaths = useMemo(
-        () => item.content_type === "file" ? item.content.split('\n').filter(path => path.trim()) : [],
+        () => item.content_type === "file" ? item.content.split('\n').filter((p) => p.trim()) : [],
         [item.content, item.content_type]
     );
     const singleFilePath = filePaths.length === 1 ? filePaths[0] : null;
@@ -691,6 +733,7 @@ const ClipboardItem = ({
     const richSnapshotFallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const hoverAnchorRef = useRef<CompactPreviewAnchor | null>(null);
+    const hoverRequestIdRef = useRef(0);
     const richTextFallback = item.content_type === "rich_text" && item.html_content
         ? (() => {
             const { cleanHtml, imagePayload } = extractRichImageFallback(item.html_content);
@@ -701,18 +744,23 @@ const ClipboardItem = ({
             };
         })()
         : null;
-    const richTextCleanHtml = richTextFallback?.cleanHtml || item.html_content || "";
-    const richTextSnapshotDisplayMaxHeight = compactMode ? 40 : 64;
-    const richTextSnapshotRenderMaxHeight = compactMode ? 100 : 200;
-    const canShowCompactPreview = compactMode && item.content_type !== "file";
     const sensitivePreview = useMemo(
         () => formatSensitivePreview(item.content, item.content_type, {
             prefixVisible: sensitiveMaskPrefixVisible,
             suffixVisible: sensitiveMaskSuffixVisible,
             maskEmailDomain: sensitiveMaskEmailDomain,
         }),
-        [item.content, item.content_type, sensitiveMaskPrefixVisible, sensitiveMaskSuffixVisible, sensitiveMaskEmailDomain]
+        [
+            item.content,
+            item.content_type,
+            sensitiveMaskPrefixVisible,
+            sensitiveMaskSuffixVisible,
+            sensitiveMaskEmailDomain
+        ]
     );
+    const richTextCleanHtml = richTextFallback?.cleanHtml || item.html_content || "";
+    const richTextSnapshotDisplayMaxHeight = compactMode ? 40 : 64;
+    const richTextSnapshotRenderMaxHeight = compactMode ? 100 : 200;
     const spreadsheetLikeRichSource = item.content_type === "rich_text"
         && !!item.html_content
         && isSpreadsheetLikeSource(item.source_app, item.source_app_path);
@@ -753,10 +801,6 @@ const ClipboardItem = ({
     const effectiveRichImageFallbackSrc = !richImageFallbackFailed
         ? (richTextFallback?.imageSrc || null)
         : null;
-    // For tabular/spreadsheet sources, prefer the real clipboard bitmap image
-    // (same image you see when pasting Excel into WeChat) over the generated SVG snapshot.
-    // For animated GIFs, always prefer the image fallback.
-    // For other rich text, prefer the SVG snapshot for consistency.
     const preferImageFallbackForTabular = (
         richHtmlLooksTabular(richTextCleanHtml) || spreadsheetLikeRichSource
     ) && !!effectiveRichImageFallbackSrc;
@@ -770,9 +814,6 @@ const ClipboardItem = ({
     const visibleTagCount = item.tags?.length || 0;
     const hasTagsSection = visibleTagCount > 0 || isEditingTags;
     const overlayTagsInPreview = !compactMode && !isEditingTags && visibleTagCount > 0;
-    const quickPasteTitle = quickPasteHint
-        ? `${t('quick_paste_modifier')}: ${quickPasteHint.combo}`
-        : undefined;
     const standaloneColorValue = useMemo(
         () => getStandaloneColorValue(item.content_type, item.content),
         [item.content, item.content_type]
@@ -782,6 +823,13 @@ const ClipboardItem = ({
         let cancelled = false;
         const sourceAppPath = item.source_app_path?.trim();
         const cachedIcon = peekSourceAppIcon(sourceAppPath);
+
+        if (!showSourceAppIcon) {
+            setSourceAppIcon(null);
+            return () => {
+                cancelled = true;
+            };
+        }
 
         if (cachedIcon !== undefined) {
             setSourceAppIcon(cachedIcon ?? null);
@@ -806,11 +854,18 @@ const ClipboardItem = ({
         return () => {
             cancelled = true;
         };
-    }, [item.source_app_path]);
+    }, [item.source_app_path, showSourceAppIcon]);
 
     useEffect(() => {
         let cancelled = false;
         const cachedIcon = peekFileIcon(singleFilePath);
+
+        if (item.content_type !== "file" || item.file_preview_exists === false || !singleFilePath) {
+            setFileIcon(null);
+            return () => {
+                cancelled = true;
+            };
+        }
 
         if (cachedIcon !== undefined) {
             setFileIcon(cachedIcon ?? null);
@@ -820,13 +875,7 @@ const ClipboardItem = ({
         }
 
         setFileIcon(null);
-        if (item.content_type !== "file" || item.file_preview_exists === false || !singleFilePath) {
-            return () => {
-                cancelled = true;
-            };
-        }
-
-        getFileIconDataUrl(singleFilePath).then((icon) => {
+        getSystemFileIcon(singleFilePath).then((icon) => {
             if (!cancelled) {
                 setFileIcon(icon);
             }
@@ -837,25 +886,87 @@ const ClipboardItem = ({
         };
     }, [item.content_type, item.file_preview_exists, singleFilePath]);
 
+    const compactPreviewEnabled =
+        compactMode &&
+        COMPACT_PREVIEW_WINDOW_SUPPORTED &&
+        item.content_type !== "file";
+
+    const isHoverPreviewRequestCurrent = (requestId: number) => {
+        const node = itemRef.current;
+        return (
+            hoverRequestIdRef.current === requestId &&
+            !!hoverAnchorRef.current &&
+            !!node &&
+            node.isConnected &&
+            node.matches(":hover")
+        );
+    };
+
+    const cancelHoverPreview = () => {
+        hoverRequestIdRef.current += 1;
+        if (hoverTimerRef.current) {
+            clearTimeout(hoverTimerRef.current);
+            hoverTimerRef.current = null;
+        }
+        hoverAnchorRef.current = null;
+    };
+
     const hideCompactPreview = async () => {
+        cancelHoverPreview();
         await hideCompactPreviewGlobal();
     };
 
-    const showCompactPreview = async (anchor: CompactPreviewAnchor) => {
+    const showCompactPreview = async (anchor: CompactPreviewAnchor, requestId: number) => {
+        if (!compactPreviewEnabled) return;
+        if (!isHoverPreviewRequestCurrent(requestId)) {
+            compactPreviewLog("show preview aborted: stale hover request before start", {
+                itemId: item.id,
+                requestId
+            });
+            return;
+        }
         compactPreviewLog("show preview requested", {
             itemId: item.id,
             contentType: item.content_type,
             anchor
         });
         let previewWindow = await ensureCompactPreviewWindow();
+        if (!isHoverPreviewRequestCurrent(requestId)) {
+            compactPreviewLog("show preview aborted: stale hover request after ensure window", {
+                itemId: item.id,
+                requestId
+            });
+            return;
+        }
         if (!previewWindow) {
             compactPreviewLog("show preview aborted: window unavailable");
             return;
         }
         await ensureCompactPreviewLifecycleListeners();
+        if (!isHoverPreviewRequestCurrent(requestId)) {
+            compactPreviewLog("show preview aborted: stale hover request after lifecycle listeners", {
+                itemId: item.id,
+                requestId
+            });
+            return;
+        }
         await ensureCompactPreviewResizeListener();
+        if (!isHoverPreviewRequestCurrent(requestId)) {
+            compactPreviewLog("show preview aborted: stale hover request after resize listener", {
+                itemId: item.id,
+                requestId
+            });
+            return;
+        }
         compactPreviewLog("preview listeners ready");
         const mounted = await waitForCompactPreviewMounted();
+        if (!isHoverPreviewRequestCurrent(requestId)) {
+            compactPreviewLog("show preview aborted: stale hover request after mounted wait", {
+                itemId: item.id,
+                requestId
+            });
+            return;
+        }
         compactPreviewLog("mounted state before emit", { mounted });
         if (!mounted) {
             compactPreviewLog("mounted wait returned false; continue with fallback timer");
@@ -877,6 +988,13 @@ const ClipboardItem = ({
                 : undefined;
             const colorMode = document.documentElement.classList.contains("dark-mode") ? "dark" : "light";
 
+            if (!isHoverPreviewRequestCurrent(requestId)) {
+                compactPreviewLog("show preview aborted: stale hover request before emit", {
+                    itemId: item.id,
+                    requestId
+                });
+                return;
+            }
             compactPreviewPendingShow = true;
             compactPreviewPendingAnchor = anchor;
             compactPreviewLog("emit compact-preview-update", {
@@ -923,6 +1041,13 @@ const ClipboardItem = ({
                 compactPreviewMounted = false;
                 compactPreviewMountedPromise = null;
                 previewWindow = await ensureCompactPreviewWindow();
+                if (!isHoverPreviewRequestCurrent(requestId)) {
+                    compactPreviewLog("show preview aborted: stale hover request after recreate", {
+                        itemId: item.id,
+                        requestId
+                    });
+                    return;
+                }
                 if (!previewWindow) return;
                 try {
                     compactPreviewPendingShow = true;
@@ -1024,15 +1149,14 @@ const ClipboardItem = ({
     }, [isEditingTags]);
 
     useEffect(() => {
-        if (!canShowCompactPreview) {
-            hideCompactPreview();
+        if (!compactPreviewEnabled) {
+            void hideCompactPreview();
         }
-    }, [canShowCompactPreview]);
+    }, [compactPreviewEnabled]);
 
     useEffect(() => {
         return () => {
-            if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
-            hoverAnchorRef.current = null;
+            cancelHoverPreview();
             void hideCompactPreviewGlobal();
         };
     }, []);
@@ -1067,16 +1191,30 @@ const ClipboardItem = ({
         }
 
         const filePath = filePaths[0];
+        if (!filePath) {
+            return (
+                <div className="file-thumbnail-card" title={item.content}>
+                    <div className="file-icon-wrapper">
+                        <File size={24} />
+                    </div>
+                    <div className="file-info-wrapper">
+                        <div className="file-name">{t('file') || "File"}</div>
+                        <div className="file-hint">{item.content}</div>
+                    </div>
+                </div>
+            );
+        }
+
         const fileName = filePath.split(/[\\/]/).pop();
         const dirPath = filePath.split(/[\\/]/).slice(0, -1).join('\\');
 
         return (
             <div className="file-thumbnail-card" title={item.content}>
-                <div className={`file-icon-wrapper ${fileIcon ? 'file-icon-wrapper-system' : ''}`}>
+                <div className={`file-icon-wrapper${fileIcon ? " file-icon-wrapper-system" : ""}`}>
                     {fileIcon ? (
                         <img
                             src={fileIcon}
-                            alt=""
+                            alt={`${fileName || "file"} icon`}
                             className="file-icon-image"
                             loading="lazy"
                         />
@@ -1102,8 +1240,9 @@ const ClipboardItem = ({
                 justifyContent: 'flex-end',
                 gap: '4px',
                 paddingTop: '0'
-            }}>
-            {item.tags?.map(tag => {
+            }}
+        >
+            {item.tags?.map((tag) => {
                 const tagBackground = tagColors?.[tag] || getTagColor(tag, theme);
                 const tagTextColor = getTagTextColor(tagBackground);
                 return (
@@ -1179,7 +1318,7 @@ const ClipboardItem = ({
                             width: '60px',
                             outline: 'none'
                         }}
-                        onClick={e => e.stopPropagation()}
+                        onClick={(e) => e.stopPropagation()}
                     />
                     <button
                         onClick={(e) => {
@@ -1198,6 +1337,7 @@ const ClipboardItem = ({
 
     return (
         <motion.div
+            ref={itemRef}
             id={id}
             data-test-clipboard-item
             layout={!disableLayout}
@@ -1205,50 +1345,58 @@ const ClipboardItem = ({
             animate={{ marginBottom: 0 }}
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.1 }}
-            className={`history-item ${isSelected ? "selected" : ""} ${compactMode ? "compact" : ""} ${item.is_pinned ? "pinned" : ""} ${item.content_type === 'file' ? 'file-item' : ''} ${className || ''}`}
+            className={`history-item ${isSelected ? "selected" : ""} ${compactMode ? "compact" : ""} ${item.is_pinned ? "pinned" : ""} ${className || ''}`}
             onMouseDown={(e) => {
-                if (!windowPinned) return;
                 const target = e.target as HTMLElement;
+                if (e.button !== 0) return;
                 if (target.closest('button, input, textarea, [role="button"], .drag-handle')) {
                     return;
                 }
                 if (target.closest('a')) {
                     return;
                 }
-                // Removed e.preventDefault() to allow blur of search box
+                // e.preventDefault() stops macOS from transferring key-window focus to TieZ
+                // when the user clicks on a clipboard item, including pinned mode.
+                // Without this, the first click activates TieZ and the original input
+                // target loses focus before we dispatch the paste keystroke.
+                e.preventDefault();
+                void hideCompactPreview();
+                onCopy(false); // Plain text by default
+                onSelect();
             }}
             onClick={(e) => {
                 const target = e.target as HTMLElement;
                 if (target.closest('button') || target.closest('input') || target.closest('textarea')) {
                     return;
                 }
-                void hideCompactPreviewGlobal();
                 // Prevent link navigation - we want to copy, not open links
                 if (target.closest('a')) {
                     e.preventDefault();
                 }
-                onCopy(false); // Plain text by default for click
-                onSelect();
+                // Copy is handled on mousedown so the source app keeps focus.
             }}
             onContextMenu={(e) => {
                 const target = e.target as HTMLElement;
                 if (target.closest('button') || target.closest('input') || target.closest('textarea')) {
                     return;
                 }
-                void hideCompactPreviewGlobal();
+                void hideCompactPreview();
                 e.preventDefault();
                 // Prevent link navigation on right-click too
                 if (target.closest('a')) {
                     e.stopPropagation();
                 }
                 onCopy(true); // Formatted text for right-click
+
                 onSelect();
             }}
             onMouseEnter={(e) => {
-                if (!canShowCompactPreview) return;
+                if (!compactPreviewEnabled) return;
                 // Don't show preview if AI options are open to avoid interference
                 if (showAIOptions) return;
                 compactPreviewLog("mouseenter schedule preview", { itemId: item.id });
+                const requestId = hoverRequestIdRef.current + 1;
+                hoverRequestIdRef.current = requestId;
                 hoverAnchorRef.current = {
                     clientX: e.clientX,
                     clientY: e.clientY,
@@ -1262,17 +1410,19 @@ const ClipboardItem = ({
 
                 // Set a delay to show
                 hoverTimerRef.current = setTimeout(() => {
+                    hoverTimerRef.current = null;
                     // Double-check AI options are still closed before showing
                     if (showAIOptions) return;
                     if (!target.isConnected) return;
+                    if (!isHoverPreviewRequestCurrent(requestId)) return;
                     const anchor = hoverAnchorRef.current;
                     if (!anchor) return;
                     compactPreviewLog("mouseenter timer fired, show preview", { itemId: item.id });
-                    showCompactPreview(anchor);
+                    void showCompactPreview(anchor, requestId);
                 }, 1000); // 1s delay
             }}
             onMouseMove={(e) => {
-                if (!canShowCompactPreview) return;
+                if (!compactPreviewEnabled) return;
                 hoverAnchorRef.current = {
                     clientX: e.clientX,
                     clientY: e.clientY,
@@ -1281,10 +1431,8 @@ const ClipboardItem = ({
                 };
             }}
             onMouseLeave={() => {
-                if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
-                hoverAnchorRef.current = null;
                 compactPreviewLog("mouseleave hide preview", { itemId: item.id });
-                hideCompactPreview();
+                void hideCompactPreview();
             }}
         >
             <div className="item-meta">
@@ -1346,7 +1494,7 @@ const ClipboardItem = ({
                         >
                             <Tag size={12} />
                         </button>
-                        {(item.content_type === 'text' || item.content_type === 'rich_text' || item.content_type === 'code' || item.content_type === 'url' || item.content_type === 'markdown') && aiEnabled && (
+                        {(item.content_type === 'text' || item.content_type === 'rich_text') && aiEnabled && (
                             <button
                                 className={`btn-icon ai-btn ${isAIProcessing || showAIOptions ? 'active' : ''}`}
                                 onClick={(e) => {
@@ -1370,25 +1518,28 @@ const ClipboardItem = ({
                         </button>
                     </div>
                     <div className="item-meta-right-info">
-                        {!item.is_pinned && <span className="meta-time">{getConciseTime(item.timestamp, language)}</span>}
-                        {quickPasteHint && (
-                            <span className="quick-paste-hint" title={quickPasteTitle}>
+                        {quickPasteHint && item.is_pinned && (
+                            <span
+                                className="quick-paste-hint"
+                                title={`${t('quick_paste_modifier')}: ${quickPasteHint.combo}`}
+                            >
                                 {quickPasteHint.combo}
                             </span>
                         )}
+                        <span>{getConciseTime(item.timestamp, language)}</span>
                     </div>
                 </div>
             </div>
 
-            {compactMode && item.is_pinned && (
-                <div className="compact-pinned-indicator" title={t('pinned')}>
-                    <Pin size={10} fill="currentColor" />
-                </div>
-            )}
+            {
+                compactMode && item.is_pinned && (
+                    <div className="compact-pinned-indicator" title={t('pinned')}>
+                        <Pin size={10} fill="currentColor" />
+                    </div>
+                )
+            }
             <div className={`content-preview-shell${overlayTagsInPreview ? ' has-overlay-tags' : ''}`}>
-                <div
-                    className={`content-preview ${item.content_type === 'rich_text' ? 'rich-text' : ''} ${item.content_type === 'file' ? 'file-preview' : ''} ${isSensitiveHidden ? 'sensitive-blur' : ''}`}
-                >
+                <div className={`content-preview ${item.content_type === 'rich_text' ? 'rich-text' : ''} ${item.content_type === 'file' ? 'file-preview' : ''} ${isSensitiveHidden ? 'sensitive-blur' : ''}`}>
                 {item.content_type === "image" ? (
                     <div style={{ position: 'relative' }}>
                         {item.is_external && item.file_preview_exists === false ? (
@@ -1565,7 +1716,7 @@ const ClipboardItem = ({
                         : item.preview
                 )}
                 {overlayTagsInPreview && renderTagsContainer(true)}
-            </div>
+                </div>
             </div>
 
             {/* AI Options - Compact Mode: Dropdown Panel, Normal Mode: Inline */}
@@ -1645,7 +1796,7 @@ const ClipboardItem = ({
             </AnimatePresence>
 
             {!overlayTagsInPreview && hasTagsSection && renderTagsContainer()}
-        </motion.div>
+        </motion.div >
     );
 };
 
@@ -1663,7 +1814,6 @@ export default memo(ClipboardItem, (prevProps, nextProps) => {
         prevProps.item.is_external === nextProps.item.is_external &&
         prevProps.item.file_preview_exists === nextProps.item.file_preview_exists &&
         prevProps.item.tags === nextProps.item.tags &&
-        prevProps.quickPasteHint?.combo === nextProps.quickPasteHint?.combo &&
         prevProps.isRevealed === nextProps.isRevealed &&
         prevProps.isEditingTags === nextProps.isEditingTags &&
         prevProps.isAIProcessing === nextProps.isAIProcessing &&
@@ -1671,10 +1821,10 @@ export default memo(ClipboardItem, (prevProps, nextProps) => {
         prevProps.aiEnabled === nextProps.aiEnabled &&
         prevProps.richTextSnapshotPreview === nextProps.richTextSnapshotPreview &&
         prevProps.showSourceAppIcon === nextProps.showSourceAppIcon &&
+        prevProps.quickPasteHint?.slot === nextProps.quickPasteHint?.slot &&
+        prevProps.quickPasteHint?.combo === nextProps.quickPasteHint?.combo &&
         prevProps.compactMode === nextProps.compactMode &&
         prevProps.theme === nextProps.theme &&
         prevProps.language === nextProps.language &&
         prevProps.tagInput === nextProps.tagInput;
 });
-
-

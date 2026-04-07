@@ -59,7 +59,7 @@ export const extractRenderableHtmlFragment = (html: string): string => {
 };
 
 export const stripOfficePreviewNoise = (html: string): string => {
-  let processed = repairHtmlFragment(html || "");
+  let processed = extractRenderableHtmlFragment(html || "");
   if (!processed) {
     return processed;
   }

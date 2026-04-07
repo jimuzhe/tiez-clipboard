@@ -5,18 +5,30 @@ import type { AiProfile, AppCleanupPolicy } from "../../features/settings/types"
 import type { QuickPasteModifier } from "../../features/app/types";
 
 const DEFAULT_AI_KEY = import.meta.env.VITE_AI_DEFAULT_API_KEY ?? "";
-const AI_PRESET_IDS = new Set(["lc_flash_v1", "lc_think_v1", "lc_think_2601_v1"]);
+const QUICK_PASTE_MODIFIERS = new Set<QuickPasteModifier>([
+  "disabled",
+  "ctrl",
+  "alt",
+  "shift",
+  "win"
+]);
 
-const normalizeQuickPasteModifier = (value: string | undefined): QuickPasteModifier => {
-  switch ((value || "").toLowerCase()) {
-    case "disabled":
-    case "ctrl":
-    case "alt":
-    case "shift":
-    case "win":
-      return value!.toLowerCase() as QuickPasteModifier;
+const normalizeQuickPasteModifier = (value?: string): QuickPasteModifier => {
+  const normalized = value?.trim().toLowerCase();
+
+  switch (normalized) {
+    case "control":
+      return "ctrl";
+    case "option":
+      return "alt";
+    case "command":
+    case "meta":
+    case "super":
+      return "win";
     default:
-      return "disabled";
+      return normalized && QUICK_PASTE_MODIFIERS.has(normalized as QuickPasteModifier)
+        ? (normalized as QuickPasteModifier)
+        : "disabled";
   }
 };
 
@@ -42,19 +54,18 @@ interface UseSettingsPostInitOptions {
   setCleanupRules: (val: string) => void;
   setAppCleanupPolicies: (val: AppCleanupPolicy[]) => void;
   setSilentStart: (val: boolean) => void;
-  setFollowMouse: (val: boolean) => void;
-  setShowAppBorder: (val: boolean) => void;
   setShowSourceAppIcon: (val: boolean) => void;
+
   setDeleteAfterPaste: (val: boolean) => void;
   setMoveToTopAfterPaste: (val: boolean) => void;
   setHideTrayIcon: (val: boolean) => void;
+  setHideDockIcon: (val: boolean) => void;
   setEdgeDocking: (val: boolean) => void;
   setShowSearchBox: (val: boolean) => void;
   setScrollTopButtonEnabled: (val: boolean) => void;
   setArrowKeySelection: (val: boolean) => void;
   setMqttEnabled: (val: boolean) => void;
   setMqttServer: (val: string) => void;
-  setRegistryWinVEnabled: (val: boolean) => void;
   setMqttPort: (val: string) => void;
   setMqttUser: (val: string) => void;
   setMqttPass: (val: string) => void;
@@ -83,9 +94,8 @@ interface UseSettingsPostInitOptions {
   setQuickPasteModifier: (val: QuickPasteModifier) => void;
   setSequentialModeState: (val: boolean) => void;
   setSoundEnabled: (val: boolean) => void;
-  setSoundVolume: (val: number) => void;
   setPasteSoundEnabled: (val: boolean) => void;
-  setPasteMethod: (val: string) => void;
+  setSoundVolume: (val: number) => void;
   setAiEnabled: (val: boolean) => void;
   setAiTargetLang: (val: string) => void;
   setAiThinkingBudget: (val: string) => void;
@@ -125,19 +135,18 @@ export const useSettingsPostInit = ({
   setCleanupRules,
   setAppCleanupPolicies,
   setSilentStart,
-  setFollowMouse,
-  setShowAppBorder,
   setShowSourceAppIcon,
+
   setDeleteAfterPaste,
   setMoveToTopAfterPaste,
   setHideTrayIcon,
+  setHideDockIcon,
   setEdgeDocking,
   setShowSearchBox,
   setScrollTopButtonEnabled,
   setArrowKeySelection,
   setMqttEnabled,
   setMqttServer,
-  setRegistryWinVEnabled,
   setMqttPort,
   setMqttUser,
   setMqttPass,
@@ -166,9 +175,8 @@ export const useSettingsPostInit = ({
   setQuickPasteModifier,
   setSequentialModeState,
   setSoundEnabled,
-  setSoundVolume,
   setPasteSoundEnabled,
-  setPasteMethod,
+  setSoundVolume,
   setAiEnabled,
   setAiTargetLang,
   setAiThinkingBudget,
@@ -297,14 +305,14 @@ export const useSettingsPostInit = ({
       }
     }
     setSilentStart(settings["app.silent_start"] !== "false");
-    setFollowMouse(settings["app.follow_mouse"] !== "false");
-    setShowAppBorder(settings["app.show_app_border"] !== "false");
     setShowSourceAppIcon(settings["app.show_source_app_icon"] !== "false");
+
 
     // These have false as default, so check for 'true'
     setDeleteAfterPaste(settings["app.delete_after_paste"] === "true");
     setMoveToTopAfterPaste(settings["app.move_to_top_after_paste"] !== "false");
     setHideTrayIcon(settings["app.hide_tray_icon"] === "true");
+    setHideDockIcon(settings["app.hide_dock_icon"] === "true");
     const edgeDockingEnabled = settings["app.edge_docking"] === "true";
     setEdgeDocking(edgeDockingEnabled);
 
@@ -315,7 +323,6 @@ export const useSettingsPostInit = ({
     setMqttEnabled(settings["mqtt_enabled"] === "true");
     setMqttServer(settings["mqtt_server"] || "");
 
-    setRegistryWinVEnabled(settings["app.use_win_v_shortcut"] === "true");
     setMqttPort(settings["mqtt_port"] || "1883");
     setMqttUser(settings["mqtt_username"] || "");
     setMqttPass(settings["mqtt_password"] || "");
@@ -346,14 +353,10 @@ export const useSettingsPostInit = ({
     setQuickPasteModifier(normalizeQuickPasteModifier(settings["app.quick_paste_modifier"]));
     if (settings["app.sequential_mode"] === "true") setSequentialModeState(true);
     if (settings["app.sound_enabled"] === "true") setSoundEnabled(true);
-    if (settings["app.sound_volume"]) {
-      const next = parseInt(settings["app.sound_volume"], 10);
-      if (Number.isFinite(next)) {
-        setSoundVolume(Math.min(100, Math.max(0, next)));
-      }
-    }
     setPasteSoundEnabled(settings["app.sound_paste_enabled"] !== "false");
-    if (settings["app.paste_method"]) setPasteMethod(settings["app.paste_method"]);
+    if (settings["app.sound_volume"]) {
+      setSoundVolume(parseFloat(settings["app.sound_volume"]) || 1.0);
+    }
     if (settings["ai_enabled"]) setAiEnabled(settings["ai_enabled"] === "true");
     if (settings["ai_target_lang"]) setAiTargetLang(settings["ai_target_lang"]);
     if (settings["ai_thinking_budget"]) setAiThinkingBudget(settings["ai_thinking_budget"]);
@@ -394,35 +397,19 @@ export const useSettingsPostInit = ({
       try {
         const parsed = JSON.parse(settings["ai_profiles"]);
         if (Array.isArray(parsed)) {
-          finalProfiles = parsed
-            .filter(
-              (p): p is AiProfile =>
-                !!p &&
-                typeof p === "object" &&
-                typeof p.id === "string" &&
-                typeof p.baseUrl === "string" &&
-                typeof p.apiKey === "string" &&
-                typeof p.model === "string" &&
-                typeof p.enableThinking === "boolean"
-            )
-            .map((profile) => {
-              if (!DEFAULT_AI_KEY || !AI_PRESET_IDS.has(profile.id) || profile.apiKey.trim()) {
-                return profile;
-              }
-              return {
-                ...profile,
-                apiKey: DEFAULT_AI_KEY,
-              };
-            });
+          finalProfiles = parsed.filter(
+            (p): p is AiProfile =>
+              !!p &&
+              typeof p === "object" &&
+              typeof p.id === "string" &&
+              typeof p.baseUrl === "string" &&
+              typeof p.apiKey === "string" &&
+              typeof p.model === "string" &&
+              typeof p.enableThinking === "boolean"
+          );
         }
       } catch (e) {
         console.error(e);
-      }
-      if (DEFAULT_AI_KEY && JSON.stringify(finalProfiles) !== settings["ai_profiles"]) {
-        invoke("save_setting", {
-          key: "ai_profiles",
-          value: JSON.stringify(finalProfiles)
-        }).catch(console.error);
       }
     } else {
       // First time initialization
@@ -462,31 +449,28 @@ export const useSettingsPostInit = ({
     setPrivacyProtection,
     setPrivacyProtectionKinds,
     setPrivacyProtectionCustomRules,
-    setSensitiveMaskPrefixVisible,
-    setSensitiveMaskSuffixVisible,
-    setSensitiveMaskEmailDomain,
     setCleanupRules,
     setAppCleanupPolicies,
     setSilentStart,
-    setFollowMouse,
-    setShowAppBorder,
     setShowSourceAppIcon,
+
     setDeleteAfterPaste,
     setMoveToTopAfterPaste,
     setHideTrayIcon,
+    setHideDockIcon,
     setEdgeDocking,
     setShowSearchBox,
     setScrollTopButtonEnabled,
     setArrowKeySelection,
     setMqttEnabled,
     setMqttServer,
-    setRegistryWinVEnabled,
     setMqttPort,
     setMqttUser,
     setMqttPass,
     setMqttTopic,
     setMqttProtocol,
     setMqttWsPath,
+    setMqttNotificationEnabled,
     setCloudSyncEnabled,
     setCloudSyncAuto,
     setCloudSyncProvider,
@@ -508,9 +492,8 @@ export const useSettingsPostInit = ({
     setQuickPasteModifier,
     setSequentialModeState,
     setSoundEnabled,
-    setSoundVolume,
     setPasteSoundEnabled,
-    setPasteMethod,
+    setSoundVolume,
     setAiEnabled,
     setAiTargetLang,
     setAiThinkingBudget,

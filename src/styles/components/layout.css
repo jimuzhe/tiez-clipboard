@@ -11,16 +11,6 @@ header {
   cursor: default;
 }
 
-.window-drag-region {
-  -webkit-app-region: drag;
-  app-region: drag;
-}
-
-.window-no-drag {
-  -webkit-app-region: no-drag;
-  app-region: no-drag;
-}
-
 .header-top {
   display: flex;
   justify-content: space-between;
@@ -34,8 +24,79 @@ header {
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
-  flex: 1;
+  flex: 0 0 auto;
   min-width: 0;
+}
+
+.mac-traffic-lights {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.traffic-light {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  background-color: var(--line-strong);
+  opacity: 0.6;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+/* Emblems (symbols inside dots) - hidden by default */
+.traffic-light::before {
+  content: '';
+  font-size: 8px;
+  font-weight: 700;
+  color: rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  transition: opacity 0.1s ease;
+  line-height: 1;
+}
+
+.mac-traffic-lights:hover .traffic-light {
+  opacity: 1;
+}
+
+.mac-traffic-lights:hover .traffic-light::before {
+  opacity: 1;
+}
+
+/* Hover colors and emblems */
+.mac-traffic-lights:hover .traffic-light.red {
+  background-color: #ff5f56;
+  box-shadow: 0 0 2px rgba(255, 95, 86, 0.4);
+}
+.mac-traffic-lights:hover .traffic-light.red::before {
+  content: '×';
+  margin-top: -1px;
+}
+
+.mac-traffic-lights:hover .traffic-light.yellow {
+  background-color: #ffbd2e;
+  box-shadow: 0 0 2px rgba(255, 189, 46, 0.4);
+}
+.mac-traffic-lights:hover .traffic-light.yellow::before {
+  content: '−';
+  font-size: 10px;
+  margin-top: -1px;
+}
+
+.mac-traffic-lights:hover .traffic-light.green {
+  background-color: #27c93f;
+  box-shadow: 0 0 2px rgba(39, 201, 63, 0.4);
+}
+.mac-traffic-lights:hover .traffic-light.green::before {
+  content: '+';
+  font-size: 9px;
+  margin-top: -0.5px;
 }
 
 .header-drag-region {
@@ -49,6 +110,17 @@ header {
 
 .header-drag-region:active {
   cursor: grabbing;
+}
+
+/* Hide number input spinner arrows */
+.search-input[type="number"]::-webkit-inner-spin-button,
+.search-input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.search-input[type="number"] {
+  -moz-appearance: textfield;
 }
 
 .header-title {
@@ -130,16 +202,6 @@ select.search-input option {
   color: var(--text-primary);
 }
 
-/* Hide number input spinner arrows */
-.search-input[type="number"]::-webkit-inner-spin-button,
-.search-input[type="number"]::-webkit-outer-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-.search-input[type="number"] {
-  -moz-appearance: textfield;
-}
-
 .search-input:focus {
   background: var(--bg-input);
   border-color: var(--input-focus-border-color);
@@ -165,7 +227,7 @@ select.search-input option {
   width: 100%;
 }
 
-.main-content.main-content-chat-mode {
+.main-content.file-transfer-mode {
   padding-bottom: 0;
   gap: 0;
 }

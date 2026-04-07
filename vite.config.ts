@@ -30,7 +30,6 @@ export default defineConfig(async () => ({
   },
   build: {
     outDir: "dist/web",
-    emptyOutDir: true,
-    chunkSizeWarningLimit: 1000,
+    emptyOutDir: true
   }
 }));

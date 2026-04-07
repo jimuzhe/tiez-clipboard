@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { isTauriRuntime } from "../lib/tauriRuntime";
 
 interface UseNavigationSyncOptions {
   showSettings: boolean;
@@ -16,6 +17,8 @@ export const useNavigationSync = ({
   showEmojiPanel
 }: UseNavigationSyncOptions) => {
   useEffect(() => {
+    if (!isTauriRuntime()) return;
+
     const shouldDisableNavigation = showSettings || showTagManager || chatMode || showEmojiPanel;
     if (shouldDisableNavigation) {
       invoke("set_navigation_enabled", { enabled: false }).catch(console.error);

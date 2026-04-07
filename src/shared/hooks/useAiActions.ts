@@ -40,7 +40,7 @@ export const useAiActions = ({
 
         setHistory((prev) =>
           prev.map((item) => {
-            if (item.id == id) {
+            if (item.id === id) {
               const trimmedResponse = aiResponse.trim();
               const questionMatch = trimmedResponse.match(/^\[\[QUESTION:(.+?)\]\]$/);
 
@@ -50,7 +50,8 @@ export const useAiActions = ({
                   ...item,
                   isInputting: true,
                   content: questionText,
-                  html_content: undefined, // Clear rich text to show question
+                  content_type: item.content_type === "image" ? "image" : "text",
+                  html_content: undefined,
                   preview:
                     questionText.length > 100
                       ? questionText.substring(0, 100).replace(/\n/g, " ") + "..."
@@ -60,8 +61,8 @@ export const useAiActions = ({
               return {
                 ...item,
                 content: aiResponse,
-                content_type: item.content_type === 'rich_text' ? 'text' : item.content_type,
-                html_content: undefined, // Clear rich text to show AI response
+                content_type: item.content_type === "image" ? "image" : "text",
+                html_content: undefined,
                 isInputting: false,
                 preview:
                   aiResponse.length > 100

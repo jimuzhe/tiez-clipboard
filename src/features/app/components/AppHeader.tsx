@@ -9,10 +9,10 @@ import {
   Settings as SettingsIcon,
   Smile,
   Tag,
-  Trash2,
-  X
+  Trash2
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { getTagColor, getTagTextColor } from "../../../shared/lib/utils";
 
 interface AppHeaderProps {
@@ -98,196 +98,229 @@ const AppHeader = ({
   };
 
   return (
-  <header className="window-drag-region">
-    <div className="header-top">
-      <div className="header-leading">
-        {(showSettings || showTagManager || showEmojiPanel) && (
-          <button className="btn-icon window-no-drag" onClick={onBack}>
-            <ChevronLeft size={18} />
+    <header
+      onMouseDown={(e) => {
+        // Only drag on left click
+        if (e.button !== 0) return;
+
+        // Don't drag if clicking on interactive elements
+        const target = e.target as HTMLElement;
+        if (target.closest('button, input, select, textarea, [role="button"]')) {
+          return;
+        }
+
+        // Blur search input if focused
+        if (searchInputRef.current && document.activeElement === searchInputRef.current) {
+          searchInputRef.current.blur();
+        }
+
+        // Prevent default and start dragging
+        e.preventDefault();
+        getCurrentWindow().startDragging();
+      }}
+    >
+      <div className="header-top">
+        <div className="header-leading" style={{ gap: '4px', paddingLeft: '4px' }}>
+          <div className="mac-traffic-lights">
+            <button
+              className="traffic-light red"
+              title={t('hide')}
+              onClick={async (e) => {
+                e.stopPropagation();
+                invoke("hide_window_cmd").catch(console.error);
+              }}
+            />
+          </div>
+          {(showSettings || showTagManager || showEmojiPanel) && (
+            <button className="btn-icon" onClick={onBack} style={{ marginLeft: '4px' }}>
+              <ChevronLeft size={16} />
+            </button>
+          )}
+        </div>
+
+        <div className="header-drag-region" style={{ flex: 1 }}>
+          {/* Middle area for dragging */}
+        </div>
+
+        <div className="header-actions">
+          {/* Pin Button */}
+          <button
+            className={`btn-icon ${isWindowPinned ? 'active' : ''}`}
+            title={t('pin')}
+            onClick={() => {
+              const newVal = !isWindowPinned;
+              setIsWindowPinned(newVal);
+              invoke("set_window_pinned", { pinned: newVal }).catch(console.error);
+            }}
+          >
+            {isWindowPinned ? <PinOff size={16} /> : <Pin size={16} />}
           </button>
-        )}
-        <div className="header-drag-region" data-tauri-drag-region>
-          <span className="header-title">
-            {showEmojiPanel
-              ? (t('emoji_panel') || '表情包')
-              : showTagManager && tagManagerEnabled
-                ? (t('tag_manager') || '标签管理')
-                : showSettings
-                  ? settingsTitle
-                  : t('app_name')}
-          </span>
+
+          {!showSettings && !showTagManager && !showEmojiPanel && (
+            <>
+              <button className="btn-icon" title={t('clear_history')} onClick={clearHistory}>
+                <Trash2 size={16} />
+              </button>
+              {tagManagerEnabled && (
+                <button className="btn-icon" title={t('tag_manager') || '标签管理'} onClick={() => setShowTagManager(true)}>
+                  <Tag size={16} />
+                </button>
+              )}
+              {emojiPanelEnabled && (
+                <button className="btn-icon" title={t('emoji_panel') || '表情包'} onClick={() => setShowEmojiPanel(true)}>
+                  <Smile size={16} />
+                </button>
+              )}
+              <button className="btn-icon" title={t('settings')} onClick={() => setShowSettings(true)}>
+                <SettingsIcon size={16} />
+              </button>
+            </>
+          )}
+          {fileServerEnabled && (
+            <button
+              className={`btn-icon header-chat-btn ${chatMode && showSettings ? 'active' : ''}`}
+              title="Chat"
+              onClick={onToggleChat}
+            >
+              <div style={{ position: 'relative' }}>
+                <MessageSquare size={16} />
+              </div>
+            </button>
+          )}
+
+          <div style={{ marginLeft: '4px', display: 'flex', alignItems: 'center' }}>
+            <span className="header-title">
+              {showEmojiPanel
+                ? (t('emoji_panel') || '表情包')
+                : showTagManager && tagManagerEnabled
+                  ? (t('tag_manager') || '标签管理')
+                  : showSettings
+                    ? settingsTitle
+                    : t('app_name')}
+            </span>
+          </div>
         </div>
       </div>
-      <div className="header-actions window-no-drag">
-        {/* Pin Button - Always visible but single instance */}
-        <button
-          className={`btn-icon ${isWindowPinned ? 'active' : ''}`}
-          title={t('pin')}
-          onClick={() => {
-            const newVal = !isWindowPinned;
-            setIsWindowPinned(newVal);
-            invoke("set_window_pinned", { pinned: newVal }).catch(console.error);
-          }}
-        >
-          {isWindowPinned ? <PinOff size={16} /> : <Pin size={16} />}
-        </button>
 
-        {!showSettings && !showTagManager && !showEmojiPanel && (
-          <>
-            <button className="btn-icon" title={t('clear_history')} onClick={clearHistory}>
-              <Trash2 size={16} />
-            </button>
-            {tagManagerEnabled && (
-              <button className="btn-icon" title={t('tag_manager') || '标签管理'} onClick={() => setShowTagManager(true)}>
-                <Tag size={16} />
-              </button>
-            )}
-            {emojiPanelEnabled && (
-              <button className="btn-icon" title={t('emoji_panel') || '表情包'} onClick={() => setShowEmojiPanel(true)}>
-                <Smile size={16} />
-              </button>
-            )}
-            <button className="btn-icon" title={t('settings')} onClick={() => setShowSettings(true)}>
-              <SettingsIcon size={16} />
-            </button>
-          </>
-        )}
-        {fileServerEnabled && (
-          <button
-            className={`btn-icon header-chat-btn ${chatMode && showSettings ? 'active' : ''}`}
-            title="Chat"
-            onClick={onToggleChat}
-          >
-            <MessageSquare size={16} />
-          </button>
-        )}
-        <button className="btn-icon" title={t('hide')} onClick={async () => {
-          invoke("hide_window_cmd").catch(console.error);
-        }}>
-          <X size={16} />
-        </button>
-      </div>
-    </div>
-
-    {!showSettings && !showTagManager && !showEmojiPanel && (
-      <AnimatePresence>
-        {(showSearchBox || search.trim().length > 0) && (
-          <motion.div
-            initial={{ height: 0, opacity: 0, overflow: 'hidden' }}
-            animate={{
-              height: "auto",
-              opacity: 1,
-              transitionEnd: { overflow: "visible" }
-            }}
-            exit={{ height: 0, opacity: 0, overflow: 'hidden' }}
-            transition={{ duration: 0.2, ease: "circOut" }}
-            style={{ flexShrink: 0 }}
-          >
-            <div className="search-container window-no-drag">
-              <div style={{ position: 'relative' }}>
-                <Search size={14} className="search-icon" />
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  className={`search-input ${showTagFilter && allTags.length > 0 ? 'dropdown-open' : ''}`}
-                  placeholder={t('search_placeholder')}
-                  value={search}
-                  onCompositionStart={() => setIsComposing(true)}
-                  onCompositionEnd={(e) => {
-                    setIsComposing(false);
-                    setSearch((e.target as HTMLInputElement).value);
-                  }}
-                  onChange={(e) => {
-                    setSearch(e.target.value);
-                  }}
-                  onMouseDown={() => {
-                    invoke("activate_window_focus").catch(console.error);
-                  }}
-                  onClick={() => { setShowTagFilter(true); setEditingTagsId(null); }}
-                  onFocus={() => {
-                    invoke("activate_window_focus").catch(console.error);
-                    setShowTagFilter(true);
-                    setSearchIsFocused(true);
-                    setEditingTagsId(null);
-                  }}
-                  onBlur={() => {
-                    setTimeout(() => {
-                      setShowTagFilter(false);
-                      setSearchIsFocused(false);
-                    }, 200);
-                  }}
-                  style={{ color: colorMode === 'dark' ? '#ffffff' : undefined }}
-                />
-                {showTagFilter && searchIsFocused && allTags.length > 0 && (
-                  <div className="tags-dropdown">
-                    <div className="tags-label">{t('tags') || "Tags"}</div>
-                    <div className="tags-list">
-                      {allTags.map(tag => {
-                        const tagBackground = getTagColor(tag, theme);
-                        return (
-                          <span
-                            className="tag-chip"
-                            key={tag}
-                            onMouseDown={(e) => {
-                              e.preventDefault();
-                              setSearch("tag:" + tag);
-                              setShowTagFilter(false);
-                            }}
-                            data-tag={tag}
-                            style={{ background: tagBackground, color: getTagTextColor(tagBackground) }}
-                          >
-                            {tag}
-                          </span>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
-              <div
-                className="hide-scrollbar"
-                style={{
-                  display: 'flex',
-                  gap: '6px',
-                  padding: '8px 0 0 0',
-                  overflowX: 'auto',
-                  scrollbarWidth: 'none',
-                  msOverflowStyle: 'none'
-                }}
-                onWheel={(e) => {
-                  if (e.deltaY !== 0) {
-                    e.currentTarget.scrollLeft += e.deltaY;
-                  }
-                }}
-              >
-                {['text', 'image', 'file', 'url', 'code', 'video', 'rich_text'].map(t => (
-                  <button
-                    key={t}
-                    className={`btn-icon ${typeFilter === t ? 'active' : ''}`}
-                    onClick={() => setTypeFilter(typeFilter === t ? null : t)}
-                    style={{
-                      width: 'auto',
-                      padding: '4px 8px',
-                      fontSize: '11px',
-                      borderRadius: '4px',
-                      whiteSpace: 'nowrap',
-                      flexShrink: 0,
-                      opacity: typeFilter === t ? 1 : 0.7
+      {!showSettings && !showTagManager && !showEmojiPanel && (
+        <AnimatePresence>
+          {(showSearchBox || search.trim().length > 0) && (
+            <motion.div
+              initial={{ height: 0, opacity: 0, overflow: 'hidden' }}
+              animate={{
+                height: "auto",
+                opacity: 1,
+                transitionEnd: { overflow: "visible" }
+              }}
+              exit={{ height: 0, opacity: 0, overflow: 'hidden' }}
+              transition={{ duration: 0.2, ease: "circOut" }}
+              style={{ flexShrink: 0 }}
+            >
+              <div className="search-container">
+                <div style={{ position: 'relative' }}>
+                  <Search size={14} className="search-icon" />
+                  <input
+                    ref={searchInputRef}
+                    type="text"
+                    className={`search-input ${showTagFilter && allTags.length > 0 ? 'dropdown-open' : ''}`}
+                    placeholder={t('search_placeholder')}
+                    value={search}
+                    onCompositionStart={() => setIsComposing(true)}
+                    onCompositionEnd={(e) => {
+                      setIsComposing(false);
+                      setSearch((e.target as HTMLInputElement).value);
                     }}
-                    title={getTypeName(t)}
-                  >
-                    {getTypeName(t)}
-                  </button>
-                ))}
-              </div>
+                    onChange={(e) => {
+                      setSearch(e.target.value);
+                    }}
+                    onMouseDown={() => {
+                      invoke("activate_window_focus").catch(console.error);
+                    }}
+                    onClick={() => { setShowTagFilter(true); setEditingTagsId(null); }}
+                    onFocus={() => {
+                      invoke("activate_window_focus").catch(console.error);
+                      setShowTagFilter(true);
+                      setSearchIsFocused(true);
+                      setEditingTagsId(null);
+                    }}
+                    onBlur={() => {
+                      setTimeout(() => {
+                        setShowTagFilter(false);
+                        setSearchIsFocused(false);
+                      }, 200);
+                    }}
+                    style={{ color: colorMode === 'dark' ? '#ffffff' : undefined }}
+                  />
+                  {showTagFilter && searchIsFocused && allTags.length > 0 && (
+                    <div className="tags-dropdown">
+                      <div className="tags-label">{t('tags') || "Tags"}</div>
+                      <div className="tags-list">
+                        {allTags.map(tag => {
+                          const tagBackground = getTagColor(tag, theme);
+                          return (
+                            <span
+                              className="tag-chip"
+                              key={tag}
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                setSearch("tag:" + tag);
+                                setShowTagFilter(false);
+                              }}
+                              data-tag={tag}
+                              style={{ background: tagBackground, color: getTagTextColor(tagBackground) }}
+                            >
+                              {tag}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div
+                  className="hide-scrollbar"
+                  style={{
+                    display: 'flex',
+                    gap: '6px',
+                    padding: '8px 0 0 0',
+                    overflowX: 'auto',
+                    scrollbarWidth: 'none',
+                    msOverflowStyle: 'none'
+                  }}
+                  onWheel={(e) => {
+                    if (e.deltaY !== 0) {
+                      e.currentTarget.scrollLeft += e.deltaY;
+                    }
+                  }}
+                >
+                  {['text', 'image', 'file', 'url', 'code', 'video', 'rich_text'].map(t => (
+                    <button
+                      key={t}
+                      className={`btn-icon ${typeFilter === t ? 'active' : ''}`}
+                      onClick={() => setTypeFilter(typeFilter === t ? null : t)}
+                      style={{
+                        width: 'auto',
+                        padding: '4px 8px',
+                        fontSize: '11px',
+                        borderRadius: '4px',
+                        whiteSpace: 'nowrap',
+                        flexShrink: 0,
+                        opacity: typeFilter === t ? 1 : 0.7
+                      }}
+                      title={getTypeName(t)}
+                    >
+                      {getTypeName(t)}
+                    </button>
+                  ))}
+                </div>
 
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    )}
-  </header>
-);
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      )}
+    </header>
+  );
 };
 
 export default AppHeader;

@@ -5,7 +5,7 @@ export async function focusClipboardWindow(): Promise<void> {
 }
 
 export async function restoreLastFocus(): Promise<void> {
-  await invoke("restore_last_focus");
+  await invoke("restore_previous_app_focus");
 }
 
 export async function focusWindowImmediately(): Promise<void> {

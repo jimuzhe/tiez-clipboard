@@ -1,4 +1,4 @@
-use rusqlite::{params, Connection, Result};
+use rusqlite::{Connection, Result};
 
 use base64::Engine;
 
@@ -19,6 +19,7 @@ pub struct DbState {
 
 const SENSITIVE_KEYS: &[&str] = &[
     "mqtt_password",
+    "mqtt_username",
     "ai_profiles",
     "cloud_sync_api_key",
     "cloud_sync_webdav_password",
@@ -55,29 +56,9 @@ pub fn calc_text_hash(content: &str) -> u64 {
 fn calc_visual_hash(img: &image::DynamicImage) -> i64 {
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
-
-    let thumb = img.resize_exact(32, 32, image::imageops::FilterType::Nearest);
     let mut hasher = DefaultHasher::new();
-    thumb.as_bytes().hash(&mut hasher);
+    img.as_bytes().hash(&mut hasher);
     hasher.finish() as i64
-}
-
-pub fn calc_image_hash_from_bytes(bytes: &[u8]) -> Option<i64> {
-    if let Ok(img) = image::load_from_memory(bytes) {
-        return Some(calc_visual_hash(&img));
-    }
-
-    use std::collections::hash_map::DefaultHasher;
-    use std::hash::{Hash, Hasher};
-    let mut hasher = DefaultHasher::new();
-    bytes.hash(&mut hasher);
-    Some(hasher.finish() as i64)
-}
-
-pub fn calc_image_hash_from_rgba(width: u32, height: u32, rgba: &[u8]) -> Option<i64> {
-    let buffer = image::RgbaImage::from_raw(width, height, rgba.to_vec())?;
-    let img = image::DynamicImage::ImageRgba8(buffer);
-    Some(calc_visual_hash(&img))
 }
 
 pub fn calc_image_hash(base64_data: &str) -> Option<i64> {
@@ -92,14 +73,23 @@ pub fn calc_image_hash(base64_data: &str) -> Option<i64> {
             if payload_clean.trim().is_empty() {
                 return None;
             }
+
+            use base64::Engine;
             base64::engine::general_purpose::STANDARD
-                .decode(payload_clean)
+                .decode(payload_clean.trim())
                 .ok()?
         };
 
-    // Prefer a visual fingerprint so the same image still deduplicates after
-    // apps like WeChat re-encode PNG/DIB payloads during paste.
-    calc_image_hash_from_bytes(&bytes)
+    if let Ok(img) = image::load_from_memory(&bytes) {
+        let thumb = img.resize_exact(32, 32, image::imageops::FilterType::Nearest);
+        return Some(calc_visual_hash(&thumb));
+    }
+
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+    let mut hasher = DefaultHasher::new();
+    bytes.hash(&mut hasher);
+    Some(hasher.finish() as i64)
 }
 
 pub fn init_db(path: &str) -> Result<Connection> {
@@ -125,36 +115,6 @@ pub fn init_db(path: &str) -> Result<Connection> {
 
 // save_entry removed (migrated to repository)
 
-fn image_ext_from_data_url_header(header: &str) -> Option<&'static str> {
-    let mime = header
-        .strip_prefix("data:")?
-        .split(';')
-        .next()?
-        .trim()
-        .to_ascii_lowercase();
-
-    match mime.as_str() {
-        "image/png" => Some("png"),
-        "image/jpeg" => Some("jpg"),
-        "image/gif" => Some("gif"),
-        "image/webp" => Some("webp"),
-        "image/bmp" => Some("bmp"),
-        "image/svg+xml" => Some("svg"),
-        _ => None,
-    }
-}
-
-fn image_ext_from_bytes(bytes: &[u8]) -> Option<&'static str> {
-    match image::guess_format(bytes).ok()? {
-        image::ImageFormat::Png => Some("png"),
-        image::ImageFormat::Jpeg => Some("jpg"),
-        image::ImageFormat::Gif => Some("gif"),
-        image::ImageFormat::WebP => Some("webp"),
-        image::ImageFormat::Bmp => Some("bmp"),
-        _ => None,
-    }
-}
-
 pub fn save_image_to_file(data_url: &str, data_dir: &std::path::Path) -> Option<String> {
     use std::io::Write;
     let parts: Vec<&str> = data_url.splitn(2, ',').collect();
@@ -162,11 +122,9 @@ pub fn save_image_to_file(data_url: &str, data_dir: &std::path::Path) -> Option<
         return None;
     }
 
-    let ext = image_ext_from_data_url_header(parts[0]).unwrap_or("png");
     let decoded = base64::engine::general_purpose::STANDARD
         .decode(parts[1])
         .ok()?;
-    let ext = image_ext_from_bytes(&decoded).unwrap_or(ext);
 
     let attachments_dir = data_dir.join("attachments");
     if !attachments_dir.exists() {
@@ -178,7 +136,7 @@ pub fn save_image_to_file(data_url: &str, data_dir: &std::path::Path) -> Option<
     decoded.hash(&mut hasher);
     let hash = hasher.finish();
 
-    let file_name = format!("img_{:x}.{}", hash, ext);
+    let file_name = format!("img_{:x}.png", hash);
     let file_path = attachments_dir.join(&file_name);
 
     if !file_path.exists() {
@@ -224,7 +182,7 @@ pub fn seed_defaults(conn: &Connection) -> Result<()> {
         [],
     );
     let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES ('app.rich_text_snapshot_preview', 'false')",
+        "INSERT OR IGNORE INTO settings (key, value) VALUES ('app.rich_text_snapshot_preview', 'true')",
         [],
     );
     let _ = conn.execute(
@@ -257,10 +215,7 @@ pub fn seed_defaults(conn: &Connection) -> Result<()> {
         "INSERT OR IGNORE INTO settings (key, value) VALUES ('app.app_cleanup_policies', '[]')",
         [],
     );
-    let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES ('app.use_win_v_shortcut', 'false')",
-        [],
-    );
+
     let _ = conn.execute(
         "INSERT OR IGNORE INTO settings (key, value) VALUES ('app.sequential_mode', 'false')",
         [],
@@ -270,11 +225,15 @@ pub fn seed_defaults(conn: &Connection) -> Result<()> {
         [],
     );
     let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES ('app.rich_paste_hotkey', 'Ctrl+Shift+Z')",
+        "INSERT OR IGNORE INTO settings (key, value) VALUES ('app.rich_paste_hotkey', 'Alt+Shift+V')",
         [],
     );
     let _ = conn.execute(
         "INSERT OR IGNORE INTO settings (key, value) VALUES ('app.search_hotkey', 'Alt+F')",
+        [],
+    );
+    let _ = conn.execute(
+        "INSERT OR IGNORE INTO settings (key, value) VALUES ('app.quick_paste_modifier', 'disabled')",
         [],
     );
     let _ = conn.execute(
@@ -290,11 +249,11 @@ pub fn seed_defaults(conn: &Connection) -> Result<()> {
         [],
     );
     let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES ('app.edge_docking', 'false')",
+        "INSERT OR IGNORE INTO settings (key, value) VALUES ('app.hide_dock_icon', 'false')",
         [],
     );
     let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES ('app.follow_mouse', 'true')",
+        "INSERT OR IGNORE INTO settings (key, value) VALUES ('app.edge_docking', 'false')",
         [],
     );
     let _ = conn.execute(
@@ -313,7 +272,7 @@ pub fn seed_defaults(conn: &Connection) -> Result<()> {
         "INSERT OR IGNORE INTO settings (key, value) VALUES ('app.autostart', 'true')",
         [],
     );
-    let _ = conn.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('app.win_clipboard_disabled', 'false')", []);
+
     let _ = conn.execute(
         "INSERT OR IGNORE INTO settings (key, value) VALUES ('app.custom_background', '')",
         [],
@@ -345,11 +304,7 @@ pub fn seed_defaults(conn: &Connection) -> Result<()> {
         [],
     );
 
-    // MQTT settings (safe defaults; can be overridden by environment variables)
-    let mqtt_default_server = std::env::var("DEFAULT_MQTT_SERVER").unwrap_or_default();
-    let mqtt_default_username = std::env::var("DEFAULT_MQTT_USERNAME").unwrap_or_default();
-    let mqtt_default_password = std::env::var("DEFAULT_MQTT_PASSWORD").unwrap_or_default();
-
+    // MQTT settings
     let _ = conn.execute(
         "INSERT OR IGNORE INTO settings (key, value) VALUES ('mqtt_port', '443')",
         [],
@@ -359,16 +314,16 @@ pub fn seed_defaults(conn: &Connection) -> Result<()> {
         [],
     );
     let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES (?1, ?2)",
-        params!["mqtt_server", mqtt_default_server],
+        "INSERT OR IGNORE INTO settings (key, value) VALUES ('mqtt_server', '')",
+        [],
     );
     let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES (?1, ?2)",
-        params!["mqtt_username", mqtt_default_username],
+        "INSERT OR IGNORE INTO settings (key, value) VALUES ('mqtt_username', '')",
+        [],
     );
     let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES (?1, ?2)",
-        params!["mqtt_password", mqtt_default_password],
+        "INSERT OR IGNORE INTO settings (key, value) VALUES ('mqtt_password', '')",
+        [],
     );
     let _ = conn.execute(
         "INSERT OR IGNORE INTO settings (key, value) VALUES ('mqtt_topic', '')",
@@ -392,6 +347,30 @@ pub fn seed_defaults(conn: &Connection) -> Result<()> {
     );
     let _ = conn.execute(
         "INSERT OR IGNORE INTO settings (key, value) VALUES ('mqtt_notification_enabled', 'true')",
+        [],
+    );
+    let _ = conn.execute(
+        "UPDATE settings
+         SET value = ''
+         WHERE key = 'mqtt_server'
+           AND value = 'tiez.name666.top'
+           AND COALESCE((SELECT value FROM settings WHERE key = 'mqtt_enabled'), 'false') = 'false'",
+        [],
+    );
+    let _ = conn.execute(
+        "UPDATE settings
+         SET value = ''
+         WHERE key = 'mqtt_username'
+           AND value = 'tiezpublic'
+           AND COALESCE((SELECT value FROM settings WHERE key = 'mqtt_enabled'), 'false') = 'false'",
+        [],
+    );
+    let _ = conn.execute(
+        "UPDATE settings
+         SET value = ''
+         WHERE key = 'mqtt_password'
+           AND value = 'tiezmessage'
+           AND COALESCE((SELECT value FROM settings WHERE key = 'mqtt_enabled'), 'false') = 'false'",
         [],
     );
 
@@ -457,11 +436,19 @@ pub fn seed_defaults(conn: &Connection) -> Result<()> {
         [],
     );
     let _ = conn.execute(
+        "INSERT OR IGNORE INTO settings (key, value) VALUES ('cloud_sync_webdav_blob_cache', '{}')",
+        [],
+    );
+    let _ = conn.execute(
         "INSERT OR IGNORE INTO settings (key, value) VALUES ('cloud_sync_webdav_last_snapshot_push_at', '0')",
         [],
     );
     let _ = conn.execute(
         "INSERT OR IGNORE INTO settings (key, value) VALUES ('cloud_sync_webdav_last_snapshot_pull_at', '0')",
+        [],
+    );
+    let _ = conn.execute(
+        "INSERT OR IGNORE INTO settings (key, value) VALUES ('cloud_sync_webdav_last_head_rebuild_at', '0')",
         [],
     );
 
@@ -480,16 +467,6 @@ pub fn seed_defaults(conn: &Connection) -> Result<()> {
     );
     let _ = conn.execute(
         "INSERT OR IGNORE INTO settings (key, value) VALUES ('ai_thinking_budget', '1024')",
-        [],
-    );
-
-    // Paste method setting: "shift_insert" (default) or "ctrl_v"
-    let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES ('app.paste_method', 'shift_insert')",
-        [],
-    );
-    let _ = conn.execute(
-        "INSERT OR IGNORE INTO settings (key, value) VALUES ('app.quick_paste_modifier', 'disabled')",
         [],
     );
 
@@ -590,7 +567,7 @@ mod tests {
             content: "Hello Integration Test".to_string(),
             html_content: None,
             source_app: "TestApp".to_string(),
-            source_app_path: Some("C:\\TestApp.exe".to_string()),
+            source_app_path: Some("/Applications/TestApp.app".to_string()),
             timestamp: 123456789,
             preview: "Hello...".to_string(),
             is_pinned: false,

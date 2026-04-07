@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { DEFAULT_THEME, normalizeThemeId } from "../config/themes";
 import type { Locale } from "../types";
+import { isTauriRuntime } from "../lib/tauriRuntime";
 
 interface UseSettingsInitOptions {
   setAppSettings: (settings: Record<string, string>) => void;
@@ -22,62 +23,67 @@ export const useSettingsInit = ({
   setLanguage
 }: UseSettingsInitOptions) => {
   const [settings, setSettings] = useState<Record<string, string> | null>(null);
+  const settingsEffectCount = useRef(0);
 
   useEffect(() => {
-    let alive = true;
-    let unlisten: (() => void) | undefined;
+    if (!isTauriRuntime()) return;
 
-    const loadSettings = async () => {
-      try {
-        const result = await invoke<Record<string, string>>("get_settings");
-        if (!alive) return;
+    let disposed = false;
 
-        setAppSettings(result);
-        if (result["app.hotkey"]) setHotkey(result["app.hotkey"]);
+    const loadSettings = () => {
+      settingsEffectCount.current++;
+      console.log(`[THEME DEBUG] Settings useEffect run #${settingsEffectCount.current}`);
 
-        const loadedTheme = normalizeThemeId(result["app.theme"] || DEFAULT_THEME);
-        const loadedColorMode = result["app.color_mode"] || "system";
+      invoke<Record<string, string>>("get_settings")
+        .then((result) => {
+          if (disposed) return;
 
-        setTheme(loadedTheme);
-        setColorMode(loadedColorMode);
-        setCompactMode(result["app.compact_mode"] === "true");
-
-        try {
-          localStorage.setItem("tiez_theme", loadedTheme);
-          localStorage.setItem("tiez_color_mode", loadedColorMode);
-          localStorage.setItem(
-            "tiez_compact_mode",
-            result["app.compact_mode"] === "true" ? "true" : "false"
+          console.log(
+            `[THEME DEBUG] get_settings response (run #${settingsEffectCount.current}):`,
+            result
           );
-        } catch {
-          // Ignore localStorage errors
-        }
+          console.log("[THEME DEBUG] app.color_mode from DB:", result["app.color_mode"]);
 
-        if (result["app.language"]) {
-          setLanguage(result["app.language"] as Locale);
-        }
+          setAppSettings(result);
+          if (result["app.hotkey"]) setHotkey(result["app.hotkey"]);
 
-        setSettings(result);
-      } catch (e) {
-        console.error(e);
-      }
+          const loadedTheme = normalizeThemeId(result["app.theme"] || DEFAULT_THEME);
+          const loadedColorMode = result["app.color_mode"] || "system";
+          console.log("[THEME DEBUG] loadedColorMode:", loadedColorMode);
+
+          setTheme(loadedTheme);
+          setColorMode(loadedColorMode);
+          setCompactMode(result["app.compact_mode"] === "true");
+
+          try {
+            localStorage.setItem("tiez_theme", loadedTheme);
+            localStorage.setItem("tiez_color_mode", loadedColorMode);
+            localStorage.setItem(
+              "tiez_compact_mode",
+              result["app.compact_mode"] === "true" ? "true" : "false"
+            );
+          } catch {
+            // Ignore localStorage errors
+          }
+
+          if (result["app.language"]) {
+            setLanguage(result["app.language"] as Locale);
+          }
+
+          setSettings(result);
+        })
+        .catch(console.error);
     };
 
-    void loadSettings();
+    loadSettings();
 
-    (async () => {
-      try {
-        unlisten = await listen("settings-changed", () => {
-          void loadSettings();
-        });
-      } catch (e) {
-        console.error(e);
-      }
-    })();
+    const unlisten = listen("settings-changed", () => {
+      loadSettings();
+    });
 
     return () => {
-      alive = false;
-      if (unlisten) unlisten();
+      disposed = true;
+      unlisten.then((off) => off());
     };
   }, [setAppSettings, setHotkey, setTheme, setColorMode, setCompactMode, setLanguage]);
 

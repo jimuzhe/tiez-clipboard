@@ -1,0 +1,97 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        node-version: [18.x]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+      - name: Install deps
+        run: |
+          npm ci
+          npx playwright install --with-deps
+      - name: Build frontend
+        run: npm run build
+      - name: Run unit tests (frontend)
+        run: |
+          echo "No frontend unit tests configured" || true
+      - name: Start app for E2E (dev preview)
+        run: |
+          npm run preview &
+          echo "Waiting for preview to start..." && sleep 3
+      - name: Run Playwright E2E
+        run: npx playwright test tests/e2e --reporter=list
+
+  mqtt-stress:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - name: Install mosquitto
+        run: sudo apt-get update && sudo apt-get install -y mosquitto
+      - name: Run MQTT stress script
+        run: |
+          echo "Placeholder for MQTT stress tests (run on self-hosted runner)"
+  performance-test:
+    runs-on: ubuntu-latest
+    needs: [build-and-test]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - name: Install deps
+        run: |
+          npm install --no-audit --no-fund
+      - name: Start local MQTT broker
+        run: |
+          node tests/e2e/mqtt-broker.js &
+          sleep 1
+      - name: Start mock file server
+        run: |
+          node tests/performance/mock_file_server.js &
+          sleep 1
+      - name: Start vmstat sampling
+        run: |
+          vmstat 1 > vmstat.log & echo $! > vmstat.pid || true
+        continue-on-error: true
+      - name: Run MQTT stress test
+        env:
+          MQTT_REPORT_PATH: ${{ github.workspace }}/mqtt_report.json
+        run: |
+          node tests/mqtt/mqtt_stress_publish.js --host 127.0.0.1 --port 1884 --clients 3 --rate 50 --duration 30 --size 256 --topic tiez/test --report mqtt_report.json
+      - name: Run File Transfer stress test
+        env:
+          FILETRANSFER_REPORT_PATH: ${{ github.workspace }}/file_report.json
+        run: |
+          node tests/file_transfer/file_transfer_stress.js --host http://127.0.0.1:12345 --files 6 --size 1048576 --concurrency 2 --report file_report.json
+      - name: Collect vmstat output
+        if: always()
+        run: |
+          if [ -f vmstat.pid ]; then kill -INT $(cat vmstat.pid) || true; fi || true
+          echo '--- vmstat log ---'
+          tail -n 200 vmstat.log || true
+      - name: Assert thresholds
+        run: |
+          node tests/performance/assert_thresholds.js --mqttReport mqtt_report.json --fileReport file_report.json --maxFailRate 0.05 --maxAvgLatency 500

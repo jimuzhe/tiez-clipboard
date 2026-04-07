@@ -100,7 +100,17 @@ const CloudSyncSettingsGroup = ({
             <div className="group-header" onClick={onToggle}>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                     <h3 style={{ margin: 0 }}>{t("cloud_sync_settings")}</h3>
-                    <span className="settings-inline-note">Beta</span>
+                    <span
+                        style={{
+                            fontSize: "11px",
+                            fontWeight: 600,
+                            color: "var(--text-secondary)",
+                            opacity: 0.75,
+                            letterSpacing: "0.2px"
+                        }}
+                    >
+                        Beta
+                    </span>
                     {cloudSyncEnabled && (
                         <span
                             style={{

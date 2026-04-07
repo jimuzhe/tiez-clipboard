@@ -21,6 +21,11 @@ const DefaultAppsSettingsGroup = ({
     setShowAppSelector
 }: DefaultAppsSettingsGroupProps) => {
     const APP_TYPES = ['text', 'rich_text', 'image', 'video', 'code', 'url'] as const;
+    const getAppDisplayName = (path: string) => {
+        const filename = path.split(/[/\\]/).pop() || path;
+        return filename.replace(/\.(exe|app)$/i, "");
+    };
+
     const getTypeName = (type: string) => {
         switch (type) {
             case "code": return t('type_code');
@@ -63,11 +68,10 @@ const DefaultAppsSettingsGroup = ({
                                         // Try to find friendly name from installed apps list
                                         const found = installedApps.find(app => app.value === path);
                                         if (found) return found.label;
-                                        // Fallback: extract filename without .exe
-                                        const filename = path.split(/[/\\]/).pop() || path;
-                                        return filename.replace(/\.exe$/i, '');
+                                        // Fallback: extract a readable app name from the path
+                                        return getAppDisplayName(path);
                                     })()
-                                    : (defaultApps[type] ? `${t('system_default')} (${defaultApps[type].replace(/\.exe$/i, '')})` : t('not_configured'))}
+                                    : (defaultApps[type] ? `${t('system_default')} (${getAppDisplayName(defaultApps[type])})` : t('not_configured'))}
                             </div>
                         </div>
                     ))}

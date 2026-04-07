@@ -1,6 +1,7 @@
 import { useCallback, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { isTauriRuntime } from "../lib/tauriRuntime";
 
 type HotkeyMode = "main" | "sequential" | "rich" | "search";
 
@@ -49,6 +50,8 @@ export const useHotkeyConfig = ({
   t,
   pushToast
 }: UseHotkeyConfigOptions) => {
+  const tauriReady = isTauriRuntime();
+
   const checkHotkeyConflict = useCallback(
     (newHotkey: string, mode: HotkeyMode): boolean => {
       if (!newHotkey) return false;
@@ -77,6 +80,13 @@ export const useHotkeyConfig = ({
 
   const updateHotkey = useCallback(
     async (newHotkey: string) => {
+      if (!tauriReady) {
+        setHotkey(newHotkey);
+        saveAppSetting("hotkey", newHotkey);
+        setIsRecording(false);
+        return;
+      }
+
       const hasConflict = checkHotkeyConflict(newHotkey, "main");
       if (hasConflict) {
         setIsRecording(false);
@@ -104,11 +114,18 @@ export const useHotkeyConfig = ({
       });
       setIsRecording(false);
     },
-    [checkHotkeyConflict, pushToast, saveAppSetting, setHotkey, setIsRecording, t]
+    [checkHotkeyConflict, pushToast, saveAppSetting, setHotkey, setIsRecording, t, tauriReady]
   );
 
   const updateSequentialHotkey = useCallback(
     async (newHotkey: string) => {
+      if (!tauriReady) {
+        setSequentialHotkey(newHotkey);
+        saveAppSetting("sequential_hotkey", newHotkey);
+        setIsRecordingSequential(false);
+        return;
+      }
+
       const hasConflict = checkHotkeyConflict(newHotkey, "sequential");
       if (hasConflict) {
         setIsRecordingSequential(false);
@@ -136,12 +153,20 @@ export const useHotkeyConfig = ({
       pushToast,
       saveAppSetting,
       setSequentialHotkey,
-      setIsRecordingSequential
+      setIsRecordingSequential,
+      tauriReady
     ]
   );
 
   const updateRichPasteHotkey = useCallback(
     async (newHotkey: string) => {
+      if (!tauriReady) {
+        setRichPasteHotkey(newHotkey);
+        saveAppSetting("rich_paste_hotkey", newHotkey);
+        setIsRecordingRich(false);
+        return;
+      }
+
       const hasConflict = checkHotkeyConflict(newHotkey, "rich");
       if (hasConflict) {
         setIsRecordingRich(false);
@@ -169,12 +194,20 @@ export const useHotkeyConfig = ({
       pushToast,
       saveAppSetting,
       setRichPasteHotkey,
-      setIsRecordingRich
+      setIsRecordingRich,
+      tauriReady
     ]
   );
 
   const updateSearchHotkey = useCallback(
     async (newHotkey: string) => {
+      if (!tauriReady) {
+        setSearchHotkey(newHotkey);
+        saveAppSetting("search_hotkey", newHotkey);
+        setIsRecordingSearch(false);
+        return;
+      }
+
       const hasConflict = checkHotkeyConflict(newHotkey, "search");
       if (hasConflict) {
         setIsRecordingSearch(false);
@@ -202,11 +235,14 @@ export const useHotkeyConfig = ({
       pushToast,
       saveAppSetting,
       setSearchHotkey,
-      setIsRecordingSearch
+      setIsRecordingSearch,
+      tauriReady
     ]
   );
 
   useEffect(() => {
+    if (!tauriReady) return;
+
     invoke("set_recording_mode", {
       enabled: isRecording || isRecordingSequential || isRecordingRich
         || isRecordingSearch
@@ -244,7 +280,8 @@ export const useHotkeyConfig = ({
     updateHotkey,
     updateSequentialHotkey,
     updateRichPasteHotkey,
-    updateSearchHotkey
+    updateSearchHotkey,
+    tauriReady
   ]);
 
   return {

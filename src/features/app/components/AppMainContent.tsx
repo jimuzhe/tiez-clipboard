@@ -58,17 +58,17 @@ const SortableItem = ({
   index,
   renderItem,
   isFirst,
-  compactMode,
   onDragStart,
-  onDragEnd
+  onDragEnd,
+  compactMode
 }: {
   item: ClipboardEntry;
   index: number;
   renderItem: RenderItem;
   isFirst?: boolean;
-  compactMode: boolean;
   onDragStart?: () => void;
   onDragEnd?: () => void;
+  compactMode: boolean;
 }) => {
   const controls = useDragControls();
   return (
@@ -194,7 +194,7 @@ const AppMainContent = ({
       <motion.div
         initial={{ opacity: 0, x: 20 }}
         animate={{ opacity: 1, x: 0 }}
-        style={{ height: "100%" }}
+        style={{ height: "100%", overflow: "hidden", paddingBottom: "12px", boxSizing: "border-box" }}
       >
         <TagManager t={t} theme={theme} />
       </motion.div>
@@ -237,15 +237,12 @@ const AppMainContent = ({
       <motion.div
         initial={{ opacity: 0, x: 20 }}
         animate={{ opacity: 1, x: 0 }}
-        className={`settings-view ${settingsPanelProps.settingsSubpage === "advanced" ? "advanced-view-shell" : ""}`}
+        className="settings-view"
         style={{
           display: "flex",
           flexDirection: "column",
-          gap: settingsPanelProps.settingsSubpage === "advanced" ? "0" : "12px",
-          height: "100%",
-          maxHeight: "100%",
-          width: "100%",
-          maxWidth: settingsPanelProps.settingsSubpage === "advanced" ? "none" : undefined
+          gap: "12px",
+          maxWidth: settingsPanelProps.settingsSubpage === "advanced" ? "min(1120px, 100%)" : undefined
         }}
       >
         <SettingsPanel {...settingsPanelProps} />
@@ -304,9 +301,9 @@ const AppMainContent = ({
                       index={index}
                       renderItem={renderItemContent}
                       isFirst={index === 0}
-                      compactMode={compactMode}
                       onDragStart={handlePinnedDragStart}
                       onDragEnd={handlePinnedDragEnd}
+                      compactMode={compactMode}
                     />
                   ))}
                 </Reorder.Group>
@@ -346,4 +343,3 @@ const AppMainContent = ({
 };
 
 export default AppMainContent;
-

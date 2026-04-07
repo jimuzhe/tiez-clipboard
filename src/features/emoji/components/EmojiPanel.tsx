@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { DragEvent } from "react";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
+import { emit } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { open } from "@tauri-apps/plugin-dialog";
 import { Plus, X } from "lucide-react";
@@ -53,7 +54,7 @@ const FALLBACK_GROUPS: EmojiGroup[] = [
   },
   {
     name: "物品",
-    emojis: ["📱", "💻", "🖥️", "键盘", "🖱️", "📷", "🎥", "📺", "🔦", "💡", "🔋", "🔌", "📦", "📌", "✏️", "📚", "🧰", "🧲", "🧯", "🧪"]
+    emojis: ["📱", "💻", "🖥️", "⌨️", "🖱️", "📷", "🎥", "📺", "🔦", "💡", "🔋", "🔌", "📦", "📌", "✏️", "📚", "🧰", "🧲", "🧯", "🧪"]
   },
   {
     name: "符号",
@@ -61,7 +62,7 @@ const FALLBACK_GROUPS: EmojiGroup[] = [
   }
 ];
 
-const IMAGE_EXTS = new Set(["png", "jpg", "jpeg", "webp", "gif"]);
+const IMAGE_EXTS = new Set(["png", "jpg", "jpeg", "webp", "gif", "avif"]);
 
 const normalizePath = (path: string) => path.trim();
 
@@ -93,27 +94,132 @@ const parseSrcset = (srcset: string) => {
   return first.split(/\s+/)[0] || "";
 };
 
+const decodeUriComponentSafely = (value: string, rounds = 2) => {
+  let out = value;
+  for (let i = 0; i < rounds; i++) {
+    if (!/%[0-9a-fA-F]{2}/.test(out)) break;
+    try {
+      const decoded = decodeURIComponent(out);
+      if (decoded === out) break;
+      out = decoded;
+    } catch {
+      break;
+    }
+  }
+  return out;
+};
+
+const stripWrappingQuotes = (value: string) => value.trim().replace(/^['"]+|['"]+$/g, "");
+
+const looksLikeAbsolutePath = (value: string) =>
+  /^[a-zA-Z]:[\\/]/.test(value) ||
+  value.startsWith("/") ||
+  value.startsWith("\\\\") ||
+  value.startsWith("//");
+
+const normalizeDroppedLocalPath = (rawValue: string) => {
+  const trimmed = stripWrappingQuotes(decodeUriComponentSafely(rawValue.trim()));
+  if (!trimmed) return null;
+
+  if (/^file:/i.test(trimmed)) {
+    const directPath = decodeUriComponentSafely(trimmed.replace(/^file:\/+/i, ""));
+    if (/^[a-zA-Z]:[\\/]/.test(directPath)) {
+      return directPath;
+    }
+
+    try {
+      const parsed = new URL(trimmed);
+      const decodedPath = decodeUriComponentSafely(parsed.pathname || "");
+      if (!decodedPath && !parsed.host) return null;
+
+      if (parsed.host && parsed.host !== "localhost") {
+        if (/^[a-zA-Z]:$/.test(parsed.host)) {
+          return `${parsed.host}${decodedPath}`;
+        }
+        return `//${parsed.host}${decodedPath}`;
+      }
+
+      if (/^\/[a-zA-Z]:/.test(decodedPath)) {
+        return decodedPath.slice(1);
+      }
+
+      return decodedPath || null;
+    } catch {
+      let fallback = trimmed.replace(/^file:\/+/i, "");
+      fallback = decodeUriComponentSafely(fallback);
+      if (/^[a-zA-Z]:[\\/]/.test(fallback)) return fallback;
+      if (fallback.startsWith("/") && /^\/[a-zA-Z]:/.test(fallback)) return fallback.slice(1);
+      return fallback ? `//${fallback}` : null;
+    }
+  }
+
+  return looksLikeAbsolutePath(trimmed) ? trimmed : null;
+};
+
+const parseDownloadUrl = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  const firstColon = trimmed.indexOf(":");
+  if (firstColon < 0) return trimmed;
+  const secondColon = trimmed.indexOf(":", firstColon + 1);
+  if (secondColon < 0) return trimmed;
+  return trimmed.slice(secondColon + 1).trim();
+};
+
+const normalizeRemoteDropUrl = (rawValue: string) => {
+  const trimmed = stripWrappingQuotes(decodeUriComponentSafely(rawValue.trim()));
+  if (!trimmed || /^blob:/i.test(trimmed)) return null;
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  if (trimmed.startsWith("//")) return `https:${trimmed}`;
+  return null;
+};
+
 const collectImageUrlsFromHtml = (html: string) => {
   try {
     const doc = new DOMParser().parseFromString(html, "text/html");
     const urls: string[] = [];
+    const baseCandidates = [
+      doc.querySelector("base[href]")?.getAttribute("href") || "",
+      ...Array.from(doc.querySelectorAll("a[href]"))
+        .map((anchor) => anchor.getAttribute("href") || "")
+        .filter(Boolean)
+    ];
+    const baseUrl = baseCandidates
+      .map((value) => normalizeRemoteDropUrl(value))
+      .find((value): value is string => !!value);
+    const resolveCandidate = (value: string) => {
+      const normalizedRemote = normalizeRemoteDropUrl(value);
+      if (normalizedRemote) return normalizedRemote;
+      if (!baseUrl) return value;
+      try {
+        return new URL(value, baseUrl).toString();
+      } catch {
+        return value;
+      }
+    };
     doc.querySelectorAll("img").forEach((img) => {
       const src = img.getAttribute("src") || "";
       const srcset = img.getAttribute("srcset") || "";
-      if (src) urls.push(src);
+      if (src) urls.push(resolveCandidate(src));
       const srcsetUrl = parseSrcset(srcset);
-      if (srcsetUrl) urls.push(srcsetUrl);
+      if (srcsetUrl) urls.push(resolveCandidate(srcsetUrl));
+      ["data-src", "data-original", "data-lazy-src"].forEach((attr) => {
+        const value = img.getAttribute(attr) || "";
+        if (value) urls.push(resolveCandidate(value));
+      });
     });
     doc.querySelectorAll("source").forEach((source) => {
       const src = source.getAttribute("src") || "";
       const srcset = source.getAttribute("srcset") || "";
-      if (src) urls.push(src);
+      if (src) urls.push(resolveCandidate(src));
       const srcsetUrl = parseSrcset(srcset);
-      if (srcsetUrl) urls.push(srcsetUrl);
+      if (srcsetUrl) urls.push(resolveCandidate(srcsetUrl));
     });
     doc.querySelectorAll("a[href]").forEach((anchor) => {
       const href = anchor.getAttribute("href") || "";
-      if (href) urls.push(href);
+      if (href && /\.(png|jpe?g|gif|webp|bmp|ico|svg)([?#]|$)/i.test(href)) {
+        urls.push(resolveCandidate(href));
+      }
     });
     return urls;
   } catch {
@@ -121,32 +227,85 @@ const collectImageUrlsFromHtml = (html: string) => {
   }
 };
 
-const getDropUrls = (dt: DataTransfer | null) => {
+const getDataTransferStringItems = (dt: DataTransfer | null) =>
+  new Promise<Array<{ type: string; value: string }>>((resolve) => {
+    if (!dt?.items || dt.items.length === 0) {
+      resolve([]);
+      return;
+    }
+
+    const stringItems = Array.from(dt.items).filter((item) => item.kind === "string");
+    if (stringItems.length === 0) {
+      resolve([]);
+      return;
+    }
+
+    let pending = stringItems.length;
+    const results: Array<{ type: string; value: string }> = [];
+
+    stringItems.forEach((item) => {
+      item.getAsString((value) => {
+        if (value) {
+          results.push({ type: item.type || "text/plain", value });
+        }
+        pending -= 1;
+        if (pending === 0) {
+          resolve(results);
+        }
+      });
+    });
+  });
+
+const getDropCandidates = async (dt: DataTransfer | null) => {
   if (!dt) return [];
-  const urls: string[] = [];
-  const uriList = dt.getData("text/uri-list");
-  if (uriList) {
-    uriList
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter((line) => line && !line.startsWith("#"))
-      .forEach((line) => urls.push(line));
-  }
-  const html = dt.getData("text/html");
-  if (html) {
-    urls.push(...collectImageUrlsFromHtml(html));
-  }
-  const plain = dt.getData("text/plain");
-  if (plain) {
-    urls.push(plain.trim());
-  }
-  return Array.from(
-    new Set(
-      urls
-        .map((u) => u.trim())
-        .filter((u) => u.length > 0)
-    )
-  );
+
+  const payloads: Array<{ type: string; value: string }> = [];
+  const pushPayload = (type: string, value: string) => {
+    if (!value) return;
+    payloads.push({ type, value });
+  };
+
+  pushPayload("text/uri-list", dt.getData("text/uri-list"));
+  pushPayload("text/html", dt.getData("text/html"));
+  pushPayload("text/plain", dt.getData("text/plain"));
+  pushPayload("DownloadURL", dt.getData("DownloadURL"));
+  pushPayload("text/x-moz-url", dt.getData("text/x-moz-url"));
+
+  const itemPayloads = await getDataTransferStringItems(dt);
+  payloads.push(...itemPayloads);
+
+  const values: string[] = [];
+  payloads.forEach(({ type, value }) => {
+    if (type === "text/uri-list") {
+      value
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter((line) => line && !line.startsWith("#"))
+        .forEach((line) => values.push(line));
+      return;
+    }
+
+    if (type === "text/html") {
+      values.push(...collectImageUrlsFromHtml(value));
+      return;
+    }
+
+    if (type === "DownloadURL") {
+      const parsed = parseDownloadUrl(value);
+      if (parsed) values.push(parsed);
+      return;
+    }
+
+    if (type === "text/x-moz-url") {
+      const firstLine = value.split(/\r?\n/).map((line) => line.trim()).find(Boolean);
+      if (firstLine) values.push(firstLine);
+      return;
+    }
+
+    values.push(value.trim());
+  });
+
+  return Array.from(new Set(values.map((u) => u.trim()).filter((u) => u.length > 0)));
 };
 
 const resolveDropPaths = (payload: unknown): string[] => {
@@ -162,15 +321,6 @@ const resolveDropPaths = (payload: unknown): string[] => {
   return [];
 };
 
-const dedupeFavoritePaths = (paths: string[]) =>
-  Array.from(
-    new Set(
-      paths
-        .map(normalizePath)
-        .filter((path) => path && isImagePath(path))
-    )
-  );
-
 const EmojiPanel = ({ t, favorites, setFavorites, activeTab, setActiveTab, saveSetting }: EmojiPanelProps) => {
   const [isDragging, setIsDragging] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
@@ -181,7 +331,7 @@ const EmojiPanel = ({ t, favorites, setFavorites, activeTab, setActiveTab, saveS
 
   const persistFavorites = (updater: string[] | ((prev: string[]) => string[])) => {
     setFavorites((prev) => {
-      const next = dedupeFavoritePaths(typeof updater === "function" ? updater(prev) : updater);
+      const next = typeof updater === "function" ? updater(prev) : updater;
       saveSetting("app.emoji_favorites", JSON.stringify(next));
       return next;
     });
@@ -199,11 +349,10 @@ const EmojiPanel = ({ t, favorites, setFavorites, activeTab, setActiveTab, saveS
     invoke<string[]>("list_emoji_favorites")
       .then((diskPaths) => {
         if (cancelled) return;
-        const merged = dedupeFavoritePaths([...favorites, ...(Array.isArray(diskPaths) ? diskPaths : [])]);
-        const current = dedupeFavoritePaths(favorites);
+        const merged = Array.from(new Set([...favorites, ...(Array.isArray(diskPaths) ? diskPaths : [])]));
         if (
-          merged.length === current.length &&
-          merged.every((path, index) => path === current[index])
+          merged.length === favorites.length &&
+          merged.every((path, index) => path === favorites[index])
         ) {
           return;
         }
@@ -217,8 +366,14 @@ const EmojiPanel = ({ t, favorites, setFavorites, activeTab, setActiveTab, saveS
   }, [activeTab, favorites]);
 
   const addFavoritePaths = async (paths: string[]) => {
-    const normalized = paths.map(normalizePath).filter((p) => p && isImagePath(p));
-    if (normalized.length === 0) return;
+    const normalized = Array.from(
+      new Set(
+        paths
+          .map((path) => normalizeDroppedLocalPath(path) || normalizePath(path))
+          .filter((p) => p && isImagePath(p))
+      )
+    );
+    if (normalized.length === 0) return 0;
     const saved = await Promise.all(
       normalized.map(async (path) => {
         try {
@@ -230,8 +385,9 @@ const EmojiPanel = ({ t, favorites, setFavorites, activeTab, setActiveTab, saveS
       })
     );
     const valid = saved.filter((p): p is string => typeof p === "string" && p.length > 0);
-    if (valid.length === 0) return;
+    if (valid.length === 0) return 0;
     persistFavorites((prev) => Array.from(new Set([...prev, ...valid])));
+    return valid.length;
   };
 
   const addFavoriteFiles = async (files: FileList | File[]) => {
@@ -254,8 +410,9 @@ const EmojiPanel = ({ t, favorites, setFavorites, activeTab, setActiveTab, saveS
       }
     }
 
+    let addedCount = 0;
     if (paths.length > 0) {
-      await addFavoritePaths(paths);
+      addedCount += await addFavoritePaths(paths);
     }
 
     if (dataUrlFiles.length > 0) {
@@ -272,13 +429,16 @@ const EmojiPanel = ({ t, favorites, setFavorites, activeTab, setActiveTab, saveS
       const valid = saved.filter((p): p is string => typeof p === "string" && p.length > 0);
       if (valid.length > 0) {
         persistFavorites((prev) => Array.from(new Set([...prev, ...valid])));
+        addedCount += valid.length;
       }
     }
+
+    return addedCount;
   };
 
   const addFavoriteDataUrls = async (dataUrls: string[]) => {
     const normalized = dataUrls.map((url) => url.trim()).filter((url) => url.startsWith("data:"));
-    if (normalized.length === 0) return;
+    if (normalized.length === 0) return 0;
     const saved = await Promise.all(
       normalized.map(async (dataUrl) => {
         try {
@@ -293,13 +453,14 @@ const EmojiPanel = ({ t, favorites, setFavorites, activeTab, setActiveTab, saveS
     if (valid.length > 0) {
       persistFavorites((prev) => Array.from(new Set([...prev, ...valid])));
     }
+    return valid.length;
   };
 
   const addFavoriteUrls = async (urls: string[]) => {
     const normalized = urls
       .map((url) => url.trim())
       .filter((url) => url.startsWith("http://") || url.startsWith("https://"));
-    if (normalized.length === 0) return;
+    if (normalized.length === 0) return 0;
     const saved = await Promise.all(
       normalized.map(async (url) => {
         try {
@@ -314,6 +475,7 @@ const EmojiPanel = ({ t, favorites, setFavorites, activeTab, setActiveTab, saveS
     if (valid.length > 0) {
       persistFavorites((prev) => Array.from(new Set([...prev, ...valid])));
     }
+    return valid.length;
   };
 
   const handleSend = async (content: string, contentType: string) => {
@@ -350,7 +512,7 @@ const EmojiPanel = ({ t, favorites, setFavorites, activeTab, setActiveTab, saveS
   const handleSelectFiles = async () => {
     const selected = await open({
       multiple: true,
-      filters: [{ name: "Images", extensions: ["png", "jpg", "jpeg", "webp", "gif"] }]
+      filters: [{ name: "Images", extensions: ["png", "jpg", "jpeg", "webp", "gif", "avif"] }]
     });
     if (!selected) return;
     const paths = Array.isArray(selected) ? selected : [selected];
@@ -359,45 +521,56 @@ const EmojiPanel = ({ t, favorites, setFavorites, activeTab, setActiveTab, saveS
 
   const getFilesFromDataTransfer = (dt: DataTransfer | null): File[] => {
     if (!dt) return [];
-    if (dt.files && dt.files.length > 0) {
-      return Array.from(dt.files);
-    }
     const files: File[] = [];
     if (dt.items) {
       for (let i = 0; i < dt.items.length; i++) {
         const item = dt.items[i];
         if (item.kind === "file") {
           const file = item.getAsFile();
-          if (file) files.push(file);
+          if (file) {
+            // In Tauri, even with dragDropEnabled: false, standard File objects dropped
+            // often contain the "path" property.
+            files.push(file);
+          }
         }
       }
+    } else if (dt.files && dt.files.length > 0) {
+      return Array.from(dt.files);
     }
     return files;
   };
 
-  const handleDomFiles = async (files: File[] | FileList | null | undefined) => {
-    if (!files) return;
-    const fileList = files instanceof FileList ? Array.from(files) : files;
-    if (fileList.length === 0) return;
-    await addFavoriteFiles(fileList);
-  };
-
   const handleDomDropDataTransfer = async (dt: DataTransfer | null) => {
+    let addedCount = 0;
     const files = getFilesFromDataTransfer(dt);
     if (files.length > 0) {
-      await handleDomFiles(files);
-      return;
+      addedCount += await addFavoriteFiles(files);
     }
-    const urls = getDropUrls(dt);
-    if (urls.length === 0) return;
-    const dataUrls = urls.filter((url) => url.startsWith("data:"));
-    const httpUrls = urls.filter((url) => url.startsWith("http://") || url.startsWith("https://"));
-    if (dataUrls.length > 0) {
-      await addFavoriteDataUrls(dataUrls);
+    const candidates = await getDropCandidates(dt);
+    if (candidates.length === 0) {
+      return addedCount;
     }
-    if (httpUrls.length > 0) {
-      await addFavoriteUrls(httpUrls);
+    const localPaths = candidates
+      .map((value) => normalizeDroppedLocalPath(value))
+      .filter((value): value is string => !!value);
+    const dataUrls = candidates.filter((url) => url.startsWith("data:"));
+    const httpUrls = candidates
+      .map((url) => normalizeRemoteDropUrl(url) || url)
+      .filter((url) => url.startsWith("http://") || url.startsWith("https://"));
+
+    if (addedCount === 0 && localPaths.length > 0) {
+      addedCount += await addFavoritePaths(localPaths);
     }
+    if (addedCount === 0 && dataUrls.length > 0) {
+      addedCount += await addFavoriteDataUrls(dataUrls);
+    }
+    if (addedCount === 0 && httpUrls.length > 0) {
+      addedCount += await addFavoriteUrls(httpUrls);
+    }
+    if (addedCount === 0) {
+      await emit("toast", t("emoji_drop_failed") || "未识别到可添加的图片，请尝试拖拽图片本身或先下载到本地");
+    }
+    return addedCount;
   };
 
   const handleDomDrop = async (event: DragEvent<HTMLDivElement>) => {
@@ -429,7 +602,9 @@ const EmojiPanel = ({ t, favorites, setFavorites, activeTab, setActiveTab, saveS
 
     const unlistenDrop = appWindow.listen("tauri://file-drop", (e) => {
       const paths = resolveDropPaths(e.payload);
-      if (paths.length > 0) void addFavoritePaths(paths);
+      if (paths.length > 0) {
+        void addFavoritePaths(paths);
+      }
       setIsDragging(false);
     });
     const unlistenHover = appWindow.listen("tauri://file-drop-hover", () => {
@@ -440,7 +615,9 @@ const EmojiPanel = ({ t, favorites, setFavorites, activeTab, setActiveTab, saveS
     });
     const unlistenV2Drop = appWindow.listen("tauri://drag-drop", (e) => {
       const paths = resolveDropPaths(e.payload);
-      if (paths.length > 0) void addFavoritePaths(paths);
+      if (paths.length > 0) {
+        void addFavoritePaths(paths);
+      }
       setIsDragging(false);
     });
     const unlistenV2Enter = appWindow.listen("tauri://drag-enter", () => {
@@ -483,7 +660,9 @@ const EmojiPanel = ({ t, favorites, setFavorites, activeTab, setActiveTab, saveS
       if (event.dataTransfer) {
         event.dataTransfer.dropEffect = "copy";
       }
-      if (!isDragging) setIsDragging(true);
+      if (!isDragging) {
+        setIsDragging(true);
+      }
     };
 
     const handleDragLeave = (event: globalThis.DragEvent) => {
@@ -494,6 +673,7 @@ const EmojiPanel = ({ t, favorites, setFavorites, activeTab, setActiveTab, saveS
 
     const handleDrop = (event: globalThis.DragEvent) => {
       event.preventDefault();
+      event.stopPropagation();
       setIsDragging(false);
       void handleDomDropDataTransfer(event.dataTransfer);
     };
@@ -535,7 +715,7 @@ const EmojiPanel = ({ t, favorites, setFavorites, activeTab, setActiveTab, saveS
       <div className="emoji-content-wrapper">
         <AnimatePresence mode="wait" initial={false}>
           {activeTab === "emoji" ? (
-            <motion.div 
+            <motion.div
               key="emoji"
               className="emoji-content"
               initial={{ opacity: 0, y: 10 }}
@@ -543,13 +723,13 @@ const EmojiPanel = ({ t, favorites, setFavorites, activeTab, setActiveTab, saveS
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.15 }}
             >
-              {emojiGroups.map((group) => (
-                <div key={group.name} className="emoji-group">
+              {emojiGroups.map((group, groupIndex) => (
+                <div key={`${group.name}-${groupIndex}`} className="emoji-group">
                   <div className="emoji-group-title">{group.name}</div>
                   <div className="emoji-grid">
-                    {group.emojis.map((emoji) => (
+                    {group.emojis.map((emoji, emojiIndex) => (
                       <motion.button
-                        key={`${group.name}-${emoji}`}
+                        key={`${group.name}-${groupIndex}-${emojiIndex}-${emoji}`}
                         className="emoji-btn"
                         onClick={() => handleSend(emoji, "text")}
                         title={emoji}
@@ -640,7 +820,7 @@ const EmojiPanel = ({ t, favorites, setFavorites, activeTab, setActiveTab, saveS
                   );
                 })}
 
-                <motion.div 
+                <motion.div
                   className="emoji-fav-card emoji-fav-add"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
@@ -668,10 +848,10 @@ const EmojiPanel = ({ t, favorites, setFavorites, activeTab, setActiveTab, saveS
               {hasFavorites && (
                 <div className="emoji-fav-tip">{t("emoji_fav_tip") || "可直接拖拽图片添加"}</div>
               )}
-              
+
               <AnimatePresence>
                 {isDragging && (
-                  <motion.div 
+                  <motion.div
                     className="drop-overlay"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}

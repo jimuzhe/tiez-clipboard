@@ -4,21 +4,8 @@ use crate::domain::models::ClipboardEntry;
 use crate::error::{AppError, AppResult};
 use crate::infrastructure::repository::clipboard_repo::ClipboardRepository;
 use crate::infrastructure::repository::tag_repo::TagRepository;
-use crate::services::clipboard::{
-    build_entry_preview, derive_rich_text_content, truncate_html_for_preview,
-};
+use crate::services::clipboard::truncate_html_for_preview;
 use tauri::{AppHandle, Emitter, State};
-
-fn normalize_rich_text_item_content(item: &mut ClipboardEntry) {
-    if item.content_type != "rich_text" {
-        return;
-    }
-
-    let normalized = derive_rich_text_content(&item.content, item.html_content.as_deref());
-    if !normalized.trim().is_empty() {
-        item.content = normalized;
-    }
-}
 
 #[tauri::command]
 pub fn get_clipboard_history(
@@ -66,8 +53,6 @@ pub fn get_clipboard_history(
 
     // 5. Truncate content for UI performance
     for item in &mut history {
-        normalize_rich_text_item_content(item);
-
         if (item.content_type == "text"
             || item.content_type == "code"
             || item.content_type == "url"
@@ -91,11 +76,11 @@ pub fn get_clipboard_history(
             || item.content_type == "url"
             || item.content_type == "rich_text"
         {
-            item.preview = build_entry_preview(
-                &item.content_type,
-                &item.content,
-                item.html_content.as_deref(),
-            );
+            if item.content.chars().count() > 500 {
+                item.preview = format!("{}...", item.content.chars().take(497).collect::<String>());
+            } else {
+                item.preview = item.content.clone();
+            }
         }
     }
 
@@ -131,8 +116,6 @@ pub fn search_clipboard_history(
     }
 
     for item in &mut history {
-        normalize_rich_text_item_content(item);
-
         if (item.content_type == "text"
             || item.content_type == "code"
             || item.content_type == "url"
@@ -156,11 +139,11 @@ pub fn search_clipboard_history(
             || item.content_type == "url"
             || item.content_type == "rich_text"
         {
-            item.preview = build_entry_preview(
-                &item.content_type,
-                &item.content,
-                item.html_content.as_deref(),
-            );
+            if item.content.chars().count() > 500 {
+                item.preview = format!("{}...", item.content.chars().take(497).collect::<String>());
+            } else {
+                item.preview = item.content.clone();
+            }
         }
     }
 
@@ -215,8 +198,6 @@ pub fn get_tag_items(state: State<'_, DbState>, tag: String) -> AppResult<Vec<Cl
         .map_err(AppError::from)?;
 
     for item in &mut history {
-        normalize_rich_text_item_content(item);
-
         if (item.content_type == "text"
             || item.content_type == "code"
             || item.content_type == "url"
@@ -226,18 +207,6 @@ pub fn get_tag_items(state: State<'_, DbState>, tag: String) -> AppResult<Vec<Cl
             item.content = format!(
                 "{}... [Content Truncated]",
                 item.content.chars().take(50000).collect::<String>()
-            );
-        }
-
-        if item.content_type == "text"
-            || item.content_type == "code"
-            || item.content_type == "url"
-            || item.content_type == "rich_text"
-        {
-            item.preview = build_entry_preview(
-                &item.content_type,
-                &item.content,
-                item.html_content.as_deref(),
             );
         }
     }
@@ -311,32 +280,15 @@ pub fn get_clipboard_content(
     {
         let session_items = session.inner().0.lock().unwrap();
         if let Some(item) = session_items.iter().find(|i| i.id == id) {
-            if item.content_type == "rich_text" {
-                let normalized =
-                    derive_rich_text_content(&item.content, item.html_content.as_deref());
-                if !normalized.trim().is_empty() {
-                    return Ok(normalized);
-                }
-            }
             return Ok(item.content.clone());
         }
     }
 
-    if let Some((content, content_type, html_content)) = state
+    state
         .repo
-        .get_entry_content_with_html(id)
+        .get_entry_content(id)
         .map_err(AppError::from)?
-    {
-        if content_type == "rich_text" {
-            let normalized = derive_rich_text_content(&content, html_content.as_deref());
-            if !normalized.trim().is_empty() {
-                return Ok(normalized);
-            }
-        }
-        return Ok(content);
-    }
-
-    Err(AppError::Validation("Entry not found".to_string()))
+        .ok_or_else(|| AppError::Validation("Entry not found".to_string()))
 }
 
 #[tauri::command]

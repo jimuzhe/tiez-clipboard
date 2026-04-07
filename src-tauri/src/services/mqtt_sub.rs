@@ -72,7 +72,7 @@ fn get_mqtt_config(app: &AppHandle) -> Option<MqttConfig> {
         .get("mqtt_enabled")
         .ok()
         .flatten()
-        .unwrap_or("true".to_string());
+        .unwrap_or("false".to_string());
     if enabled_str != "true" {
         return None;
     }
@@ -82,12 +82,7 @@ fn get_mqtt_config(app: &AppHandle) -> Option<MqttConfig> {
         .get("mqtt_server")
         .ok()
         .flatten()
-        .filter(|s| !s.is_empty())
-        .or_else(|| {
-            std::env::var("DEFAULT_MQTT_SERVER")
-                .ok()
-                .filter(|s| !s.is_empty())
-        });
+        .filter(|s| !s.is_empty());
 
     if host.is_none() || host.as_ref().unwrap().is_empty() {
         return None;
@@ -102,27 +97,24 @@ fn get_mqtt_config(app: &AppHandle) -> Option<MqttConfig> {
         .get("mqtt_password")
         .ok()
         .flatten()
-        .filter(|s| !s.is_empty())
-        .or_else(|| {
-            std::env::var("DEFAULT_MQTT_PASSWORD")
-                .ok()
-                .filter(|s| !s.is_empty())
-        });
+        .filter(|s| !s.is_empty());
 
     // Topic logic (using shortened ID)
-    let anon_id = db_state
-        .settings_repo
-        .get("app.anon_id")
-        .ok()
-        .flatten()
-        .and_then(|v| crate::app::system::normalize_anon_id(&v))
-        .unwrap_or_else(|| {
-            let machine_id = crate::app::system::get_machine_id();
-            let new_id = crate::app::system::build_anon_id(&machine_id);
-            let _ = db_state.settings_repo.set("app.anon_id", &new_id);
-            new_id
-        });
-    let short_id = &anon_id;
+    let stored_anon_id = db_state.settings_repo.get("app.anon_id").ok().flatten();
+    let anon_id = stored_anon_id
+        .as_deref()
+        .and_then(crate::app::system::normalize_anon_id)
+        .unwrap_or_else(
+            || crate::app::system::build_anon_id(&crate::app::system::get_machine_id()),
+        );
+    if stored_anon_id
+        .as_deref()
+        .map(|value| value.trim() != anon_id)
+        .unwrap_or(true)
+    {
+        let _ = db_state.settings_repo.set("app.anon_id", &anon_id);
+    }
+    let short_id = anon_id.split('-').next().unwrap_or("unknown");
     let default_topic = format!("tiez/tiez_{}", short_id);
 
     let db_topic = db_state
@@ -142,20 +134,20 @@ fn get_mqtt_config(app: &AppHandle) -> Option<MqttConfig> {
         .ok()
         .flatten()
         .filter(|s| !s.is_empty());
-    let default_client_id = format!("tiez_pc_{}", short_id);
-    let client_id = custom_client_id.unwrap_or(default_client_id);
+    let client_id = custom_client_id.unwrap_or_else(|| {
+        topic
+            .split('/')
+            .nth(1)
+            .unwrap_or(&format!("tiez_{}", short_id))
+            .to_string()
+    });
 
     let username = db_state
         .settings_repo
         .get("mqtt_username")
         .ok()
         .flatten()
-        .filter(|s| !s.is_empty())
-        .or_else(|| {
-            std::env::var("DEFAULT_MQTT_USERNAME")
-                .ok()
-                .filter(|s| !s.is_empty())
-        });
+        .filter(|s| !s.is_empty());
 
     let protocol = db_state
         .settings_repo
@@ -296,10 +288,9 @@ pub fn start_mqtt_client(app: AppHandle) {
                     MqttOptions::new(cfg.client_id.clone(), host_clean.clone(), cfg.port)
                 };
 
-                // Apply transport settings explicitly for security
+                // Build rustls config manually so MQTT TLS/WSS does not depend on
+                // potentially problematic system certificate stores.
                 if use_wss || use_tls {
-                    // Manually build TlsConfiguration to avoid panic on invalid system certs
-                    // We only use webpki-roots which are safe and don't contain enterprise/AV certs that cause panic
                     let mut root_store = rustls::RootCertStore::empty();
                     root_store.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
 
@@ -307,10 +298,10 @@ pub fn start_mqtt_client(app: AppHandle) {
                         .with_root_certificates(root_store)
                         .with_no_client_auth();
 
-                    // If insecure flag is set, disable verification (dangerous but requested)
                     if cfg.tls_insecure {
                         #[derive(Debug)]
                         struct NoVerifier;
+
                         impl rustls::client::danger::ServerCertVerifier for NoVerifier {
                             fn verify_server_cert(
                                 &self,
@@ -366,16 +357,15 @@ pub fn start_mqtt_client(app: AppHandle) {
                                 ]
                             }
                         }
+
                         config
                             .dangerous()
                             .set_certificate_verifier(std::sync::Arc::new(NoVerifier));
                     }
 
                     if use_wss {
-                        // Use Rustls transport with Arc<ClientConfig>
                         mqttoptions.set_transport(Transport::wss_with_config(config.into()));
                     } else {
-                        // Use Rustls transport with Arc<ClientConfig>
                         mqttoptions.set_transport(Transport::tls_with_config(config.into()));
                     }
                 } else if use_ws {
@@ -521,7 +511,6 @@ pub fn start_mqtt_client(app: AppHandle) {
                                                     payload_owned,
                                                 ),
                                                 Some("mqtt".to_string()),
-                                                None,
                                             );
                                         });
 

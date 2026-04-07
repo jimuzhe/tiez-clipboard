@@ -1,20 +1,19 @@
 /* AI Assistant Styles */
 .ai-options-menu {
   background: var(--bg-element) !important;
-  border: var(--menu-border) !important;
-  box-shadow: var(--menu-shadow) !important;
-  border-radius: var(--menu-radius) !important;
+  border: 2px solid var(--border-dark) !important;
+  box-shadow: 4px 4px 0 0 var(--shadow-color) !important;
+  border-radius: 4px !important;
 }
 
 .ai-option-item {
-  transition: all 0.14s ease;
-  font-weight: 600;
-  border-radius: 10px;
+  transition: all 0.1s;
+  font-weight: bold;
 }
 
 .ai-option-item:hover {
-  background: var(--menu-item-hover-background) !important;
-  color: var(--menu-item-hover-color) !important;
+  background: var(--accent-color) !important;
+  color: white !important;
 }
 
 .animate-spin {
@@ -41,7 +40,7 @@
 .ai-profile-card {
   padding: 10px 12px;
   background: transparent;
-  border-bottom: 1px solid var(--panel-divider-color);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
   color: var(--text-primary);
   display: flex;
   justify-content: space-between;
@@ -54,7 +53,7 @@
 }
 
 .ai-profile-card:hover {
-  background: rgba(var(--accent-color-rgb), 0.06);
+  background: rgba(0, 0, 0, 0.05);
 }
 
 .ai-profile-card::before {
@@ -63,9 +62,9 @@
 
 .ai-profile-name {
   font-size: 11px;
-  font-weight: 700;
-  text-transform: none;
-  letter-spacing: 0;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
   color: var(--text-primary);
   margin-bottom: 2px;
 }
@@ -74,27 +73,30 @@
   font-size: 9px;
   font-family: var(--font-mono);
   color: var(--text-secondary);
-  background: rgba(var(--accent-color-rgb), 0.08);
-  padding: 2px 6px;
+  background: rgba(0, 0, 0, 0.05);
+  padding: 1px 4px;
   display: inline-block;
-  border-radius: var(--radius-pill);
 }
 
 .ai-sub-label {
   display: block;
   font-size: 10px;
-  font-weight: 700;
-  text-transform: none;
+  font-weight: 800;
+  text-transform: uppercase;
   color: var(--accent-color);
   margin-top: 16px;
   margin-bottom: 8px;
-  border-left: 2px solid var(--accent-color);
+  border-left: 3px solid var(--accent-color);
   padding-left: 8px;
 }
 
 @media (prefers-color-scheme: dark) {
+  :root:not(.light-mode) .ai-profile-card {
+    border-bottom-color: rgba(255, 255, 255, 0.1);
+  }
+
   :root:not(.light-mode) .ai-profile-sub {
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.1);
   }
 }
 

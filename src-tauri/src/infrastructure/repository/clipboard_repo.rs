@@ -330,7 +330,20 @@ impl SqliteClipboardRepository {
         }
 
         let calculated_hash = if entry.content_type == "image" {
-            calc_image_hash(&final_content).unwrap_or(0)
+            if entry.content.starts_with("data:") {
+                calc_image_hash(&entry.content).unwrap_or(0)
+            } else {
+                if let Ok(img) = image::open(&entry.content) {
+                    let thumb = img.resize_exact(32, 32, image::imageops::FilterType::Nearest);
+                    use std::collections::hash_map::DefaultHasher;
+                    use std::hash::{Hash, Hasher};
+                    let mut hasher = DefaultHasher::new();
+                    thumb.as_bytes().hash(&mut hasher);
+                    hasher.finish() as i64
+                } else {
+                    0
+                }
+            }
         } else {
             calc_text_hash(&final_content) as i64
         };
@@ -524,24 +537,6 @@ impl SqliteClipboardRepository {
                 if let Some(row) = rows.next().map_err(|e| e.to_string())? {
                     return Ok(Some(row.get(0).map_err(|e| e.to_string())?));
                 }
-
-                let mut fallback_stmt = conn
-                    .prepare(
-                        "SELECT id, content FROM clipboard_history \
-                     WHERE content_type = 'image' \
-                     ORDER BY timestamp DESC \
-                     LIMIT 200",
-                    )
-                    .map_err(|e| e.to_string())?;
-                let mut fallback_rows = fallback_stmt.query([]).map_err(|e| e.to_string())?;
-                while let Some(row) = fallback_rows.next().map_err(|e| e.to_string())? {
-                    let id: i64 = row.get(0).map_err(|e| e.to_string())?;
-                    let stored_content_raw: String = row.get(1).map_err(|e| e.to_string())?;
-                    let stored_content = self.maybe_decrypt_text(&stored_content_raw);
-                    if calc_image_hash(&stored_content) == Some(hash) {
-                        return Ok(Some(id));
-                    }
-                }
                 return Ok(None);
             }
         }
@@ -595,7 +590,7 @@ impl SqliteClipboardRepository {
         if let Ok(Some(limit_str)) = SqliteSettingsRepository::get_raw(conn, "app.persistent_limit")
         {
             if let Ok(limit) = limit_str.parse::<i32>() {
-                // Count non-pinned entries that have no tags
+                // Count non-pinned entries
                 let count: i32 = conn.query_row(
                     "SELECT COUNT(*) FROM clipboard_history WHERE is_pinned = 0 AND (tags = '[]' OR tags IS NULL)",
                     [],
@@ -722,22 +717,24 @@ impl SqliteClipboardRepository {
         content: &str,
         preview: &str,
     ) -> Result<(), String> {
-        let (old_content_raw, content_type, tags_json) = conn
+        let (old_content_raw, content_type, tags_json, has_html) = conn
             .query_row(
-                "SELECT content, content_type, tags FROM clipboard_history WHERE id = ?",
+                "SELECT content, content_type, tags, (html_content IS NOT NULL) FROM clipboard_history WHERE id = ?",
                 params![id],
                 |row| {
                     Ok((
                         row.get::<_, String>(0)?,
                         row.get::<_, String>(1)?,
                         row.get::<_, String>(2)?,
+                        row.get::<_, bool>(3)?,
                     ))
                 },
             )
             .map_err(|e| e.to_string())?;
 
         let old_content = self.maybe_decrypt_text(&old_content_raw);
-        if old_content == content && content_type != "rich_text" {
+        // Procceed if content changed, OR if content is same but we need to transition away from rich text/clear HTML
+        if old_content == content && content_type != "rich_text" && !has_html {
             return Ok(());
         }
 
@@ -870,15 +867,9 @@ impl ClipboardRepository for SqliteClipboardRepository {
                     is_external: row.get::<_, i32>(10)? == 1,
                     pinned_order: row.get(11).unwrap_or(0),
                     source_app_path: row.get(12).unwrap_or(None),
-                    file_preview_exists: {
-                        let is_ext = row.get::<_, i32>(10)? == 1;
-                        if is_ext {
-                            let c: String = self.maybe_decrypt_text(&row.get::<_, String>(2)?);
-                            std::path::Path::new(&c).exists()
-                        } else {
-                            true
-                        }
-                    },
+                    // Avoid synchronous filesystem existence checks in history query.
+                    // Missing files are still handled by frontend image/file preview error fallback.
+                    file_preview_exists: true,
                 },
                 content_raw,
                 preview_raw,

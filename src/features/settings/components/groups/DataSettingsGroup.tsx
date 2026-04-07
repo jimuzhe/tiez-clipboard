@@ -70,7 +70,21 @@ const DataSettingsGroup = ({ t, collapsed, onToggle, dataPath }: DataSettingsGro
                             </button>
                             <button
                                 className="btn-icon"
-                                onClick={() => invoke("open_data_folder").catch(console.error)}
+                                onClick={async () => {
+                                    try {
+                                        if (!dataPath) {
+                                            throw new Error(t('not_set'));
+                                        }
+                                        await invoke("open_folder", { path: dataPath });
+                                    } catch (e: unknown) {
+                                        console.error(e);
+                                        const errorMsg = e instanceof Error ? e.message : String(e);
+                                        await message(
+                                            `${t('open_failed')}${errorMsg}`,
+                                            { title: t('error'), kind: 'error' }
+                                        );
+                                    }
+                                }}
                                 title={t('open_folder') || "Open"}
                                 style={{ width: 'auto', padding: '4px 12px', fontSize: '10px', textTransform: 'uppercase', height: '24px' }}
                             >

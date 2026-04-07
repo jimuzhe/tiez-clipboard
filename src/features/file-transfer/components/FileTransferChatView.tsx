@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
+import { emit, listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { open } from "@tauri-apps/plugin-dialog";
 import {
@@ -31,17 +31,7 @@ const FileTransferChatView = ({
     localIp,
     actualPort
 }: FileTransferChatViewProps) => {
-    const resolveComposerMetrics = (height?: number) => {
-        const baseHeight = height ?? (typeof window !== "undefined" ? window.innerHeight : 0);
-        const controlHeight = Math.max(46, Math.min(84, Math.round(baseHeight * 0.1)));
-        const footerPaddingY = Math.max(8, Math.min(20, Math.round(controlHeight * 0.18)));
-        return { controlHeight, footerPaddingY };
-    };
-
-    const rootRef = useRef<HTMLDivElement>(null);
-    const [composerMetrics, setComposerMetrics] = useState(() => resolveComposerMetrics());
-    const composerMinHeight = composerMetrics.controlHeight;
-    const composerSideWidth = Math.max(74, Math.round(composerMinHeight * 1.6));
+    const composerMinHeight = 46;
     const [messages, setMessages] = useState<FileTransferMessage[]>([]);
     const [input, setInput] = useState("");
     const [appLogo, setAppLogo] = useState("");
@@ -55,20 +45,177 @@ const FileTransferChatView = ({
     const [contextMenu, setContextMenu] = useState<FileTransferContextMenu | null>(null);
     const [onlineDevices, setOnlineDevices] = useState<FileTransferDevice[]>([]);
     const [isDragging, setIsDragging] = useState(false);
-    const lastDropSignatureRef = useRef("");
-    const lastDropHandledAtRef = useRef(0);
-    const chatViewStyle = {
-        position: 'relative',
-        ['--wt-control-height']: `${composerMinHeight}px`,
-        ['--wt-side-width']: `${composerSideWidth}px`,
-        ['--wt-footer-padding-y']: `${composerMetrics.footerPaddingY}px`
-    } as CSSProperties;
 
     const URL_REGEX = /((https?:\/\/|www\.)[^\s<]+|(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+(?:[a-z]{2,})(?:\/[^\s<]*)?)/gi;
+
+    type PendingTransferItem = {
+        name: string;
+        path?: string;
+        file?: File;
+    };
+
+    const resolveDropPaths = (payload: unknown): string[] => {
+        if (Array.isArray(payload)) {
+            return payload.filter((p): p is string => typeof p === "string" && p.trim().length > 0);
+        }
+        if (payload && typeof payload === "object" && "paths" in payload) {
+            const maybePaths = (payload as { paths?: unknown }).paths;
+            if (Array.isArray(maybePaths)) {
+                return maybePaths.filter((p): p is string => typeof p === "string" && p.trim().length > 0);
+            }
+        }
+        return [];
+    };
+
+    const getFilesFromDataTransfer = (dt: DataTransfer | null): File[] => {
+        if (!dt) return [];
+        const files: File[] = [];
+        if (dt.items) {
+            for (let i = 0; i < dt.items.length; i++) {
+                const item = dt.items[i];
+                if (item.kind !== "file") continue;
+                const file = item.getAsFile();
+                if (file) {
+                    files.push(file);
+                }
+            }
+            if (files.length > 0) {
+                return files;
+            }
+        }
+        if (dt.files && dt.files.length > 0) {
+            return Array.from(dt.files);
+        }
+        return [];
+    };
+
+    const getDroppedTransferItems = (dt: DataTransfer | null): PendingTransferItem[] => {
+        const files = getFilesFromDataTransfer(dt);
+        const seen = new Set<string>();
+        const items: PendingTransferItem[] = [];
+
+        files.forEach((file) => {
+            const maybePath = (file as File & { path?: string }).path?.trim();
+            const key = maybePath || `${file.name}:${file.size}:${file.lastModified}`;
+            if (seen.has(key)) return;
+            seen.add(key);
+            items.push({
+                name: file.name || maybePath?.split(/[/\\]/).pop() || "File",
+                path: maybePath || undefined,
+                file: maybePath ? undefined : file
+            });
+        });
+
+        return items;
+    };
+
+    const uploadDroppedFile = async (file: File) => {
+        const port = Number(actualPort);
+        if (!Number.isFinite(port) || port <= 0) {
+            throw new Error("File transfer server is not running");
+        }
+
+        const CHUNK_SIZE = 1024 * 512;
+        const totalChunks = Math.max(1, Math.ceil(file.size / CHUNK_SIZE));
+        const uploadId = `desktop_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+
+        for (let i = 0; i < totalChunks; i++) {
+            const start = i * CHUNK_SIZE;
+            const end = Math.min(file.size, start + CHUNK_SIZE);
+            const chunk = file.slice(start, end);
+            const formData = new FormData();
+            formData.append("file", chunk, file.name);
+            formData.append("metadata", JSON.stringify({
+                upload_id: uploadId,
+                chunk_index: i,
+                total_chunks: totalChunks,
+                file_name: file.name,
+                sender_id: "pc",
+                sender_name: "电脑",
+                total_size: file.size,
+                content_type: file.type || "application/octet-stream"
+            }));
+
+            const response = await fetch(`http://127.0.0.1:${port}/share-chunk`, {
+                method: "POST",
+                body: formData
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text().catch(() => "");
+                throw new Error(errorText || `Share chunk upload failed: ${response.status}`);
+            }
+        }
+    };
+
+    const queueFilesForSending = async (rawItems: PendingTransferItem[]) => {
+        const items = rawItems.filter((item) => {
+            if (item.path && item.path.trim().length > 0) return true;
+            return !!item.file;
+        });
+        if (items.length === 0) return;
+
+        const tempMessages: FileTransferMessage[] = items.map((item) => ({
+            id: Date.now() + Math.random(),
+            direction: 'out',
+            msg_type: 'file',
+            content: 'Preparing...',
+            timestamp: Date.now(),
+            _fileName: item.name,
+            _preparing: true
+        }));
+
+        setMessages(prev => [...prev, ...tempMessages]);
+        setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+
+        const results = await Promise.allSettled(
+            items.map((item) => {
+                if (item.path) {
+                    return invoke("send_file_to_client", { filePath: item.path });
+                }
+                if (item.file) {
+                    return uploadDroppedFile(item.file);
+                }
+                return Promise.reject(new Error("No valid file source"));
+            })
+        );
+
+        const failedIds = new Set<number>();
+        results.forEach((result, index) => {
+            if (result.status === "rejected") {
+                failedIds.add(tempMessages[index].id);
+                console.error(`Failed to send file: ${items[index].name}`, result.reason);
+            }
+        });
+
+        if (failedIds.size > 0) {
+            setMessages(prev => prev.filter((msg) => !failedIds.has(msg.id)));
+        }
+
+        if (results.some((result) => result.status === "fulfilled")) {
+            setTimeout(fetchMessages, 300);
+        }
+    };
 
     const normalizeUrl = (raw: string) => {
         if (/^https?:\/\//i.test(raw)) return raw;
         return `http://${raw}`;
+    };
+
+    const resolveServerDownloadUrl = (content: string) => {
+        if (!content.startsWith('/download/')) return content;
+        if (localIp && actualPort) {
+            return `http://${localIp}:${actualPort}${content}`;
+        }
+        return content;
+    };
+
+    const getMessageMediaSrc = (message: FileTransferMessage) => {
+        if (message._fallbackSrc) return message._fallbackSrc;
+        if (message.content.startsWith('data:')) return message.content;
+        if (message.content.startsWith('/download/')) return resolveServerDownloadUrl(message.content);
+        if (message.file_path) return convertFileSrc(message.file_path);
+        return convertFileSrc(message.content);
     };
 
     const splitTrailingPunctuation = (raw: string) => {
@@ -163,24 +310,18 @@ const FileTransferChatView = ({
 
     const getAvatarConfig = (m: FileTransferMessage) => {
         if (m.sender_id === 'pc' || m.direction === 'out') {
-            return {
-                isImg: !!appLogo,
-                content: appLogo || 'PC',
-                color: 'var(--wt-own-avatar-background)',
-                textColor: 'var(--wt-own-avatar-color)',
-                initial: 'PC'
-            };
+            return { isImg: !!appLogo, content: appLogo || 'PC', color: 'var(--text-primary)', initial: 'PC' };
         }
 
         const gradients = [
-            'var(--wt-peer-gradient-1)',
-            'var(--wt-peer-gradient-2)',
-            'var(--wt-peer-gradient-3)',
-            'var(--wt-peer-gradient-4)',
-            'var(--wt-peer-gradient-5)',
-            'var(--wt-peer-gradient-6)',
-            'var(--wt-peer-gradient-7)',
-            'var(--wt-peer-gradient-8)'
+            'linear-gradient(135deg, #FF5F6D 0%, #FFC371 100%)',
+            'linear-gradient(135deg, #2193b0 0%, #6dd5ed 100%)',
+            'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)',
+            'linear-gradient(135deg, #8E2DE2 0%, #4A00E0 100%)',
+            'linear-gradient(135deg, #f953c6 0%, #b91d73 100%)',
+            'linear-gradient(135deg, #ee0979 0%, #ff6a00 100%)',
+            'linear-gradient(135deg, #00c6ff 0%, #0072ff 100%)',
+            'linear-gradient(135deg, #f7971e 0%, #ffd200 100%)'
         ];
 
         const id = m.sender_id || 'mobile';
@@ -200,12 +341,7 @@ const FileTransferChatView = ({
             else initial = m.sender_name.charAt(0).toUpperCase();
         }
 
-        return {
-            isImg: false,
-            color: gradient,
-            textColor: 'var(--wt-peer-avatar-color)',
-            initial
-        };
+        return { isImg: false, color: gradient, initial };
     };
 
     const fetchMessages = async () => {
@@ -222,21 +358,6 @@ const FileTransferChatView = ({
         fetchMessages();
         invoke<string>("get_app_logo").then(setAppLogo).catch(console.error);
 
-
-
-        const resolveDropPaths = (payload: unknown): string[] => {
-            if (Array.isArray(payload)) {
-                return payload.filter((p): p is string => typeof p === "string");
-            }
-            if (payload && typeof payload === "object" && "paths" in payload) {
-                const maybePaths = (payload as { paths?: unknown }).paths;
-                if (Array.isArray(maybePaths)) {
-                    return maybePaths.filter((p): p is string => typeof p === "string");
-                }
-            }
-            return [];
-        };
-
         // Define handlers to be reused
         const handleDragDrop = (event: { payload: unknown }) => {
             console.log("[DRAG] Drop event received:", event);
@@ -245,47 +366,16 @@ const FileTransferChatView = ({
             setIsDragging(false);
 
             const paths = resolveDropPaths(event.payload);
-            const signature = paths.slice().sort().join("|");
-            const now = Date.now();
 
             console.log("[DRAG] Parsed paths:", paths);
 
-            if (
-                signature &&
-                signature === lastDropSignatureRef.current &&
-                now - lastDropHandledAtRef.current < 1500
-            ) {
-                console.log("[DRAG] Duplicate drop event ignored");
-                return;
-            }
-
             if (paths && paths.length > 0) {
-                lastDropSignatureRef.current = signature;
-                lastDropHandledAtRef.current = now;
-
-                const tempMessages: FileTransferMessage[] = [];
-                paths.forEach(path => {
-                    const fileName = path.split(/[/\\]/).pop() || 'File';
-                    tempMessages.push({
-                        id: Date.now() + Math.random(),
-                        direction: 'out',
-                        msg_type: 'file',
-                        content: 'Preparing...',
-                        timestamp: Date.now(),
-                        _fileName: fileName,
-                        _preparing: true
-                    });
-                });
-
-                if (tempMessages.length > 0) {
-                    setMessages(prev => [...prev, ...tempMessages]);
-                    setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
-                }
-
-                paths.forEach(path => {
-                    invoke("send_file_to_client", { filePath: path }).catch(console.error);
-                });
-                setTimeout(fetchMessages, 500);
+                void queueFilesForSending(
+                    paths.map((path) => ({
+                        name: path.split(/[/\\]/).pop() || "File",
+                        path
+                    }))
+                );
             }
         };
 
@@ -380,23 +470,6 @@ const FileTransferChatView = ({
 
     // Adjust textarea height
     useEffect(() => {
-        const element = rootRef.current;
-        if (!element || typeof ResizeObserver === "undefined") {
-            setComposerMetrics(resolveComposerMetrics());
-            return;
-        }
-
-        const updateMetrics = () => {
-            setComposerMetrics(resolveComposerMetrics(element.clientHeight));
-        };
-
-        updateMetrics();
-        const observer = new ResizeObserver(() => updateMetrics());
-        observer.observe(element);
-        return () => observer.disconnect();
-    }, []);
-
-    useEffect(() => {
         if (textareaRef.current) {
             textareaRef.current.style.height = `${composerMinHeight}px`;
             const scrollHeight = textareaRef.current.scrollHeight;
@@ -408,7 +481,8 @@ const FileTransferChatView = ({
                 setShowExpandBtn(false);
             }
 
-            textareaRef.current.style.height = Math.min(Math.max(composerMinHeight, scrollHeight), 120) + 'px';
+            textareaRef.current.style.height =
+                Math.min(Math.max(composerMinHeight, scrollHeight), 120) + 'px';
         }
     }, [composerMinHeight, input]);
 
@@ -467,14 +541,58 @@ const FileTransferChatView = ({
         }
     }, [contextMenu]);
 
+    useEffect(() => {
+        const handleWindowDragOver = (event: globalThis.DragEvent) => {
+            event.preventDefault();
+            if (event.dataTransfer) {
+                event.dataTransfer.dropEffect = "copy";
+            }
+            if (!isDragging) {
+                setIsDragging(true);
+            }
+        };
+
+        const handleWindowDragLeave = (event: globalThis.DragEvent) => {
+            if (event.relatedTarget === null) {
+                setIsDragging(false);
+            }
+        };
+
+        const handleWindowDrop = (event: globalThis.DragEvent) => {
+            event.preventDefault();
+            event.stopPropagation();
+            setIsDragging(false);
+
+            const items = getDroppedTransferItems(event.dataTransfer);
+            if (items.length > 0) {
+                void queueFilesForSending(items);
+                return;
+            }
+
+            void emit("toast", "未识别到拖入文件，请重启应用后重试");
+        };
+
+        window.addEventListener("dragover", handleWindowDragOver);
+        window.addEventListener("dragleave", handleWindowDragLeave);
+        window.addEventListener("drop", handleWindowDrop);
+
+        return () => {
+            window.removeEventListener("dragover", handleWindowDragOver);
+            window.removeEventListener("dragleave", handleWindowDragLeave);
+            window.removeEventListener("drop", handleWindowDrop);
+        };
+    }, [isDragging]);
+
     return (
         <div
-            ref={rootRef}
             className="wt-chat-view"
-            style={chatViewStyle}
+            style={{ position: 'relative' }}
             onDragOver={(e) => {
                 // Critical: Prevent default browser behavior to allow drop
                 e.preventDefault();
+                if (e.dataTransfer) {
+                    e.dataTransfer.dropEffect = 'copy';
+                }
                 if (!isDragging) setIsDragging(true);
             }}
             onDragLeave={(e) => {
@@ -484,10 +602,14 @@ const FileTransferChatView = ({
             }}
             onDrop={(e) => {
                 e.preventDefault();
+                e.stopPropagation();
                 setIsDragging(false);
-                // Note: Web 'drop' event gives Files but no full path. 
-                // We rely on Tauri event for paths. 
-                // However, preventing default here removes the "prohibited" cursor.
+                const items = getDroppedTransferItems(e.dataTransfer);
+                if (items.length > 0) {
+                    void queueFilesForSending(items);
+                    return;
+                }
+                void emit("toast", "未识别到拖入文件，请重启应用后重试");
             }}
         >
             {/* Drag Overlay */}
@@ -500,7 +622,7 @@ const FileTransferChatView = ({
                         style={{
                             position: 'absolute',
                             top: 0, left: 0, right: 0, bottom: 0,
-                            background: 'var(--wt-overlay-background)',
+                            background: 'rgba(0,0,0,0.6)',
                             backdropFilter: 'blur(4px)',
                             zIndex: 99999, // Ensure it's on top of everything
                             display: 'flex',
@@ -510,16 +632,16 @@ const FileTransferChatView = ({
                         }}
                     >
                         <div style={{
-                            border: '4px dashed var(--wt-overlay-border)',
+                            border: '4px dashed rgba(255,255,255,0.8)',
                             borderRadius: '16px',
                             padding: '40px',
                             display: 'flex',
                             flexDirection: 'column',
                             alignItems: 'center',
                             gap: '16px',
-                            color: 'var(--wt-overlay-color)'
+                            color: '#fff'
                         }}>
-                            <Folder size={64} color="currentColor" strokeWidth={1.5} />
+                            <Folder size={64} color="#fff" strokeWidth={1.5} />
                             <div style={{ fontSize: '24px', fontWeight: 'bold' }}>Drop to Send</div>
                         </div>
                     </motion.div>
@@ -567,7 +689,7 @@ const FileTransferChatView = ({
                                 style={{
                                     overflow: 'hidden',
                                     background: avatar.isImg ? 'transparent' : avatar.color,
-                                    color: avatar.textColor,
+                                    color: '#fff',
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
@@ -604,12 +726,7 @@ const FileTransferChatView = ({
                                 {m.msg_type === 'image' && (
                                     <>
                                         <img
-                                            src={
-                                                m.content.startsWith('data:') ? m.content :
-                                                    m.file_path ? convertFileSrc(m.file_path) :
-                                                        m.content.startsWith('/download/') ? (localIp && actualPort ? `http://${localIp}:${actualPort}${m.content}` : m.content) :
-                                                            convertFileSrc(m.content)
-                                            }
+                                            src={getMessageMediaSrc(m)}
                                             className="wt-img-preview"
                                             loading="lazy"
                                             style={{ cursor: 'pointer' }}
@@ -661,11 +778,7 @@ const FileTransferChatView = ({
                                 {m.msg_type === 'video' && (
                                     <>
                                         <video
-                                            src={
-                                                m.file_path ? convertFileSrc(m.file_path) :
-                                                    m.content.startsWith('/download/') ? (localIp && actualPort ? `http://${localIp}:${actualPort}${m.content}` : m.content) :
-                                                        convertFileSrc(m.content)
-                                            }
+                                            src={getMessageMediaSrc(m)}
                                             className="wt-video-preview"
                                             controls
                                             style={{ maxWidth: '100%', borderRadius: '8px', maxHeight: '300px' }}
@@ -762,7 +875,7 @@ const FileTransferChatView = ({
             <div className="wt-footer">
                 <div className="wt-composer">
                     <button
-                        className="wt-btn wt-btn-add"
+                        className="wt-btn wt-btn-icon"
                         title="Send File"
                         onClick={async () => {
                             try {
@@ -772,36 +885,19 @@ const FileTransferChatView = ({
 
                                 if (selected) {
                                     const paths = Array.isArray(selected) ? selected : [selected];
-                                    const tempMessages: FileTransferMessage[] = [];
-                                    paths.forEach(path => {
-                                        const fileName = path.split(/[/\\]/).pop() || 'File';
-                                        const tempId = Date.now() + Math.random();
-                                        tempMessages.push({
-                                            id: tempId,
-                                            direction: 'out',
-                                            msg_type: 'file',
-                                            content: 'Preparing...',
-                                            timestamp: Date.now(),
-                                            _fileName: fileName,
-                                            _preparing: true
-                                        });
-                                    });
-
-                                    setMessages(prev => [...prev, ...tempMessages]);
-                                    setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
-
-                                    const sendPromises = paths.map(path =>
-                                        invoke("send_file_to_client", { filePath: path })
+                                    await queueFilesForSending(
+                                        paths.map((path) => ({
+                                            name: path.split(/[/\\]/).pop() || "File",
+                                            path
+                                        }))
                                     );
-                                    await Promise.all(sendPromises);
-                                    setTimeout(fetchMessages, 300);
                                 }
                             } catch (e) {
                                 console.error(e);
                             }
                         }}
                     >
-                        <Plus size={16} />
+                        <Plus size={18} />
                     </button>
 
                     <div className="wt-input-wrap">
@@ -946,7 +1042,7 @@ const FileTransferChatView = ({
                                     }}
                                 >
                                     <Folder size={14} />
-                                    <span>{t ? (t('show_in_explorer') || '使用文件资源管理器打开') : '使用文件资源管理器打开'}</span>
+                                    <span>{t ? (t('show_in_finder') || '在访达中显示') : '在访达中显示'}</span>
                                 </div>
                                 <div style={{ height: '1px', background: 'var(--border-dark)', margin: '4px 8px', opacity: 0.3 }} />
                             </>
@@ -982,7 +1078,7 @@ const FileTransferChatView = ({
                                     }}
                                 >
                                     <ImageIcon size={14} />
-                                    <span>{t ? (t('copy_image') || '复制图像') : '复制图像'}</span>
+                                    <span>{t ? (t('copy_image') || '拷贝图像') : '拷贝图像'}</span>
                                 </div>
                                 <div
                                     className="context-item"
@@ -996,7 +1092,7 @@ const FileTransferChatView = ({
                                     }}
                                 >
                                     <LinkIcon size={14} />
-                                    <span>{t ? (t('copy_image_link') || '复制图像链接') : '复制图像链接'}</span>
+                                    <span>{t ? (t('copy_image_link') || '拷贝图像链接') : '拷贝图像链接'}</span>
                                 </div>
                             </>
                         )}
@@ -1030,7 +1126,7 @@ const FileTransferChatView = ({
                                     }}
                                 >
                                     <Video size={14} />
-                                    <span>{t ? (t('copy_video') || '复制视频') : '复制视频'}</span>
+                                    <span>{t ? (t('copy_video') || '拷贝视频') : '拷贝视频'}</span>
                                 </div>
                                 <div
                                     className="context-item"
@@ -1044,7 +1140,7 @@ const FileTransferChatView = ({
                                     }}
                                 >
                                     <LinkIcon size={14} />
-                                    <span>{t ? (t('copy_video_link') || '复制视频链接') : '复制视频链接'}</span>
+                                    <span>{t ? (t('copy_video_link') || '拷贝视频链接') : '拷贝视频链接'}</span>
                                 </div>
                             </>
                         )}
@@ -1060,7 +1156,7 @@ const FileTransferChatView = ({
                                 }}
                             >
                                 <Clipboard size={14} />
-                                <span>{t ? (t('copy_text') || '复制文本') : '复制文本'}</span>
+                                <span>{t ? (t('copy_text') || '拷贝文本') : '拷贝文本'}</span>
                             </div>
                         )}
 
@@ -1075,7 +1171,7 @@ const FileTransferChatView = ({
                                 }}
                             >
                                 <LinkIcon size={14} />
-                                <span>{t ? (t('copy_link') || '复制链接') : '复制链接'}</span>
+                                <span>{t ? (t('copy_link') || '拷贝链接') : '拷贝链接'}</span>
                             </div>
                         )}
                     </motion.div>

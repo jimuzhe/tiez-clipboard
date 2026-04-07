@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { isTauriRuntime } from "../lib/tauriRuntime";
 
 interface UseMqttListenerOptions {
   enabled: boolean;
@@ -25,6 +26,8 @@ export const useMqttListener = ({ enabled, t }: UseMqttListenerOptions) => {
   const lastNotificationRef = useRef<{ key: string; timestamp: number } | null>(null);
 
   useEffect(() => {
+    if (!isTauriRuntime()) return;
+
     const unlistenMqtt = listen<string>("mqtt-message", async (event) => {
       if (!enabled) return;
 

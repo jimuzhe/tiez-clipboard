@@ -2,6 +2,9 @@ import type { ComponentType, ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { ChevronDown, ChevronRight } from "lucide-react";
 
+const isMacPlatform =
+    /Mac|iPhone|iPad|iPod/i.test(navigator.userAgent) || /Mac/i.test(navigator.platform);
+
 interface LabelWithHintProps {
     label: string;
     hint?: string | ReactNode;
@@ -19,14 +22,12 @@ interface GeneralSettingsGroupProps {
     setSilentStart: (val: boolean) => void;
     hideTrayIcon: boolean;
     setHideTrayIcon: (val: boolean) => void;
+    hideDockIcon: boolean;
+    setHideDockIcon: (val: boolean) => void;
     edgeDocking: boolean;
     setEdgeDocking: (val: boolean) => void;
-    followMouse: boolean;
-    setFollowMouse: (val: boolean) => void;
     soundEnabled: boolean;
     setSoundEnabled: (val: boolean) => void;
-    soundVolume: number;
-    setSoundVolume: (val: number) => void;
     pasteSoundEnabled: boolean;
     setPasteSoundEnabled: (val: boolean) => void;
     showSearchBox: boolean;
@@ -39,11 +40,10 @@ interface GeneralSettingsGroupProps {
     setTagManagerEnabled: (val: boolean) => void;
     arrowKeySelection: boolean;
     setArrowKeySelection: (val: boolean) => void;
+    soundVolume: number;
+    setSoundVolume: (val: number) => void;
     saveAppSetting: (key: string, val: string) => void;
 }
-
-const isLinux = navigator.platform.toLowerCase().includes('linux')
-    || navigator.userAgent.toLowerCase().includes('linux');
 
 const GeneralSettingsGroup = ({
     t,
@@ -56,14 +56,12 @@ const GeneralSettingsGroup = ({
     setSilentStart,
     hideTrayIcon,
     setHideTrayIcon,
+    hideDockIcon,
+    setHideDockIcon,
     edgeDocking,
     setEdgeDocking,
-    followMouse,
-    setFollowMouse,
     soundEnabled,
     setSoundEnabled,
-    soundVolume,
-    setSoundVolume,
     pasteSoundEnabled,
     setPasteSoundEnabled,
     showSearchBox,
@@ -76,6 +74,8 @@ const GeneralSettingsGroup = ({
     setTagManagerEnabled,
     arrowKeySelection,
     setArrowKeySelection,
+    soundVolume,
+    setSoundVolume,
     saveAppSetting
 }: GeneralSettingsGroupProps) => (
     <div className={`settings-group ${collapsed ? 'collapsed' : ''}`}>
@@ -123,6 +123,29 @@ const GeneralSettingsGroup = ({
                     </label>
                 </div>
 
+                {isMacPlatform && (
+                    <div className="setting-item">
+                        <LabelWithHint
+                            label={t('hide_dock_icon')}
+                            hint={t('hide_dock_icon_hint')}
+                            hintKey="hide_dock_icon"
+                        />
+                        <label className="switch">
+                            <input
+                                className="cb"
+                                type="checkbox"
+                                checked={hideDockIcon}
+                                onChange={(e) => {
+                                    const val = e.target.checked;
+                                    setHideDockIcon(val);
+                                    invoke("set_dock_visible", { visible: !val }).catch(console.error);
+                                }}
+                            />
+                            <div className="toggle"><div className="left" /><div className="right" /></div>
+                        </label>
+                    </div>
+                )}
+
                 <div className="setting-item">
                     <LabelWithHint
                         label={t('edge_docking')}
@@ -144,24 +167,6 @@ const GeneralSettingsGroup = ({
                     </label>
                 </div>
 
-                <div className="setting-item">
-                    <div className="item-label-group">
-                        <span className="item-label">{t('follow_mouse')}</span>
-                    </div>
-                    <label className="switch">
-                        <input
-                            className="cb"
-                            type="checkbox"
-                            checked={followMouse}
-                            onChange={(e) => {
-                                const val = e.target.checked;
-                                setFollowMouse(val);
-                                invoke("set_follow_mouse", { enabled: val }).catch(console.error);
-                            }}
-                        />
-                        <div className="toggle"><div className="left" /><div className="right" /></div>
-                    </label>
-                </div>
 
                 <div className="setting-item">
                     <div className="item-label-group">
@@ -183,26 +188,6 @@ const GeneralSettingsGroup = ({
                 </div>
                 {soundEnabled && (
                     <div className="setting-item" style={{ marginLeft: '18px' }}>
-                        <div className="item-label-group" style={{ flex: 1 }}>
-                            <span className="item-label">{t('sound_volume') || "Sound Volume"}</span>
-                            <span className="item-desc">{soundVolume}%</span>
-                        </div>
-                        <input
-                            type="range"
-                            min="0"
-                            max="100"
-                            step="1"
-                            value={soundVolume}
-                            onChange={(e) => {
-                                const volume = Number(e.target.value);
-                                setSoundVolume(volume);
-                            }}
-                            style={{ width: '140px' }}
-                        />
-                    </div>
-                )}
-                {soundEnabled && (
-                    <div className="setting-item" style={{ marginLeft: '18px' }}>
                         <div className="item-label-group">
                             <span className="item-label">{t('paste_sound') || "Paste Sound"}</span>
                         </div>
@@ -219,6 +204,29 @@ const GeneralSettingsGroup = ({
                             />
                             <div className="toggle"><div className="left" /><div className="right" /></div>
                         </label>
+                    </div>
+                )}
+                {soundEnabled && (
+                    <div className="setting-item column" style={{ marginLeft: '18px', borderBottom: 'none' }}>
+                        <div className="item-label-group">
+                            <span className="item-label">{t('sound_volume') || "Sound Volume"} ({Math.round(soundVolume * 100)}%)</span>
+                        </div>
+                        <div style={{ padding: '0 4px', width: '100%' }}>
+                            <input
+                                type="range"
+                                min="0"
+                                max="1"
+                                step="0.01"
+                                value={soundVolume}
+                                onChange={(e) => {
+                                    const val = parseFloat(e.target.value);
+                                    setSoundVolume(val);
+                                }}
+                                style={{
+                                    ['--range-progress' as any]: `${soundVolume * 100}%`
+                                }}
+                            />
+                        </div>
                     </div>
                 )}
 
@@ -344,36 +352,7 @@ const GeneralSettingsGroup = ({
                     </label>
                 </div>
 
-                {/* Restart as Admin button */}
-                {!isLinux && (
-                    <div className="setting-item">
-                        <LabelWithHint
-                            label={t('restart_as_admin') || "Restart as Admin"}
-                            hint={t('restart_as_admin_hint') || "Restart with administrator privileges to paste into admin terminals"}
-                            hintKey="restart_as_admin"
-                        />
-                        <button
-                            className="setting-btn"
-                            onClick={() => {
-                                invoke("restart_as_admin").catch((err) => {
-                                    console.error("Failed to restart as admin:", err);
-                                });
-                            }}
-                            style={{
-                                padding: '4px 12px',
-                                fontSize: '12px',
-                                cursor: 'pointer',
-                                borderRadius: '6px',
-                                border: '1px solid rgba(128, 128, 128, 0.4)',
-                                background: 'var(--bg-secondary)',
-                                color: 'var(--text-primary)',
-                                boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
-                            }}
-                        >
-                            {t('restart') || "Restart"}
-                        </button>
-                    </div>
-                )}
+                {/* macOS cleanup: Removed Restart as Admin */}
             </div>
         )}
     </div>

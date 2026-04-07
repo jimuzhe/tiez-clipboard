@@ -6,7 +6,7 @@ const sourceAppIconRequests = new Map<string, Promise<string | null>>();
 const normalizeSourceAppPath = (sourceAppPath?: string | null) => {
   const value = sourceAppPath?.trim();
   if (!value) return "";
-  return value.replace(/\//g, "\\").toLowerCase();
+  return value;
 };
 
 export const peekSourceAppIcon = (sourceAppPath?: string | null) => {

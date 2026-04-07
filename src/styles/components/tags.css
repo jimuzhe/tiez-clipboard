@@ -1,79 +1,101 @@
 /* --- Base Layout --- */
 .tags-dropdown {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  right: 0;
-  z-index: 100000 !important;
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 8px;
-  visibility: visible !important;
-  opacity: 1 !important;
-  pointer-events: auto !important;
-  min-height: 50px !important;
-  background-color: var(--bg-panel) !important;
-  border: var(--tags-border);
-  padding: 10px 12px 12px 12px;
-  box-shadow: var(--tags-shadow);
-  border-radius: var(--tags-radius);
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 100000 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    min-height: 50px !important;
+    width: 100%;
+    margin-top: 4px;
+    padding: 10px 10px 12px;
+    background: var(--bg-element) !important;
+    border: var(--tags-border);
+    border-radius: var(--tags-radius);
+    box-shadow: var(--tags-shadow);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
 }
 
 .tags-label {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--text-secondary);
-  text-transform: none;
-  opacity: 0.8;
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    opacity: 0.7;
 }
 
 .tags-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
 }
 
 .tag-chip {
-  font-size: var(--clipboard-tag-font-size);
-  padding: 4px 10px;
-  background: rgba(var(--accent-color-rgb), 0.12);
-  color: var(--text-primary);
-  cursor: pointer;
-  font-weight: 600;
-  border: var(--tag-chip-border);
-  border-radius: var(--tag-chip-radius);
-  box-shadow: var(--tag-chip-shadow);
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  transition: all 0.16s ease;
-  user-select: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    font-size: var(--clipboard-tag-font-size);
+    font-weight: 700;
+    line-height: 1.2;
+    color: #fff;
+    cursor: pointer;
+    user-select: none;
+    border: var(--tag-chip-border);
+    border-radius: var(--tag-chip-radius);
+    box-shadow: var(--tag-chip-shadow);
+    transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
 }
 
 .tag-chip:hover {
-  transform: var(--tag-chip-hover-transform);
-  box-shadow: var(--tag-chip-hover-shadow);
-  filter: brightness(1.05);
+    transform: var(--tag-chip-hover-transform);
+    box-shadow: var(--tag-chip-hover-shadow);
+    filter: brightness(1.08);
 }
 
 .tag-chip:active {
-  transform: var(--tag-chip-active-transform);
-  box-shadow: var(--tag-chip-active-shadow);
+    transform: var(--tag-chip-active-transform);
+    box-shadow: var(--tag-chip-active-shadow);
 }
 
 .hide-scrollbar::-webkit-scrollbar {
-  display: none;
+    display: none;
 }
 
+/* --- Retro-specific accents --- */
+.theme-retro .tag-chip {
+    font-weight: 800;
+}
+
+/* --- Modern Styles (Mica / Acrylic) --- */
+.theme-mica .search-input.dropdown-open,
+.theme-acrylic .search-input.dropdown-open {
+    border-radius: 10px !important;
+    border: 1px solid rgba(128, 128, 128, 0.2) !important;
+    box-shadow: none !important;
+    background: rgba(255, 255, 255, 0.75) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+:root.dark-mode .theme-mica .search-input.dropdown-open,
+:root.dark-mode .theme-acrylic .search-input.dropdown-open {
+    background: rgba(255, 255, 255, 0.18) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* --- Global Fix for Search Input Accessibility in Dark Mode --- */
 :root.dark-mode .search-input {
-  color: #ffffff !important;
+    color: #ffffff !important;
 }
 
 :root.dark-mode .search-input::placeholder {
-  color: rgba(255, 255, 255, 0.5) !important;
-}
-
-.search-input.dropdown-open {
-  border-bottom-left-radius: var(--input-radius);
-  border-bottom-right-radius: var(--input-radius);
+    color: rgba(255, 255, 255, 0.5) !important;
 }

@@ -23,7 +23,7 @@ body.theme-paper {
 
   --line-soft: rgba(139, 90, 43, 0.12);
   --line-strong: rgba(139, 90, 43, 0.25);
-  
+
   --shadow-xs: 0 2px 8px rgba(60, 56, 54, 0.05);
   --shadow-sm: 0 4px 12px rgba(60, 56, 54, 0.08);
   --shadow-md: 0 8px 24px rgba(60, 56, 54, 0.1);
@@ -50,7 +50,7 @@ body.theme-paper {
 
   --input-border: 1px solid #d5c4a1;
   --input-radius: 2px;
-  --input-shadow: inset 0 1px 3px rgba(0,0,0,0.03);
+  --input-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.03);
   --input-focus-shadow: 0 0 0 3px rgba(139, 90, 43, 0.1);
 
   --button-border: 1px solid rgba(139, 90, 43, 0.3);
@@ -104,11 +104,13 @@ body.theme-paper {
   --content-line-height: 1.6;
 }
 
-/* Texture effect */
 body.theme-paper::before {
   content: "";
   position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
   opacity: 0.04;
   pointer-events: none;
@@ -138,7 +140,6 @@ body.theme-paper::before {
   background-color: #fbf1c7 !important;
 }
 
-/* Dark Mode Overrides for Paper */
 @media (prefers-color-scheme: dark) {
   :root.theme-paper:not(.light-mode),
   body.theme-paper:not(.light-mode) {

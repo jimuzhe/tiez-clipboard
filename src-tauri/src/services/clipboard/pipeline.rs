@@ -1,10 +1,8 @@
 use crate::app_state::{AppDataDir, PasteQueue, SessionHistory, SettingsState};
+use crate::database::is_text_type;
 use crate::database::DbState;
-use crate::database::{calc_image_hash, is_text_type};
 use crate::domain::models::ClipboardEntry;
-use crate::infrastructure::windows_api::window_tracker::{
-    get_clipboard_source_app_info, ActiveAppInfo,
-};
+use crate::infrastructure::macos_api::window::get_active_app_snapshot;
 use crate::services::clipboard::utils::*;
 use base64::Engine;
 use std::sync::atomic::Ordering;
@@ -32,12 +30,8 @@ pub struct PipelineContext {
 }
 
 impl PipelineContext {
-    pub fn new(
-        app_handle: AppHandle,
-        data: ClipboardData,
-        source_snapshot: Option<ActiveAppInfo>,
-    ) -> Self {
-        let active_app = source_snapshot.unwrap_or_else(get_clipboard_source_app_info);
+    pub fn new(app_handle: AppHandle, data: ClipboardData) -> Self {
+        let active_app = get_active_app_snapshot();
         let timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
@@ -208,14 +202,17 @@ impl PipelineStage for TransformationStage {
                 if is_text_type(&entry.content_type) && !policy.cleanup_rules.trim().is_empty() {
                     let rules = parse_cleanup_rules(&policy.cleanup_rules);
                     if !rules.is_empty() {
-                        let cleaned = apply_cleanup_rules(&entry.content, &rules);
-                        if cleaned.trim().is_empty() || cleaned == "__IGNORE_CAPTURE__" {
-                            ctx.should_stop = true;
-                            return;
+                        match apply_cleanup_rules(&entry.content, &rules) {
+                            CleanupResult::Discard => {
+                                ctx.should_stop = true;
+                                return;
+                            }
+                            CleanupResult::Changed(new_content) => {
+                                entry.content = new_content.trim().replace("\r\n", "\n");
+                                entry.preview =
+                                    build_entry_preview(&entry.content_type, &entry.content, None);
+                            }
                         }
-                        entry.content = cleaned.trim().replace("\r\n", "\n");
-                        entry.preview =
-                            build_entry_preview(&entry.content_type, &entry.content, None);
                     }
                 }
             }
@@ -226,13 +223,17 @@ impl PipelineStage for TransformationStage {
             if !cleanup_rules_raw.trim().is_empty() {
                 let cleanup_rules = parse_cleanup_rules(&cleanup_rules_raw);
                 if !cleanup_rules.is_empty() {
-                    let cleaned = apply_cleanup_rules(&entry.content, &cleanup_rules);
-                    if cleaned.trim().is_empty() || cleaned == "__IGNORE_CAPTURE__" {
-                        ctx.should_stop = true;
-                        return;
+                    match apply_cleanup_rules(&entry.content, &cleanup_rules) {
+                        CleanupResult::Discard => {
+                            ctx.should_stop = true;
+                            return;
+                        }
+                        CleanupResult::Changed(new_content) => {
+                            entry.content = new_content.trim().replace("\r\n", "\n");
+                            entry.preview =
+                                build_entry_preview(&entry.content_type, &entry.content, None);
+                        }
                     }
-                    entry.content = cleaned.trim().replace("\r\n", "\n");
-                    entry.preview = build_entry_preview(&entry.content_type, &entry.content, None);
                 }
             }
         }
@@ -275,37 +276,17 @@ impl PipelineStage for ValidationStage {
     fn process(&self, ctx: &mut PipelineContext) {
         let settings = ctx.app_handle.state::<SettingsState>();
 
-        // Recent paste echo check
-        {
+        // Sequential Echo Check
+        if settings.sequential_mode.load(Ordering::Relaxed) {
             let entry = ctx.entry.as_ref().unwrap();
             let queue_state = ctx.app_handle.state::<PasteQueue>();
             let queue = queue_state.0.lock().unwrap();
-            if queue.last_action_was_paste {
-                let now_ms = SystemTime::now()
-                    .duration_since(UNIX_EPOCH)
-                    .unwrap_or_default()
-                    .as_millis() as u64;
-                if now_ms.saturating_sub(queue.last_paste_timestamp_ms) >= 10_000 {
-                    drop(queue);
-                    crate::services::clipboard_ops::clear_recent_paste_marker(&ctx.app_handle);
-                } else {
-                    let entry_fingerprint = build_clipboard_text_fingerprint(
-                        &entry.content_type,
-                        &entry.content,
-                        entry.html_content.as_deref(),
-                    );
-                    let exact_match = queue.last_pasted_content.as_deref() == Some(&entry.content);
-                    let fingerprint_match = !entry_fingerprint.is_empty()
-                        && queue.last_pasted_fingerprint.as_deref()
-                            == Some(entry_fingerprint.as_str());
-                    if exact_match || fingerprint_match {
-                        println!("Ignoring echo paste from recent paste marker");
-                        drop(queue);
-                        crate::services::clipboard_ops::clear_recent_paste_marker(&ctx.app_handle);
-                        ctx.should_stop = true;
-                        return;
-                    }
-                }
+            if queue.last_action_was_paste
+                && queue.last_pasted_content.as_deref() == Some(&entry.content)
+            {
+                println!("Ignoring echo paste from queue");
+                ctx.should_stop = true;
+                return;
             }
         }
 
@@ -328,14 +309,6 @@ impl PipelineStage for ValidationStage {
             // Try precise match and normalized match
             let normalized_content = content.trim().replace("\r\n", "\n");
             let normalized_html = |html: &str| html.trim().replace("\r\n", "\n");
-            let recent_self_copy_window = {
-                let last_app_time = crate::LAST_APP_SET_TIMESTAMP.load(Ordering::Relaxed);
-                let now_secs = SystemTime::now()
-                    .duration_since(UNIX_EPOCH)
-                    .unwrap_or_default()
-                    .as_secs();
-                last_app_time != 0 && now_secs.saturating_sub(last_app_time) < 10
-            };
             let htmls_equivalent = |a: Option<&str>, b: Option<&str>| -> bool {
                 match (a, b) {
                     (None, None) => true,
@@ -344,18 +317,14 @@ impl PipelineStage for ValidationStage {
                 }
             };
             let rich_text_html_matches = |id: i64| -> bool {
-                if let Ok(Some((stored_content, c_type, h_content))) = db_state
+                if let Ok(Some((_content, c_type, h_content))) = db_state
                     .repo
                     .get_entry_content_with_html_with_conn(&conn, id)
                 {
                     if c_type != "rich_text" {
                         return false;
                     }
-                    if htmls_equivalent(html_content.as_deref(), h_content.as_deref()) {
-                        return true;
-                    }
-                    return recent_self_copy_window
-                        && stored_content.trim().replace("\r\n", "\n") == normalized_content;
+                    return htmls_equivalent(html_content.as_deref(), h_content.as_deref());
                 }
                 false
             };
@@ -415,30 +384,20 @@ impl PipelineStage for ValidationStage {
                 let session = session_history.0.lock().unwrap();
                 let entry = ctx.entry.as_ref().expect("entry exists");
                 let normalized_content = entry.content.trim().replace("\r\n", "\n");
-                let entry_image_hash = if entry.content_type == "image" {
-                    calc_image_hash(&entry.content)
-                } else {
-                    None
-                };
                 for item in session.iter() {
                     let item_normalized = item.content.trim().replace("\r\n", "\n");
-                    let rich_text_match =
+                    let html_match =
                         if entry.content_type == "rich_text" && item.content_type == "rich_text" {
                             htmls_equivalent(
                                 item.html_content.as_deref(),
                                 entry.html_content.as_deref(),
-                            ) || (recent_self_copy_window && item_normalized == normalized_content)
+                            )
                         } else {
                             true
                         };
-                    let image_match = entry.content_type == "image"
-                        && item.content_type == "image"
-                        && entry_image_hash.is_some()
-                        && calc_image_hash(&item.content) == entry_image_hash;
-                    let text_match = (item.content == entry.content
+                    let match_found = (item.content == entry.content
                         || item_normalized == normalized_content)
-                        && rich_text_match;
-                    let match_found = image_match || text_match;
+                        && html_match;
                     if match_found {
                         removed_ids.push(item.id);
                         if !persistent_enabled {
@@ -580,8 +539,6 @@ impl PipelineStage for DistributionStage {
                 queue.items.clear();
                 queue.last_action_was_paste = false;
                 queue.last_pasted_content = None;
-                queue.last_pasted_fingerprint = None;
-                queue.last_paste_timestamp_ms = 0;
             }
             queue.items.push_back(entry.id);
         }

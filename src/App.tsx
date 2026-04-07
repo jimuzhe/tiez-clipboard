@@ -44,10 +44,19 @@ import { useClipboardItemRenderer } from "./shared/hooks/useClipboardItemRendere
 import { AnnouncementSystem } from "./shared/components/Announcement";
 import { useAnnouncements } from "./shared/hooks/useAnnouncements";
 import { useOverlays } from "./shared/hooks/useOverlays";
+import { useAutoUpdate } from "./shared/hooks/useAutoUpdate";
+import UpdateDialog from "./shared/components/UpdateDialog";
 import type { ClipboardEntry } from "./shared/types";
+import type { QuickPasteHint, VirtualClipboardListHandle } from "./features/clipboard/types";
 import type { QuickPasteModifier } from "./features/app/types";
-import type { QuickPasteHint } from "./features/clipboard/types";
-import type { VirtualClipboardListHandle } from "./features/clipboard/types";
+import {
+  forceHideCompactPreviewWindow,
+  isCompactPreviewWindowSupported,
+  isCompactPreviewWarmupSupported,
+  warmupCompactPreviewWindow
+} from "./features/clipboard/lib/compactPreviewControls";
+import { isMacPlatform } from "./shared/lib/platform";
+import { isTauriRuntime } from "./shared/lib/tauriRuntime";
 
 const insertHistoryItem = (list: ClipboardEntry[], item: ClipboardEntry) => {
   const next = list.slice();
@@ -80,36 +89,38 @@ const insertHistoryItem = (list: ClipboardEntry[], item: ClipboardEntry) => {
   return next;
 };
 
-const QUICK_PASTE_MODIFIER_LABELS: Record<
-  Exclude<QuickPasteModifier, "disabled">,
-  string
-> = {
-  ctrl: "Ctrl",
-  alt: "Alt",
-  shift: "Shift",
-  win: "Win"
-};
+const QUICK_PASTE_KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"] as const;
 
 const buildQuickPasteHintsById = (
   items: ClipboardEntry[],
   quickPasteModifier: QuickPasteModifier
 ): Record<number, QuickPasteHint> => {
-  if (quickPasteModifier === "disabled") return {};
+  if (quickPasteModifier === "disabled") {
+    return {};
+  }
 
-  const modifierLabel = QUICK_PASTE_MODIFIER_LABELS[quickPasteModifier];
-  const next: Record<number, QuickPasteHint> = {};
+  const modifierLabels: Record<Exclude<QuickPasteModifier, "disabled">, string> = isMacPlatform()
+    ? {
+        ctrl: "⌃",
+        alt: "⌥",
+        shift: "⇧",
+        win: "⌘"
+      }
+    : {
+        ctrl: "Ctrl+",
+        alt: "Alt+",
+        shift: "Shift+",
+        win: "Win+"
+      };
+  const pinnedItems = items.filter((item) => item.is_pinned).slice(0, QUICK_PASTE_KEYS.length);
 
-  const pinnedItems = items.filter(item => item.is_pinned);
-
-  pinnedItems.slice(0, 10).forEach((item, index) => {
-    const slot = index === 9 ? "0" : String(index + 1);
-    next[item.id] = {
-      slot,
-      combo: `${modifierLabel}+${slot}`
+  return pinnedItems.reduce<Record<number, QuickPasteHint>>((acc, item, index) => {
+    acc[item.id] = {
+      slot: index + 1,
+      combo: `${modifierLabels[quickPasteModifier]}${QUICK_PASTE_KEYS[index]}`
     };
-  });
-
-  return next;
+    return acc;
+  }, {});
 };
 
 const App = () => {
@@ -190,14 +201,14 @@ const App = () => {
     setMoveToTopAfterPaste,
     privacyProtection,
     setPrivacyProtection,
-    setPrivacyProtectionKinds,
-    setPrivacyProtectionCustomRules,
     sensitiveMaskPrefixVisible,
     setSensitiveMaskPrefixVisible,
     sensitiveMaskSuffixVisible,
     setSensitiveMaskSuffixVisible,
     sensitiveMaskEmailDomain,
     setSensitiveMaskEmailDomain,
+    setPrivacyProtectionKinds,
+    setPrivacyProtectionCustomRules,
     setCleanupRules,
     setAppCleanupPolicies,
     captureFiles,
@@ -211,10 +222,9 @@ const App = () => {
     setTheme,
     colorMode,
     setColorMode,
-    showAppBorder,
-    setShowAppBorder,
     showSourceAppIcon,
     setShowSourceAppIcon,
+
     compactMode,
     setCompactMode,
     clipboardItemFontSize,
@@ -231,8 +241,6 @@ const App = () => {
     setSettingsLoaded,
     isWindowPinned,
     setIsWindowPinned,
-    setWinClipboardDisabled,
-    setRegistryWinVEnabled,
     showSearchBox,
     setShowSearchBox,
     scrollTopButtonEnabled,
@@ -240,8 +248,8 @@ const App = () => {
     arrowKeySelection,
     setArrowKeySelection,
     setHideTrayIcon,
+    setHideDockIcon,
     setEdgeDocking,
-    setFollowMouse,
     customBackground,
     setCustomBackground,
     customBackgroundOpacity,
@@ -298,11 +306,10 @@ const App = () => {
     fileServerAutoClose,
     soundEnabled,
     setSoundEnabled,
-    soundVolume,
-    setSoundVolume,
     pasteSoundEnabled,
     setPasteSoundEnabled,
-    setPasteMethod,
+    soundVolume,
+    setSoundVolume,
     aiEnabled,
     setAiEnabled,
     setAiTargetLang,
@@ -318,6 +325,19 @@ const App = () => {
     setTypeFilter
   } = appState;
 
+  // --- Auto Update Logic ---
+  const {
+    isOpen: isUpdateOpen,
+    status: updateStatus,
+    version: updateVersion,
+    notes: updateNotes,
+    downloadProgress: updateProgress,
+    onStartDownload,
+    onApplyUpdate,
+    onClose: closeUpdateDialog,
+  } = useAutoUpdate();
+  // -------------------------
+
   const effectiveShowEmojiPanel = showEmojiPanel && emojiPanelEnabled;
   const effectiveShowTagManager = showTagManager && tagManagerEnabled;
   const [fileTransferSourceView, setFileTransferSourceView] =
@@ -328,11 +348,10 @@ const App = () => {
   const tagColors = useTagColors();
   const virtualListRef = useRef<VirtualClipboardListHandle | null>(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
-  const [quickPasteVersion, setQuickPasteVersion] = useState(0);
-  const [quickPasteHintsById, setQuickPasteHintsById] = useState<
-    Record<number, QuickPasteHint>
-  >({});
-  const PAGE_SIZE = 200;
+  const [quickPasteHintsById, setQuickPasteHintsById] = useState<Record<number, QuickPasteHint>>(
+    {}
+  );
+  const PAGE_SIZE = 80;
   const { fetchHistory, loadMoreHistory } = useHistoryFetch({
     debouncedSearch,
     typeFilter,
@@ -364,18 +383,6 @@ const App = () => {
   });
 
   const showScrollTopVisible = showScrollTop && scrollTopButtonEnabled;
-  const quickPasteRefreshSeed = useMemo(
-    () =>
-      history
-        .filter(item => item.is_pinned)
-        .slice(0, 10)
-        .map(
-          (item) =>
-            `${item.id}:${item.timestamp}:${item.pinned_order || 0}`
-        )
-        .join("|"),
-    [history]
-  );
 
   const getCurrentSourceView = useCallback((): FileTransferSourceView => {
     if (effectiveShowTagManager) return "tag_manager";
@@ -469,8 +476,8 @@ const App = () => {
   };
 
   const hotkeyParts = useMemo(
-    () => (hotkey || t('not_set')).split('+'),
-    [hotkey, t]
+    () => (hotkey || '').split('+').map((part) => part.trim()).filter(Boolean),
+    [hotkey]
   );
 
   // Compute all tags when tag manager is open OR when search box is focused
@@ -516,7 +523,7 @@ const App = () => {
 
   const { toasts, pushToast, confirmDialog, openConfirm, closeConfirm } = useOverlays();
 
-  useSoundEffects({ soundEnabled, soundVolume, pasteSoundEnabled });
+  useSoundEffects({ soundEnabled, pasteSoundEnabled, soundVolume });
 
   const fetchEffectiveTransferPath = useCallback(() => {
     invoke<string>("get_active_file_transfer_path")
@@ -565,19 +572,18 @@ const App = () => {
     setCleanupRules,
     setAppCleanupPolicies,
     setSilentStart,
-    setFollowMouse,
-    setShowAppBorder,
     setShowSourceAppIcon,
+
     setDeleteAfterPaste,
     setMoveToTopAfterPaste,
     setHideTrayIcon,
+    setHideDockIcon,
     setEdgeDocking,
     setShowSearchBox,
     setScrollTopButtonEnabled,
     setArrowKeySelection,
     setMqttEnabled,
     setMqttServer,
-    setRegistryWinVEnabled,
     setMqttPort,
     setMqttUser,
     setMqttPass,
@@ -606,9 +612,8 @@ const App = () => {
     setQuickPasteModifier,
     setSequentialModeState,
     setSoundEnabled,
-    setSoundVolume,
     setPasteSoundEnabled,
-    setPasteMethod,
+    setSoundVolume,
     setAiEnabled,
     setAiTargetLang,
     setAiThinkingBudget,
@@ -621,6 +626,8 @@ const App = () => {
   });
 
   useEffect(() => {
+    if (!isTauriRuntime()) return;
+
     const unlisten = listen("focus-search-input", () => {
       setShowSettings(false);
       setShowTagManager(false);
@@ -628,9 +635,13 @@ const App = () => {
       setShowEmojiPanel(false);
       setShowSearchBox(true);
       setSearchIsFocused(true);
-      requestAnimationFrame(() => {
-        searchInputRef.current?.focus();
-      });
+      invoke("activate_window_focus")
+        .catch(console.error)
+        .finally(() => {
+          requestAnimationFrame(() => {
+            searchInputRef.current?.focus();
+          });
+        });
     });
 
     return () => {
@@ -658,39 +669,11 @@ const App = () => {
     }
   }, [tagManagerEnabled, showTagManager, setShowTagManager]);
 
-  useEffect(() => {
-    if (quickPasteModifier === "disabled") {
-      setQuickPasteHintsById({});
-      return;
-    }
-
-    let cancelled = false;
-
-    invoke<ClipboardEntry[]>("get_clipboard_history", {
-      limit: 10,
-      offset: 0
-    })
-      .then((items) => {
-        if (cancelled) return;
-        setQuickPasteHintsById(buildQuickPasteHintsById(items, quickPasteModifier));
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        console.error("获取数字快速粘贴映射失败", err);
-        setQuickPasteHintsById({});
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [quickPasteModifier, quickPasteRefreshSeed, quickPasteVersion]);
-
   useAppBootstrap({
     fetchEffectiveTransferPath,
     setDataPath,
     setInstalledApps,
     setAutoStart,
-    setWinClipboardDisabled,
     setDefaultApps,
     setFileServerEnabled,
     setActualPort,
@@ -707,13 +690,33 @@ const App = () => {
   useSettingsApply({
     theme,
     colorMode,
-    showAppBorder,
+
     compactMode,
     settingsLoaded,
     clipboardItemFontSize,
     clipboardTagFontSize,
     surfaceOpacity
   });
+
+  // Pre-warm compact preview window only where warmup is safe.
+  // macOS keeps hover preview enabled but skips warmup to reduce UI stalls.
+  useEffect(() => {
+    if (!compactMode || !isCompactPreviewWindowSupported() || !isCompactPreviewWarmupSupported()) return;
+    const timer = setTimeout(() => {
+      warmupCompactPreviewWindow();
+    }, 2000); // 2s delay: avoids impacting app startup performance
+    return () => clearTimeout(timer);
+  }, [compactMode]);
+
+  useEffect(() => {
+    if (!isTauriRuntime()) return;
+    const unlisten = listen("force-hide-compact-preview", () => {
+      forceHideCompactPreviewWindow();
+    });
+    return () => {
+      unlisten.then((off) => off());
+    };
+  }, []);
 
   useCustomBackground({ customBackground, customBackgroundOpacity, theme });
 
@@ -723,14 +726,11 @@ const App = () => {
         const withoutItem = prev.filter(item => item.id !== updatedItem.id);
         return insertHistoryItem(withoutItem, updatedItem);
       });
-      setQuickPasteVersion((prev) => prev + 1);
     },
     onRemoved: (id) => {
       setHistory(prev => prev.filter(item => item.id !== id));
-      setQuickPasteVersion((prev) => prev + 1);
     },
     onChanged: () => {
-      setQuickPasteVersion((prev) => prev + 1);
       fetchHistory(true);
     }
   });
@@ -740,6 +740,39 @@ const App = () => {
   useEffect(() => {
     fetchHistory();
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const seededHints = buildQuickPasteHintsById(history, quickPasteModifier);
+    setQuickPasteHintsById(seededHints);
+
+    if (quickPasteModifier === "disabled") {
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    invoke<ClipboardEntry[]>("get_clipboard_history", {
+      limit: 256,
+      offset: 0,
+      contentType: null
+    })
+      .then((items) => {
+        if (!cancelled) {
+          setQuickPasteHintsById(buildQuickPasteHintsById(items, quickPasteModifier));
+        }
+      })
+      .catch((error) => {
+        console.error("Failed to refresh quick paste hints:", error);
+        if (!cancelled) {
+          setQuickPasteHintsById(seededHints);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [history, quickPasteModifier]);
 
   useToastListener({ pushToast });
 
@@ -755,6 +788,7 @@ const App = () => {
 
   const saveAppSetting = useCallback(async (type: string, path: string) => {
     const key = `app.${type}`;
+    console.log(`[THEME DEBUG] saveAppSetting called: key=${key}, value=${path}`);
     setAppSettings(prev => ({ ...prev, [key]: path }));
 
     // Sync theme-related settings to localStorage for instant startup (prevents flash)
@@ -768,6 +802,7 @@ const App = () => {
 
     try {
       await invoke("save_setting", { key, value: path });
+      console.log(`[THEME DEBUG] saveAppSetting success: key=${key}`);
     } catch (err) {
       console.error("保存设置失败", err);
     }
@@ -794,8 +829,8 @@ const App = () => {
     fileServerAutoClose,
     fileTransferAutoOpen,
     persistent,
-    soundVolume,
     arrowKeySelection,
+    soundVolume,
     setIsKeyboardMode,
     setSelectedIndex
   });
@@ -930,8 +965,8 @@ const App = () => {
     theme,
     language,
     t,
-    compactMode,
     showSourceAppIcon,
+    compactMode,
     richTextSnapshotPreview,
     sensitiveMaskPrefixVisible,
     sensitiveMaskSuffixVisible,
@@ -990,7 +1025,6 @@ const App = () => {
         setShowEmojiPanel={setShowEmojiPanel}
         emojiPanelEnabled={emojiPanelEnabled}
         chatMode={chatMode}
-        
         fileServerEnabled={fileServerEnabled}
         isWindowPinned={isWindowPinned}
         setIsWindowPinned={setIsWindowPinned}
@@ -1021,8 +1055,11 @@ const App = () => {
       />
 
       <main
-        className={`main-content ${showSettings && chatMode ? 'main-content-chat-mode' : ''}`}
-        style={{ overflowY: (showSettings || effectiveShowTagManager) ? 'auto' : 'hidden' }}
+        className={`main-content${chatMode ? " file-transfer-mode" : ""}${effectiveShowTagManager ? " tag-manager-mode" : ""}`}
+        style={{ 
+          overflowY: (showSettings || effectiveShowTagManager) ? 'auto' : 'hidden',
+          padding: effectiveShowTagManager ? '0' : undefined
+        }}
         onWheel={handleMainWheel}
       >
         <AppMainContent
@@ -1073,6 +1110,15 @@ const App = () => {
         onConfirm={confirmDialog.onConfirm}
       />
 
+      <UpdateDialog
+        isOpen={isUpdateOpen}
+        version={updateVersion}
+        notes={updateNotes}
+        downloadProgress={updateProgress}
+        status={updateStatus}
+        onUpdate={updateStatus === "ready" ? onApplyUpdate : onStartDownload}
+        onClose={closeUpdateDialog}
+      />
     </div >
   );
 }

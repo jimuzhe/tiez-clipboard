@@ -350,29 +350,22 @@
 .item-meta-right-info {
   display: flex;
   align-items: center;
-  gap: 8px; /* Added gap for hint and time */
+  gap: 8px;
   opacity: 0.6;
   font-size: 10px;
-}
-
-.meta-time {
-  white-space: nowrap;
 }
 
 .quick-paste-hint {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  padding: 0 4px;
-  border-radius: 4px;
-  border: none;
-  background: transparent;
-  color: var(--accent-color);
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent-color) 14%, transparent);
+  color: var(--text-primary);
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 700;
-  line-height: 1;
   letter-spacing: 0;
-  text-transform: none;
-  white-space: nowrap;
+  line-height: 1;
+  opacity: 1;
 }

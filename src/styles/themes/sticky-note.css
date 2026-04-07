@@ -34,7 +34,7 @@ body.theme-sticky-note {
 
   --radius-window: 8px;
   --radius-panel: 12px;
-  --radius-card: 8px;
+  --radius-card: 6px;
   --radius-control: 8px;
 
   --shell-background: linear-gradient(180deg, #fff9cf 0%, #fff2ab 100%);
@@ -146,7 +146,6 @@ body.theme-sticky-note #root {
   --rotate: 0.4deg;
 }
 
-
 .theme-sticky-note .search-input {
   font-family: var(--font-main);
 }
@@ -195,7 +194,6 @@ body.theme-sticky-note #root {
   .theme-sticky-note:not(.light-mode) .history-item {
     background: #3a3a3c !important;
   }
-
 }
 
 :root.dark-mode.theme-sticky-note,
@@ -229,5 +227,4 @@ body.dark-mode.theme-sticky-note {
 body.dark-mode.theme-sticky-note .history-item {
   background: #3a3a3c !important;
 }
-
 

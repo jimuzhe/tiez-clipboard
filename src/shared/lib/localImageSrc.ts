@@ -33,7 +33,7 @@ export const toTauriLocalImageSrc = (rawSrc: string): string | null => {
     }
   }
 
-  if (!/^[a-zA-Z]:[\\/]/.test(value)) {
+  if (!/^[a-zA-Z]:[\\/]/.test(value) && !value.startsWith("/")) {
     return null;
   }
 

@@ -38,6 +38,9 @@
     "sql:default",
     "dialog:default",
     "dialog:allow-open",
-    "window-state:default"
+    "window-state:default",
+    "process:allow-restart",
+    "updater:allow-check",
+    "updater:allow-download-and-install"
   ]
 }

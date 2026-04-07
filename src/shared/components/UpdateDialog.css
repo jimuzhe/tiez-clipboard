@@ -1,0 +1,170 @@
+.update-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background-color: rgba(0, 0, 0, 0.5); /* Slightly darker for better focus */
+  backdrop-filter: blur(8px);
+}
+
+.update-modal {
+  width: 100%;
+  max-width: 360px; /* More compact width */
+  background: var(--bg-panel);
+  border-radius: 20px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--line-soft);
+  overflow: hidden;
+  color: var(--text-primary);
+  font-family: inherit;
+}
+
+.update-header {
+  padding: 12px 18px 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.update-header-info {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.update-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.update-version {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.update-close-btn {
+  padding: 4px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  opacity: 0.5;
+  display: flex;
+}
+
+.update-content {
+  padding: 12px 18px 18px;
+}
+
+.update-notes-container {
+  margin-bottom: 12px;
+  max-height: 100px;
+  overflow-y: auto;
+}
+
+.update-notes-text {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.update-progress-container {
+  margin-bottom: 12px;
+}
+
+.update-progress-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.update-progress-track {
+  height: 3px;
+  width: 100%;
+  background: var(--bg-input);
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.update-progress-bar {
+  height: 100%;
+  background: var(--accent-color);
+}
+
+.update-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.update-btn,
+.update-btn-secondary {
+  flex: 1;
+  height: 40px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  border: none;
+}
+
+.update-btn {
+  background: var(--accent-color);
+  color: #ffffff;
+}
+
+.update-btn:not(:disabled):hover {
+  filter: brightness(1.1);
+}
+
+.update-btn-success {
+  background: #10b981;
+}
+
+.update-btn-secondary {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--line-soft);
+}
+
+.update-btn-secondary:not(:disabled):hover {
+  background: var(--bg-input);
+  color: var(--text-primary);
+}
+
+.update-btn:disabled,
+.update-btn-secondary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 2s linear infinite;
+}
+
+.update-progress-bar {
+  height: 100%;
+  background: var(--accent-color);
+  transition: width 0.3s ease;
+}

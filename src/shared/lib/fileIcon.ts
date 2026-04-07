@@ -3,21 +3,21 @@ import { invoke } from "@tauri-apps/api/core";
 const fileIconCache = new Map<string, string | null>();
 const fileIconRequests = new Map<string, Promise<string | null>>();
 
-const normalizeFilePath = (filePath?: string | null) => {
+const normalizeFileIconKey = (filePath?: string | null) => {
   const value = filePath?.trim();
   if (!value) return "";
-  return value.replace(/\//g, "\\").toLowerCase();
+  return value;
 };
 
 export const peekFileIcon = (filePath?: string | null) => {
-  const cacheKey = normalizeFilePath(filePath);
+  const cacheKey = normalizeFileIconKey(filePath);
   if (!cacheKey) return undefined;
   return fileIconCache.get(cacheKey);
 };
 
 export const getFileIcon = async (filePath?: string | null): Promise<string | null> => {
   const rawPath = filePath?.trim();
-  const cacheKey = normalizeFilePath(rawPath);
+  const cacheKey = normalizeFileIconKey(rawPath);
   if (!rawPath || !cacheKey) return null;
 
   const cached = fileIconCache.get(cacheKey);

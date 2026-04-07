@@ -4,8 +4,6 @@ use rusqlite::{params, Connection, Result};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-const LEGACY_PLAIN_PREFIX: &str = "plain:";
-
 pub trait SettingsRepository {
     fn set(&self, key: &str, value: &str) -> Result<()>;
     fn get(&self, key: &str) -> Result<Option<String>>;
@@ -22,75 +20,14 @@ impl SqliteSettingsRepository {
         Self { conn }
     }
 
-    fn strip_plain_prefixes<'a>(mut value: &'a str) -> &'a str {
-        while let Some(stripped) = value.strip_prefix(LEGACY_PLAIN_PREFIX) {
-            value = stripped;
-        }
-        value
-    }
-
-    fn encrypted_payload<'a>(value: &'a str) -> Option<&'a str> {
-        let normalized = Self::strip_plain_prefixes(value);
-        if normalized.starts_with(ENCRYPT_PREFIX) {
-            Some(normalized)
-        } else {
-            None
-        }
-    }
-
-    fn should_try_decrypt(key: &str, value: &str) -> bool {
-        Self::encrypted_payload(value).is_some()
-            && (is_sensitive_key(key) || key.eq_ignore_ascii_case("mqtt_username"))
-    }
-
-    fn try_decrypt_legacy_or_sensitive(key: &str, value: &str) -> Option<String> {
-        if !Self::should_try_decrypt(key, value) {
-            return None;
-        }
-
-        let mut current = value.to_string();
-        let mut changed = false;
-
-        for _ in 0..4 {
-            let stripped = Self::strip_plain_prefixes(&current).to_string();
-            if stripped != current {
-                current = stripped;
-                changed = true;
-            }
-
-            if !current.starts_with(ENCRYPT_PREFIX) {
-                break;
-            }
-
-            let decrypted = encryption::decrypt_value(&current)?;
-            current = decrypted;
-            changed = true;
-        }
-
-        let final_value = Self::strip_plain_prefixes(&current).to_string();
-        if final_value != current {
-            current = final_value;
-            changed = true;
-        }
-
-        if changed && !current.starts_with(ENCRYPT_PREFIX) {
-            Some(current)
-        } else {
-            None
-        }
-    }
-
     pub fn get_raw(conn: &Connection, key: &str) -> Result<Option<String>> {
         let mut stmt = conn.prepare("SELECT value FROM settings WHERE key = ?")?;
         let mut rows = stmt.query(params![key])?;
 
         if let Some(row) = rows.next()? {
             let value: String = row.get(0)?;
-            if let Some(decrypted) = Self::try_decrypt_legacy_or_sensitive(key, &value) {
-                return Ok(Some(decrypted));
-            }
-            if Self::should_try_decrypt(key, &value) {
-                return Ok(Some(String::new()));
+            if is_sensitive_key(key) && value.starts_with(ENCRYPT_PREFIX) {
+                return Ok(Some(encryption::decrypt_value(&value).unwrap_or(value)));
             }
             Ok(Some(value))
         } else {
@@ -111,11 +48,8 @@ impl SqliteSettingsRepository {
     }
 
     fn maybe_decrypt(&self, key: &str, value: &str) -> String {
-        if let Some(decrypted) = Self::try_decrypt_legacy_or_sensitive(key, value) {
-            return decrypted;
-        }
-        if Self::should_try_decrypt(key, value) {
-            return String::new();
+        if is_sensitive_key(key) && value.starts_with(ENCRYPT_PREFIX) {
+            return encryption::decrypt_value(value).unwrap_or_else(|| value.to_string());
         }
         value.to_string()
     }
@@ -142,22 +76,13 @@ impl SettingsRepository for SqliteSettingsRepository {
             let value: String = row.get(0)?;
             let decrypted = self.maybe_decrypt(key, &value);
 
-            // Auto-migrate to encrypted if it was plaintext and is sensitive.
-            // Also migrate legacy encrypted mqtt_username back to plaintext.
+            // Auto-migrate to encrypted if it was plaintext and is sensitive
             #[cfg(not(feature = "portable"))]
             {
                 if is_sensitive_key(key) && !value.starts_with(ENCRYPT_PREFIX) {
                     let _ = conn.execute(
                         "UPDATE settings SET value = ? WHERE key = ?",
                         params![self.maybe_encrypt(key, &decrypted), key],
-                    );
-                } else if key.eq_ignore_ascii_case("mqtt_username")
-                    && Self::encrypted_payload(&value).is_some()
-                    && !decrypted.is_empty()
-                {
-                    let _ = conn.execute(
-                        "UPDATE settings SET value = ? WHERE key = ?",
-                        params![&decrypted, key],
                     );
                 }
             }
@@ -180,22 +105,13 @@ impl SettingsRepository for SqliteSettingsRepository {
             let (key, value) = row?;
             let decrypted = self.maybe_decrypt(&key, &value);
 
-            // Auto-migrate to encrypted if it was plaintext and is sensitive.
-            // Also migrate legacy encrypted mqtt_username back to plaintext.
+            // Auto-migrate to encrypted if it was plaintext and is sensitive
             #[cfg(not(feature = "portable"))]
             {
                 if is_sensitive_key(&key) && !value.starts_with(ENCRYPT_PREFIX) {
                     let _ = conn.execute(
                         "UPDATE settings SET value = ? WHERE key = ?",
                         params![self.maybe_encrypt(&key, &decrypted), &key],
-                    );
-                } else if key.eq_ignore_ascii_case("mqtt_username")
-                    && Self::encrypted_payload(&value).is_some()
-                    && !decrypted.is_empty()
-                {
-                    let _ = conn.execute(
-                        "UPDATE settings SET value = ? WHERE key = ?",
-                        params![&decrypted, &key],
                     );
                 }
             }

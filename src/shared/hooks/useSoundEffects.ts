@@ -1,18 +1,21 @@
 import { useEffect } from "react";
 import { listen } from "@tauri-apps/api/event";
+import { isTauriRuntime } from "../lib/tauriRuntime";
 
 interface UseSoundEffectsOptions {
   soundEnabled: boolean;
-  soundVolume: number;
   pasteSoundEnabled: boolean;
+  soundVolume: number;
 }
 
 export const useSoundEffects = ({
   soundEnabled,
-  soundVolume,
-  pasteSoundEnabled
+  pasteSoundEnabled,
+  soundVolume
 }: UseSoundEffectsOptions) => {
   useEffect(() => {
+    if (!isTauriRuntime()) return;
+
     const AudioContext =
       window.AudioContext ||
       (window as Window & { webkitAudioContext?: typeof window.AudioContext }).webkitAudioContext;
@@ -96,7 +99,7 @@ export const useSoundEffects = ({
 
       const type = event.payload;
       if (type === "paste" && !pasteSoundEnabled) return;
-      const masterVol = Math.min(1, Math.max(0, soundVolume / 100));
+      const masterVol = soundVolume;
 
       const play = () => {
         try {
@@ -129,5 +132,5 @@ export const useSoundEffects = ({
       unlisten.then((f) => f());
       ctx.close();
     };
-  }, [soundEnabled, soundVolume, pasteSoundEnabled]);
+  }, [soundEnabled, pasteSoundEnabled, soundVolume]);
 };

@@ -27,10 +27,9 @@ interface AppearanceSettingsGroupProps {
     setColorMode: (val: string) => void;
     language: Locale;
     setLanguage: (val: Locale) => void;
-    showAppBorder: boolean;
-    setShowAppBorder: (val: boolean) => void;
     showSourceAppIcon: boolean;
     setShowSourceAppIcon: (val: boolean) => void;
+
     compactMode: boolean;
     setCompactMode: (val: boolean) => void;
     clipboardItemFontSize: number;
@@ -71,10 +70,9 @@ const AppearanceSettingsGroup = ({
     setColorMode,
     language,
     setLanguage,
-    showAppBorder,
-    setShowAppBorder,
     showSourceAppIcon,
     setShowSourceAppIcon,
+
     compactMode,
     setCompactMode,
     clipboardItemFontSize,
@@ -136,6 +134,7 @@ const AppearanceSettingsGroup = ({
                             <button
                                 key={modeItem.id}
                                 onClick={() => {
+                                    console.log('[THEME DEBUG] Saving color_mode:', modeItem.id);
                                     setColorMode(modeItem.id);
                                     saveAppSetting('color_mode', modeItem.id);
                                 }}
@@ -171,26 +170,7 @@ const AppearanceSettingsGroup = ({
                     </div>
                 </div>
 
-                <div className="setting-item">
-                    <LabelWithHint
-                        label={t('show_app_border') || '显示应用边框'}
-                        hint={t('show_app_border_hint') || '关闭后隐藏主窗口边框和阴影'}
-                        hintKey="show_app_border"
-                    />
-                    <label className="switch">
-                        <input
-                            className="cb"
-                            type="checkbox"
-                            checked={showAppBorder}
-                            onChange={(e) => {
-                                const val = e.target.checked;
-                                setShowAppBorder(val);
-                                saveAppSetting('show_app_border', String(val));
-                            }}
-                        />
-                        <div className="toggle"><div className="left" /><div className="right" /></div>
-                    </label>
-                </div>
+
 
                 <div className="setting-item">
                     <LabelWithHint

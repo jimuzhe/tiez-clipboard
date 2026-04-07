@@ -1,21 +1,21 @@
 {
   "name": "tiez-app",
   "private": true,
-  "version": "0.3.3",
+  "version": "0.1.3",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "test": "vitest run",
-    "test:e2e": "playwright test",
-    "test:mqtt:stress": "node tests/mqtt/mqtt_stress_publish.js",
-    "test:file:stress": "node tests/file_transfer/file_transfer_stress.js",
     "build": "tsc && vite build",
-    "build:signed": "dotenv -- tauri build",
     "preview": "vite preview",
     "tauri": "tauri",
-    "tauri:dev": "tauri dev",
+    "tauri:dev": "tauri dev --features devtools",
     "tauri:build": "tauri build",
-    "build:portable": "tauri build --no-bundle --features portable && powershell -NoProfile -Command \"$ErrorActionPreference='Stop'; $out='artifacts/portable'; New-Item -ItemType Directory -Force -Path $out | Out-Null; New-Item -ItemType Directory -Force -Path (Join-Path $out 'data') | Out-Null; Get-ChildItem 'src-tauri/target/release' -Filter *.exe | ForEach-Object { Copy-Item $_.FullName -Destination (Join-Path $out 'tiez-app.exe') -Force }; Set-Content -Path (Join-Path $out '说明.txt') -Value '本软件完全免费，严禁未经许可的第三方倒卖。`r`n`r`n便携版的更新请不要使用设置项内的检查更新，请到官网下载最新版。`r`n后将tiez-app.exe复制到原来的文件夹内进行替换即可。' -Encoding UTF8; Compress-Archive -Path (Join-Path $out '*') -DestinationPath (Join-Path $out 'tiez-portable.zip') -Force\""
+    "tauri:build:mac-arm": "tauri build --target aarch64-apple-darwin",
+    "tauri:build:mac-intel": "PATH=\"$HOME/.cargo/bin:$PATH\" RUSTUP_HOME=\"$HOME/.rustup\" CARGO_HOME=\"$HOME/.cargo\" RUSTUP_TOOLCHAIN=stable-aarch64-apple-darwin tauri build --target x86_64-apple-darwin",
+    "release": "set -a && . ./.env && set +a && tauri build",
+    "release:arm": "set -a && . ./.env && set +a && tauri build --target aarch64-apple-darwin",
+    "release:intel": "set -a && . ./.env && set +a && tauri build --target x86_64-apple-darwin",
+    "release:all": "npm run release:arm && npm run release:intel"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.10.1",
@@ -42,7 +42,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.40.0",
-    "@tauri-apps/cli": "^2.10.1",
+    "@tauri-apps/cli": "^2",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "@types/react-select": "^5.0.0",
@@ -55,8 +55,7 @@
     "node-fetch": "^2.6.7",
     "playwright": "^1.40.0",
     "typescript": "~5.8.3",
-    "vite": "^7.0.4",
-    "vitest": "4.0.18"
+    "vite": "^7.0.4"
   },
   "overrides": {
     "react": "$react",

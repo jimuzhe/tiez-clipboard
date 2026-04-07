@@ -5,7 +5,7 @@ pub mod web_ui;
 
 use axum::{
     extract::DefaultBodyLimit,
-    routing::{get, post},
+    routing::{get, options, post},
     Router,
 };
 use base64::Engine;
@@ -305,6 +305,10 @@ pub async fn run_server(listener: tokio::net::TcpListener, app_handle: AppHandle
         .route("/upload", post(handlers::upload))
         .route("/upload_chunk", post(handlers::upload_chunk))
         .route("/upload-chunk", post(handlers::upload_chunk))
+        .route("/share_chunk", post(handlers::share_chunk))
+        .route("/share-chunk", post(handlers::share_chunk))
+        .route("/share_chunk", options(handlers::share_chunk_options))
+        .route("/share-chunk", options(handlers::share_chunk_options))
         .route("/send_text", post(handlers::handle_text))
         .route("/send-text", post(handlers::handle_text))
         .route(
@@ -481,19 +485,16 @@ pub async fn register_received_file(
         }
     }
     if settings.auto_copy_file.load(Ordering::Relaxed) {
-        unsafe {
-            let _ = crate::infrastructure::windows_api::win_clipboard::set_clipboard_files(vec![
-                saved_path,
-            ]);
+        // On macOS, we can use arboard to set text (path) for now.
+        // Properly setting files on pasteboard requires native implementation.
+        if let Ok(mut cb) = arboard::Clipboard::new() {
+            let _ = cb.set_text(saved_path);
         }
     }
     let db_state = app_handle.state::<DbState>();
     if let Ok(Some(val)) = db_state.settings_repo.get("file_transfer_auto_open") {
         if val == "true" {
             let parent = final_path.parent().unwrap_or(std::path::Path::new("."));
-            #[cfg(target_os = "windows")]
-            let _ = std::process::Command::new("explorer").arg(parent).spawn();
-            #[cfg(target_os = "macos")]
             let _ = std::process::Command::new("open").arg(parent).spawn();
         }
     }

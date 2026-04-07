@@ -18,7 +18,11 @@ const DEFAULT_MASK_OPTIONS: MaskOptions = {
 
 const MIN_MASKED_CHARS = 2;
 
-const maskMiddleChars = (value: string, prefixVisibleCount: number, suffixVisibleCount: number) => {
+const maskMiddleChars = (
+  value: string,
+  prefixVisibleCount: number,
+  suffixVisibleCount: number
+) => {
   const chars = Array.from(value);
   if (chars.length <= MIN_MASKED_CHARS) {
     return SENSITIVE_MASK;
@@ -26,16 +30,123 @@ const maskMiddleChars = (value: string, prefixVisibleCount: number, suffixVisibl
 
   const available = chars.length - MIN_MASKED_CHARS;
   const totalRequested = prefixVisibleCount + suffixVisibleCount;
-  let prefix: number, suffix: number;
+  let prefix: number;
+  let suffix: number;
+
   if (totalRequested <= available) {
     prefix = prefixVisibleCount;
     suffix = suffixVisibleCount;
   } else {
-    prefix = totalRequested > 0 ? Math.floor(available * prefixVisibleCount / totalRequested) : 0;
+    prefix =
+      totalRequested > 0
+        ? Math.floor((available * prefixVisibleCount) / totalRequested)
+        : 0;
     suffix = Math.min(suffixVisibleCount, available - prefix);
   }
 
-  return `${chars.slice(0, prefix).join("")}${SENSITIVE_MASK}${chars.slice(chars.length - suffix).join("")}`;
+  return `${chars.slice(0, prefix).join("")}${SENSITIVE_MASK}${chars
+    .slice(chars.length - suffix)
+    .join("")}`;
+};
+
+const clampColorChannel = (value: number) => Math.max(0, Math.min(255, value));
+
+const parseHexColor = (value: string): [number, number, number] | null => {
+  const hex = value.replace("#", "").trim();
+  if (![3, 4, 6, 8].includes(hex.length)) return null;
+
+  if (hex.length === 3 || hex.length === 4) {
+    return [
+      parseInt(hex[0] + hex[0], 16),
+      parseInt(hex[1] + hex[1], 16),
+      parseInt(hex[2] + hex[2], 16),
+    ];
+  }
+
+  return [
+    parseInt(hex.slice(0, 2), 16),
+    parseInt(hex.slice(2, 4), 16),
+    parseInt(hex.slice(4, 6), 16),
+  ];
+};
+
+const parseRgbColor = (value: string): [number, number, number] | null => {
+  const match = value.match(/^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)/i);
+  if (!match) return null;
+
+  return [
+    clampColorChannel(Number(match[1])),
+    clampColorChannel(Number(match[2])),
+    clampColorChannel(Number(match[3])),
+  ];
+};
+
+const hslToRgb = (h: number, s: number, l: number): [number, number, number] => {
+  const hue = ((h % 360) + 360) % 360;
+  const saturation = Math.max(0, Math.min(100, s)) / 100;
+  const lightness = Math.max(0, Math.min(100, l)) / 100;
+
+  if (saturation === 0) {
+    const gray = Math.round(lightness * 255);
+    return [gray, gray, gray];
+  }
+
+  const c = (1 - Math.abs(2 * lightness - 1)) * saturation;
+  const x = c * (1 - Math.abs(((hue / 60) % 2) - 1));
+  const m = lightness - c / 2;
+
+  let r = 0;
+  let g = 0;
+  let b = 0;
+
+  if (hue < 60) {
+    r = c; g = x; b = 0;
+  } else if (hue < 120) {
+    r = x; g = c; b = 0;
+  } else if (hue < 180) {
+    r = 0; g = c; b = x;
+  } else if (hue < 240) {
+    r = 0; g = x; b = c;
+  } else if (hue < 300) {
+    r = x; g = 0; b = c;
+  } else {
+    r = c; g = 0; b = x;
+  }
+
+  return [
+    Math.round((r + m) * 255),
+    Math.round((g + m) * 255),
+    Math.round((b + m) * 255),
+  ];
+};
+
+const parseHslColor = (value: string): [number, number, number] | null => {
+  const match = value.match(/^hsla?\(\s*([-\d.]+)(?:deg)?\s*,\s*([\d.]+)%\s*,\s*([\d.]+)%/i);
+  if (!match) return null;
+  return hslToRgb(Number(match[1]), Number(match[2]), Number(match[3]));
+};
+
+const parseColor = (value: string): [number, number, number] | null => {
+  const normalized = value.trim();
+  if (!normalized) return null;
+  if (normalized.startsWith("#")) return parseHexColor(normalized);
+  if (/^rgba?\(/i.test(normalized)) return parseRgbColor(normalized);
+  if (/^hsla?\(/i.test(normalized)) return parseHslColor(normalized);
+  return null;
+};
+
+const getRelativeLuminance = ([r, g, b]: [number, number, number]) => {
+  const toLinear = (channel: number) => {
+    const normalized = channel / 255;
+    return normalized <= 0.03928
+      ? normalized / 12.92
+      : ((normalized + 0.055) / 1.055) ** 2.4;
+  };
+
+  const red = toLinear(r);
+  const green = toLinear(g);
+  const blue = toLinear(b);
+  return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
 };
 
 // Helper function to generate a consistent color from a string based on theme
@@ -50,17 +161,18 @@ export const getTagColor = (tag: string, theme: string) => {
   const hue = Math.abs((hash * 137.508 + (hash >> 3)) % 360);
 
   if (theme === "retro") {
-    // Retro: Keep mechanical saturation, but avoid overly dark chips.
-    return `hsl(${hue}, 58%, 48%)`;
+    // Retro: Slightly desaturated, lower lightness for mechanical look
+    return `hsl(${hue}, 60%, 40%)`;
   } else {
-    // Modern: Slightly lighter to keep tag chips readable.
-    return `hsl(${hue}, 76%, 62%)`;
+    // Modern: Vibrant for Mica/Acrylic
+    return `hsl(${hue}, 80%, 55%)`;
   }
 };
 
 export const getTagTextColor = (backgroundColor: string) => {
-  void backgroundColor;
-  return "#ffffff";
+  const rgb = parseColor(backgroundColor);
+  if (!rgb) return "#ffffff";
+  return getRelativeLuminance(rgb) > 0.6 ? "#111827" : "#ffffff";
 };
 
 export const getConciseTime = (timestamp: number, language: Locale) => {
@@ -107,11 +219,20 @@ export const formatSensitivePreview = (
     const localPart = email.slice(0, atIndex);
     const domainPart = email.slice(atIndex + 1);
 
-    const maskedLocal = maskMiddleChars(localPart, opts.prefixVisible, opts.suffixVisible);
+    const maskedLocal = maskMiddleChars(
+      localPart,
+      opts.prefixVisible,
+      opts.suffixVisible
+    );
     if (opts.maskEmailDomain) {
-      const maskedDomain = maskMiddleChars(domainPart, opts.prefixVisible, opts.suffixVisible);
+      const maskedDomain = maskMiddleChars(
+        domainPart,
+        opts.prefixVisible,
+        opts.suffixVisible
+      );
       return `${maskedLocal}@${maskedDomain}`;
     }
+
     return `${maskedLocal}@${domainPart}`;
   }
 

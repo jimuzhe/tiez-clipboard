@@ -3,7 +3,7 @@ import type { DragControls } from "framer-motion";
 import type { ClipboardEntry, Locale } from "../../shared/types";
 
 export interface QuickPasteHint {
-  slot: string;
+  slot: number;
   combo: string;
 }
 
@@ -18,16 +18,16 @@ export interface ClipboardItemProps {
   theme: string;
   language: Locale;
   t: (key: string) => string;
-  quickPasteHint?: QuickPasteHint;
-  showSourceAppIcon?: boolean;
   isAIProcessing?: boolean;
   aiEnabled?: boolean;
   tagColors?: Record<string, string>;
   aiOptionsOpen?: boolean;
   richTextSnapshotPreview?: boolean;
+  showSourceAppIcon?: boolean;
   sensitiveMaskPrefixVisible?: number;
   sensitiveMaskSuffixVisible?: number;
   sensitiveMaskEmailDomain?: boolean;
+  quickPasteHint?: QuickPasteHint;
 
   onSelect: () => void;
   onCopy: (withFormat?: boolean) => void;

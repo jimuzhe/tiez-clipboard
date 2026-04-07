@@ -149,7 +149,7 @@ const AiSettingsGroup = ({
                                 </div>
                                 <select
                                     className="search-input"
-                                    style={{ borderRadius: '0', padding: '6px', width: '160px', background: 'var(--bg-input)', border: '2px solid var(--border-dark)', color: 'var(--text-primary)', fontSize: '12px' }}
+                                    style={{ borderRadius: '4px', padding: '4px 8px', width: '160px', background: 'var(--bg-input)', border: '1px solid var(--border-dark)', color: 'var(--text-primary)', fontSize: '12px', height: '28px' }}
                                     value={strategy.value}
                                     onChange={e => {
                                         strategy.setter(e.target.value);
@@ -164,13 +164,13 @@ const AiSettingsGroup = ({
                             </div>
                         ))}
 
-                        <div className="setting-item no-border" style={{ paddingBottom: 0 }}>
+                        <div className="setting-item">
                             <div className="item-label-group">
                                 <span className="item-label">{t('ai_strategy_translate')}</span>
                             </div>
                             <select
                                 className="search-input"
-                                style={{ borderRadius: '0', padding: '6px', width: '160px', background: 'var(--bg-input)', border: '2px solid var(--border-dark)', color: 'var(--text-primary)', fontSize: '12px' }}
+                                style={{ borderRadius: '4px', padding: '4px 8px', width: '160px', background: 'var(--bg-input)', border: '1px solid var(--border-dark)', color: 'var(--text-primary)', fontSize: '12px', height: '28px' }}
                                 value={aiAssignedProfileTranslate}
                                 onChange={e => {
                                     setAiAssignedProfileTranslate(e.target.value);
@@ -190,7 +190,7 @@ const AiSettingsGroup = ({
                             </div>
                             <select
                                 className="search-input"
-                                style={{ borderRadius: '0', padding: '6px', width: '160px', background: 'var(--bg-input)', border: '2px solid var(--border-dark)', color: 'var(--text-primary)', fontSize: '12px' }}
+                                style={{ borderRadius: '4px', padding: '4px 8px', width: '160px', background: 'var(--bg-input)', border: '1px solid var(--border-dark)', color: 'var(--text-primary)', fontSize: '12px', height: '28px' }}
                                 value={aiTargetLang}
                                 onChange={e => {
                                     setAiTargetLang(e.target.value);
@@ -212,7 +212,7 @@ const AiSettingsGroup = ({
                             </div>
                             <input
                                 className="search-input"
-                                style={{ borderRadius: '0', padding: '6px', width: '160px' }}
+                                style={{ borderRadius: '4px', padding: '4px 8px', width: '160px', background: 'var(--bg-input)', border: '1px solid var(--border-dark)', color: 'var(--text-primary)', fontSize: '12px', height: '28px' }}
                                 type="number"
                                 min="1024"
                                 max="10000"

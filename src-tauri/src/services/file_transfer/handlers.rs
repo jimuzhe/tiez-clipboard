@@ -4,7 +4,7 @@ use axum::{
         ws::{Message as WsMessage, WebSocket},
         Multipart, Path, Query, State, WebSocketUpgrade,
     },
-    http::{header, HeaderMap, StatusCode},
+    http::{header, HeaderMap, HeaderValue, StatusCode},
     response::{Html, IntoResponse, Json},
 };
 use futures::{SinkExt, StreamExt};
@@ -27,6 +27,23 @@ use super::models::*;
 use super::utils::*;
 use super::web_ui::render_index;
 use super::{append_message, register_received_file};
+
+fn with_cors(mut response: axum::response::Response) -> axum::response::Response {
+    let headers = response.headers_mut();
+    headers.insert(
+        header::ACCESS_CONTROL_ALLOW_ORIGIN,
+        HeaderValue::from_static("*"),
+    );
+    headers.insert(
+        header::ACCESS_CONTROL_ALLOW_METHODS,
+        HeaderValue::from_static("POST, OPTIONS"),
+    );
+    headers.insert(
+        header::ACCESS_CONTROL_ALLOW_HEADERS,
+        HeaderValue::from_static("*"),
+    );
+    response
+}
 
 pub async fn index(State(state): State<Arc<AppState>>) -> Html<String> {
     let app_handle = &state.app_handle;
@@ -500,6 +517,127 @@ pub async fn upload_chunk(
     }
 
     (StatusCode::OK, "Chunk received").into_response()
+}
+
+pub async fn share_chunk(
+    State(state): State<Arc<AppState>>,
+    mut multipart: Multipart,
+) -> axum::response::Response {
+    update_activity(&state.app_handle);
+    let mut metadata: Option<ChunkMetadata> = None;
+    let mut chunk_data: Option<Vec<u8>> = None;
+
+    while let Ok(Some(field)) = multipart.next_field().await {
+        let name = field.name().unwrap_or("").to_string();
+
+        if name == "metadata" {
+            if let Ok(bytes) = field.bytes().await {
+                if let Ok(text) = String::from_utf8(bytes.to_vec()) {
+                    if let Ok(m) = serde_json::from_str(&text) {
+                        metadata = Some(m);
+                    }
+                }
+            }
+        } else if name == "data" || name == "file" {
+            if let Ok(bytes) = field.bytes().await {
+                chunk_data = Some(bytes.to_vec());
+            }
+        }
+    }
+
+    let meta = match metadata {
+        Some(m) => m,
+        None => return with_cors((StatusCode::BAD_REQUEST, "Missing metadata").into_response()),
+    };
+    let data = match chunk_data {
+        Some(d) => d,
+        None => return with_cors((StatusCode::BAD_REQUEST, "Missing data").into_response()),
+    };
+
+    let sessions = state.app_handle.state::<UploadSessions>();
+    let temp_path = {
+        let mut sessions_map = sessions.0.lock().unwrap();
+        sessions_map
+            .entry(meta.upload_id.clone())
+            .or_insert_with(|| {
+                let path = std::env::temp_dir().join("tiez_shared_uploads");
+                if !path.exists() {
+                    let _ = std::fs::create_dir_all(&path);
+                }
+                path.join(format!(".tmp_share_{}", meta.upload_id))
+            })
+            .clone()
+    };
+
+    let mut options = tokio::fs::OpenOptions::new();
+    options.create(true).append(true).write(true);
+
+    if let Ok(mut file) = options.open(&temp_path).await {
+        if let Err(e) = file.write_all(&data).await {
+            eprintln!("Error writing shared chunk: {}", e);
+            return with_cors((StatusCode::INTERNAL_SERVER_ERROR, "Write failed").into_response());
+        }
+    } else {
+        return with_cors((StatusCode::INTERNAL_SERVER_ERROR, "Open failed").into_response());
+    }
+
+    if meta.chunk_index == meta.total_chunks.saturating_sub(1) {
+        let final_filename = format!(
+            "share_{}_{}",
+            chrono::Utc::now().format("%Y%m%d%H%M%S"),
+            meta.file_name
+        );
+        let final_path = temp_path.parent().unwrap().join(&final_filename);
+
+        if let Err(e) = tokio::fs::rename(&temp_path, &final_path).await {
+            eprintln!("Error finalizing shared file: {}", e);
+            return with_cors(
+                (StatusCode::INTERNAL_SERVER_ERROR, "Finalize failed").into_response(),
+            );
+        }
+
+        {
+            let mut sessions_map = sessions.0.lock().unwrap();
+            sessions_map.remove(&meta.upload_id);
+        }
+
+        let content_type = meta
+            .content_type
+            .unwrap_or_else(|| "application/octet-stream".to_string());
+        let is_image = content_type.starts_with("image/");
+        let is_video = content_type.starts_with("video/");
+        let file_name_lower = meta.file_name.to_lowercase();
+        let msg_type = if is_image {
+            "image"
+        } else if is_video
+            || [".mp4", ".mov", ".mkv", ".avi", ".wmv", ".flv", ".webm"]
+                .iter()
+                .any(|ext| file_name_lower.ends_with(ext))
+        {
+            "video"
+        } else {
+            "file"
+        };
+
+        let shared_path = final_path.to_string_lossy().to_string();
+        append_message(
+            &state.app_handle,
+            "out",
+            msg_type,
+            &shared_path,
+            "pc",
+            "电脑",
+            Some(&shared_path),
+        );
+
+        return with_cors((StatusCode::OK, "Share upload complete").into_response());
+    }
+
+    with_cors((StatusCode::OK, "Shared chunk received").into_response())
+}
+
+pub async fn share_chunk_options() -> axum::response::Response {
+    with_cors(StatusCode::NO_CONTENT.into_response())
 }
 
 pub async fn handle_file_download_proxy(

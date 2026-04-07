@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { listen } from "@tauri-apps/api/event";
 import type { ClipboardEntry } from "../types";
+import { isTauriRuntime } from "../lib/tauriRuntime";
 
 interface UseClipboardEventsOptions {
   onUpdated: (entry: ClipboardEntry) => void;
@@ -26,6 +27,8 @@ export const useClipboardEvents = ({ onUpdated, onRemoved, onChanged }: UseClipb
   }, [onChanged]);
 
   useEffect(() => {
+    if (!isTauriRuntime()) return;
+
     const unlistenUpdate = listen<ClipboardEntry>("clipboard-updated", (event) => {
       onUpdatedRef.current(event.payload);
     });
@@ -43,5 +46,4 @@ export const useClipboardEvents = ({ onUpdated, onRemoved, onChanged }: UseClipb
     };
   }, []);
 };
-
 

@@ -20,7 +20,14 @@ interface UseKeyboardNavigationOptions {
   arrowKeySelection: boolean;
   richPasteHotkey: string;
   searchInputRef: RefObject<HTMLInputElement | null>;
-  copyToClipboard: (id: number, content: string, contentType: string, pasteWithFormat?: boolean) => Promise<void>;
+  copyToClipboard: (
+    id: number,
+    content: string,
+    contentType: string,
+    pasteWithFormat?: boolean,
+    isPinned?: boolean,
+    tags?: string[]
+  ) => Promise<void>;
   setSearch: (val: string) => void;
 }
 
@@ -93,28 +100,28 @@ export const useKeyboardNavigation = ({
       const isEditable = isAnyInput || target.isContentEditable === true;
 
       if (e.key === "Escape") {
-          e.preventDefault();
-          if (isEditable) {
-              searchInputRef.current?.blur();
+        e.preventDefault();
+        if (isEditable) {
+          searchInputRef.current?.blur();
+        } else {
+          const isClipboardAtTop = !isKeyboardModeRef.current || selectedIndexRef.current <= 0;
+          if (isClipboardAtTop) {
+            invoke("hide_window_cmd").catch(console.error);
           } else {
-              const isClipboardAtTop = !isKeyboardModeRef.current || selectedIndexRef.current <= 0;
-              if (isClipboardAtTop) {
-                invoke("hide_window_cmd");
-              } else {
-                setIsKeyboardMode(true);
-                setSelectedIndex(0);
-              }
+            setIsKeyboardMode(true);
+            setSelectedIndex(0);
           }
-          return;
+        }
+        return;
       }
 
       if (isEditable) {
-          if (e.key === "Enter" && isSearchInput) {
-              // Fall through
-          } else {
-              if (!arrowKeySelectionRef.current) return;
-              if (!isSearchInput) return;
-          }
+        if (e.key === "Enter" && isSearchInput) {
+          // Fall through
+        } else {
+          if (!arrowKeySelectionRef.current) return;
+          if (!isSearchInput) return;
+        }
       }
 
       if (arrowKeySelectionRef.current && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
@@ -126,7 +133,6 @@ export const useKeyboardNavigation = ({
             setSelectedIndex(0);
             return true;
           }
-
           if (e.key === "ArrowDown") {
             setSelectedIndex((s) => Math.min(s + 1, filteredHistoryRef.current.length - 1));
           } else {
@@ -159,7 +165,9 @@ export const useKeyboardNavigation = ({
               item.id,
               item.content,
               item.content_type,
-              isRich
+              isRich,
+              item.is_pinned,
+              item.tags || []
             );
           }
 
@@ -222,7 +230,7 @@ export const useKeyboardNavigation = ({
         if (!isNavMode) return;
         if (currentIndex >= 0 && currentIndex < history.length) {
           const item = history[currentIndex];
-          copyToClipboard(item.id, item.content, item.content_type, false);
+          copyToClipboard(item.id, item.content, item.content_type, false, item.is_pinned, item.tags || []);
         }
       } else if (action === "escape") {
         setSearch("");
@@ -243,5 +251,4 @@ export const useKeyboardNavigation = ({
     showTagManager
   ]);
 };
-
 
