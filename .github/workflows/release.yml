@@ -11,7 +11,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: [macos-13, macos-14] # macos-13 is Intel, macos-14 is Apple Silicon
+        include:
+          - platform: macos-15-intel
+            display_name: Intel
+          - platform: macos-14
+            display_name: Apple Silicon
 
     runs-on: ${{ matrix.platform }}
     env:
@@ -22,10 +26,10 @@ jobs:
       VITE_TIEZ_UPDATE_ENDPOINT: ${{ vars.VITE_TIEZ_UPDATE_ENDPOINT }}
       TIEZ_UPDATER_PUBLIC_KEY: ${{ vars.TIEZ_UPDATER_PUBLIC_KEY }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: setup node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 20
 
