@@ -5,7 +5,6 @@ const isCi = process.env.GITHUB_ACTIONS === "true" || process.env.CI === "true";
 
 const requiredInCi = [
   "TIEZ_UPDATE_ENDPOINT",
-  "TIEZ_UPDATER_PUBLIC_KEY",
   "TIEZ_ANNOUNCEMENT_PING_URL",
   "VITE_AI_DEFAULT_API_KEY"
 ];
@@ -23,7 +22,9 @@ const config = JSON.parse(readFileSync(configPath, "utf8"));
 const updateEndpoint =
   process.env.TIEZ_UPDATE_ENDPOINT?.trim() ||
   process.env.VITE_TIEZ_UPDATE_ENDPOINT?.trim();
-const updaterPublicKey = process.env.TIEZ_UPDATER_PUBLIC_KEY?.trim();
+const updaterPublicKey =
+  process.env.TIEZ_UPDATER_PUBLIC_KEY?.trim() ||
+  config.plugins?.updater?.pubkey?.trim();
 
 if (updateEndpoint) {
   config.plugins ??= {};
@@ -42,4 +43,7 @@ writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`);
 console.log("[configure-release] Updated Tauri release config");
 if (updateEndpoint) {
   console.log(`[configure-release] updater endpoint: ${updateEndpoint}`);
+}
+if (updaterPublicKey) {
+  console.log("[configure-release] updater public key: available");
 }
