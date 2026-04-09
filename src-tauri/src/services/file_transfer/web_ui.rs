@@ -794,176 +794,190 @@ pub fn render_index(theme: &str, color_mode: &str, logo_base64: &str) -> String 
         document.addEventListener('focusout', () => setTimeout(syncViewportMetrics, 50));
         syncViewportMetrics();
 
-        function normalizeFileName(name) {{
+        function escapeHTML(str) {
+            if (!str) return '';
+            return str.replace(/[&<>"']/g, function(m) {
+                return {
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#39;'
+                }[m];
+            });
+        }
+
+        function normalizeFileName(name) {
             if (!name) return '';
             const base = name.split('/').pop().split('\\').pop();
-            const m = base.match(/^\d{{8,}}_(.+)$/);
-            return m ? m[1] : base;
-        }}
-        function extractNameFromContent(content, file_path) {{
-            if (content && content.startsWith('/download/') && content.includes('?name=')) {{
+            const m = base.match(/^\d{8,}_(.+)$/);
+            return escapeHTML(m ? m[1] : base);
+        }
+        function extractNameFromContent(content, file_path) {
+            if (content && content.startsWith('/download/') && content.includes('?name=')) {
                 const idx = content.indexOf('?name=');
-                if (idx !== -1) {{
-                    try {{ return decodeURIComponent(content.slice(idx + 6)); }} catch (e) {{ return content; }}
-                }}
-            }}
+                if (idx !== -1) {
+                    try { return decodeURIComponent(content.slice(idx + 6)); } catch (e) { return content; }
+                }
+            }
             return file_path || content || '';
-        }}
-        function addPendingUpload(fileName, el) {{
+        }
+        function addPendingUpload(fileName, el) {
             const list = pendingUploads.get(fileName) || [];
             list.push(el);
             pendingUploads.set(fileName, list);
-        }}
-        function takePendingUpload(maybeName) {{
-            for (const [name, list] of pendingUploads.entries()) {{
-                if (maybeName.endsWith(name) && list.length > 0) {{
+        }
+        function takePendingUpload(maybeName) {
+            for (const [name, list] of pendingUploads.entries()) {
+                if (maybeName.endsWith(name) && list.length > 0) {
                     const el = list.shift();
                     if (list.length === 0) pendingUploads.delete(name);
                     return el;
-                }}
-            }}
+                }
+            }
             return null;
-        }}
-        function createMessageElement(direction, content, senderName, msgType, file_path) {{
+        }
+        function createMessageElement(direction, content, senderName, msgType, file_path) {
             const div = document.createElement('div');
-            div.className = `message ${{direction}}`;
+            div.className = `message ${direction}`;
             
-            let bubbleContent = content;
-            if (msgType === 'image' || (content.match(/\.(jpg|jpeg|png|gif|webp)$/i) && file_path)) {{
+            let bubbleContent = escapeHTML(content);
+            if (msgType === 'image' || (content.match(/\.(jpg|jpeg|png|gif|webp)$/i) && file_path)) {
                 const useContent = content.startsWith('data:') || content.startsWith('/download/') || content.startsWith('http');
-                const src = useContent ? content : (file_path || content);
-                bubbleContent = `<img src="${{src}}" class="img-preview" onclick="openOverlay('${{src}}')">`;
-            }} else if (msgType === 'video') {{
+                const src = escapeHTML(useContent ? content : (file_path || content));
+                bubbleContent = `<img src="${src}" class="img-preview" onclick="openOverlay('${src}')">`;
+            } else if (msgType === 'video') {
                 const useContent = content.startsWith('/download/') || content.startsWith('http');
-                const src = useContent ? content : (file_path || content);
-                bubbleContent = `<video class="video-preview" controls src="${{src}}"></video>`;
-            }} else if (msgType === 'file' || file_path) {{
+                const src = escapeHTML(useContent ? content : (file_path || content));
+                bubbleContent = `<video class="video-preview" controls src="${src}"></video>`;
+            } else if (msgType === 'file' || file_path) {
                  const rawName = extractNameFromContent(content, file_path);
                  const fileName = normalizeFileName(rawName);
                  bubbleContent = `
                     <div class="file-card">
                         <div class="file-icon">📄</div>
                         <div class="file-info">
-                            <span class="file-name">${{fileName}}</span>
+                            <span class="file-name">${fileName}</span>
                             <span class="file-size">DOWNLOAD</span>
                         </div>
                     </div>
                  `;
-            }}
+            }
 
+            const escapedSenderName = escapeHTML(senderName);
             div.innerHTML = `
-                ${{direction === 'received' ? (() => {{
+                ${direction === 'received' ? (() => {
                     const name = (senderName || '').trim();
                     const lower = name.toLowerCase();
                     const isPc = name === '电脑' || name === 'PC' || lower === 'pc' || lower === 'tiez';
-                    if (isPc) {{
-                        return `<div class="avatar"><img src="${{TIEZ_LOGO}}" alt="TieZ"></div>`;
-                    }}
-                    return `<div class="avatar">${{name ? name[0] : '?'}}</div>`;
-                }})() : ''}}
+                    if (isPc) {
+                        return `<div class="avatar"><img src="${TIEZ_LOGO}" alt="TieZ"></div>`;
+                    }
+                    return `<div class="avatar">${name ? escapeHTML(name[0]) : '?'}</div>`;
+                })() : ''}
                 <div class="bubble">
-                    ${{senderName !== 'System' ? `<div style="font-size:10px; opacity:0.6; margin-bottom:2px">${{senderName}}</div>` : ''}}
-                    ${{bubbleContent}}
+                    ${escapedSenderName && escapedSenderName !== 'System' ? `<div style="font-size:10px; opacity:0.6; margin-bottom:2px">${escapedSenderName}</div>` : ''}
+                    ${bubbleContent}
                 </div>
             `;
             
             const downloadUrl = content.startsWith('/download/') ? content : file_path;
-            if (downloadUrl && msgType !== 'image' && msgType !== 'video') {{
+            if (downloadUrl && msgType !== 'image' && msgType !== 'video') {
                 div.querySelector('.bubble').style.cursor = 'pointer';
                 div.querySelector('.bubble').onclick = () => window.location.href = downloadUrl;
-            }}
+            }
             
             return div;
-        }}
+        }
 
-        function openOverlay(src) {{
+        function openOverlay(src) {
             document.getElementById('overlay-img').src = src;
             document.getElementById('img-overlay').style.display = 'flex';
-        }}
-        function closeOverlay() {{
+        }
+        function closeOverlay() {
             document.getElementById('img-overlay').style.display = 'none';
-        }}
+        }
 
-        function openFullscreen() {{
+        function openFullscreen() {
             document.getElementById('fs-textarea').value = textInput.value;
             document.getElementById('fs-editor').style.display = 'flex';
             document.getElementById('fs-textarea').focus();
-        }}
-        function closeFullscreen() {{
+        }
+        function closeFullscreen() {
             document.getElementById('fs-editor').style.display = 'none';
-        }}
-        function sendFullscreen() {{
+        }
+        function sendFullscreen() {
             const val = document.getElementById('fs-textarea').value;
-            if (val.trim()) {{
+            if (val.trim()) {
                 textInput.value = val;
                 sendBtn.click();
-            }}
+            }
             closeFullscreen();
-        }}
+        }
 
         // Adjust textarea height
-        textInput.addEventListener('input', function() {{
+        textInput.addEventListener('input', function() {
             this.style.height = '40px';
             const newHeight = Math.min(this.scrollHeight, 100);
             this.style.height = newHeight + 'px';
             document.getElementById('expand-btn').style.display = newHeight > 50 ? 'flex' : 'none';
-        }});
+        });
 
-        textInput.addEventListener('focus', () => {{
-            setTimeout(() => {{
+        textInput.addEventListener('focus', () => {
+            setTimeout(() => {
                 syncViewportMetrics();
                 scrollToBottom();
-            }}, 80);
-        }});
+            }, 80);
+        });
 
         window.addEventListener('resize', syncViewportMetrics);
         window.addEventListener('orientationchange', syncViewportMetrics);
-        if (window.visualViewport) {{
+        if (window.visualViewport) {
             window.visualViewport.addEventListener('resize', syncViewportMetrics);
             window.visualViewport.addEventListener('scroll', syncViewportMetrics);
-        }}
+        }
         syncViewportMetrics();
 
         // WebSocket Setup
         let socket;
-        function connectWS() {{
+        function connectWS() {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            socket = new WebSocket(`${{protocol}}//${{window.location.host}}/ws`);
+            socket = new WebSocket(`${protocol}//${window.location.host}/ws`);
             
-            socket.onopen = () => {{
-                socket.send(JSON.stringify({{ type: 'identity', device_id: deviceId, device_name: deviceName }}));
+            socket.onopen = () => {
+                socket.send(JSON.stringify({ type: 'identity', device_id: deviceId, device_name: deviceName }));
                 console.log('WS Connected');
-            }};
+            };
             
-            socket.onmessage = (e) => {{
+            socket.onmessage = (e) => {
                 const msg = JSON.parse(e.data);
-                if (msg.direction === 'in' && msg.sender_id === deviceId && (msg.msg_type === 'file' || msg.msg_type === 'image' || msg.msg_type === 'video')) {{
+                if (msg.direction === 'in' && msg.sender_id === deviceId && (msg.msg_type === 'file' || msg.msg_type === 'image' || msg.msg_type === 'video')) {
                     const rawName = extractNameFromContent(msg.content, msg.file_path);
                     const maybeName = normalizeFileName(rawName);
                     const pending = takePendingUpload(maybeName);
-                    if (pending) {{
+                    if (pending) {
                         const replacement = createMessageElement('sent', msg.content, 'You', msg.msg_type, msg.file_path);
                         pending.replaceWith(replacement);
                         scrollToBottom();
                         return;
-                    }}
-                }}
-                if (msg.direction === 'out') {{
+                    }
+                }
+                if (msg.direction === 'out') {
                     const el = createMessageElement('received', msg.content, msg.sender_name, msg.msg_type, msg.file_path);
                     chatBox.appendChild(el);
                     scrollToBottom();
-                }} else if (msg.direction === 'in') {{
+                } else if (msg.direction === 'in') {
                     const el = createMessageElement('sent', msg.content, 'You', msg.msg_type, msg.file_path);
                     chatBox.appendChild(el);
                     scrollToBottom();
-                }}
-            }};
+                }
+            };
             
             socket.onclose = () => setTimeout(connectWS, 3000);
-        }}
+        }
         connectWS();
 
-        sendBtn.onclick = async () => {{
+        sendBtn.onclick = async () => {
             const text = textInput.value.trim();
             if (!text || isUploading) return;
             
@@ -971,26 +985,26 @@ pub fn render_index(theme: &str, color_mode: &str, logo_base64: &str) -> String 
             textInput.style.height = '40px';
             document.getElementById('expand-btn').style.display = 'none';
 
-            try {{
-                await fetch('/send-text', {{
+            try {
+                await fetch('/send-text', {
                     method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }},
-                    body: JSON.stringify({{ content: text, sender_id: deviceId, sender_name: deviceName }})
-                }});
-            }} catch(e) {{ alert('Send failed'); }}
-        }};
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content: text, sender_id: deviceId, sender_name: deviceName })
+                });
+            } catch(e) { alert('Send failed'); }
+        };
 
-        fileInput.onchange = async () => {{
+        fileInput.onchange = async () => {
             if (!fileInput.files.length || isUploading) return;
             const files = Array.from(fileInput.files);
             fileInput.value = '';
             
-            for(const file of files) {{
+            for(const file of files) {
                 await uploadFile(file);
-            }}
-        }};
+            }
+        };
 
-        async function uploadFile(file) {{
+        async function uploadFile(file) {
             isUploading = true;
             const isImage = file.type.startsWith('image/');
             const isVideo = file.type.startsWith('video/');
@@ -1011,14 +1025,14 @@ pub fn render_index(theme: &str, color_mode: &str, logo_base64: &str) -> String 
             const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
             const uploadId = Math.random().toString(36).substr(2, 9);
 
-            for (let i = 0; i < totalChunks; i++) {{
+            for (let i = 0; i < totalChunks; i++) {
                 const start = i * CHUNK_SIZE;
                 const end = Math.min(file.size, start + CHUNK_SIZE);
                 const chunk = file.slice(start, end);
 
                 const formData = new FormData();
                 formData.append('file', chunk);
-                formData.append('metadata', JSON.stringify({{
+                formData.append('metadata', JSON.stringify({
                     upload_id: uploadId,
                     chunk_index: i,
                     total_chunks: totalChunks,
@@ -1027,47 +1041,55 @@ pub fn render_index(theme: &str, color_mode: &str, logo_base64: &str) -> String 
                     sender_name: deviceName,
                     total_size: file.size,
                     content_type: file.type
-                }}));
+                }));
 
-                try {{
-                    const res = await fetch('/upload-chunk', {{ method: 'POST', body: formData }});
+                try {
+                    const res = await fetch('/upload-chunk', { method: 'POST', body: formData });
                     if (!res.ok) throw new Error('Chunk failed');
                     
                     const percent = Math.round(((i + 1) / totalChunks) * 100);
                     progressWrapper.querySelector('.progress-inner').style.width = percent + '%';
                     progressWrapper.querySelector('div').innerText = percent + '%';
-                }} catch (e) {{
+                } catch (e) {
                     alert('Upload failed: ' + file.name);
                     // Remove pending marker on failure
                     el.dataset.pending = 'false';
                     const list = pendingUploads.get(file.name) || [];
                     const idx = list.indexOf(el);
-                    if (idx >= 0) {{ list.splice(idx, 1); }}
+                    if (idx >= 0) { list.splice(idx, 1); }
                     if (list.length === 0) pendingUploads.delete(file.name);
                     break;
-                }}
-            }}
+                }
+            }
             
             progressWrapper.remove();
             el.querySelector('.bubble').innerHTML += ' <span style="color:#4caf50">✓</span>';
             isUploading = false;
-        }}
+        }
 
         // Dragon-drop support
         document.addEventListener('dragover', e => e.preventDefault());
-        document.addEventListener('drop', async e => {{
+        document.addEventListener('drop', async e => {
             e.preventDefault();
             const files = Array.from(e.dataTransfer.files);
-            if (files.length) {{
+            if (files.length) {
                  for(const file of files) await uploadFile(file);
                  
                  // Small delay for UI and then notify PC
-                 setTimeout(() => {{
+                 setTimeout(() => {
                      const fileCount = files.length;
-                     const replyEl = createMessageElement('received', `ACK: <b>${{fileCount}}</b> FILES SAVED.`, 'System', 'pc');
+                     const replyEl = createMessageElement('received', `ACK: <b>${fileCount}</b> FILES SAVED.`, 'System', 'pc');
                      chatBox.appendChild(replyEl);
                      scrollToBottom();
-                 }}, 800);
+                 }, 800);
+            }
+        });
+
+    </script>
+</body>
+</html>
+    "#,
+0);
             }}
         }});
 
