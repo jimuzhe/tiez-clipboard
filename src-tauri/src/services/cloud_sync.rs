@@ -56,7 +56,7 @@ static CLOUD_SYNC_CANCEL_REQUESTED: AtomicBool = AtomicBool::new(false);
 static CLOUD_SYNC_LAST_SYNC_AT: AtomicI64 = AtomicI64::new(0);
 static LAST_PUSHED_EMOJI_HASH: AtomicI64 = AtomicI64::new(0);
 static CLOUD_SYNC_BACKOFF_UNTIL: AtomicI64 = AtomicI64::new(0);
-static WEBDAV_ROOT_INITIALIZED: AtomicBool = AtomicBool::new(false);
+
 
 // 用于记录在本次运行中，哪些 WebDAV 目录已经确认存在，避免重复发网络请求
 static WEBDAV_KNOWN_DIRS: OnceLock<Mutex<HashSet<String>>> = OnceLock::new();
@@ -1632,10 +1632,10 @@ async fn mkcol_if_needed(
         return Ok(());
     }
 
-    if matches!(code, 301 | 302 | 307 | 308 | 405)
+    if matches!(code, 301 | 302 | 307 | 308 | 405 | 409)
         && webdav_collection_exists(client, cfg, relative_path).await?
     {
-        // 如果服务器反馈目录已存在，同样记录到缓存中
+        // 如果服务器反馈目录已存在 (405) 或者发生冲突 (409)，同样记录到缓存中
         let cache = WEBDAV_KNOWN_DIRS.get_or_init(|| Mutex::new(HashSet::new()));
         cache.lock().unwrap().insert(cache_key);
         return Ok(());
@@ -1795,7 +1795,13 @@ where
     for attempt in 0..=WEBDAV_JSON_READ_RETRIES {
         let resp = webdav_send_with_retry(|| make_request()).await?;
 
-        if resp.status().as_u16() == missing_status {
+        let status_code = resp.status().as_u16();
+        if status_code == missing_status {
+            return Ok(None);
+        }
+        
+        // 兼容坚果云：如果父目录不存在，GET 可能返回 409 Conflict (AncestorsNotFound)
+        if status_code == 409 {
             return Ok(None);
         }
         if !resp.status().is_success() {
@@ -1864,9 +1870,9 @@ async fn ensure_webdav_directories(
         },
     };
 
-    if WEBDAV_ROOT_INITIALIZED.load(Ordering::Relaxed) {
-        return Ok(paths);
-    }
+    // 注意：不再使用全局静态标识 WEBDAV_ROOT_INITIALIZED 来跳过初始化，
+    // 因为这会导致在切换 WebDAV 配置时无法正确为新地址创建目录。
+    // 性能优化现在完全依赖 WEBDAV_KNOWN_DIRS 缓存。
 
     for segment in base.split('/').filter(|s| !s.is_empty()) {
         current = if current.is_empty() {
@@ -1882,7 +1888,7 @@ async fn ensure_webdav_directories(
     mkcol_if_needed(client, cfg, &paths.ops_path).await?;
     mkcol_if_needed(client, cfg, &paths.blobs_path).await?;
 
-    WEBDAV_ROOT_INITIALIZED.store(true, Ordering::Relaxed);
+
     Ok(paths)
 }
 
