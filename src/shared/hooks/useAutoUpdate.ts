@@ -32,6 +32,11 @@ export const useAutoUpdate = () => {
         setVersion(update.version);
         setNotes(update.body || "");
         setIsOpen(true);
+      } else {
+        // No update found, emit an event so the UI can show "Up to date"
+        import('@tauri-apps/api/event').then(({ emit }) => {
+          emit("update-not-available");
+        });
       }
       
       setStatus("idle");

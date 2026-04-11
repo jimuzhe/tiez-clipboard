@@ -104,17 +104,34 @@ const SettingsFooter = ({
                     onClick={async () => {
                         if (updateStatus) return;
                         setUpdateStatus(t('checking'));
-                        import("@tauri-apps/api/event").then(({ emit }) => {
-                            emit("check-update-manually");
-                            // Revert status after 2 seconds to avoid being stuck if update dialog pops up
-                            setTimeout(() => setUpdateStatus(''), 2000);
+                        
+                        const { emit, listen } = await import("@tauri-apps/api/event");
+                        
+                        // Listen for result
+                        const unlisten = await listen("update-not-available", () => {
+                            setUpdateStatus(t('up_to_date'));
+                            setTimeout(() => {
+                                setUpdateStatus('');
+                                unlisten();
+                            }, 2000);
                         });
+
+                        emit("check-update-manually");
+                        
+                        // Fallback timeout in case of general failure
+                        setTimeout(() => {
+                            if (updateStatus === t('checking')) {
+                                setUpdateStatus('');
+                                unlisten();
+                            }
+                        }, 5000);
                     }}
                     disabled={!!updateStatus}
                     style={{
                         border: 'none',
                         background: 'transparent',
-                        color: (updateStatus && (updateStatus.includes('Failed') || updateStatus.includes('失败'))) ? '#ff4d4f' : 'var(--accent-color)',
+                        color: (updateStatus && (updateStatus === t('checking_failed'))) ? '#ff4d4f' : 
+                               (updateStatus === t('up_to_date')) ? '#52c41a' : 'var(--accent-color)',
                         cursor: updateStatus ? 'default' : 'pointer',
                         fontSize: '11px',
                         padding: '2px 6px',
