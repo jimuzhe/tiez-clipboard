@@ -23,6 +23,7 @@ fn main() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().with_handler(|app, shortcut, event| {
             if event.state() == tauri_plugin_global_shortcut::ShortcutState::Pressed {
+                crate::info!("[global-shortcut] Handler invoked: {:?}", shortcut);
                 setup::handle_global_shortcut(app, shortcut);
             }
         }).build())
@@ -125,9 +126,13 @@ fn main() {
             app::commands::get_tag_colors,
             app::commands::set_tag_color,
             
+            #[cfg(target_os = "windows")]
             infrastructure::windows_api::apps::get_system_default_app,
+            #[cfg(target_os = "windows")]
             infrastructure::windows_api::apps::get_executable_icon,
+            #[cfg(target_os = "windows")]
             infrastructure::windows_api::apps::scan_installed_apps,
+            #[cfg(target_os = "windows")]
             infrastructure::windows_api::apps::get_associated_apps
         ])
         .on_window_event(|window, event| {
@@ -146,6 +151,7 @@ fn main() {
     }
 
     // Cleanup Hooks on exit
+    #[cfg(target_os = "windows")]
     unsafe {
         let h_hook = HOOK_HANDLE.swap(std::ptr::null_mut(), Ordering::SeqCst);
         if !h_hook.is_null() {

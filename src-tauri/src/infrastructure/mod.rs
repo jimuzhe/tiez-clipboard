@@ -6,7 +6,10 @@ pub mod repository;
 #[cfg(target_os = "windows")]
 pub mod windows_api;
 
-#[cfg(not(target_os = "windows"))]
+#[cfg(target_os = "linux")]
+pub mod linux_api;
+
+#[cfg(not(any(target_os = "windows", target_os = "linux")))]
 pub mod windows_api {
     pub mod win_clipboard {
         pub struct ImageData { pub width: usize, pub height: usize, pub bytes: Vec<u8> }
@@ -17,7 +20,8 @@ pub mod windows_api {
         pub unsafe fn get_clipboard_raw_format(_name: &str) -> Option<Vec<u8>> { None }
         pub unsafe fn set_clipboard_files(_paths: Vec<String>) -> Result<(), String> { Ok(()) }
         pub unsafe fn set_clipboard_text_and_html(_text: &str, _: &str) -> Result<(), String> { Ok(()) }
-        pub fn set_clipboard_image_with_formats(_data: ImageData) -> Result<(), String> { Ok(()) }
+        pub fn set_clipboard_image_with_formats(_data: ImageData, _gif_bytes: Option<&[u8]>, _png_bytes: Option<&[u8]>) -> Result<Option<String>, String> { Ok(None) }
+        pub fn append_clipboard_text_and_html(_text: &str, _html: &str) -> Result<(), String> { Ok(()) }
     }
     
     pub mod window_tracker {

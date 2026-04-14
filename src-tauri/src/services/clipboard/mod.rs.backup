@@ -20,11 +20,6 @@ use crate::infrastructure::windows_api::window_tracker::{
     get_clipboard_source_app_info, ActiveAppInfo,
 };
 
-#[cfg(not(target_os = "windows"))]
-use crate::infrastructure::linux_api::clipboard as clipboard_api;
-#[cfg(target_os = "windows")]
-use crate::infrastructure::windows_api::win_clipboard as clipboard_api;
-
 use utils::*;
 
 enum ClipboardProcessPayload {
@@ -225,7 +220,6 @@ fn process_rgba_image_entry_async(
     true
 }
 
-#[cfg(target_os = "windows")]
 fn clipboard_image_fallback_data_url() -> Option<String> {
     for _ in 0..3 {
         unsafe {
@@ -272,31 +266,22 @@ fn clipboard_image_fallback_data_url() -> Option<String> {
     None
 }
 
-#[cfg(not(target_os = "windows"))]
-fn clipboard_image_fallback_data_url() -> Option<String> {
-    None
-}
-
 pub fn start_clipboard_monitor(app_handle: AppHandle) {
     use std::sync::{Arc, Mutex};
 
     // Initial state for deduplication and self-copy detection
     let mut last_text = String::new();
-
-    #[cfg(target_os = "windows")]
-    let last_seq = clipboard_api::get_clipboard_sequence_number();
-    #[cfg(not(target_os = "windows"))]
-    let last_seq = clipboard_api::get_clipboard_sequence_number();
-
+    let last_seq =
+        crate::infrastructure::windows_api::win_clipboard::get_clipboard_sequence_number();
     let mut last_image_hash = 0u64;
 
     // We can initialize these with current content to avoid capturing on startup
     if let Ok(mut cb) = Clipboard::new() {
         last_text = cb.get_text().unwrap_or_default();
-
-        #[cfg(target_os = "windows")]
-        let image_hash = unsafe {
-            if let Some(image) = clipboard_api::get_clipboard_image() {
+        last_image_hash = unsafe {
+            if let Some(image) =
+                crate::infrastructure::windows_api::win_clipboard::get_clipboard_image()
+            {
                 let mut hash = image.bytes.len() as u64;
                 if !image.bytes.is_empty() {
                     hash = hash
@@ -309,22 +294,6 @@ pub fn start_clipboard_monitor(app_handle: AppHandle) {
                 0u64
             }
         };
-
-        #[cfg(not(target_os = "windows"))]
-        let image_hash = if let Some(image) = clipboard_api::get_clipboard_image() {
-            let mut hash = image.bytes.len() as u64;
-            if !image.bytes.is_empty() {
-                hash = hash
-                    .wrapping_add(image.bytes[0] as u64)
-                    .wrapping_add(image.bytes[image.bytes.len() / 2] as u64)
-                    .wrapping_add(image.bytes[image.bytes.len() - 1] as u64);
-            }
-            hash
-        } else {
-            0u64
-        };
-
-        last_image_hash = image_hash;
     }
 
     struct MonitorState {
@@ -357,19 +326,14 @@ pub fn start_clipboard_monitor(app_handle: AppHandle) {
         }
 
         // 2. Sequence check (De-bounce Windows firing multiple events for one copy)
-
-        #[cfg(target_os = "windows")]
-        let current_seq = clipboard_api::get_clipboard_sequence_number();
-
-        #[cfg(not(target_os = "windows"))]
-        let current_seq = clipboard_api::get_clipboard_sequence_number();
-
+        let current_seq =
+            crate::infrastructure::windows_api::win_clipboard::get_clipboard_sequence_number();
         if current_seq == monitor_state.last_seq {
             return;
         }
         monitor_state.last_seq = current_seq;
-
-        let source_snapshot = get_clipboard_source_app_info();
+        let source_snapshot =
+            crate::infrastructure::windows_api::window_tracker::get_clipboard_source_app_info();
 
         // Give source app (especially Excel) time to release lock/finish writing
         // fixes "Another application is using the clipboard" error
@@ -400,15 +364,12 @@ pub fn start_clipboard_monitor(app_handle: AppHandle) {
             }
 
             // Also consider image hash if present
-
-            #[cfg(target_os = "windows")]
-            let image_bytes = unsafe { clipboard_api::get_clipboard_image().map(|i| i.bytes) };
-
-            #[cfg(not(target_os = "windows"))]
-            let image_bytes = clipboard_api::get_clipboard_image().map(|i| i.bytes);
-
-            if let Some(bytes) = image_bytes {
-                bytes.hash(&mut hasher);
+            unsafe {
+                if let Some(image) =
+                    crate::infrastructure::windows_api::win_clipboard::get_clipboard_image()
+                {
+                    image.bytes.hash(&mut hasher);
+                }
             }
 
             hasher.finish()
@@ -429,70 +390,67 @@ pub fn start_clipboard_monitor(app_handle: AppHandle) {
 
         // --- Core processing logic (same as before) ---
 
-        // 1. Check Files (CF_HDROP on Windows, text/uri-list on Linux)
-
-        #[cfg(target_os = "windows")]
-        let files_opt = unsafe { clipboard_api::get_clipboard_files() };
-
-        #[cfg(not(target_os = "windows"))]
-        let files_opt = clipboard_api::get_clipboard_files();
-
-        if let Some(files) = files_opt {
-            let content = files.join("\n");
-            if !content.is_empty() {
-                let is_new = content != monitor_state.last_text;
-                let mut should_process = is_new;
-                if !is_new {
-                    if let Some(db_state) = app.try_state::<DbState>() {
-                        if let Ok(conn) = db_state.conn.lock() {
-                            if let Ok(None) = db_state
-                                .repo
-                                .find_by_content_with_conn(&conn, &content, None)
-                            {
-                                should_process = true;
+        // 1. Check Files
+        unsafe {
+            if let Some(files) =
+                crate::infrastructure::windows_api::win_clipboard::get_clipboard_files()
+            {
+                let content = files.join("\n");
+                if !content.is_empty() {
+                    let is_new = content != monitor_state.last_text;
+                    let mut should_process = is_new;
+                    if !is_new {
+                        if let Some(db_state) = app.try_state::<DbState>() {
+                            if let Ok(conn) = db_state.conn.lock() {
+                                if let Ok(None) = db_state
+                                    .repo
+                                    .find_by_content_with_conn(&conn, &content, None)
+                                {
+                                    should_process = true;
+                                }
                             }
                         }
                     }
-                }
 
-                if should_process {
-                    let normalized = content.trim().replace("\r\n", "\n");
-                    let mut hasher = std::collections::hash_map::DefaultHasher::new();
-                    use std::hash::{Hash, Hasher};
-                    normalized.hash(&mut hasher);
-                    let current_hash = hasher.finish();
+                    if should_process {
+                        let normalized = content.trim().replace("\r\n", "\n");
+                        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+                        use std::hash::{Hash, Hasher};
+                        normalized.hash(&mut hasher);
+                        let current_hash = hasher.finish();
 
-                    let last_app_hash = crate::LAST_APP_SET_HASH.load(Ordering::SeqCst);
-                    let last_app_hash_alt = crate::LAST_APP_SET_HASH_ALT.load(Ordering::SeqCst);
-                    let last_app_time = crate::LAST_APP_SET_TIMESTAMP.load(Ordering::SeqCst);
-                    let now_secs = SystemTime::now()
-                        .duration_since(UNIX_EPOCH)
-                        .unwrap_or_default()
-                        .as_secs();
+                        let last_app_hash = crate::LAST_APP_SET_HASH.load(Ordering::SeqCst);
+                        let last_app_hash_alt = crate::LAST_APP_SET_HASH_ALT.load(Ordering::SeqCst);
+                        let last_app_time = crate::LAST_APP_SET_TIMESTAMP.load(Ordering::SeqCst);
+                        let now_secs = SystemTime::now()
+                            .duration_since(UNIX_EPOCH)
+                            .unwrap_or_default()
+                            .as_secs();
 
-                    if (last_app_hash != 0
-                        && (last_app_hash == current_hash || last_app_hash_alt == current_hash))
-                        && (now_secs - last_app_time) < 10
-                    {
-                        crate::LAST_APP_SET_HASH.store(0, Ordering::SeqCst);
-                        crate::LAST_APP_SET_HASH_ALT.store(0, Ordering::SeqCst);
-                    } else {
-                        crate::LAST_APP_SET_HASH.store(0, Ordering::SeqCst);
-                        crate::LAST_APP_SET_HASH_ALT.store(0, Ordering::SeqCst);
-                        monitor_state.last_text = content.clone();
+                        if (last_app_hash != 0
+                            && (last_app_hash == current_hash || last_app_hash_alt == current_hash))
+                            && (now_secs - last_app_time) < 10
+                        {
+                            crate::LAST_APP_SET_HASH.store(0, Ordering::SeqCst);
+                            crate::LAST_APP_SET_HASH_ALT.store(0, Ordering::SeqCst);
+                        } else {
+                            crate::LAST_APP_SET_HASH.store(0, Ordering::SeqCst);
+                            crate::LAST_APP_SET_HASH_ALT.store(0, Ordering::SeqCst);
+                            monitor_state.last_text = content.clone();
 
-                        let settings = app.state::<SettingsState>();
-                        if settings.capture_files.load(Ordering::Relaxed) || files.len() == 1 {
-                            process_new_entry_async(
-                                app.clone(),
-                                ClipboardData::Files(files),
-                                None,
-                                Some(source_snapshot.clone()),
-                            );
+                            let settings = app.state::<SettingsState>();
+                            if settings.capture_files.load(Ordering::Relaxed) || files.len() == 1 {
+                                process_new_entry_async(
+                                    app.clone(),
+                                    ClipboardData::Files(files),
+                                    None,
+                                    Some(source_snapshot.clone()),
+                                );
+                            }
                         }
                     }
+                    handled = true;
                 }
-                handled = true;
             }
         }
 
@@ -504,25 +462,21 @@ pub fn start_clipboard_monitor(app_handle: AppHandle) {
                 .get_text()
                 .map(|t| !t.trim().is_empty())
                 .unwrap_or(false);
-
-            #[cfg(target_os = "windows")]
             let has_rich_html = if rich_text_enabled && has_text {
                 unsafe {
-                    clipboard_api::get_clipboard_raw_format("HTML Format")
-                        .and_then(|raw| parse_cf_html(&raw))
-                        .map(|html| !html.trim().is_empty())
-                        .unwrap_or(false)
+                    crate::infrastructure::windows_api::win_clipboard::get_clipboard_raw_format(
+                        "HTML Format",
+                    )
+                    .and_then(|raw| parse_cf_html(&raw))
+                    .map(|html| !html.trim().is_empty())
+                    .unwrap_or(false)
                 }
             } else {
                 false
             };
 
-            #[cfg(not(target_os = "windows"))]
-            let has_rich_html = false;
-
             // Rich text wins over image when rich HTML exists; image remains fallback for pure image content.
             if !has_rich_html {
-                #[cfg(target_os = "windows")]
                 unsafe {
                     let mut gif_data_opt = None;
                     for name in [
@@ -532,7 +486,7 @@ pub fn start_clipboard_monitor(app_handle: AppHandle) {
                         "image/gif",
                         "Graphics Interchange Format",
                     ] {
-                        if let Some(data) = clipboard_api::get_clipboard_raw_format(name) {
+                        if let Some(data) = crate::infrastructure::windows_api::win_clipboard::get_clipboard_raw_format(name) {
                             gif_data_opt = Some(data);
                             break;
                         }
@@ -575,7 +529,9 @@ pub fn start_clipboard_monitor(app_handle: AppHandle) {
                     }
 
                     if !handled {
-                        if let Some(image) = clipboard_api::get_clipboard_image() {
+                        if let Some(image) =
+                            crate::infrastructure::windows_api::win_clipboard::get_clipboard_image()
+                        {
                             let mut hasher = std::collections::hash_map::DefaultHasher::new();
                             use std::hash::{Hash, Hasher};
                             image.bytes.hash(&mut hasher);
@@ -612,46 +568,6 @@ pub fn start_clipboard_monitor(app_handle: AppHandle) {
                         }
                     }
                 }
-
-                #[cfg(not(target_os = "windows"))]
-                {
-                    // Linux: Use arboard to get images
-                    if let Some(image) = clipboard_api::get_clipboard_image() {
-                        let mut hasher = std::collections::hash_map::DefaultHasher::new();
-                        use std::hash::{Hash, Hasher};
-                        image.bytes.hash(&mut hasher);
-                        let hash = hasher.finish();
-
-                        if hash != monitor_state.last_image_hash {
-                            let last_app_hash = crate::LAST_APP_SET_HASH.load(Ordering::SeqCst);
-                            let last_app_time =
-                                crate::LAST_APP_SET_TIMESTAMP.load(Ordering::SeqCst);
-                            let now_secs = SystemTime::now()
-                                .duration_since(UNIX_EPOCH)
-                                .unwrap_or_default()
-                                .as_secs();
-                            let last_app_hash_alt =
-                                crate::LAST_APP_SET_HASH_ALT.load(Ordering::SeqCst);
-
-                            if last_app_hash != 0
-                                && (last_app_hash == hash || last_app_hash_alt == hash)
-                                && (now_secs - last_app_time) < 10
-                            {
-                                crate::LAST_APP_SET_HASH.store(0, Ordering::SeqCst);
-                                crate::LAST_APP_SET_HASH_ALT.store(0, Ordering::SeqCst);
-                            } else {
-                                handled = process_rgba_image_entry_async(
-                                    app.clone(),
-                                    image.width as u32,
-                                    image.height as u32,
-                                    image.bytes,
-                                    Some(source_snapshot.clone()),
-                                );
-                            }
-                            monitor_state.last_image_hash = hash;
-                        }
-                    }
-                }
             }
         }
 
@@ -685,10 +601,9 @@ pub fn start_clipboard_monitor(app_handle: AppHandle) {
                     }
 
                     if settings.capture_rich_text.load(Ordering::Relaxed) {
-                        #[cfg(target_os = "windows")]
-                        if let Some(html_raw) =
-                            unsafe { clipboard_api::get_clipboard_raw_format("HTML Format") }
-                        {
+                        if let Some(html_raw) = unsafe {
+                            crate::infrastructure::windows_api::win_clipboard::get_clipboard_raw_format("HTML Format")
+                        } {
                             if let Some(html) = parse_cf_html(&html_raw) {
                                 if !html.trim().is_empty() {
                                     let mut html_to_store = html;
@@ -713,11 +628,6 @@ pub fn start_clipboard_monitor(app_handle: AppHandle) {
                                     handled = true;
                                 }
                             }
-                        }
-
-                        #[cfg(not(target_os = "windows"))]
-                        {
-                            // Linux: Rich text HTML not supported via native Windows API
                         }
                     }
 

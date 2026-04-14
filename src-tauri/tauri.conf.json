@@ -35,6 +35,8 @@
         "enable": true,
         "scope": [
           "$HOME/**",
+          "$APPDATA/**",
+          "$APPCONFIG/**",
           "C:/**",
           "D:/**",
           "E:/**"
@@ -119,7 +121,10 @@
       "icons/icon.ico"
     ],
     "targets": [
-      "nsis"
+      "nsis",
+      "deb",
+      "appimage",
+      "rpm"
     ],
     "windows": {
       "nsis": {

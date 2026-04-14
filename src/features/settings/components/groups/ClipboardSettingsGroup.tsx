@@ -328,7 +328,7 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
                         </div>
                         <div
                             className={`key-group ${props.isRecordingRich ? 'recording' : ''}`}
-                            onClick={() => props.setIsRecordingRich(true)}
+                            onClick={(e) => { props.setIsRecordingRich(true); invoke("focus_clipboard_window").catch(console.error); e.currentTarget.focus(); }}
                             tabIndex={0}
                             onKeyDown={(e) => {
                                 if (!props.isRecordingRich) return;
@@ -344,12 +344,20 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
                                 if (e.ctrlKey) modifiers.push('Ctrl');
                                 if (e.shiftKey) modifiers.push('Shift');
                                 if (e.altKey) modifiers.push('Alt');
+                                if (e.metaKey) modifiers.push('Win');
 
                                 const key = e.key.toUpperCase();
                                 if (['CONTROL', 'SHIFT', 'ALT', 'META'].includes(key)) return;
 
                                 const newHotkey = [...modifiers, key].join('+');
                                 props.updateRichPasteHotkey(newHotkey);
+                            }}
+                            onMouseDown={(e) => {
+                                if (!props.isRecordingRich) return;
+                                e.preventDefault();
+                                if (e.button === 1) {
+                                    props.updateRichPasteHotkey('MouseMiddle');
+                                }
                             }}
                         >
                             {props.isRecordingRich ? (
@@ -382,7 +390,7 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
                         </div>
                         <div
                             className={`key-group ${props.isRecordingSearch ? 'recording' : ''}`}
-                            onClick={() => props.setIsRecordingSearch(true)}
+                            onClick={(e) => { props.setIsRecordingSearch(true); invoke("focus_clipboard_window").catch(console.error); e.currentTarget.focus(); }}
                             tabIndex={0}
                             onKeyDown={(e) => {
                                 if (!props.isRecordingSearch) return;
@@ -398,12 +406,20 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
                                 if (e.ctrlKey) modifiers.push('Ctrl');
                                 if (e.shiftKey) modifiers.push('Shift');
                                 if (e.altKey) modifiers.push('Alt');
+                                if (e.metaKey) modifiers.push('Win');
 
                                 const key = e.key.toUpperCase();
                                 if (['CONTROL', 'SHIFT', 'ALT', 'META'].includes(key)) return;
 
                                 const newHotkey = [...modifiers, key].join('+');
                                 props.updateSearchHotkey(newHotkey);
+                            }}
+                            onMouseDown={(e) => {
+                                if (!props.isRecordingSearch) return;
+                                e.preventDefault();
+                                if (e.button === 1) {
+                                    props.updateSearchHotkey('MouseMiddle');
+                                }
                             }}
                         >
                             {props.isRecordingSearch ? (
@@ -515,7 +531,7 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
                             </div>
                             <div
                                 className={`key-group ${props.isRecordingSequential ? 'recording' : ''}`}
-                                onClick={() => props.setIsRecordingSequential(true)}
+                                onClick={(e) => { props.setIsRecordingSequential(true); invoke("focus_clipboard_window").catch(console.error); e.currentTarget.focus(); }}
                                 tabIndex={0}
                                 onKeyDown={(e) => {
                                     if (!props.isRecordingSequential) return;
@@ -531,13 +547,20 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
                                     if (e.ctrlKey) modifiers.push('Ctrl');
                                     if (e.shiftKey) modifiers.push('Shift');
                                     if (e.altKey) modifiers.push('Alt');
-                                    if (e.metaKey) return;
+                                    if (e.metaKey) modifiers.push('Win');
 
                                     const key = e.key.toUpperCase();
                                     if (['CONTROL', 'SHIFT', 'ALT', 'META'].includes(key)) return;
 
                                     const newHotkey = [...modifiers, key].join('+');
                                     props.updateSequentialHotkey(newHotkey);
+                                }}
+                                onMouseDown={(e) => {
+                                    if (!props.isRecordingSequential) return;
+                                    e.preventDefault();
+                                    if (e.button === 1) {
+                                        props.updateSequentialHotkey('MouseMiddle');
+                                    }
                                 }}
                             >
                                 {props.isRecordingSequential ? (
@@ -672,7 +695,7 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
                             )}
                             <div
                                 className={`key-group ${props.isRecording ? 'recording' : ''}`}
-                                onClick={() => props.setIsRecording(true)}
+                                onClick={(e) => { props.setIsRecording(true); invoke("focus_clipboard_window").catch(console.error); e.currentTarget.focus(); }}
                                 tabIndex={0}
                                 onKeyDown={(e) => {
                                     if (!props.isRecording) return;
@@ -695,6 +718,13 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
 
                                     const newHotkey = [...modifiers, key].join('+');
                                     props.addMainHotkey(newHotkey);
+                                }}
+                                onMouseDown={(e) => {
+                                    if (!props.isRecording) return;
+                                    e.preventDefault();
+                                    if (e.button === 1) {
+                                        props.addMainHotkey('MouseMiddle', { skipAvailabilityCheck: true });
+                                    }
                                 }}
                             >
                                 <div className="key-cap" style={{ width: '12em' }}>

@@ -1,34 +1,39 @@
-use tauri::{App, AppHandle, Manager, Emitter};
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::{Mutex, OnceLock};
-use std::ptr::null_mut;
-use crate::info;
-use crate::global_state::*;
-use crate::app_state::{SettingsState, SessionHistory, AppDataDir, PasteQueue, EncryptionQueueState};
-use crate::database::{self, DbState};
-use crate::infrastructure::repository::clipboard_repo::SqliteClipboardRepository;
-use crate::infrastructure::repository::settings_repo::{SqliteSettingsRepository, SettingsRepository};
-use crate::infrastructure::repository::tag_repo::SqliteTagRepository;
-use crate::services::encryption_queue::init_encryption_queue;
-use crate::services::sensitive_align::spawn_sensitive_alignment;
-use crate::infrastructure::windows_ext::WindowExt;
-use crate::app::window_manager::{toggle_window, release_win_keys, restore_last_focus};
 #[cfg(target_os = "windows")]
 use crate::app::hooks::{keyboard_proc, mouse_proc};
 #[cfg(target_os = "windows")]
 use crate::app::system::tray_subclass_proc;
+use crate::app::window_manager::{release_win_keys, restore_last_focus, toggle_window};
+use crate::app_state::{
+    AppDataDir, EncryptionQueueState, PasteQueue, SessionHistory, SettingsState,
+};
+use crate::database::{self, DbState};
+use crate::global_state::*;
+use crate::info;
+use crate::infrastructure::repository::clipboard_repo::SqliteClipboardRepository;
+use crate::infrastructure::repository::settings_repo::{
+    SettingsRepository, SqliteSettingsRepository,
+};
+use crate::infrastructure::repository::tag_repo::SqliteTagRepository;
+#[cfg(target_os = "windows")]
+use crate::infrastructure::windows_ext::WindowExt;
+use crate::services::encryption_queue::init_encryption_queue;
+use crate::services::sensitive_align::spawn_sensitive_alignment;
+use std::ptr::null_mut;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::{Mutex, OnceLock};
+use tauri::{App, AppHandle, Emitter, Manager};
 #[cfg(target_os = "windows")]
 use windows::Win32::Foundation::{HINSTANCE, HWND, POINT, RECT};
 #[cfg(target_os = "windows")]
-use windows::Win32::UI::WindowsAndMessaging::{
-    GetCursorPos, GetWindowRect, RegisterWindowMessageW, GWL_EXSTYLE, WS_EX_NOACTIVATE,
-};
+use windows::Win32::System::LibraryLoader::GetModuleHandleW;
 #[cfg(target_os = "windows")]
 use windows::Win32::UI::Input::KeyboardAndMouse::GetAsyncKeyState;
 #[cfg(target_os = "windows")]
 use windows::Win32::UI::Shell::SetWindowSubclass;
 #[cfg(target_os = "windows")]
-use windows::Win32::System::LibraryLoader::GetModuleHandleW;
+use windows::Win32::UI::WindowsAndMessaging::{
+    GetCursorPos, GetWindowRect, RegisterWindowMessageW, GWL_EXSTYLE, WS_EX_NOACTIVATE,
+};
 
 static WINDOW_SIZE_SAVE_PENDING: AtomicBool = AtomicBool::new(false);
 static LAST_WINDOW_SIZE_EVENT_MS: AtomicU64 = AtomicU64::new(0);
@@ -36,57 +41,71 @@ static LAST_WINDOW_SIZE: OnceLock<Mutex<(u32, u32)>> = OnceLock::new();
 
 pub fn init(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     let app_handle = app.handle().clone();
-    
+
     // Initialize GLOBAL_APP_HANDLE for Win32 hooks
     let _ = GLOBAL_APP_HANDLE.set(app_handle.clone());
-    
+
     // 1. Data Directory & Migration
     let app_dir = resolve_data_dir(app)?;
-    
+
     // 2. Logger Initialization
     crate::logger::init(app_dir.join("tiez.log"));
     info!(">>> [STARTUP] TieZ starting up...");
-    
+
     // 3. Database Initialization
     let db_path = app_dir.join("clipboard.db");
     let db_path_str = db_path.to_string_lossy();
     let conn = database::init_db(&db_path_str).map_err(|e| {
         let err_msg = format!("数据库初始化失败: {}", e);
-        WindowExt::show_error_box("TieZ 启动错误", &err_msg);
+        #[cfg(target_os = "windows")]
+        {
+            WindowExt::show_error_box("TieZ 启动错误", &err_msg);
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            // On non-Windows platforms, log the error instead of showing a message box
+            eprintln!("{}", err_msg);
+        }
         e
     })?;
     let conn_arc = std::sync::Arc::new(std::sync::Mutex::new(conn));
     let settings_repo = SqliteSettingsRepository::new(conn_arc.clone());
-    
+
     // 4. Initial Settings & Reset Safety
     apply_startup_resets(&settings_repo);
-    
+
     let settings = load_settings(&settings_repo);
-    
+
     // 5. App State Management
     setup_state(app, conn_arc.clone(), &settings, app_dir.clone());
-    app.manage(EncryptionQueueState(init_encryption_queue(app_handle.clone())));
+    app.manage(EncryptionQueueState(init_encryption_queue(
+        app_handle.clone(),
+    )));
     spawn_sensitive_alignment(app_handle.clone());
-    
+
     // 6. Window Initialization (Pinned/Focus)
     setup_main_window(app, &settings);
 
     // 6.1 External Drag-Drop (Web Images)
     #[cfg(windows)]
     crate::infrastructure::windows_api::drag_drop::register_emoji_drag_drop(app_handle.clone());
-    
+
     // 7. Background Services & Monitors
     start_services(app, &settings, app_handle.clone());
-    
+
     // 8. Tray Setup
     setup_tray(app, settings.hide_tray_icon);
-    
+
     // 9. Theme Initial Application
     apply_initial_theme(app);
-    
+
     // 10. Win32 Hook Initialization
     #[cfg(target_os = "windows")]
     init_win32_hooks(app);
+
+    // 10a. Linux Mouse Hotkey Listener (for MouseMiddle global shortcut)
+    #[cfg(target_os = "linux")]
+    crate::infrastructure::linux_api::mouse_hotkey::start_mouse_hotkey_listener();
 
     // 11. TaskbarCreated & Subclass
     #[cfg(target_os = "windows")]
@@ -97,10 +116,10 @@ pub fn init(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
 
 fn resolve_data_dir(app: &App) -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
     let default_app_dir = app.path().app_data_dir()?;
-    
+
     // Perform migration if needed
     crate::migration::perform_migration_v028(&default_app_dir);
-    
+
     // Cleanup temp files
     std::thread::spawn(|| {
         let temp_dir = std::env::temp_dir();
@@ -158,7 +177,10 @@ fn resolve_data_dir(app: &App) -> Result<std::path::PathBuf, Box<dyn std::error:
 }
 
 fn apply_startup_resets(repo: &impl SettingsRepository) {
-    let paste_method = repo.get("app.paste_method").unwrap_or(Some("shift_insert".to_string())).unwrap_or("shift_insert".to_string());
+    let paste_method = repo
+        .get("app.paste_method")
+        .unwrap_or(Some("shift_insert".to_string()))
+        .unwrap_or("shift_insert".to_string());
     if paste_method == "game_mode" && !crate::app::commands::system_cmd::check_is_admin() {
         info!(">>> [STARTUP] Game Mode active without Admin privileges. Resetting to default.");
         let _ = repo.set("app.paste_method", "shift_insert");
@@ -193,25 +215,95 @@ pub struct StartupSettings {
 
 fn load_settings(repo: &impl SettingsRepository) -> StartupSettings {
     StartupSettings {
-        theme: repo.get("app.theme").unwrap_or(Some("retro".to_string())).unwrap_or("retro".to_string()),
-        persistent: repo.get("app.persistent").unwrap_or(Some("true".to_string())).map(|v| v == "true").unwrap_or(true),
-        capture_files: repo.get("app.capture_files").unwrap_or(Some("true".to_string())).map(|v| v == "true").unwrap_or(true),
-        capture_rich_text: repo.get("app.capture_rich_text").unwrap_or(Some("false".to_string())).map(|v| v == "true").unwrap_or(false),
-        deduplicate: repo.get("app.deduplicate").unwrap_or(Some("true".to_string())).map(|v| v == "true").unwrap_or(true),
-        silent_start: repo.get("app.silent_start").unwrap_or(Some("true".to_string())).map(|v| v == "true").unwrap_or(true),
-        delete_after_paste: repo.get("app.delete_after_paste").unwrap_or(Some("false".to_string())).map(|v| v == "true").unwrap_or(false),
-        privacy_protection: repo.get("app.privacy_protection").unwrap_or(Some("true".to_string())).map(|v| v == "true").unwrap_or(true),
-        privacy_kinds: repo.get("app.privacy_protection_kinds").unwrap_or(Some("phone,idcard,email,secret".to_string())).unwrap_or("phone,idcard,email,secret".to_string()),
-        privacy_custom: repo.get("app.privacy_protection_custom_rules").unwrap_or(Some("".to_string())).unwrap_or("".to_string()),
-        sequential_mode: repo.get("app.sequential_mode").unwrap_or(Some("false".to_string())).map(|v| v == "true").unwrap_or(false),
-        sequential_hotkey: repo.get("app.sequential_hotkey").unwrap_or(Some("Alt+V".to_string())).unwrap_or("Alt+V".to_string()),
-        rich_paste_hotkey: repo.get("app.rich_paste_hotkey").unwrap_or(Some("Ctrl+Shift+Z".to_string())).unwrap_or("Ctrl+Shift+Z".to_string()),
-        search_hotkey: repo.get("app.search_hotkey").unwrap_or(Some("Alt+F".to_string())).unwrap_or("Alt+F".to_string()),
-        sound_enabled: repo.get("app.sound_enabled").unwrap_or(Some("false".to_string())).map(|v| v == "true").unwrap_or(false),
-        hide_tray_icon: repo.get("app.hide_tray_icon").unwrap_or(Some("false".to_string())).map(|v| v == "true").unwrap_or(false),
-        edge_docking: repo.get("app.edge_docking").unwrap_or(Some("false".to_string())).map(|v| v == "true").unwrap_or(false),
-        follow_mouse: repo.get("app.follow_mouse").unwrap_or(Some("true".to_string())).map(|v| v == "true").unwrap_or(true),
-        window_pinned: repo.get("app.window_pinned").unwrap_or(Some("false".to_string())).map(|v| v == "true").unwrap_or(false),
+        theme: repo
+            .get("app.theme")
+            .unwrap_or(Some("retro".to_string()))
+            .unwrap_or("retro".to_string()),
+        persistent: repo
+            .get("app.persistent")
+            .unwrap_or(Some("true".to_string()))
+            .map(|v| v == "true")
+            .unwrap_or(true),
+        capture_files: repo
+            .get("app.capture_files")
+            .unwrap_or(Some("true".to_string()))
+            .map(|v| v == "true")
+            .unwrap_or(true),
+        capture_rich_text: repo
+            .get("app.capture_rich_text")
+            .unwrap_or(Some("false".to_string()))
+            .map(|v| v == "true")
+            .unwrap_or(false),
+        deduplicate: repo
+            .get("app.deduplicate")
+            .unwrap_or(Some("true".to_string()))
+            .map(|v| v == "true")
+            .unwrap_or(true),
+        silent_start: repo
+            .get("app.silent_start")
+            .unwrap_or(Some("true".to_string()))
+            .map(|v| v == "true")
+            .unwrap_or(true),
+        delete_after_paste: repo
+            .get("app.delete_after_paste")
+            .unwrap_or(Some("false".to_string()))
+            .map(|v| v == "true")
+            .unwrap_or(false),
+        privacy_protection: repo
+            .get("app.privacy_protection")
+            .unwrap_or(Some("true".to_string()))
+            .map(|v| v == "true")
+            .unwrap_or(true),
+        privacy_kinds: repo
+            .get("app.privacy_protection_kinds")
+            .unwrap_or(Some("phone,idcard,email,secret".to_string()))
+            .unwrap_or("phone,idcard,email,secret".to_string()),
+        privacy_custom: repo
+            .get("app.privacy_protection_custom_rules")
+            .unwrap_or(Some("".to_string()))
+            .unwrap_or("".to_string()),
+        sequential_mode: repo
+            .get("app.sequential_mode")
+            .unwrap_or(Some("false".to_string()))
+            .map(|v| v == "true")
+            .unwrap_or(false),
+        sequential_hotkey: repo
+            .get("app.sequential_hotkey")
+            .unwrap_or(Some("Alt+V".to_string()))
+            .unwrap_or("Alt+V".to_string()),
+        rich_paste_hotkey: repo
+            .get("app.rich_paste_hotkey")
+            .unwrap_or(Some("Ctrl+Shift+Z".to_string()))
+            .unwrap_or("Ctrl+Shift+Z".to_string()),
+        search_hotkey: repo
+            .get("app.search_hotkey")
+            .unwrap_or(Some("Alt+F".to_string()))
+            .unwrap_or("Alt+F".to_string()),
+        sound_enabled: repo
+            .get("app.sound_enabled")
+            .unwrap_or(Some("false".to_string()))
+            .map(|v| v == "true")
+            .unwrap_or(false),
+        hide_tray_icon: repo
+            .get("app.hide_tray_icon")
+            .unwrap_or(Some("false".to_string()))
+            .map(|v| v == "true")
+            .unwrap_or(false),
+        edge_docking: repo
+            .get("app.edge_docking")
+            .unwrap_or(Some("false".to_string()))
+            .map(|v| v == "true")
+            .unwrap_or(false),
+        follow_mouse: repo
+            .get("app.follow_mouse")
+            .unwrap_or(Some("true".to_string()))
+            .map(|v| v == "true")
+            .unwrap_or(true),
+        window_pinned: repo
+            .get("app.window_pinned")
+            .unwrap_or(Some("false".to_string()))
+            .map(|v| v == "true")
+            .unwrap_or(false),
         window_width: repo
             .get("app.window_width")
             .ok()
@@ -222,17 +314,34 @@ fn load_settings(repo: &impl SettingsRepository) -> StartupSettings {
             .ok()
             .flatten()
             .and_then(|v| v.parse::<u32>().ok()),
-        main_hotkey: repo.get("app.hotkey").unwrap_or(Some("Win+V".to_string())).unwrap_or("Win+V".to_string()),
-        arrow_key_selection: repo.get("app.arrow_key_selection").unwrap_or(Some("false".to_string())).map(|v| v == "true").unwrap_or(false),
+        main_hotkey: repo
+            .get("app.hotkey")
+            .unwrap_or(Some("Win+V".to_string()))
+            .unwrap_or("Win+V".to_string()),
+        arrow_key_selection: repo
+            .get("app.arrow_key_selection")
+            .unwrap_or(Some("false".to_string()))
+            .map(|v| v == "true")
+            .unwrap_or(false),
     }
 }
 
-fn setup_state(app: &App, conn_arc: std::sync::Arc<std::sync::Mutex<rusqlite::Connection>>, s: &StartupSettings, app_dir: std::path::PathBuf) {
+fn setup_state(
+    app: &App,
+    conn_arc: std::sync::Arc<std::sync::Mutex<rusqlite::Connection>>,
+    s: &StartupSettings,
+    app_dir: std::path::PathBuf,
+) {
     let repo = SqliteClipboardRepository::new(conn_arc.clone());
     let settings_repo = SqliteSettingsRepository::new(conn_arc.clone());
     let tag_repo = SqliteTagRepository::new(conn_arc.clone());
-    app.manage(DbState { conn: conn_arc, repo, settings_repo, tag_repo });
-    
+    app.manage(DbState {
+        conn: conn_arc,
+        repo,
+        settings_repo,
+        tag_repo,
+    });
+
     app.manage(SettingsState {
         deduplicate: AtomicBool::new(s.deduplicate),
         persistent: AtomicBool::new(s.persistent),
@@ -242,8 +351,18 @@ fn setup_state(app: &App, conn_arc: std::sync::Arc<std::sync::Mutex<rusqlite::Co
         silent_start: AtomicBool::new(s.silent_start),
         delete_after_paste: AtomicBool::new(s.delete_after_paste),
         privacy_protection: AtomicBool::new(s.privacy_protection),
-        privacy_protection_kinds: std::sync::Mutex::new(s.privacy_kinds.split(',').map(|x| x.trim().to_string()).collect()),
-        privacy_protection_custom_rules: std::sync::Mutex::new(s.privacy_custom.lines().map(|x| x.trim().to_string()).collect()),
+        privacy_protection_kinds: std::sync::Mutex::new(
+            s.privacy_kinds
+                .split(',')
+                .map(|x| x.trim().to_string())
+                .collect(),
+        ),
+        privacy_protection_custom_rules: std::sync::Mutex::new(
+            s.privacy_custom
+                .lines()
+                .map(|x| x.trim().to_string())
+                .collect(),
+        ),
         sequential_mode: AtomicBool::new(s.sequential_mode),
         sequential_paste_hotkey: std::sync::Mutex::new(s.sequential_hotkey.clone()),
         rich_paste_hotkey: std::sync::Mutex::new(s.rich_paste_hotkey.clone()),
@@ -256,8 +375,10 @@ fn setup_state(app: &App, conn_arc: std::sync::Arc<std::sync::Mutex<rusqlite::Co
         main_hotkey: std::sync::Mutex::new(s.main_hotkey.clone()),
         monitors: std::sync::Mutex::new(Vec::new()),
     });
-    
-    app.manage(SessionHistory(std::sync::Mutex::new(std::collections::VecDeque::new())));
+
+    app.manage(SessionHistory(std::sync::Mutex::new(
+        std::collections::VecDeque::new(),
+    )));
     app.manage(AppDataDir(std::sync::Mutex::new(app_dir)));
     app.manage(PasteQueue::default());
 }
@@ -265,31 +386,37 @@ fn setup_state(app: &App, conn_arc: std::sync::Arc<std::sync::Mutex<rusqlite::Co
 fn setup_main_window(app: &App, s: &StartupSettings) {
     let effective_pinned = s.window_pinned;
     WINDOW_PINNED.store(effective_pinned, Ordering::Relaxed);
-    
+
     if let Some(window) = app.get_webview_window("main") {
         if let (Some(w), Some(h)) = (s.window_width, s.window_height) {
             if w >= 360 && h >= 240 {
-                let _ = window.set_size(tauri::Size::Physical(tauri::PhysicalSize { width: w, height: h }));
+                let _ = window.set_size(tauri::Size::Physical(tauri::PhysicalSize {
+                    width: w,
+                    height: h,
+                }));
             }
         }
         let _ = window.set_always_on_top(effective_pinned);
         let _ = window.set_focusable(!effective_pinned);
-        
+
         #[cfg(windows)]
         if let Ok(hwnd) = window.hwnd() {
             unsafe {
-                let ex_style = windows::Win32::UI::WindowsAndMessaging::GetWindowLongPtrW(HWND(hwnd.0), GWL_EXSTYLE);
+                let ex_style = windows::Win32::UI::WindowsAndMessaging::GetWindowLongPtrW(
+                    HWND(hwnd.0),
+                    GWL_EXSTYLE,
+                );
                 if effective_pinned {
                     let _ = windows::Win32::UI::WindowsAndMessaging::SetWindowLongPtrW(
                         HWND(hwnd.0),
                         GWL_EXSTYLE,
-                        ex_style | WS_EX_NOACTIVATE.0 as isize
+                        ex_style | WS_EX_NOACTIVATE.0 as isize,
                     );
                 } else {
                     let _ = windows::Win32::UI::WindowsAndMessaging::SetWindowLongPtrW(
                         HWND(hwnd.0),
                         GWL_EXSTYLE,
-                        ex_style & !(WS_EX_NOACTIVATE.0 as isize)
+                        ex_style & !(WS_EX_NOACTIVATE.0 as isize),
                     );
                 }
             }
@@ -298,7 +425,8 @@ fn setup_main_window(app: &App, s: &StartupSettings) {
 
     // Handle silent start
     let args: Vec<String> = std::env::args().collect();
-    let is_autostart = args.contains(&"--autostart".to_string()) || args.contains(&"--minimized".to_string());
+    let is_autostart =
+        args.contains(&"--autostart".to_string()) || args.contains(&"--minimized".to_string());
     let should_show_window = cfg!(debug_assertions) || (!is_autostart && !s.silent_start);
     if should_show_window {
         if let Some(window) = app.get_webview_window("main") {
@@ -308,7 +436,13 @@ fn setup_main_window(app: &App, s: &StartupSettings) {
 }
 
 fn start_core_background_services(app_handle: &AppHandle) {
-    crate::infrastructure::windows_api::window_tracker::start_window_tracking(app_handle.clone());
+    #[cfg(target_os = "windows")]
+    {
+        crate::infrastructure::windows_api::window_tracker::start_window_tracking(
+            app_handle.clone(),
+        );
+    }
+    // Non-Windows: skip window tracking
     crate::services::clipboard::start_clipboard_monitor(app_handle.clone());
     start_edge_docking_monitor(app_handle.clone());
 }
@@ -320,11 +454,39 @@ fn start_services(app: &App, _s: &StartupSettings, app_handle: AppHandle) {
 
     init_announcement_ping(app, &db_state.settings_repo);
 
+    #[cfg(target_os = "linux")]
+    {
+        let wayland_display = std::env::var("WAYLAND_DISPLAY").unwrap_or_default();
+        let x11_display = std::env::var("DISPLAY").unwrap_or_default();
+        if !wayland_display.is_empty() && x11_display.is_empty() {
+            crate::warn!(">>> [STARTUP] Wayland session detected without XWayland. Global shortcuts require X11 and will not work.");
+        } else if !wayland_display.is_empty() {
+            crate::warn!(">>> [STARTUP] Wayland session detected (XWayland display: {}). Global shortcuts may not work reliably.", x11_display);
+        } else if !x11_display.is_empty() {
+            crate::info!(
+                ">>> [STARTUP] X11 session detected (display: {}). Global shortcuts should work.",
+                x11_display
+            );
+        } else {
+            crate::warn!(
+                ">>> [STARTUP] No display server detected. Global shortcuts will not work."
+            );
+        }
+    }
+
     let _ = crate::app::commands::hotkey_cmd::sync_hotkeys_from_settings(&app_handle);
 
-    if db_state.settings_repo.get("app.use_win_v_shortcut").unwrap_or(Some("false".to_string())) == Some("true".to_string()) {
-        if !crate::app::commands::system_cmd::get_registry_win_v_optimized_status() {
-            let _ = crate::app::commands::trigger_registry_win_v_optimization(true);
+    #[cfg(target_os = "windows")]
+    {
+        if db_state
+            .settings_repo
+            .get("app.use_win_v_shortcut")
+            .unwrap_or(Some("false".to_string()))
+            == Some("true".to_string())
+        {
+            if !crate::app::commands::system_cmd::get_registry_win_v_optimized_status() {
+                let _ = crate::app::commands::trigger_registry_win_v_optimization(true);
+            }
         }
     }
 }
@@ -418,9 +580,21 @@ fn start_edge_docking_monitor(app_handle: AppHandle) {
                 let is_mouse_near_edge = if is_hidden_by_edge {
                     let current_dock = CURRENT_DOCK.load(Ordering::Relaxed);
                     match current_dock {
-                        1 => point.y <= screen_top + threshold && point.x >= rect.left && point.x <= rect.right,   // Top
-                        2 => point.x <= screen_left + threshold && point.y >= rect.top && point.y <= rect.bottom,  // Left
-                        3 => point.x >= screen_right - threshold && point.y >= rect.top && point.y <= rect.bottom, // Right
+                        1 => {
+                            point.y <= screen_top + threshold
+                                && point.x >= rect.left
+                                && point.x <= rect.right
+                        } // Top
+                        2 => {
+                            point.x <= screen_left + threshold
+                                && point.y >= rect.top
+                                && point.y <= rect.bottom
+                        } // Left
+                        3 => {
+                            point.x >= screen_right - threshold
+                                && point.y >= rect.top
+                                && point.y <= rect.bottom
+                        } // Right
                         _ => false,
                     }
                 } else {
@@ -478,18 +652,27 @@ fn start_edge_docking_monitor(app_handle: AppHandle) {
                             match dock_actual {
                                 DockPosition::Top => {
                                     let _ = window.set_position(tauri::Position::Physical(
-                                        tauri::PhysicalPosition { x: rect.left, y: screen_top },
+                                        tauri::PhysicalPosition {
+                                            x: rect.left,
+                                            y: screen_top,
+                                        },
                                     ));
                                 }
                                 DockPosition::Left => {
                                     let _ = window.set_position(tauri::Position::Physical(
-                                        tauri::PhysicalPosition { x: screen_left, y: rect.top },
+                                        tauri::PhysicalPosition {
+                                            x: screen_left,
+                                            y: rect.top,
+                                        },
                                     ));
                                 }
                                 DockPosition::Right => {
                                     let w = rect.right - rect.left;
                                     let _ = window.set_position(tauri::Position::Physical(
-                                        tauri::PhysicalPosition { x: screen_right - w, y: rect.top },
+                                        tauri::PhysicalPosition {
+                                            x: screen_right - w,
+                                            y: rect.top,
+                                        },
                                     ));
                                 }
                                 _ => {}
@@ -515,12 +698,17 @@ fn start_edge_docking_monitor(app_handle: AppHandle) {
                             #[cfg(windows)]
                             if let Ok(hwnd) = window.hwnd() {
                                 unsafe {
-                                    let ex_style = windows::Win32::UI::WindowsAndMessaging::GetWindowLongPtrW(HWND(hwnd.0), GWL_EXSTYLE);
-                                    let _ = windows::Win32::UI::WindowsAndMessaging::SetWindowLongPtrW(
-                                        HWND(hwnd.0),
-                                        GWL_EXSTYLE,
-                                        ex_style | WS_EX_NOACTIVATE.0 as isize
-                                    );
+                                    let ex_style =
+                                        windows::Win32::UI::WindowsAndMessaging::GetWindowLongPtrW(
+                                            HWND(hwnd.0),
+                                            GWL_EXSTYLE,
+                                        );
+                                    let _ =
+                                        windows::Win32::UI::WindowsAndMessaging::SetWindowLongPtrW(
+                                            HWND(hwnd.0),
+                                            GWL_EXSTYLE,
+                                            ex_style | WS_EX_NOACTIVATE.0 as isize,
+                                        );
                                 }
                             }
                             let _ = app_handle.emit("window-pinned-changed", true);
@@ -573,7 +761,11 @@ fn start_edge_docking_monitor(app_handle: AppHandle) {
                         #[cfg(windows)]
                         if let Ok(hwnd) = window.hwnd() {
                             unsafe {
-                                let ex_style = windows::Win32::UI::WindowsAndMessaging::GetWindowLongPtrW(HWND(hwnd.0), GWL_EXSTYLE);
+                                let ex_style =
+                                    windows::Win32::UI::WindowsAndMessaging::GetWindowLongPtrW(
+                                        HWND(hwnd.0),
+                                        GWL_EXSTYLE,
+                                    );
                                 let next = if user_pinned {
                                     ex_style | WS_EX_NOACTIVATE.0 as isize
                                 } else {
@@ -582,7 +774,7 @@ fn start_edge_docking_monitor(app_handle: AppHandle) {
                                 let _ = windows::Win32::UI::WindowsAndMessaging::SetWindowLongPtrW(
                                     HWND(hwnd.0),
                                     GWL_EXSTYLE,
-                                    next
+                                    next,
                                 );
                             }
                         }
@@ -643,7 +835,8 @@ fn setup_tray(app: &App, hide_tray: bool) {
     let show_i = MenuItem::with_id(app, "show", "显示主界面", true, None::<&str>).unwrap();
     let quit_i = MenuItem::with_id(app, "quit", "退出 贴汁", true, None::<&str>).unwrap();
     let menu = Menu::with_items(app, &[&show_i, &quit_i]).unwrap();
-    let icon = tauri::image::Image::from_bytes(include_bytes!("../../icons/tray-icon.png")).unwrap();
+    let icon =
+        tauri::image::Image::from_bytes(include_bytes!("../../icons/tray-icon.png")).unwrap();
 
     let tray = TrayIconBuilder::with_id("main_tray")
         .icon(icon)
@@ -652,20 +845,32 @@ fn setup_tray(app: &App, hide_tray: bool) {
         .menu(&menu)
         .on_menu_event(|app, event| {
             if event.id.as_ref() == "show" {
-                if let Some(window) = app.get_webview_window("main") { let _ = window.show(); }
-            } else if event.id.as_ref() == "quit" { app.exit(0); }
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.show();
+                }
+            } else if event.id.as_ref() == "quit" {
+                app.exit(0);
+            }
         })
         .on_tray_icon_event(|tray, event| {
-            if let TrayIconEvent::Click { button: MouseButton::Left, .. } = event {
+            if let TrayIconEvent::Click {
+                button: MouseButton::Left,
+                ..
+            } = event
+            {
                 if let Some(window) = tray.app_handle().get_webview_window("main") {
                     let _ = window.show();
                     let _ = window.set_focus();
-                    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as u64;
+                    let now = std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap()
+                        .as_millis() as u64;
                     LAST_SHOW_TIMESTAMP.store(now, Ordering::Relaxed);
                 }
             }
         })
-        .build(app).expect("Failed to build tray");
+        .build(app)
+        .expect("Failed to build tray");
 
     let _ = tray.set_visible(!hide_tray);
     app.manage(tray);
@@ -673,26 +878,58 @@ fn setup_tray(app: &App, hide_tray: bool) {
 
 fn apply_initial_theme(app: &App) {
     let db_state = app.state::<DbState>();
-    let theme = db_state.settings_repo.get("app.theme").unwrap_or(Some("retro".to_string())).unwrap_or("retro".to_string());
-    let mode = db_state.settings_repo.get("app.color_mode").unwrap_or(Some("system".to_string()));
-    
+    let theme = db_state
+        .settings_repo
+        .get("app.theme")
+        .unwrap_or(Some("retro".to_string()))
+        .unwrap_or("retro".to_string());
+    let mode = db_state
+        .settings_repo
+        .get("app.color_mode")
+        .unwrap_or(Some("system".to_string()));
+
     if let Some(window) = app.get_webview_window("main") {
-        let _ = crate::app::commands::set_theme(window, app.state::<SettingsState>(), db_state, theme, mode, None);
+        let _ = crate::app::commands::set_theme(
+            window,
+            app.state::<SettingsState>(),
+            db_state,
+            theme,
+            mode,
+            None,
+        );
     }
 }
 
 #[cfg(target_os = "windows")]
 fn init_win32_hooks(_app: &App) {
     std::thread::spawn(move || {
-        use windows::Win32::UI::WindowsAndMessaging::{GetMessageW, MSG, DispatchMessageW, TranslateMessage, WH_KEYBOARD_LL, WH_MOUSE_LL, SetWindowsHookExW, UnhookWindowsHookEx};
+        use windows::Win32::UI::WindowsAndMessaging::{
+            DispatchMessageW, GetMessageW, SetWindowsHookExW, TranslateMessage,
+            UnhookWindowsHookEx, MSG, WH_KEYBOARD_LL, WH_MOUSE_LL,
+        };
         unsafe {
-            HOOK_THREAD_ID.store(windows::Win32::System::Threading::GetCurrentThreadId(), Ordering::Relaxed);
+            HOOK_THREAD_ID.store(
+                windows::Win32::System::Threading::GetCurrentThreadId(),
+                Ordering::Relaxed,
+            );
             let h_instance = GetModuleHandleW(None).expect("Failed to get module handle");
-            let h_hook = SetWindowsHookExW(WH_KEYBOARD_LL, Some(keyboard_proc), Some(HINSTANCE(h_instance.0)), 0).expect("Failed to set hook");
+            let h_hook = SetWindowsHookExW(
+                WH_KEYBOARD_LL,
+                Some(keyboard_proc),
+                Some(HINSTANCE(h_instance.0)),
+                0,
+            )
+            .expect("Failed to set hook");
             HOOK_HANDLE.store(h_hook.0 as _, Ordering::SeqCst);
-            let h_mouse_hook = SetWindowsHookExW(WH_MOUSE_LL, Some(mouse_proc), Some(HINSTANCE(h_instance.0)), 0).expect("Failed to set mouse hook");
+            let h_mouse_hook = SetWindowsHookExW(
+                WH_MOUSE_LL,
+                Some(mouse_proc),
+                Some(HINSTANCE(h_instance.0)),
+                0,
+            )
+            .expect("Failed to set mouse hook");
             HOOK_MOUSE_HANDLE.store(h_mouse_hook.0 as _, Ordering::SeqCst);
-            
+
             let mut msg = MSG::default();
             while GetMessageW(&mut msg, None, 0, 0).as_bool() {
                 let _ = TranslateMessage(&msg);
@@ -701,7 +938,9 @@ fn init_win32_hooks(_app: &App) {
             let _ = UnhookWindowsHookEx(h_hook);
             let h_mouse = HOOK_MOUSE_HANDLE.swap(null_mut(), Ordering::SeqCst);
             if !h_mouse.is_null() {
-                let _ = UnhookWindowsHookEx(windows::Win32::UI::WindowsAndMessaging::HHOOK(h_mouse as _));
+                let _ = UnhookWindowsHookEx(windows::Win32::UI::WindowsAndMessaging::HHOOK(
+                    h_mouse as _,
+                ));
             }
         }
     });
@@ -749,7 +988,9 @@ pub fn handle_global_shortcut(app: &AppHandle, shortcut: &tauri_plugin_global_sh
                 let q_notification = app.state::<PasteQueue>().inner().0.lock().unwrap();
                 !q_notification.items.is_empty()
             };
-            if is_seq || has_items { crate::services::paste_queue::paste_next_step(app.clone()); }
+            if is_seq || has_items {
+                crate::services::paste_queue::paste_next_step(app.clone());
+            }
         }
     }
 
@@ -757,7 +998,9 @@ pub fn handle_global_shortcut(app: &AppHandle, shortcut: &tauri_plugin_global_sh
         let val = settings.rich_paste_hotkey.lock().unwrap().clone();
         val.replace("Win", "Super").parse::<Shortcut>()
     } {
-        if shortcut == &rich_s { crate::services::clipboard_ops::paste_latest_rich(app.clone()); }
+        if shortcut == &rich_s {
+            crate::services::clipboard_ops::paste_latest_rich(app.clone());
+        }
     }
 
     if let Ok(search_s) = {
@@ -838,57 +1081,83 @@ fn persist_window_size(window: &tauri::Window, width: u32, height: u32) {
     }
 
     let app_handle = window.app_handle().clone();
-    std::thread::spawn(move || {
-        loop {
-            std::thread::sleep(std::time::Duration::from_millis(250));
-            let last_event = LAST_WINDOW_SIZE_EVENT_MS.load(Ordering::Relaxed);
-            let now = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_millis() as u64;
-            if now.saturating_sub(last_event) < 200 {
-                continue;
-            }
-
-            let (w, h) = {
-                let guard = LAST_WINDOW_SIZE.get().unwrap().lock().unwrap();
-                *guard
-            };
-
-            if let Some(db_state) = app_handle.try_state::<DbState>() {
-                let _ = db_state.settings_repo.set("app.window_width", &w.to_string());
-                let _ = db_state.settings_repo.set("app.window_height", &h.to_string());
-            }
-
-            WINDOW_SIZE_SAVE_PENDING.store(false, Ordering::SeqCst);
-            break;
+    std::thread::spawn(move || loop {
+        std::thread::sleep(std::time::Duration::from_millis(250));
+        let last_event = LAST_WINDOW_SIZE_EVENT_MS.load(Ordering::Relaxed);
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_millis() as u64;
+        if now.saturating_sub(last_event) < 200 {
+            continue;
         }
+
+        let (w, h) = {
+            let guard = LAST_WINDOW_SIZE.get().unwrap().lock().unwrap();
+            *guard
+        };
+
+        if let Some(db_state) = app_handle.try_state::<DbState>() {
+            let _ = db_state
+                .settings_repo
+                .set("app.window_width", &w.to_string());
+            let _ = db_state
+                .settings_repo
+                .set("app.window_height", &h.to_string());
+        }
+
+        WINDOW_SIZE_SAVE_PENDING.store(false, Ordering::SeqCst);
+        break;
     });
 }
 
 fn handle_blur(window: &tauri::Window) {
-    if IGNORE_BLUR.load(Ordering::Relaxed) || WINDOW_PINNED.load(Ordering::Relaxed) { return; }
-    
+    if IGNORE_BLUR.load(Ordering::Relaxed) || WINDOW_PINNED.load(Ordering::Relaxed) {
+        return;
+    }
+
     let settings = window.app_handle().state::<SettingsState>();
-    if settings.edge_docking.load(Ordering::Relaxed) { return; }
+    if settings.edge_docking.load(Ordering::Relaxed) {
+        return;
+    }
 
-    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as u64;
-    if now.saturating_sub(LAST_SHOW_TIMESTAMP.load(Ordering::Relaxed)) < 500 { return; }
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_millis() as u64;
+    if now.saturating_sub(LAST_SHOW_TIMESTAMP.load(Ordering::Relaxed)) < 500 {
+        return;
+    }
 
-    if IS_MOUSE_BUTTON_DOWN.load(Ordering::SeqCst) { return; }
+    if IS_MOUSE_BUTTON_DOWN.load(Ordering::SeqCst) {
+        return;
+    }
+    #[cfg(target_os = "windows")]
     unsafe {
-        if (windows::Win32::UI::Input::KeyboardAndMouse::GetAsyncKeyState(0x01) as u16 & 0x8000) != 0 ||
-           (windows::Win32::UI::Input::KeyboardAndMouse::GetAsyncKeyState(0x02) as u16 & 0x8000) != 0 {
-               return;
-           }
+        if (windows::Win32::UI::Input::KeyboardAndMouse::GetAsyncKeyState(0x01) as u16 & 0x8000)
+            != 0
+            || (windows::Win32::UI::Input::KeyboardAndMouse::GetAsyncKeyState(0x02) as u16 & 0x8000)
+                != 0
+        {
+            return;
+        }
     }
 
     let w = window.clone();
     std::thread::spawn(move || {
         std::thread::sleep(std::time::Duration::from_millis(200));
-        let down = IS_MOUSE_BUTTON_DOWN.load(Ordering::SeqCst) || unsafe {
-            (windows::Win32::UI::Input::KeyboardAndMouse::GetAsyncKeyState(0x01) as u16 & 0x8000) != 0 ||
-            (windows::Win32::UI::Input::KeyboardAndMouse::GetAsyncKeyState(0x02) as u16 & 0x8000) != 0
+        let down = IS_MOUSE_BUTTON_DOWN.load(Ordering::SeqCst) || {
+            #[cfg(target_os = "windows")]
+            unsafe {
+                (windows::Win32::UI::Input::KeyboardAndMouse::GetAsyncKeyState(0x01) as u16
+                    & 0x8000)
+                    != 0
+                    || (windows::Win32::UI::Input::KeyboardAndMouse::GetAsyncKeyState(0x02) as u16
+                        & 0x8000)
+                        != 0
+            }
+            #[cfg(not(target_os = "windows"))]
+            false
         };
         if !down && matches!(w.is_focused(), Ok(false)) {
             if !IGNORE_BLUR.load(Ordering::Relaxed) && !WINDOW_PINNED.load(Ordering::Relaxed) {

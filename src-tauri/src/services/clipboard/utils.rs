@@ -1,5 +1,5 @@
-use crate::domain::models::ClipboardEntry;
 use crate::database::save_image_to_file;
+use crate::domain::models::ClipboardEntry;
 use base64::{engine::general_purpose, Engine as _};
 use regex::Regex;
 use reqwest::header::CONTENT_TYPE;
@@ -92,11 +92,7 @@ fn fetch_remote_image(url: &str) -> Option<(Vec<u8>, &'static str)> {
             .unwrap_or_else(|_| reqwest::blocking::Client::new())
     });
 
-    let resp = client
-        .get(url)
-        .header("Accept", "image/*")
-        .send()
-        .ok()?;
+    let resp = client.get(url).header("Accept", "image/*").send().ok()?;
 
     if !resp.status().is_success() {
         return None;
@@ -175,7 +171,11 @@ fn truncate_chars_with_suffix(text: &str, max_chars: usize, suffix: &str) -> Str
 
 pub fn attach_rich_image_fallback(html: &str, payload: &str) -> String {
     let mut out = String::with_capacity(
-        html.len() + RICH_IMAGE_FALLBACK_PREFIX.len() + RICH_IMAGE_FALLBACK_SUFFIX.len() + payload.len() + 1,
+        html.len()
+            + RICH_IMAGE_FALLBACK_PREFIX.len()
+            + RICH_IMAGE_FALLBACK_SUFFIX.len()
+            + payload.len()
+            + 1,
     );
     out.push_str(html.trim_end());
     out.push('\n');
@@ -211,7 +211,11 @@ pub fn externalize_rich_image_fallback(html: &str, data_dir: &Path) -> String {
     }
 
     if let Some(saved_path) = save_image_to_file(&payload, data_dir) {
-        let base_html = if clean_html.trim().is_empty() { html } else { clean_html.as_str() };
+        let base_html = if clean_html.trim().is_empty() {
+            html
+        } else {
+            clean_html.as_str()
+        };
         return attach_rich_image_fallback(base_html, &saved_path);
     }
 
@@ -325,21 +329,51 @@ pub fn detect_content_type(text: &str) -> String {
 
     let mut score = 0;
     let keywords = [
-        "import ", "const ", "let ", "var ", "function ", "class ", "pub fn ", "impl ",
-        "#include", "package ", "interface ", "namespace ", "void ", "return ", "if (", "for (", "while (", "=>",
+        "import ",
+        "const ",
+        "let ",
+        "var ",
+        "function ",
+        "class ",
+        "pub fn ",
+        "impl ",
+        "#include",
+        "package ",
+        "interface ",
+        "namespace ",
+        "void ",
+        "return ",
+        "if (",
+        "for (",
+        "while (",
+        "=>",
     ];
 
     for k in keywords {
-        if text.contains(k) { score += 1; }
+        if text.contains(k) {
+            score += 1;
+        }
     }
 
-    if text.contains(";") { score += 1; }
-    if text.contains("{") && text.contains("}") { score += 1; }
-    if text.contains("</") && text.contains(">") { score += 2; }
+    if text.contains(";") {
+        score += 1;
+    }
+    if text.contains("{") && text.contains("}") {
+        score += 1;
+    }
+    if text.contains("</") && text.contains(">") {
+        score += 2;
+    }
 
-    if score >= 2 { return "code".to_string(); }
+    if score >= 2 {
+        return "code".to_string();
+    }
 
-    if trimmed.starts_with("{") && trimmed.ends_with("}") && text.contains(":") && text.contains("\"") {
+    if trimmed.starts_with("{")
+        && trimmed.ends_with("}")
+        && text.contains(":")
+        && text.contains("\"")
+    {
         return "code".to_string();
     }
 
@@ -352,25 +386,43 @@ pub fn contains_sensitive_info(text: &str, kinds: &[String], custom_rules: &[Str
     static EMAIL_RE: OnceLock<Regex> = OnceLock::new();
     static SECRET_RE: OnceLock<Regex> = OnceLock::new();
 
-    if text.len() > 5000 || text.starts_with("data:") { return false; }
+    if text.len() > 5000 || text.starts_with("data:") {
+        return false;
+    }
 
     let has_kind = |k: &str| kinds.iter().any(|t| t == k);
 
     if has_kind("phone") {
-        let re = PHONE_RE.get_or_init(|| Regex::new(r"(?:\+?86)?[-\s\(]*1[3-9]\d{1}[-\s\)]*\d{4}[-\s]*\d{4}").unwrap());
-        if re.is_match(text) { return true; }
+        let re = PHONE_RE.get_or_init(|| {
+            Regex::new(r"(?:\+?86)?[-\s\(]*1[3-9]\d{1}[-\s\)]*\d{4}[-\s]*\d{4}").unwrap()
+        });
+        if re.is_match(text) {
+            return true;
+        }
     }
     if has_kind("idcard") {
-        let re = IDCARD_RE.get_or_init(|| Regex::new(r"\b[1-9]\d{5}[1-9]\d{3}((0\d)|(1[0-2]))(([0|1|2]\d)|3[0-1])\d{3}([0-9Xx])\b").unwrap());
-        if re.is_match(text) { return true; }
+        let re = IDCARD_RE.get_or_init(|| {
+            Regex::new(
+                r"\b[1-9]\d{5}[1-9]\d{3}((0\d)|(1[0-2]))(([0|1|2]\d)|3[0-1])\d{3}([0-9Xx])\b",
+            )
+            .unwrap()
+        });
+        if re.is_match(text) {
+            return true;
+        }
     }
     if has_kind("email") {
-        let re = EMAIL_RE.get_or_init(|| Regex::new(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}").unwrap());
-        if re.is_match(text) { return true; }
+        let re = EMAIL_RE
+            .get_or_init(|| Regex::new(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}").unwrap());
+        if re.is_match(text) {
+            return true;
+        }
     }
     if has_kind("secret") {
         let re = SECRET_RE.get_or_init(|| Regex::new(r"(?ix)((?:sk|pk|ghp|gho|github_pat|AIza|AKIA|ya29)[-_][\w\-]{20,}|(?:password|secret|api[_-]?key|access[_-]?key|token|bearer)[\s:=]+[\w\-]{16,})").unwrap());
-        if re.is_match(text) { return true; }
+        if re.is_match(text) {
+            return true;
+        }
     }
     if has_kind("password") {
         if text.len() >= 8 && text.len() <= 64 && !text.contains(' ') && !text.contains('\n') {
@@ -378,12 +430,18 @@ pub fn contains_sensitive_info(text: &str, kinds: &[String], custom_rules: &[Str
             let has_lower = text.chars().any(|c| c.is_lowercase());
             let has_digit = text.chars().any(|c| c.is_numeric());
             let has_special = text.chars().any(|c| !c.is_alphanumeric());
-            if has_upper && has_lower && has_digit && has_special { return true; }
+            if has_upper && has_lower && has_digit && has_special {
+                return true;
+            }
         }
     }
 
     for rule in custom_rules {
-        if let Ok(re) = Regex::new(rule) { if re.is_match(text) { return true; } }
+        if let Ok(re) = Regex::new(rule) {
+            if re.is_match(text) {
+                return true;
+            }
+        }
     }
     false
 }
@@ -399,22 +457,42 @@ pub fn embed_local_images(html: &str) -> String {
         let src = &caps[2];
         let suffix = &caps[3];
 
-        let is_local = src.starts_with("file://") || 
-            (src.len() > 2 && src.chars().nth(1) == Some(':') && (src.chars().nth(2) == Some('\\') || src.chars().nth(2) == Some('/')));
+        let is_local = src.starts_with("file://")
+            || (src.len() > 2
+                && src.chars().nth(1) == Some(':')
+                && (src.chars().nth(2) == Some('\\') || src.chars().nth(2) == Some('/')));
 
         if is_local {
             let path_str = if src.starts_with("file://") {
                 let raw_path = src.trim_start_matches("file://");
-                if raw_path.starts_with('/') && raw_path.chars().nth(2) == Some(':') { &raw_path[1..] } else { raw_path }
-            } else { src };
+                if raw_path.starts_with('/') && raw_path.chars().nth(2) == Some(':') {
+                    &raw_path[1..]
+                } else {
+                    raw_path
+                }
+            } else {
+                src
+            };
 
-            let decoded_path = decode(path_str).map(|p| p.into_owned()).unwrap_or(path_str.to_string());
-            let clean_path = decoded_path.split('?').next().unwrap_or(&decoded_path).split('#').next().unwrap_or(&decoded_path);
+            let decoded_path = decode(path_str)
+                .map(|p| p.into_owned())
+                .unwrap_or(path_str.to_string());
+            let clean_path = decoded_path
+                .split('?')
+                .next()
+                .unwrap_or(&decoded_path)
+                .split('#')
+                .next()
+                .unwrap_or(&decoded_path);
 
             let path = std::path::Path::new(clean_path);
             if path.exists() {
                 if let Ok(data) = std::fs::read(path) {
-                    let ext = path.extension().and_then(|s| s.to_str()).unwrap_or("png").to_lowercase();
+                    let ext = path
+                        .extension()
+                        .and_then(|s| s.to_str())
+                        .unwrap_or("png")
+                        .to_lowercase();
                     let mime = match ext.as_str() {
                         "jpg" | "jpeg" => "image/jpeg",
                         "gif" => "image/gif",
@@ -424,7 +502,12 @@ pub fn embed_local_images(html: &str) -> String {
                         _ => "image/png",
                     };
                     let b64 = general_purpose::STANDARD.encode(&data);
-                    return format!("{}{}{}", prefix, format!("data:{};base64,{}", mime, b64), suffix);
+                    return format!(
+                        "{}{}{}",
+                        prefix,
+                        format!("data:{};base64,{}", mime, b64),
+                        suffix
+                    );
                 }
             }
         }
@@ -438,12 +521,15 @@ pub fn embed_local_images(html: &str) -> String {
             }
         }
         format!("{}{}{}", prefix, src, suffix)
-    }).to_string()
+    })
+    .to_string()
 }
 
 pub fn process_local_images_in_html(html: &str, data_dir: &std::path::Path) -> String {
     let attachments_dir = data_dir.join("attachments");
-    if !attachments_dir.exists() { let _ = std::fs::create_dir_all(&attachments_dir); }
+    if !attachments_dir.exists() {
+        let _ = std::fs::create_dir_all(&attachments_dir);
+    }
 
     let re = match Regex::new(r#"(<img\s+[^>]*src=["'])([^"']+)(["'][^>]*>)"#) {
         Ok(r) => r,
@@ -455,20 +541,38 @@ pub fn process_local_images_in_html(html: &str, data_dir: &std::path::Path) -> S
         let src = &caps[2];
         let suffix = &caps[3];
 
-        let is_local = src.starts_with("file://") || 
-            (src.len() > 2 && src.chars().nth(1) == Some(':') && (src.chars().nth(2) == Some('\\') || src.chars().nth(2) == Some('/')));
+        let is_local = src.starts_with("file://")
+            || (src.len() > 2
+                && src.chars().nth(1) == Some(':')
+                && (src.chars().nth(2) == Some('\\') || src.chars().nth(2) == Some('/')));
 
         if is_local {
             let path_str = if src.starts_with("file://") {
                 let raw_path = src.trim_start_matches("file://");
-                if raw_path.starts_with('/') && raw_path.chars().nth(2) == Some(':') { &raw_path[1..] } else { raw_path }
-            } else { src };
+                if raw_path.starts_with('/') && raw_path.chars().nth(2) == Some(':') {
+                    &raw_path[1..]
+                } else {
+                    raw_path
+                }
+            } else {
+                src
+            };
 
-            let decoded_path = decode(path_str).map(|p| p.into_owned()).unwrap_or(path_str.to_string());
-            let clean_path = decoded_path.split('?').next().unwrap_or(&decoded_path).split('#').next().unwrap_or(&decoded_path);
+            let decoded_path = decode(path_str)
+                .map(|p| p.into_owned())
+                .unwrap_or(path_str.to_string());
+            let clean_path = decoded_path
+                .split('?')
+                .next()
+                .unwrap_or(&decoded_path)
+                .split('#')
+                .next()
+                .unwrap_or(&decoded_path);
             let path = std::path::Path::new(clean_path);
-            
-            if path.starts_with(&attachments_dir) { return format!("{}{}{}", prefix, src, suffix); }
+
+            if path.starts_with(&attachments_dir) {
+                return format!("{}{}{}", prefix, src, suffix);
+            }
 
             if path.exists() {
                 if let Ok(data) = std::fs::read(path) {
@@ -476,15 +580,25 @@ pub fn process_local_images_in_html(html: &str, data_dir: &std::path::Path) -> S
                     use std::hash::{Hash, Hasher};
                     data.hash(&mut hasher);
                     let hash = hasher.finish();
-                    
-                    let ext = path.extension().and_then(|s| s.to_str()).unwrap_or("png").to_lowercase();
+
+                    let ext = path
+                        .extension()
+                        .and_then(|s| s.to_str())
+                        .unwrap_or("png")
+                        .to_lowercase();
                     let new_filename = format!("img_{:x}.{}", hash, ext);
                     let new_path = attachments_dir.join(&new_filename);
-                    
-                    if !new_path.exists() { let _ = std::fs::write(&new_path, &data); }
-                    
+
+                    if !new_path.exists() {
+                        let _ = std::fs::write(&new_path, &data);
+                    }
+
                     let new_src = new_path.to_string_lossy().replace('\\', "/");
-                    let final_src = if new_src.starts_with('/') { format!("file://{}", new_src) } else { format!("file:///{}", new_src) };
+                    let final_src = if new_src.starts_with('/') {
+                        format!("file://{}", new_src)
+                    } else {
+                        format!("file:///{}", new_src)
+                    };
                     return format!("{}{}{}", prefix, final_src, suffix);
                 }
             }
@@ -492,23 +606,33 @@ pub fn process_local_images_in_html(html: &str, data_dir: &std::path::Path) -> S
 
         if let Some(remote_url) = normalize_remote_img_url(src) {
             if let Some((bytes, ext)) = fetch_remote_image(&remote_url) {
-                if let Some(file_src) = save_image_bytes_to_attachments(&bytes, ext, &attachments_dir) {
+                if let Some(file_src) =
+                    save_image_bytes_to_attachments(&bytes, ext, &attachments_dir)
+                {
                     return format!("{}{}{}", prefix, file_src, suffix);
                 }
             }
         }
         format!("{}{}{}", prefix, src, suffix)
-    }).to_string()
+    })
+    .to_string()
 }
 
 pub fn parse_cf_html(raw: &[u8]) -> Option<String> {
-    enum HtmlEncoding { Utf8, Utf16Le }
+    enum HtmlEncoding {
+        Utf8,
+        Utf16Le,
+    }
 
     let detect_encoding = |data: &[u8]| -> HtmlEncoding {
-        if data.len() >= 2 && data[0] == 0xFF && data[1] == 0xFE { return HtmlEncoding::Utf16Le; }
+        if data.len() >= 2 && data[0] == 0xFF && data[1] == 0xFE {
+            return HtmlEncoding::Utf16Le;
+        }
         if data.len() % 2 == 0 {
             let zero_count = data.iter().filter(|b| **b == 0).count();
-            if zero_count > data.len() / 4 { return HtmlEncoding::Utf16Le; }
+            if zero_count > data.len() / 4 {
+                return HtmlEncoding::Utf16Le;
+            }
         }
         HtmlEncoding::Utf8
     };
@@ -538,28 +662,42 @@ pub fn parse_cf_html(raw: &[u8]) -> Option<String> {
     for line in raw_str.lines() {
         let trimmed = line.trim();
         if let Some(val) = trimmed.strip_prefix("StartFragment:") {
-            if let Ok(pos) = val.trim().parse::<usize>() { start_fragment = Some(pos); }
+            if let Ok(pos) = val.trim().parse::<usize>() {
+                start_fragment = Some(pos);
+            }
         } else if let Some(val) = trimmed.strip_prefix("EndFragment:") {
-            if let Ok(pos) = val.trim().parse::<usize>() { end_fragment = Some(pos); }
+            if let Ok(pos) = val.trim().parse::<usize>() {
+                end_fragment = Some(pos);
+            }
         } else if let Some(val) = trimmed.strip_prefix("StartHTML:") {
-            if let Ok(pos) = val.trim().parse::<usize>() { start_html = Some(pos); }
+            if let Ok(pos) = val.trim().parse::<usize>() {
+                start_html = Some(pos);
+            }
         } else if let Some(val) = trimmed.strip_prefix("EndHTML:") {
-            if let Ok(pos) = val.trim().parse::<usize>() { end_html = Some(pos); }
+            if let Ok(pos) = val.trim().parse::<usize>() {
+                end_html = Some(pos);
+            }
         }
-        if trimmed.starts_with("<") { break; }
+        if trimmed.starts_with("<") {
+            break;
+        }
     }
 
     if let (Some(frag_s), Some(frag_e)) = (start_fragment, end_fragment) {
         if frag_s < frag_e && frag_e <= raw.len() {
             let fragment = decode_bytes(&raw[frag_s..frag_e], &encoding);
             let trimmed = fragment.trim();
-            let wrapped_fragment = if (trimmed.contains("<tr") || trimmed.contains("<td") || trimmed.contains("<col"))
-                && !trimmed.to_lowercase().contains("<table")
-            {
-                format!("<table style=\"border-collapse: collapse; min-width: 100%;\">{}</table>", fragment)
-            } else {
-                fragment.clone()
-            };
+            let wrapped_fragment =
+                if (trimmed.contains("<tr") || trimmed.contains("<td") || trimmed.contains("<col"))
+                    && !trimmed.to_lowercase().contains("<table")
+                {
+                    format!(
+                        "<table style=\"border-collapse: collapse; min-width: 100%;\">{}</table>",
+                        fragment
+                    )
+                } else {
+                    fragment.clone()
+                };
 
             if let (Some(html_s), Some(html_e)) = (start_html, end_html) {
                 if html_s < html_e && html_e <= raw.len() {
@@ -595,6 +733,8 @@ pub fn parse_cf_html(raw: &[u8]) -> Option<String> {
             return Some(fragment.to_string());
         }
     }
-    if raw_text.trim().starts_with("<") { return Some(raw_text); }
+    if raw_text.trim().starts_with("<") {
+        return Some(raw_text);
+    }
     None
 }

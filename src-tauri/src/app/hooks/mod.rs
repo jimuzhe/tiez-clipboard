@@ -1,4 +1,6 @@
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::AppHandle;
+#[cfg(target_os = "windows")]
+use tauri::{Emitter, Manager};
 use std::sync::atomic::Ordering;
 #[cfg(target_os = "windows")]
 use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM, RECT};
@@ -15,22 +17,30 @@ use windows::Win32::UI::Input::KeyboardAndMouse::{
 };
 
 use crate::global_state::*;
+#[cfg(target_os = "windows")]
 use crate::app_state::SettingsState;
+#[cfg(target_os = "windows")]
 use crate::app::commands::hotkey_cmd::parse_hotkey_list;
+#[cfg(target_os = "windows")]
 use crate::app::window_manager::{toggle_window, hide_window_cmd};
+#[cfg(target_os = "windows")]
 use crate::infrastructure::windows_ext::WindowExt;
+#[cfg(target_os = "linux")]
+use crate::infrastructure::linux_api::input_grab::start_recording_grab;
 
 // Store registered hotkey IDs for cleanup
+#[cfg(target_os = "windows")]
 static BLOCKED_HOTKEY_IDS: std::sync::Mutex<Vec<i32>> = std::sync::Mutex::new(Vec::new());
 
 #[tauri::command]
 pub fn set_recording_mode(app_handle: AppHandle, enabled: bool) -> Result<(), String> {
     IS_RECORDING.store(enabled, Ordering::SeqCst);
     
-    let mut ids = BLOCKED_HOTKEY_IDS.lock().unwrap();
-    
     #[cfg(target_os = "windows")]
-    if enabled {
+    {
+        let mut ids = BLOCKED_HOTKEY_IDS.lock().unwrap();
+        
+        if enabled {
         // Register ALL Win+ combinations to block system from handling them
         if let Some(window) = app_handle.get_webview_window("main") {
             if let Ok(hwnd_raw) = window.hwnd() {
@@ -83,6 +93,18 @@ pub fn set_recording_mode(app_handle: AppHandle, enabled: bool) -> Result<(), St
                 println!("Recording mode OFF: Released blocked hotkeys");
             }
         }
+    }
+    }
+    
+    #[cfg(target_os = "linux")]
+    {
+        if enabled {
+            start_recording_grab();
+            println!("Recording mode ON: Linux X11 grab started");
+        } else {
+            println!("Recording mode OFF: Linux X11 grab will self-terminate");
+        }
+        let _ = app_handle;
     }
     
     Ok(())

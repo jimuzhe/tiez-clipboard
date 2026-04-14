@@ -1,12 +1,11 @@
-use tauri::{AppHandle, Manager};
 use crate::app_state::SettingsState;
-use crate::error::{AppResult, AppError};
+use crate::error::{AppError, AppResult};
 use crate::global_state::HOTKEY_STRING;
+use tauri::{AppHandle, Manager};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut};
 
 pub(crate) fn parse_hotkey_list(raw: &str) -> Vec<String> {
-    raw
-        .split(['\n', '\r'])
+    raw.split(['\n', '\r'])
         .map(str::trim)
         .filter(|item| !item.is_empty())
         .map(|item| item.to_string())
@@ -14,11 +13,23 @@ pub(crate) fn parse_hotkey_list(raw: &str) -> Vec<String> {
 }
 
 fn register_shortcut_if_valid(app: &AppHandle, raw_hotkey: &str) {
-    if raw_hotkey.is_empty() || raw_hotkey.eq_ignore_ascii_case("MouseMiddle") || raw_hotkey.eq_ignore_ascii_case("MButton") {
+    if raw_hotkey.is_empty()
+        || raw_hotkey.eq_ignore_ascii_case("MouseMiddle")
+        || raw_hotkey.eq_ignore_ascii_case("MButton")
+    {
         return;
     }
     if let Ok(shortcut) = raw_hotkey.replace("Win", "Super").parse::<Shortcut>() {
-        let _ = app.global_shortcut().register(shortcut);
+        match app.global_shortcut().register(shortcut.clone()) {
+            Ok(_) => crate::info!("[global-shortcut] Registered: {}", raw_hotkey),
+            Err(e) => crate::warn!(
+                "[global-shortcut] Failed to register '{}': {:?}",
+                raw_hotkey,
+                e
+            ),
+        }
+    } else {
+        crate::warn!("[global-shortcut] Failed to parse hotkey: {}", raw_hotkey);
     }
 }
 
@@ -59,18 +70,23 @@ pub fn register_hotkey(app_handle: AppHandle, hotkey: String) -> AppResult<()> {
 
 #[tauri::command]
 pub fn test_hotkey_available(app_handle: AppHandle, hotkey: String) -> AppResult<bool> {
-    if hotkey.is_empty() || hotkey.eq_ignore_ascii_case("MouseMiddle") || hotkey.eq_ignore_ascii_case("MButton") {
+    if hotkey.is_empty()
+        || hotkey.eq_ignore_ascii_case("MouseMiddle")
+        || hotkey.eq_ignore_ascii_case("MButton")
+    {
         return Ok(true);
     }
-    
+
     let normalized = hotkey.replace("Win", "Super");
-    let shortcut = normalized.parse::<Shortcut>().map_err(|_| AppError::Validation("快捷键格式无效".to_string()))?;
-    
+    let shortcut = normalized
+        .parse::<Shortcut>()
+        .map_err(|_| AppError::Validation("快捷键格式无效".to_string()))?;
+
     match app_handle.global_shortcut().register(shortcut.clone()) {
         Ok(_) => {
             let _ = app_handle.global_shortcut().unregister(shortcut);
             Ok(true)
-        },
+        }
         Err(e) => {
             let err_str = format!("{:?}", e);
             let user_msg = if err_str.contains("AlreadyRegistered") {

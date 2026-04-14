@@ -1,4 +1,5 @@
 // Content handler module for opening various content types
+#[cfg(target_os = "windows")]
 use crate::infrastructure::windows_api::apps::launch_uwp_with_file;
 use crate::database::DbState;
 use crate::infrastructure::repository::settings_repo::SettingsRepository;
@@ -230,24 +231,24 @@ async fn launch_file_with_app(
                 .arg(temp_path)
                 .spawn()
                 .map_err(|e| format!("启动程序失败: {}", e))?;
-
         } else {
-            // Check for macOS-style paths on Windows to avoid invalid WinRT/Start-Process calls
+            // macOS style apps on Windows should fall back to default
             #[cfg(target_os = "windows")]
             if app.starts_with("/Applications/") || app.contains(".app") {
                 return launch_with_default_app(path_str, content_type, use_direct_path);
             }
 
-            println!("Attempting to launch UWP app: {} for file: {}", app, path_str);
-            if let Err(e) = launch_uwp_with_file(app, path_str).await {
-                println!("WinRT launch failed: {}, falling back to old method", e);
-                let safe_path = path_str.replace("'", "''");
-                let ps_script = format!(
-                    "Start-Process -FilePath 'shell:AppsFolder\\{}' -ArgumentList '{}'",
-                    app, safe_path
-                );
-                #[cfg(target_os = "windows")]
-                {
+            let safe_path = path_str.replace("'", "''");
+            // Try UWP launch on Windows
+            #[cfg(target_os = "windows")]
+            {
+                println!("Attempting to launch UWP app: {} for file: {}", app, path_str);
+                if let Err(e) = launch_uwp_with_file(app, path_str) {
+                    println!("WinRT launch failed: {}, falling back to old method", e);
+                    let ps_script = format!(
+                        "Start-Process -FilePath 'shell:AppsFolder\\{}' -ArgumentList '{}'",
+                        app, safe_path
+                    );
                     let mut cmd = Command::new("powershell");
                     cmd.args(["-NoProfile", "-Command", &ps_script])
                         .creation_flags(0x08000000);
@@ -259,8 +260,10 @@ async fn launch_file_with_app(
                         }
                     }
                 }
-                
-                #[cfg(not(target_os = "windows"))]
+            }
+            // Non-Windows fallback
+            #[cfg(not(target_os = "windows"))]
+            {
                 Command::new("open").arg(safe_path).spawn().map_err(|e| AppError::Internal(format!("启动 UWP 程序失败 (Fallback): {}", e)))?;
             }
         }

@@ -215,9 +215,9 @@ async fn restore_focus_before_paste(_app_handle: &tauri::AppHandle) -> AppResult
         return Err(AppError::Internal("No last active window captured".to_string()));
     }
 
+    #[cfg(target_os = "windows")]
     {
         let target_hwnd = HWND(last_hwnd_val as _);
-        #[cfg(target_os = "windows")]
         unsafe {
             if !IsWindowVisible(target_hwnd).as_bool() {
                  return Err(AppError::Internal("Target window is no longer visible".to_string()));
@@ -319,8 +319,16 @@ fn copy_local_path_content(content: &str, content_type: &str, current_time: u64)
         return Ok(());
     }
 
-    unsafe {
-        crate::infrastructure::windows_api::win_clipboard::set_clipboard_files(vec![content.to_string()])
+    #[cfg(target_os = "windows")]
+    {
+        unsafe {
+            crate::infrastructure::windows_api::win_clipboard::set_clipboard_files(vec![content.to_string()])
+                .map_err(AppError::from)?;
+        }
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        crate::infrastructure::linux_api::clipboard::set_clipboard_files(vec![content.to_string()])
             .map_err(AppError::from)?;
     }
     Ok(())
@@ -368,17 +376,33 @@ async fn copy_rich_text_content(
         if let Some(bytes) = resolve_rich_image_fallback_bytes(&payload) {
             let (primary_hash, _secondary_hash) = copy_image_bytes_to_clipboard(bytes, current_time)?;
             crate::LAST_APP_SET_HASH_ALT.store(primary_hash, Ordering::SeqCst);
-            unsafe {
-                crate::infrastructure::windows_api::win_clipboard::append_clipboard_text_and_html(content, &cf_html)
-                    .map_err(AppError::from)?;
+            #[cfg(target_os = "windows")]
+            {
+                unsafe {
+                    crate::infrastructure::windows_api::win_clipboard::append_clipboard_text_and_html(content, &cf_html)
+                        .map_err(AppError::from)?;
+                }
+            }
+            #[cfg(not(target_os = "windows"))]
+            {
+                // Linux fallback: copy as plain text
+                let mut clipboard = arboard::Clipboard::new().map_err(AppError::from)?;
+                clipboard.set_text(content.to_string()).map_err(AppError::from)?;
             }
             return Ok(());
         }
     }
 
+    #[cfg(target_os = "windows")]
     unsafe {
         crate::infrastructure::windows_api::win_clipboard::set_clipboard_text_and_html(content, &cf_html)
             .map_err(AppError::from)?;
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        // Linux fallback: copy as plain text
+        let mut clipboard = arboard::Clipboard::new().map_err(AppError::from)?;
+        clipboard.set_text(content.to_string()).map_err(AppError::from)?;
     }
     Ok(())
 }
@@ -501,25 +525,27 @@ fn copy_image_bytes_to_clipboard(
     img.write_to(&mut std::io::Cursor::new(&mut png_buf), image::ImageFormat::Png)
         .map_err(|e| AppError::Internal(format!("编码 PNG 失败: {}", e)))?;
 
-    let gif_temp_path = unsafe {
-        crate::infrastructure::windows_api::win_clipboard::set_clipboard_image_with_formats(
-            crate::infrastructure::windows_api::win_clipboard::ImageData {
-                width: width as usize,
-                height: height as usize,
-                bytes: raw_bytes,
-            },
-            if is_gif { Some(&bytes) } else { None },
-            Some(&png_buf),
-        ).map_err(AppError::from)?
-    };
+    #[cfg(target_os = "windows")]
+    {
+        let gif_temp_path = unsafe {
+            crate::infrastructure::windows_api::win_clipboard::set_clipboard_image_with_formats(
+                crate::infrastructure::windows_api::win_clipboard::ImageData {
+                    width: width as usize,
+                    height: height as usize,
+                    bytes: raw_bytes,
+                },
+                if is_gif { Some(&bytes) } else { None },
+                Some(&png_buf),
+            ).map_err(AppError::from)?
+        };
 
-    if let Some(path) = gif_temp_path {
-        // Also hash the temp path to prevent echo on CF_HDROP
-        let normalized = path.trim().replace("\r\n", "\n");
-        let mut hasher = DefaultHasher::new();
-        normalized.hash(&mut hasher);
-        let path_hash = hasher.finish();
-        crate::LAST_APP_SET_HASH.store(path_hash, Ordering::SeqCst);
+        if let Some(path) = gif_temp_path {
+            let normalized = path.trim().replace("\r\n", "\n");
+            let mut hasher = DefaultHasher::new();
+            normalized.hash(&mut hasher);
+            let path_hash = hasher.finish();
+            crate::LAST_APP_SET_HASH.store(path_hash, Ordering::SeqCst);
+        }
     }
 
     Ok((primary_hash, secondary_hash))
@@ -653,7 +679,15 @@ pub fn send_paste_keystroke(method: &str, content: Option<&str>, content_type: O
         }
     }
 
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(target_os = "linux")]
+    {
+        std::process::Command::new("xdotool")
+            .args(["key", "--clearmodifiers", "ctrl+v"])
+            .spawn()
+            .ok();
+    }
+
+    #[cfg(not(any(target_os = "windows", target_os = "linux")))]
     {
         std::process::Command::new("osascript")
             .args(["-e", "tell application \"System Events\" to keystroke \"v\" using command down"])

@@ -35,6 +35,7 @@
     "core:path:default",
     "dialog:default",
     "dialog:allow-open",
-    "window-state:default"
+    "window-state:default",
+    "global-shortcut:default"
   ]
 }
