@@ -279,7 +279,7 @@ export default function TagManager({ t, theme }: TagManagerProps) {
                 ["--tm-sidebar-width" as any]: isCollapsed ? '48px' : `${sidebarWidth}px`,
                 ["--tm-sidebar-height" as any]: `${sidebarHeight}px`
             } as any}
-            onMouseDown={() => invoke('activate_window_focus').catch(console.error)}
+           
         >
             {/* Sidebar with CRUD support */}
             {/* Sidebar with Unified Search & Create */}
