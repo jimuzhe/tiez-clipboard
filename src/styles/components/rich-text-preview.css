@@ -1,0 +1,58 @@
+/* Rich Text Preview Specific Styles */
+.rich-text-preview {
+  font-family: var(--font-main);
+  color: var(--text-primary);
+  margin-top: 4px;
+  color-scheme: light dark;
+}
+
+.rich-text-preview table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 4px 0;
+  font-size: 10px;
+}
+
+.rich-text-preview td,
+.rich-text-preview th {
+  border: 1px solid var(--border-dark);
+  padding: 2px 4px;
+  background-color: var(--bg-element);
+  opacity: 0.9;
+}
+
+.rich-text-preview * {
+  max-width: 100% !important;
+}
+
+.rich-text-preview img {
+  max-height: 80px;
+  object-fit: contain;
+  border-radius: 0;
+}
+
+.rich-text-preview p {
+  margin: 0;
+  padding: 0;
+}
+
+/* Ensure headings aren't too huge in preview */
+.rich-text-preview h1,
+.rich-text-preview h2,
+.rich-text-preview h3,
+.rich-text-preview h4 {
+  font-size: 1em;
+  font-weight: bold;
+  margin: 2px 0;
+}
+
+.rich-text-preview ul,
+.rich-text-preview ol {
+  padding-left: 16px;
+  margin: 0;
+}
+
+.rich-text-preview a {
+  color: var(--accent-color);
+  text-decoration: underline;
+}

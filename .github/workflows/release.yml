@@ -1,0 +1,70 @@
+name: "Publish Release"
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch: # 添加这一行，启用手动触发
+
+jobs:
+  publish-tauri:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: 'windows-latest' 
+            args: ''
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: setup node
+        uses: actions/setup-node@v5
+        with:
+          node-version: lts/*
+
+      - name: install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: install dependencies (ubuntu only)
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libnm-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+
+      - name: install frontend dependencies
+        run: npm install
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: v__VERSION__ 
+          releaseName: "TieZ v__VERSION__"
+          releaseBody: "建议更新新版本"
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}
+
+      - name: build portable bundle
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: powershell
+        run: npm run build:portable
+
+      - name: upload portable bundle
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: powershell
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $version = (Get-Content package.json | ConvertFrom-Json).version
+          $portable = 'artifacts/portable/tiez-portable.zip'
+          $assetName = "TieZ_${version}_x64_portable.zip"
+          gh release upload "v$version" "$portable#$assetName" --repo $env:GITHUB_REPOSITORY --clobber

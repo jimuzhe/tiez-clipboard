@@ -1,0 +1,53 @@
+/* Dark Mode Overrides */
+
+/* ---- Moved from index.css (dark-mode overrides) ---- */
+
+.dark-mode .drag-handle:hover{
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.dark-mode .rich-text-preview td{
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+:root.dark-mode .ai-profile-card{
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+:root.dark-mode .ai-profile-sub{
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Specific theme overrides */
+.dark-mode .segmented-control{
+  background: rgba(0, 0, 0, 0.2);
+  box-shadow: inset 2px 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+.dark-mode .segment-btn.active{
+  background: var(--accent-color);
+  color: #fff;
+}
+
+:root.dark-mode .wt-input{
+  background-color: #202020;
+  color: #ededed;
+}
+
+:root.dark-mode .wt-chat-box{
+  scrollbar-color: var(--scrollbar-thumb-color) var(--scrollbar-track-background);
+}
+
+:root.dark-mode .wt-chat-box::-webkit-scrollbar-thumb{
+  background: var(--scrollbar-thumb-color);
+  border-color: var(--bg-body);
+}
+
+:root.dark-mode .wt-expand-btn{
+  color: #ededed;
+}
+
+.dark-mode .toast-item{
+  background: var(--bg-panel);
+  border-color: #000;
+}

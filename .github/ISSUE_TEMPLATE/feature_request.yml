@@ -1,0 +1,65 @@
+name: Feature request
+description: Suggest an improvement or new feature for TieZ
+title: "[Feature] "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for sharing an idea.
+        Clear problem statements lead to better feature discussions.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: What is missing or inconvenient today?
+      placeholder: "I want to..., but currently..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What would you like TieZ to do?
+    validations:
+      required: true
+
+  - type: textarea
+    id: use_case
+    attributes:
+      label: Use case
+      description: Who benefits from this and in what scenario?
+      placeholder: "This would help when..."
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Any workaround or alternative approach you already tried?
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Related area
+      options:
+        - Clipboard capture
+        - Search and history
+        - Tags and organization
+        - Privacy and encryption
+        - MQTT sync
+        - WebDAV sync
+        - File transfer
+        - AI features
+        - UI and themes
+        - Other
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues before submitting this request
+          required: true

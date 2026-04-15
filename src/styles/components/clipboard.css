@@ -1,0 +1,14 @@
+/* Clipboard Item Selection */
+.history-item.selected {
+  outline: var(--card-selected-outline) !important;
+  outline-offset: var(--card-selected-outline-offset) !important;
+  border-color: var(--card-selected-border-color) !important;
+  box-shadow: var(--card-selected-shadow) !important;
+  z-index: 10;
+}
+
+.history-item.selected {
+  background: var(--card-selected-background);
+  color: inherit;
+  transform: none !important;
+}

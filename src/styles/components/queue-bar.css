@@ -1,0 +1,116 @@
+/* Queue Bar */
+.queue-bar {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-panel) !important;
+  border: var(--queue-border);
+  padding: 10px 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  z-index: 10000;
+  box-shadow: var(--queue-shadow);
+  width: max-content;
+  max-width: 90%;
+  border-radius: var(--queue-radius);
+  animation: slideUpBar 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+  backdrop-filter: none !important;
+}
+
+.queue-bar .count-chip {
+  background: var(--accent-color);
+  color: #fff;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 16px;
+  border: var(--queue-count-border);
+  flex-shrink: 0;
+  border-radius: 12px;
+  transform: rotate(var(--queue-count-rotate));
+  box-shadow: var(--queue-count-shadow);
+}
+
+.queue-bar .queue-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 100px;
+  color: var(--text-primary);
+}
+
+.queue-bar .queue-label {
+  font-size: 12px;
+  font-weight: 900;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.queue-bar .queue-hint {
+  font-size: 9px;
+  font-weight: 600;
+  opacity: 0.6;
+  white-space: nowrap;
+}
+
+.queue-bar .queue-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.queue-bar .start-btn {
+  background: var(--accent-color);
+  color: #fff !important;
+  font-size: 12px;
+  padding: 6px 12px !important;
+  height: 32px !important;
+  min-width: 60px;
+  text-transform: var(--queue-button-text-transform);
+  font-weight: 700;
+  border: var(--queue-action-border) !important;
+  box-shadow: var(--queue-action-shadow) !important;
+  cursor: pointer;
+}
+
+.queue-bar .close-btn {
+  background: #ff4d4f;
+  color: #fff !important;
+  width: 32px !important;
+  height: 32px !important;
+  padding: 0 !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: var(--queue-action-border) !important;
+  box-shadow: var(--queue-action-shadow) !important;
+  cursor: pointer;
+}
+
+.queue-bar .btn-icon:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm) !important;
+}
+
+.queue-bar .btn-icon:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-xs) !important;
+}
+
+@keyframes slideUpBar {
+  from {
+    transform: translate(-50%, 40px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translate(-50%, 0);
+    opacity: 1;
+  }
+}

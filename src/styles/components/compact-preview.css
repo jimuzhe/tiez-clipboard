@@ -1,0 +1,120 @@
+body.compact-preview {
+    margin: 0;
+    background: transparent;
+    overflow: hidden;
+}
+
+/* Compact preview uses its own floating card.
+   Reset the global app shell (#root) to avoid an extra outer layer. */
+body.compact-preview #root {
+    width: auto !important;
+    height: auto !important;
+    display: inline-flex !important;
+    flex-direction: column;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    overflow: visible !important;
+}
+
+body.compact-preview #root::before {
+    content: none !important;
+    display: none !important;
+    background: none !important;
+}
+
+body.compact-preview #root>* {
+    position: static !important;
+    z-index: auto !important;
+}
+
+.compact-preview-root {
+    width: auto;
+    height: auto;
+    background: transparent;
+    display: inline-flex;
+    align-items: flex-start;
+    justify-content: flex-start;
+    align-self: flex-start;
+}
+
+.compact-preview-root .compact-popover-portal.compact-preview-window {
+    position: relative;
+    width: fit-content;
+    height: fit-content;
+    min-width: var(--preview-min-width, 320px);
+    max-width: var(--preview-max-width, 560px);
+    max-height: var(--preview-max-height, 560px);
+    display: inline-flex;
+    flex-direction: column;
+    pointer-events: auto;
+    box-sizing: border-box;
+    margin: 0 !important;
+    box-shadow: none !important;
+    filter: none !important;
+}
+
+/* Keep compact preview visually single-layer. */
+.compact-preview-root .compact-popover-portal.compact-preview-window .popover-meta,
+.compact-preview-root .compact-popover-portal.compact-preview-window .popover-content,
+.compact-preview-root .compact-popover-portal.compact-preview-window .popover-divider {
+    background: transparent !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+}
+
+
+.compact-preview-root .compact-popover-portal.compact-preview-media {
+    min-width: 260px;
+    max-width: var(--preview-media-max-width, 520px);
+    max-height: var(--preview-media-max-height, 360px);
+}
+
+.compact-preview-root .compact-popover-portal.compact-preview-media .popover-content {
+    max-width: var(--preview-media-max-width, 520px);
+    max-height: var(--preview-media-max-height, 360px);
+    white-space: normal;
+    overflow: hidden;
+}
+
+.compact-preview-root .compact-popover-portal.compact-preview-media img,
+.compact-preview-root .compact-popover-portal.compact-preview-media video {
+    display: block;
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+.compact-preview-root .popover-content {
+    width: 100%;
+    max-width: 100%;
+    max-height: 460px;
+    overflow: auto;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    white-space: pre-wrap;
+}
+
+/* Rich-text preview cleanup (avoid extra blank lines at top/bottom) */
+.compact-preview-root .rich-text-preview {
+    margin: 0;
+    padding: 0;
+}
+
+.compact-preview-root .rich-text-preview> :first-child {
+    margin-top: 0 !important;
+}
+
+.compact-preview-root .rich-text-preview> :last-child {
+    margin-bottom: 0 !important;
+}
+
+.compact-preview-root .rich-text-preview p:has(br:only-child),
+.compact-preview-root .rich-text-preview div:has(br:only-child) {
+    margin: 0 !important;
+    padding: 0 !important;
+    display: none !important;
+}

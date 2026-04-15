@@ -1,0 +1,45 @@
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Node / frontend
+node_modules/
+dist/
+
+# Tauri / Rust build outputs
+src-tauri/target/
+target-codex-*/
+
+# Tauri signer keys (PRIVATE)
+signer.key
+signer.key.pub
+.tauri/
+src-tauri/signer.key
+src-tauri/signer.key.pub
+
+# Local builds
+*.exe
+*.msi
+*.zip
+
+# Runtime files
+*.db
+*.log
+*.tmp
+*.tsbuildinfo
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+docs/CLOUD-SYNC-IMPLEMENTATION.md
+
+# Junk / Logs
+artifacts/
+conflicts.txt
+git_graph.txt
+git_log_out.txt
+
+# Sub-projects
+mobile-app/

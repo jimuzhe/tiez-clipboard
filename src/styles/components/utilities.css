@@ -1,0 +1,5 @@
+/* Utilities */
+.sensitive-blur{
+  border-radius: 0;
+  padding: 4px;
+}

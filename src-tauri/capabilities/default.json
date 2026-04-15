@@ -1,0 +1,43 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Capability for the main window",
+  "windows": [
+    "main",
+    "compact-preview"
+  ],
+  "permissions": [
+    "core:default",
+    "core:app:allow-version",
+    "core:app:default",
+    "opener:default",
+    "opener:allow-open-url",
+    "core:event:default",
+    "core:event:allow-listen",
+    "core:event:allow-unlisten",
+    "core:event:allow-emit",
+    "core:window:allow-start-dragging",
+    "core:window:allow-hide",
+    "core:window:allow-show",
+    "core:window:allow-set-focus",
+    "core:window:allow-inner-size",
+    "core:window:allow-inner-position",
+    "core:window:allow-set-size",
+    "core:window:allow-set-position",
+    "core:window:allow-set-always-on-top",
+    "core:window:allow-current-monitor",
+    "core:window:allow-cursor-position",
+    "core:window:allow-create",
+    "core:window:allow-get-all-windows",
+    "core:webview:allow-create-webview-window",
+    "core:window:allow-set-ignore-cursor-events",
+    "core:window:allow-set-focusable",
+    "core:path:default",
+    "fs:default",
+    "fs:read-all",
+    "sql:default",
+    "dialog:default",
+    "dialog:allow-open",
+    "window-state:default"
+  ]
+}

@@ -1,0 +1,5 @@
+:root.hide-app-border #root,
+body.hide-app-border #root {
+  border-color: transparent !important;
+  box-shadow: none !important;
+}

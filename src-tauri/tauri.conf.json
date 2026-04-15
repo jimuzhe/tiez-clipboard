@@ -1,0 +1,170 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "TieZ",
+  "version": "0.3.3",
+  "identifier": "com.tiez.app",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist/web"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "TieZ",
+        "label": "main",
+        "width": 352,
+        "height": 380,
+        "minWidth": 250,
+        "minHeight": 300,
+        "resizable": true,
+        "fullscreen": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "decorations": false,
+        "skipTaskbar": true,
+        "visible": false,
+        "dragDropEnabled": true,
+        "focusable": false
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; img-src 'self' asset: http://asset.localhost https://asset.localhost data: blob: http: https:; media-src 'self' asset: http://asset.localhost https://asset.localhost data: blob:; video-src 'self' asset: http://asset.localhost https://asset.localhost data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self' ws: http:;",
+      "assetProtocol": {
+        "enable": true,
+        "scope": [
+          "$HOME/**",
+          "C:/**",
+          "D:/**",
+          "E:/**"
+        ]
+      },
+      "capabilities": [
+        {
+          "identifier": "main-capability",
+          "description": "Main window capabilities",
+          "windows": [
+            "main",
+            "compact-preview",
+            "advanced-settings"
+          ],
+          "permissions": [
+            "core:window:allow-start-dragging",
+            "core:window:allow-hide",
+            "core:window:allow-show",
+            "core:window:allow-set-focus",
+            "core:window:allow-is-visible",
+            "core:window:allow-inner-size",
+            "core:window:allow-inner-position",
+            "core:window:allow-scale-factor",
+            "core:window:allow-set-size",
+            "core:window:allow-set-position",
+            "core:window:allow-set-always-on-top",
+            "core:window:allow-current-monitor",
+            "core:window:allow-cursor-position",
+            "core:window:allow-create",
+            "core:window:allow-get-all-windows",
+            "core:webview:allow-create-webview-window",
+            "core:window:allow-set-ignore-cursor-events",
+            "core:window:allow-set-focusable",
+            "core:event:allow-listen",
+            "core:event:allow-unlisten",
+            "core:event:allow-emit",
+            "core:app:allow-version",
+            "core:app:default",
+            "dialog:allow-open",
+            "dialog:default",
+            "fs:default",
+            {
+              "identifier": "fs:allow-read",
+              "allow": [
+                {
+                  "path": "$HOME/**"
+                },
+                {
+                  "path": "C:/**"
+                },
+                {
+                  "path": "D:/**"
+                },
+                {
+                  "path": "E:/**"
+                }
+              ]
+            },
+            {
+              "identifier": "core:path:default",
+              "allow": [
+                {
+                  "path": "$HOME/**"
+                },
+                {
+                  "path": "C:/**"
+                },
+                {
+                  "path": "D:/**"
+                },
+                {
+                  "path": "E:/**"
+                }
+              ]
+            },
+            "opener:default",
+            {
+              "identifier": "opener:allow-open-url",
+              "allow": [
+                {
+                  "url": "https://tiez.name666.top/**"
+                },
+                {
+                  "url": "https://github.com/jimuzhe/tie-z/**"
+                }
+              ]
+            },
+            "window-state:default",
+            "updater:default",
+            "process:allow-restart"
+          ]
+        }
+      ]
+    }
+  },
+  "bundle": {
+    "active": true,
+    "createUpdaterArtifacts": true,
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "targets": [
+      "nsis"
+    ],
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser",
+        "installerIcon": "icons/icon.ico",
+        "compression": "lzma",
+        "installerHooks": "nsis/uninstall.nsh",
+        "languages": [
+          "English",
+          "SimpChinese",
+          "TradChinese"
+        ],
+        "displayLanguageSelector": true,
+        "startMenuFolder": "TieZ"
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDY5QjdEQTdCMjgxMEVEMkMKUldRczdSQW9lOXEzYWNDQm1DR3Y3Y2NlZjhFZ2hjRzcyejRuZ25rYUVJZm1sQ1FQM1hIWXdIMkQK",
+      "endpoints": [
+        "https://tiez.name666.top/api/v1/latest-version?version={{current_version}}"
+      ]
+    }
+  }
+}

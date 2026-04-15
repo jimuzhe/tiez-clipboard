@@ -1,0 +1,343 @@
+/* Base Theme Variables + Global Resets */
+
+:root {
+  --bg-body: #edf2f8;
+  --bg-window: rgba(246, 249, 252, 0.94);
+  --bg-content: linear-gradient(180deg, #f5f8fc 0%, #edf2f8 100%);
+  --bg-toolbar: rgba(255, 255, 255, 0.82);
+  --bg-panel: rgba(255, 255, 255, 0.78);
+  --bg-input: rgba(255, 255, 255, 0.96);
+  --bg-element: rgba(255, 255, 255, 0.72);
+  --bg-button: rgba(255, 255, 255, 0.76);
+
+  --text-primary: #182235;
+  --text-secondary: #5c6c86;
+  --text-muted: #8591a7;
+
+  --accent-color: #2f6fed;
+  --accent-color-rgb: 47, 111, 237;
+  --accent-hover: #245dce;
+  --border-dark: #24364d;
+  --border-light: rgba(255, 255, 255, 0.78);
+  --shadow-color: rgba(24, 34, 53, 0.18);
+
+  --line-soft: rgba(24, 34, 53, 0.12);
+  --line-strong: rgba(24, 34, 53, 0.22);
+  --shadow-xs: 0 4px 10px rgba(15, 23, 42, 0.08);
+  --shadow-sm: 0 10px 24px rgba(15, 23, 42, 0.1);
+  --shadow-md: 0 18px 38px rgba(15, 23, 42, 0.12);
+  --shadow-lg: 0 26px 64px rgba(15, 23, 42, 0.16);
+  --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+  --accent-soft: rgba(var(--accent-color-rgb), 0.12);
+
+  --radius-window: 22px;
+  --radius-panel: 16px;
+  --radius-card: 18px;
+  --radius-control: 14px;
+  --radius-pill: 9999px;
+  --spacing-md: 16px;
+  --spacing-sm: 8px;
+  --surface-opacity-scale: 1;
+
+  --font-main: "Segoe UI", "Inter", "Microsoft YaHei", sans-serif;
+  --font-mono: "Cascadia Code", "Consolas", monospace;
+  --font-size-xs: 11px;
+  --font-size-sm: 12px;
+  --font-size-md: 14px;
+  --font-size-lg: 16px;
+
+  --clipboard-item-font-size: 13px;
+  --clipboard-tag-font-size: 10px;
+
+  --shell-background: var(--bg-window);
+  --shell-border: 1px solid var(--line-soft);
+  --shell-shadow: var(--shadow-lg);
+  --shell-radius: var(--radius-window);
+  --shell-backdrop-filter: none;
+
+  --toolbar-border: 1px solid var(--line-soft);
+  --toolbar-shadow: none;
+
+  --title-background: transparent;
+  --title-color: var(--text-primary);
+  --title-border: none;
+  --title-radius: 0;
+  --title-shadow: none;
+  --title-padding: 0;
+  --title-transform: none;
+  --title-letter-spacing: 0;
+  --title-font-size: 18px;
+  --title-font-weight: 700;
+  --title-font-family: var(--font-main);
+
+  --input-border: 1px solid var(--line-soft);
+  --input-radius: var(--radius-control);
+  --input-shadow: var(--shadow-inset);
+  --input-focus-border-color: var(--accent-color);
+  --input-focus-shadow: 0 0 0 3px var(--accent-soft);
+  --input-font-weight: 500;
+
+  --button-border: 1px solid var(--line-soft);
+  --button-radius: 12px;
+  --button-shadow: var(--shadow-xs);
+  --button-hover-border-color: var(--line-strong);
+  --button-hover-shadow: var(--shadow-sm);
+  --button-hover-transform: translateY(-1px);
+  --button-active-shadow: 0 6px 14px rgba(15, 23, 42, 0.12);
+  --button-active-transform: translateY(0);
+  --button-active-filled-background: var(--accent-color);
+  --button-active-filled-color: #ffffff;
+  --button-active-filled-border-color: var(--accent-color);
+  --button-active-filled-shadow: 0 12px 24px rgba(var(--accent-color-rgb), 0.28);
+  --button-text-transform: none;
+  --button-font-weight: 600;
+  --button-letter-spacing: 0;
+
+  --card-border: 1px solid var(--line-soft);
+  --card-radius: var(--radius-card);
+  --card-shadow: var(--shadow-sm);
+  --card-hover-border-color: var(--line-strong);
+  --card-hover-shadow: var(--shadow-md);
+  --card-hover-transform: translateY(-2px);
+  --card-active-shadow: 0 10px 24px rgba(15, 23, 42, 0.14);
+  --card-active-transform: translateY(0);
+  --card-selected-background: rgba(var(--accent-color-rgb), 0.08);
+  --card-selected-border-color: rgba(var(--accent-color-rgb), 0.5);
+  --card-selected-shadow: 0 16px 32px rgba(var(--accent-color-rgb), 0.18);
+  --card-selected-outline: 2px solid rgba(var(--accent-color-rgb), 0.45);
+  --card-selected-outline-offset: -2px;
+
+  --panel-border: 1px solid var(--line-soft);
+  --panel-radius: var(--radius-panel);
+  --panel-shadow: var(--shadow-sm);
+  --panel-header-background: transparent;
+  --panel-header-border-color: var(--line-soft);
+  --panel-divider-color: rgba(24, 34, 53, 0.08);
+
+  --data-panel-border: 1px solid var(--line-soft);
+  --data-panel-radius: 12px;
+  --data-panel-shadow: var(--shadow-inset);
+  --data-panel-hover-background: rgba(255, 255, 255, 0.98);
+
+  --range-track-border: 1px solid var(--line-soft);
+  --range-track-radius: var(--radius-pill);
+  --range-track-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.08);
+  --range-thumb-border: 1px solid rgba(255, 255, 255, 0.95);
+  --range-thumb-radius: var(--radius-pill);
+  --range-thumb-shadow: 0 8px 18px rgba(var(--accent-color-rgb), 0.25);
+  --range-thumb-active-transform: scale(0.96);
+  --range-thumb-active-shadow: 0 4px 10px rgba(var(--accent-color-rgb), 0.2);
+
+  --switch-track-background: rgba(var(--accent-color-rgb), 0.15);
+  --switch-track-border: 1px solid rgba(var(--accent-color-rgb), 0.16);
+  --switch-track-radius: var(--radius-pill);
+  --switch-track-shadow: inset 0 1px 1px rgba(15, 23, 42, 0.08);
+  --switch-track-active-background: var(--accent-color);
+  --switch-track-active-border-color: var(--accent-color);
+  --switch-thumb-background: #ffffff;
+  --switch-thumb-border: 1px solid rgba(24, 34, 53, 0.08);
+  --switch-thumb-shadow: 0 3px 10px rgba(15, 23, 42, 0.16);
+  --switch-thumb-size: 13px;
+  --switch-thumb-offset: 3px;
+  --switch-thumb-translate: 22px;
+
+  --keycap-border: 1px solid var(--line-soft);
+  --keycap-radius: 12px;
+  --keycap-shadow: var(--shadow-xs);
+  --keycap-active-shadow: 0 4px 10px rgba(15, 23, 42, 0.08);
+  --keycap-active-transform: translateY(1px);
+
+  --segmented-border: 1px solid var(--line-soft);
+  --segmented-radius: 14px;
+  --segmented-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.06);
+  --segment-radius: 10px;
+  --segment-font-weight: 600;
+  --segment-text-transform: none;
+  --segment-active-background: rgba(255, 255, 255, 0.92);
+  --segment-active-color: var(--text-primary);
+  --segment-active-shadow: var(--shadow-xs);
+
+  --modal-border: 1px solid var(--line-soft);
+  --modal-radius: 20px;
+  --modal-shadow: var(--shadow-lg);
+  --modal-title-background: transparent;
+  --modal-title-color: var(--text-primary);
+  --modal-title-border: none;
+  --modal-title-shadow: none;
+  --modal-title-padding: 0;
+  --modal-title-transform: none;
+  --modal-title-letter-spacing: 0;
+  --modal-title-font-weight: 700;
+  --dialog-button-border: 1px solid var(--line-soft);
+  --dialog-button-radius: 12px;
+  --dialog-button-shadow: var(--shadow-xs);
+  --dialog-button-hover-shadow: var(--shadow-sm);
+  --dialog-button-hover-transform: translateY(-1px);
+  --dialog-button-active-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
+  --dialog-button-active-transform: translateY(0);
+
+  --tags-border: 1px solid var(--line-soft);
+  --tags-radius: 16px;
+  --tags-shadow: var(--shadow-sm);
+  --tag-chip-border: 1px solid rgba(24, 34, 53, 0.08);
+  --tag-chip-radius: var(--radius-pill);
+  --tag-chip-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+  --tag-chip-hover-shadow: 0 8px 16px rgba(15, 23, 42, 0.12);
+  --tag-chip-hover-transform: translateY(-1px);
+  --tag-chip-active-shadow: 0 2px 6px rgba(15, 23, 42, 0.1);
+  --tag-chip-active-transform: translateY(0);
+
+  --menu-border: 1px solid var(--line-soft);
+  --menu-radius: 14px;
+  --menu-shadow: var(--shadow-md);
+  --menu-item-hover-background: var(--accent-color);
+  --menu-item-hover-color: #ffffff;
+
+  --scrollbar-size: 10px;
+  --scrollbar-size-thin: 4px;
+  --scrollbar-radius: var(--radius-pill);
+  --scrollbar-track-background: transparent;
+  --scrollbar-track-border-start: none;
+  --scrollbar-thumb-color: var(--text-secondary);
+  --scrollbar-thumb-hover-color: var(--text-primary);
+  --scrollbar-thumb-border: 2px solid transparent;
+  --scrollbar-chat-thumb-border: 2px solid var(--bg-body);
+
+  --meta-text-transform: none;
+  --meta-letter-spacing: 0;
+  --content-font-family: var(--font-main);
+  --content-line-height: 1.45;
+  --empty-state-font-family: var(--font-main);
+  --empty-state-text-transform: none;
+
+  --queue-border: 1px solid var(--line-soft);
+  --queue-radius: 18px;
+  --queue-shadow: var(--shadow-lg);
+  --queue-count-border: 1px solid rgba(24, 34, 53, 0.08);
+  --queue-count-shadow: var(--shadow-xs);
+  --queue-count-rotate: 0deg;
+  --queue-action-border: 1px solid rgba(24, 34, 53, 0.08);
+  --queue-action-shadow: var(--shadow-xs);
+  --queue-button-text-transform: none;
+
+  --reset-button-border: 1px solid rgba(255, 99, 99, 0.14);
+  --reset-button-radius: 14px;
+  --reset-button-shadow: var(--shadow-xs);
+  --reset-button-text-transform: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.light-mode) {
+    --bg-body: #131720;
+    --bg-window: rgba(22, 27, 38, 0.94);
+    --bg-content: linear-gradient(180deg, #171d28 0%, #131720 100%);
+    --bg-toolbar: rgba(20, 24, 33, 0.84);
+    --bg-panel: rgba(31, 37, 49, 0.86);
+    --bg-input: rgba(22, 28, 39, 0.96);
+    --bg-element: rgba(28, 34, 46, 0.88);
+    --bg-button: rgba(31, 37, 49, 0.86);
+
+    --text-primary: #edf1f8;
+    --text-secondary: #a7b3c9;
+    --text-muted: #7b869a;
+
+    --border-dark: #edf1f8;
+    --border-light: rgba(255, 255, 255, 0.1);
+    --shadow-color: rgba(0, 0, 0, 0.42);
+
+    --line-soft: rgba(255, 255, 255, 0.12);
+    --line-strong: rgba(255, 255, 255, 0.2);
+    --shadow-xs: 0 4px 12px rgba(0, 0, 0, 0.22);
+    --shadow-sm: 0 10px 24px rgba(0, 0, 0, 0.28);
+    --shadow-md: 0 18px 38px rgba(0, 0, 0, 0.34);
+    --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.4);
+    --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+
+    --segment-active-background: rgba(255, 255, 255, 0.12);
+    --switch-thumb-border: 1px solid rgba(255, 255, 255, 0.08);
+    --data-panel-hover-background: rgba(34, 40, 52, 0.98);
+  }
+}
+
+:root.dark-mode,
+body.dark-mode {
+  --bg-body: #131720;
+  --bg-window: rgba(22, 27, 38, 0.94);
+  --bg-content: linear-gradient(180deg, #171d28 0%, #131720 100%);
+  --bg-toolbar: rgba(20, 24, 33, 0.84);
+  --bg-panel: rgba(31, 37, 49, 0.86);
+  --bg-input: rgba(22, 28, 39, 0.96);
+  --bg-element: rgba(28, 34, 46, 0.88);
+  --bg-button: rgba(31, 37, 49, 0.86);
+
+  --text-primary: #edf1f8;
+  --text-secondary: #a7b3c9;
+  --text-muted: #7b869a;
+
+  --border-dark: #edf1f8;
+  --border-light: rgba(255, 255, 255, 0.1);
+  --shadow-color: rgba(0, 0, 0, 0.42);
+
+  --line-soft: rgba(255, 255, 255, 0.12);
+  --line-strong: rgba(255, 255, 255, 0.2);
+  --shadow-xs: 0 4px 12px rgba(0, 0, 0, 0.22);
+  --shadow-sm: 0 10px 24px rgba(0, 0, 0, 0.28);
+  --shadow-md: 0 18px 38px rgba(0, 0, 0, 0.34);
+  --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.4);
+  --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+
+  --segment-active-background: rgba(255, 255, 255, 0.12);
+  --switch-thumb-border: 1px solid rgba(255, 255, 255, 0.08);
+  --data-panel-hover-background: rgba(34, 40, 52, 0.98);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-main);
+  user-select: none;
+}
+
+body {
+  background-color: transparent;
+  color: var(--text-primary);
+  height: 100vh;
+  overflow: hidden;
+}
+
+html,
+body {
+  border-radius: var(--shell-radius);
+  overflow: hidden;
+  background-color: transparent;
+}
+
+#root {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--shell-background);
+  border: var(--shell-border);
+  border-radius: var(--shell-radius);
+  overflow: hidden;
+  box-shadow: var(--shell-shadow);
+  backdrop-filter: var(--shell-backdrop-filter);
+  -webkit-backdrop-filter: var(--shell-backdrop-filter);
+}
+
+:root.hide-app-border #root,
+body.hide-app-border #root {
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+#root::before {
+  display: none;
+}
+
+.app-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}

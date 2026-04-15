@@ -1,0 +1,684 @@
+/* Compact Mode Styles - Final Cleanup */
+
+/* Base Item Styles */
+.history-item.compact {
+    padding: 2px 4px 2px 10px !important;
+    min-height: auto;
+    height: 100% !important;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    position: relative;
+    gap: 0;
+    overflow: visible !important;
+    z-index: 1;
+    margin-bottom: 0 !important;
+}
+
+/* Add extra padding when drag handle is present to avoid overlap */
+.history-item.compact:has(.drag-handle) {
+    padding-left: 28px !important;
+}
+
+.history-item.compact:hover {
+    z-index: 100 !important;
+    background: var(--bg-element);
+}
+
+/* Hide Meta Header (Source App, Icon) */
+.history-item.compact .item-meta {
+    display: none !important;
+}
+
+/* Pinned Indicator - just the corner triangle is enough */
+
+/* Image Preview */
+.history-item.compact .image-preview {
+    max-height: 44px !important;
+    width: auto;
+    min-width: 44px;
+    max-width: 100%;
+    border-radius: 0;
+    margin-top: 0;
+    display: block;
+    object-fit: contain !important;
+    background-color: rgba(0, 0, 0, 0.05);
+    align-self: flex-start;
+}
+
+/* Hover Detail Popover */
+/* Original class kept for reference or non-portal usage if any */
+.compact-popover {
+    display: none;
+}
+
+.compact-popover-portal {
+    position: fixed;
+    width: 320px;
+    max-width: 80vw;
+    background: var(--bg-element);
+    /* Remove retro 2px border and offset shadow */
+    border: 1px solid var(--border-color, rgba(0, 0, 0, 0.1));
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    /* Softer modern shadow */
+    border-radius: var(--radius-window, 8px);
+    /* Use theme radius or default 8px */
+    padding: 12px;
+    z-index: 99999;
+    line-height: 1.5;
+    pointer-events: auto;
+}
+
+/* Explicit standard dark mode fix (non-retro) */
+.compact-popover-portal.dark-mode {
+    background: #2c2c2c;
+    /* fallback or specific dark surface */
+    background: var(--bg-element);
+    /* should work if var is correct, but let's be explicit */
+    border-color: #444;
+    color: #ededed;
+}
+
+
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(-5px);
+        /* Slide down effect */
+    }
+
+    to {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+    }
+}
+
+/* Popover Content Styling */
+.popover-meta {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+/* Tags Overlay - Absolute Position in Compact Mode */
+.history-item.compact .item-tags-container {
+    position: absolute;
+    bottom: 0px;
+    right: 4px;
+    margin: 0 !important;
+    z-index: 5;
+    opacity: 0.85;
+    max-width: 60%;
+    flex-wrap: nowrap !important;
+    overflow: hidden;
+}
+
+/* Larger tags styling for better readability */
+.history-item.compact .item-tags-container .tag-chip,
+.history-item.compact .quick-paste-corner-badge.tag-chip {
+    font-size: var(--clipboard-tag-font-size) !important;
+    padding: 0px 4px !important;
+    min-height: 16px;
+    line-height: 1;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+}
+
+/* Button Wrapper - reset .item-meta for structure */
+.history-item.compact .item-meta {
+    display: flex !important;
+    position: static !important;
+    margin: 0 !important;
+    border: none !important;
+    height: 0 !important;
+    overflow: visible !important;
+}
+
+/* Hide the App Info (Source/Icon/Pin) on the left side */
+.history-item.compact .item-meta .app-info {
+    display: none !important;
+}
+
+/* Show Drag Handle in Compact Mode */
+.history-item.compact .drag-handle {
+    position: absolute !important;
+    left: 8px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    opacity: 0.7 !important;
+    z-index: 20 !important;
+    width: 14px !important;
+    height: 100% !important;
+    margin: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.history-item.compact .drag-handle:hover {
+    opacity: 1 !important;
+    color: var(--accent-color) !important;
+}
+
+/* The right side wrapper (Buttons) */
+.history-item.compact .item-meta>div:last-child {
+    position: absolute;
+    top: -8px;
+    right: 8px;
+    height: auto;
+    z-index: 200;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    pointer-events: none;
+}
+
+/* Fix for first item buttons being clipped */
+.first-virtual-item .history-item.compact .item-meta>div:last-child {
+    top: -4px !important;
+}
+
+/* Button Actions Styling */
+.history-item.compact .item-actions {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 4px !important;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(5px);
+    transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.2s;
+    pointer-events: auto;
+
+    /* Position relative for AI dropdown positioning */
+    position: relative;
+
+    /* Remove container styling as requested */
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 0;
+    border-radius: 0;
+    border: none;
+}
+
+.dark-mode .history-item.compact .item-actions {
+    background: transparent !important;
+    border-color: transparent;
+}
+
+.history-item.compact:hover .item-actions {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+/* Button Icons - Default/Modern Style */
+.history-item.compact .item-actions .btn-icon {
+    width: 20px !important;
+    height: 20px !important;
+    padding: 3px !important;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.7);
+    /* Semi-transparent for glass effect */
+    color: #444;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    transition: all 0.2s ease;
+}
+
+/* Dark Mode - Glass effect */
+.dark-mode .history-item.compact .item-actions .btn-icon {
+    background: rgba(60, 60, 60, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Modern/Mica Theme - Enhanced glass effect */
+body.theme-mica .history-item.compact .item-actions .btn-icon,
+body.theme-acrylic .history-item.compact .item-actions .btn-icon,
+html.theme-mica .history-item.compact .item-actions .btn-icon,
+html.theme-acrylic .history-item.compact .item-actions .btn-icon {
+    background: rgba(255, 255, 255, 0.85) !important;
+    border: 1px solid rgba(255, 255, 255, 0.5) !important;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1) !important;
+    backdrop-filter: blur(12px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(12px) saturate(180%) !important;
+    border-radius: 8px !important;
+}
+
+body.dark-mode.theme-mica .history-item.compact .item-actions .btn-icon,
+body.dark-mode.theme-acrylic .history-item.compact .item-actions .btn-icon,
+html.dark-mode.theme-mica .history-item.compact .item-actions .btn-icon,
+html.dark-mode.theme-acrylic .history-item.compact .item-actions .btn-icon {
+    background: rgba(45, 45, 45, 0.7) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Retro/Non-Modern Theme Overrides for Buttons */
+/* Apply mechanical style to all non-modern themes (retro, default, etc.) */
+body:not(.theme-mica):not(.theme-acrylic) .history-item.compact .item-actions .btn-icon,
+body:not(.theme-mica):not(.theme-acrylic) .history-item.compact:hover .item-actions .btn-icon {
+    border-radius: 0 !important;
+    border: 2px solid var(--border-dark) !important;
+    box-shadow: 2px 2px 0 0 var(--shadow-color) !important;
+    background: var(--bg-button) !important;
+    color: var(--text-primary) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+body:not(.theme-mica):not(.theme-acrylic) .history-item.compact .item-actions .btn-icon:hover,
+body:not(.theme-mica):not(.theme-acrylic) .history-item.compact:hover .item-actions .btn-icon:hover {
+    transform: translate(-1px, -1px) !important;
+    box-shadow: 3px 3px 0 0 var(--shadow-color) !important;
+    background: var(--bg-input) !important;
+    border-color: var(--border-dark) !important;
+}
+
+body:not(.theme-mica):not(.theme-acrylic) .history-item.compact .item-actions .btn-icon:active {
+    transform: translate(1px, 1px) !important;
+    box-shadow: 1px 1px 0 0 var(--shadow-color) !important;
+}
+
+/* Hover effects - Glass style */
+.history-item.compact .item-actions .btn-icon:hover {
+    background: rgba(255, 255, 255, 0.95);
+    color: var(--accent-color);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12) !important;
+}
+
+.dark-mode .history-item.compact .item-actions .btn-icon:hover {
+    background: rgba(80, 80, 80, 0.8);
+    color: var(--accent-color);
+}
+
+/* Modern/Mica hover - Enhanced */
+body.theme-mica .history-item.compact .item-actions .btn-icon:hover,
+body.theme-acrylic .history-item.compact .item-actions .btn-icon:hover,
+html.theme-mica .history-item.compact .item-actions .btn-icon:hover,
+html.theme-acrylic .history-item.compact .item-actions .btn-icon:hover {
+    background: rgba(255, 255, 255, 0.95) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15) !important;
+}
+
+body.dark-mode.theme-mica .history-item.compact .item-actions .btn-icon:hover,
+body.dark-mode.theme-acrylic .history-item.compact .item-actions .btn-icon:hover,
+html.dark-mode.theme-mica .history-item.compact .item-actions .btn-icon:hover,
+html.dark-mode.theme-acrylic .history-item.compact .item-actions .btn-icon:hover {
+    background: rgba(60, 60, 60, 0.85) !important;
+}
+
+/* Active/Selected State - Glass style */
+.history-item.compact .item-actions .btn-icon.active {
+    color: var(--accent-color);
+    background: rgba(var(--accent-color-rgb), 0.2);
+    border-color: rgba(var(--accent-color-rgb), 0.5);
+    box-shadow: 0 0 0 1px rgba(var(--accent-color-rgb), 0.3), 0 2px 8px rgba(var(--accent-color-rgb), 0.2) !important;
+    backdrop-filter: blur(10px);
+}
+
+.dark-mode .history-item.compact .item-actions .btn-icon.active {
+    background: rgba(var(--accent-color-rgb), 0.3);
+    border-color: rgba(var(--accent-color-rgb), 0.6);
+    box-shadow: 0 0 0 1px rgba(var(--accent-color-rgb), 0.4), 0 2px 12px rgba(var(--accent-color-rgb), 0.25) !important;
+}
+
+/* Modern/Mica active - Enhanced glass */
+body.theme-mica .history-item.compact .item-actions .btn-icon.active,
+body.theme-acrylic .history-item.compact .item-actions .btn-icon.active,
+html.theme-mica .history-item.compact .item-actions .btn-icon.active,
+html.theme-acrylic .history-item.compact .item-actions .btn-icon.active {
+    background: rgba(var(--accent-color-rgb), 0.25) !important;
+    border-color: rgba(var(--accent-color-rgb), 0.6) !important;
+    box-shadow: 0 0 0 2px rgba(var(--accent-color-rgb), 0.3), 0 4px 12px rgba(var(--accent-color-rgb), 0.25) !important;
+}
+
+body.dark-mode.theme-mica .history-item.compact .item-actions .btn-icon.active,
+body.dark-mode.theme-acrylic .history-item.compact .item-actions .btn-icon.active,
+html.dark-mode.theme-mica .history-item.compact .item-actions .btn-icon.active,
+html.dark-mode.theme-acrylic .history-item.compact .item-actions .btn-icon.active {
+    background: rgba(var(--accent-color-rgb), 0.35) !important;
+    border-color: rgba(var(--accent-color-rgb), 0.7) !important;
+}
+
+/* Non-Modern Theme Active State - Mechanical style */
+body:not(.theme-mica):not(.theme-acrylic) .history-item.compact .item-actions .btn-icon.active {
+    background: var(--accent-color) !important;
+    color: #fff !important;
+    border-color: var(--accent-color) !important;
+    box-shadow: 2px 2px 0 0 rgba(0, 0, 0, 0.3) !important;
+    border-radius: 0 !important;
+}
+
+body:not(.theme-mica):not(.theme-acrylic) .history-item.compact .item-actions .btn-icon.active:hover {
+    background: var(--accent-color) !important;
+    color: #fff !important;
+    transform: translate(-1px, -1px) !important;
+    box-shadow: 3px 3px 0 0 rgba(0, 0, 0, 0.3) !important;
+}
+
+.history-item.compact .item-actions .btn-icon svg {
+    width: 14px !important;
+    height: 14px !important;
+}
+
+/* AI Dropdown Panel - Theme Adaptation */
+/* Modern/Mica/Acrylic Theme - Glass effect */
+body.theme-mica .history-item.compact .ai-options-dropdown,
+body.theme-acrylic .history-item.compact .ai-options-dropdown {
+    background: rgba(255, 255, 255, 0.85) !important;
+    border: 1px solid rgba(255, 255, 255, 0.5) !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important;
+    backdrop-filter: blur(12px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(12px) saturate(180%) !important;
+    border-radius: 8px !important;
+}
+
+body.dark-mode.theme-mica .history-item.compact .ai-options-dropdown,
+body.dark-mode.theme-acrylic .history-item.compact .ai-options-dropdown {
+    background: rgba(45, 45, 45, 0.8) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* AI Dropdown Buttons in Modern Theme */
+body.theme-mica .history-item.compact .ai-options-dropdown button,
+body.theme-acrylic .history-item.compact .ai-options-dropdown button {
+    background: rgba(255, 255, 255, 0.5) !important;
+    border: 1px solid rgba(128, 128, 128, 0.2) !important;
+    box-shadow: none !important;
+    border-radius: 6px !important;
+}
+
+body.dark-mode.theme-mica .history-item.compact .ai-options-dropdown button,
+body.dark-mode.theme-acrylic .history-item.compact .ai-options-dropdown button {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+}
+
+/* Retro Theme - Keep mechanical style */
+body.theme-retro .history-item.compact .ai-options-dropdown {
+    background: var(--bg-element) !important;
+    border: 2px solid var(--border-dark) !important;
+    box-shadow: 4px 4px 0 0 var(--shadow-color) !important;
+    border-radius: 0 !important;
+}
+
+body.theme-retro .history-item.compact .ai-options-dropdown button {
+    box-shadow: 2px 2px 0 0 var(--shadow-color) !important;
+    border-radius: 0 !important;
+}
+
+/* Hide Timestamp */
+.history-item.compact .app-info:last-child {
+    display: none !important;
+}
+
+/* Popover Content Styling */
+.popover-meta .meta-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    line-height: 1;
+}
+
+.popover-meta .meta-dot {
+    opacity: 0.3;
+    font-size: 10px;
+}
+
+/* Force icon sizes in popover header */
+.popover-meta .meta-row svg {
+    width: 12px !important;
+    height: 12px !important;
+    opacity: 0.8;
+}
+
+.popover-meta .meta-row span {
+    opacity: 0.9;
+    color: var(--text-primary);
+    white-space: nowrap;
+}
+
+.popover-divider {
+    height: 1px;
+    background: var(--border-color, rgba(0, 0, 0, 0.1));
+    margin: 4px 0 8px 0;
+    opacity: 1;
+}
+
+/* Hide divider in modern theme as requested */
+
+.compact-popover-portal:not(.retro) .popover-divider {
+    display: none;
+}
+
+.popover-content {
+    font-size: 13px;
+    color: var(--text-primary);
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 300px;
+    overflow: hidden;
+    font-family: var(--font-main);
+}
+
+/* Content Preview */
+.history-item.compact .content-preview {
+    font-size: var(--clipboard-item-font-size);
+    line-height: 1.3;
+    margin-top: 0;
+    margin-bottom: 0;
+    -webkit-line-clamp: 2 !important;
+    line-clamp: 2 !important;
+    max-height: 40px;
+    color: var(--text-primary);
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    justify-content: flex-start;
+    overflow: hidden !important;
+}
+
+/* Allow full height for media/file cards in compact mode */
+.history-item.compact .content-preview:has(.video-thumbnail-card),
+.history-item.compact .content-preview:has(.file-thumbnail-card),
+.history-item.compact .content-preview:has(.image-preview) {
+    max-height: none !important;
+    -webkit-line-clamp: unset !important;
+    line-clamp: unset !important;
+    display: block;
+    overflow: visible !important;
+}
+
+/* Reduced padding for sensitive blur in compact mode to save height */
+.history-item.compact .content-preview.sensitive-blur {
+    padding: 2px 4px !important;
+}
+
+/* Special Content - File & Video Thumbnails in Compact Mode */
+.history-item.compact .file-thumbnail-card,
+.history-item.compact .video-thumbnail-card {
+    border: none !important;
+    background: transparent !important;
+    padding: 2px 4px !important;
+    gap: 8px !important;
+    min-height: 44px;
+    display: flex !important;
+    align-items: center !important;
+}
+
+/* Compact mode - make file icon smaller */
+.history-item.compact .file-icon-wrapper {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+}
+
+/* Compact mode - make video thumbnail smaller */
+.history-item.compact .video-thumbnail-wrapper {
+    width: 48px !important;
+    height: 36px !important;
+    min-width: 48px !important;
+}
+
+/* Compact mode - file info styling */
+.history-item.compact .file-name {
+    font-size: calc(var(--clipboard-item-font-size) - 1px) !important;
+    font-weight: 500;
+}
+
+/* Hide file path in compact mode */
+.history-item.compact .file-hint {
+    display: none !important;
+}
+
+.history-item.compact .file-icon-wrapper svg {
+    width: 20px !important;
+    height: 20px !important;
+}
+
+.history-item.compact .file-icon-image {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* Pinned Indicator - Compact Mode */
+.compact-pinned-indicator {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 3px;
+    background: #007bff;
+    z-index: 10;
+    pointer-events: none;
+}
+
+/* Rounded corners for modern themes - top and bottom left to match item border radius */
+body.theme-mica .history-item.compact .compact-pinned-indicator,
+body.theme-acrylic .history-item.compact .compact-pinned-indicator,
+html.theme-mica .history-item.compact .compact-pinned-indicator,
+html.theme-acrylic .history-item.compact .compact-pinned-indicator {
+    border-radius: 4px 0 0 4px;
+}
+
+.compact-pinned-indicator svg {
+    display: none;
+}
+
+/* Retro Theme Specific Styling for Popover */
+.compact-popover-portal.retro {
+    background: #e8e8e8;
+    /* Explicit retro light grey */
+    border: 3px solid #373737;
+    /* Thick dark border */
+    box-shadow: 4px 4px 0 0 #373737;
+    /* Hard shadow offset */
+    border-radius: 0;
+    /* Sharp corners */
+}
+
+.compact-popover-portal.retro.dark-mode,
+.compact-popover-portal.retro.dark {
+    background: #1f1f1f !important;
+    border-color: #555 !important;
+    /* Lighter border for visibility against dark bg */
+    box-shadow: 4px 4px 0 0 #000 !important;
+    color: #ededed !important;
+}
+
+.compact-popover-portal.retro .popover-divider {
+    display: block;
+    /* Show divider in retro */
+    height: 2px;
+    background: #373737;
+    margin: 6px 0 10px 0;
+    border-bottom: none;
+}
+
+.compact-popover-portal.retro.dark-mode .popover-divider {
+    background: #555;
+    opacity: 0.5;
+}
+
+/* Force metadata colors in retro dark mode */
+.compact-popover-portal.retro.dark-mode .popover-meta {
+    color: #a0a0a0;
+}
+
+.compact-popover-portal.retro.dark-mode .popover-meta .meta-row span,
+.compact-popover-portal.retro.dark-mode .popover-meta .meta-row svg {
+    color: #cccccc !important;
+    opacity: 1;
+}
+
+/* AI Dropdown Panel in Compact Mode - Higher z-index than preview popover */
+.history-item.compact .item-actions [style*="z-index: 1000"] {
+    /* Ensure AI dropdown is above preview popover (z-index 99999) */
+    z-index: 100000 !important;
+}
+
+/* AI dropdown scrollbar styling */
+.history-item.compact .item-actions [style*="overflow-y: auto"]::-webkit-scrollbar {
+    width: var(--scrollbar-size-thin);
+}
+
+.history-item.compact .item-actions [style*="overflow-y: auto"]::-webkit-scrollbar-track {
+    background: var(--scrollbar-track-background);
+}
+
+.history-item.compact .item-actions [style*="overflow-y: auto"]::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb-color);
+    border-radius: var(--scrollbar-radius);
+}
+
+.history-item.compact .item-meta-right {
+    gap: 6px;
+}
+
+.history-item.compact .item-meta-right-info {
+    opacity: 1;
+}
+
+.history-item.compact .item-meta-right-info .meta-time {
+    display: none;
+}
+
+.history-item.compact .item-meta-right-info .quick-paste-hint {
+    padding: 0 4px;
+    font-size: 9px;
+    background: transparent;
+}
+
+.history-item.compact .quick-paste-corner-badge {
+    left: 10px;
+    bottom: 0px;
+}
+
+.history-item.compact:has(.drag-handle) .quick-paste-corner-badge {
+    left: 24px;
+}
+
+body.theme-mica .history-item.compact,
+body.theme-acrylic .history-item.compact,
+html.theme-mica .history-item.compact,
+html.theme-acrylic .history-item.compact {
+    padding-top: 1px !important;
+    padding-bottom: 1px !important;
+    border-radius: 10px !important;
+}

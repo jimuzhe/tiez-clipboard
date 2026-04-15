@@ -1,0 +1,31 @@
+/* Reset Button Styling */
+.reset-btn {
+  width: 100%;
+  height: 40px;
+  background: rgba(255, 99, 99, 0.08);
+  color: var(--text-primary);
+  border: var(--reset-button-border);
+  border-radius: var(--reset-button-radius);
+  box-shadow: var(--reset-button-shadow);
+  font-weight: 600;
+  text-transform: var(--reset-button-text-transform);
+  letter-spacing: 0;
+  transition: all 0.16s ease;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.reset-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+  background: rgba(255, 99, 99, 0.14);
+  color: #d64545;
+}
+
+.reset-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 4px 12px rgba(255, 99, 99, 0.12);
+}

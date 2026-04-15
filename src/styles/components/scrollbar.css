@@ -1,0 +1,16 @@
+/* Scrollbar - Chunky */
+::-webkit-scrollbar{
+  width: var(--scrollbar-size);
+  background: var(--scrollbar-track-background);
+}
+
+::-webkit-scrollbar-thumb{
+  background-color: var(--scrollbar-thumb-color);
+  border: var(--scrollbar-thumb-border);
+  background-clip: padding-box;
+  border-radius: var(--scrollbar-radius);
+}
+
+::-webkit-scrollbar-thumb:hover{
+  background-color: var(--scrollbar-thumb-hover-color);
+}

@@ -1,0 +1,396 @@
+/* =========================================
+   ANNOUNCEMENT SYSTEM - THEMED & REFINED
+   Aligns with Retro, Mica, Acrylic, Sticky Note, and Paper themes.
+   ========================================= */
+
+/* --- Ticker Base (Global Default) --- */
+.announcement-ticker {
+    background: var(--bg-toolbar, var(--bg-panel, #f3f3f3));
+    border-bottom: var(--toolbar-border, 3px solid var(--border-dark, #373737));
+    height: 38px;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    align-items: center;
+    color: var(--text-primary);
+    font-family: var(--font-mono, monospace);
+    font-size: 12px;
+    font-weight: 700;
+    padding-right: 80px; /* Space for count and close */
+    z-index: 50;
+    transition: all 0.3s ease;
+}
+
+.ticker-icon {
+    width: 38px;
+    height: 100%;
+    border-right: var(--toolbar-border, 2px solid var(--border-dark));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-toolbar, rgba(0,0,0,0.05));
+    color: var(--accent-color);
+    z-index: 10;
+    flex-shrink: 0;
+}
+
+.ticker-content-wrapper {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+    height: 100%;
+    display: flex;
+    align-items: center;
+}
+
+.ticker-track {
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+    animation: marquee 25s linear infinite;
+    padding-left: 20px;
+    pointer-events: auto;
+}
+
+.ticker-track-single {
+    animation: none;
+    padding-left: 12px;
+}
+
+.ticker-track-single.ticker-track-marquee {
+    animation: marquee 25s linear infinite;
+    padding-left: 20px;
+}
+
+.ticker-content-wrapper:hover .ticker-track {
+    animation-play-state: paused;
+}
+
+@keyframes marquee {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-100%); }
+}
+
+.ticker-item {
+    display: inline-flex;
+    align-items: center;
+    margin-right: 60px;
+    gap: 10px;
+    color: inherit;
+}
+
+.ticker-tag {
+    padding: 2px 6px;
+    font-size: 10px;
+    font-weight: 900;
+    text-transform: uppercase;
+    border-radius: 4px;
+    color: #fff;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.ticker-tag.info { background: #3b82f6; }
+.ticker-tag.warning { background: #f59e0b; }
+.ticker-tag.update { background: #10b981; }
+
+.ticker-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ticker-link {
+    color: var(--accent-color);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+    font-weight: 800;
+    padding: 0 4px;
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+
+.ticker-link:hover {
+    background: rgba(var(--accent-color-rgb, 72, 123, 219), 0.1);
+}
+
+.ticker-count {
+    position: absolute;
+    right: 38px;
+    top: 0;
+    bottom: 0;
+    width: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-toolbar, rgba(0,0,0,0.02));
+    border-left: var(--toolbar-border, 1px solid var(--border-dark));
+    color: var(--text-secondary);
+    font-size: 10px;
+    font-weight: 800;
+    z-index: 9;
+}
+
+.ticker-fixed-close {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-toolbar, rgba(0,0,0,0.05));
+    border-left: var(--toolbar-border, 1px solid var(--border-dark));
+    cursor: pointer;
+    z-index: 10;
+    color: var(--text-secondary);
+    transition: all 0.2s;
+}
+
+.ticker-fixed-close:hover {
+    background: #ef4444;
+    color: #fff;
+}
+
+
+/* =========================================
+   THEME SPECIFIC OVERRIDES
+   ========================================= */
+
+/* --- 1. Sticky Note Theme --- */
+.theme-sticky-note .announcement-ticker {
+    background: var(--bg-toolbar);
+    border-bottom: 2px dashed var(--border-dark);
+    font-family: var(--font-main);
+    color: var(--text-primary);
+    height: 40px;
+}
+
+.theme-sticky-note .ticker-icon,
+.theme-sticky-note .ticker-count,
+.theme-sticky-note .ticker-fixed-close {
+    border-color: var(--border-dark);
+    background: transparent;
+}
+
+.theme-sticky-note .ticker-tag {
+    border-radius: 2px;
+    transform: rotate(-2deg);
+    box-shadow: 2px 2px 0 var(--shadow-color);
+}
+
+.theme-sticky-note .ticker-link {
+    font-family: var(--font-main);
+    text-decoration: none;
+    border-bottom: 1px solid var(--accent-color);
+}
+
+/* --- 2. Paper Theme --- */
+.theme-paper .announcement-ticker {
+    background: var(--bg-toolbar);
+    border-bottom: 2px solid var(--text-primary);
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.theme-paper .ticker-icon,
+.theme-paper .ticker-count,
+.theme-paper .ticker-fixed-close {
+    border-color: var(--text-primary);
+    border-width: 2px;
+    background: transparent;
+}
+
+.theme-paper .ticker-tag {
+    border-radius: 0;
+    border: 1px solid currentColor;
+    background: transparent !important;
+    color: inherit;
+    box-shadow: none;
+}
+
+.theme-paper .ticker-tag.info { color: #2563eb; }
+.theme-paper .ticker-tag.warning { color: #d97706; }
+.theme-paper .ticker-tag.update { color: #059669; }
+
+/* --- 3. Mica & Acrylic (Fluent Design) --- */
+.theme-mica .announcement-ticker,
+.theme-acrylic .announcement-ticker {
+    background: var(--bg-panel);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-bottom: 1px solid var(--line-soft);
+    font-family: system-ui, -apple-system, sans-serif;
+    height: 42px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+
+.theme-mica .ticker-icon,
+.theme-acrylic .ticker-icon {
+    border-right: 1px solid var(--line-soft);
+    color: var(--text-secondary);
+    background: transparent;
+}
+
+.theme-mica .ticker-count,
+.theme-acrylic .ticker-count,
+.theme-mica .ticker-fixed-close,
+.theme-acrylic .ticker-fixed-close {
+    border-left: 1px solid var(--line-soft);
+    background: transparent;
+}
+
+.theme-mica .ticker-tag,
+.theme-acrylic .ticker-tag {
+    border-radius: 6px;
+    font-weight: 600;
+    box-shadow: none;
+}
+
+.theme-mica .ticker-fixed-close:hover,
+.theme-acrylic .ticker-fixed-close:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+}
+
+/* --- Dark Mode Logic for Modern Themes --- */
+@media (prefers-color-scheme: dark) {
+    .theme-mica:not(.light-mode) .announcement-ticker,
+    .theme-acrylic:not(.light-mode) .announcement-ticker {
+        background: rgba(30, 30, 30, 0.6);
+        border-color: rgba(255, 255, 255, 0.1);
+        color: #e0e0e0;
+    }
+}
+
+.dark-mode .theme-mica .announcement-ticker,
+.dark-mode .theme-acrylic .announcement-ticker {
+    background: rgba(30, 30, 30, 0.6);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: #e0e0e0;
+}
+
+
+/* =========================================
+   ANNOUNCEMENT MODAL (Universal)
+   ========================================= */
+
+.announcement-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(4px);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.announcement-modal {
+    background: var(--bg-window, #fff);
+    border: var(--panel-border, 2px solid var(--border-dark));
+    border-radius: var(--radius-panel, 8px);
+    width: 100%;
+    max-width: 420px;
+    box-shadow: var(--shadow-lg, 0 20px 40px rgba(0,0,0,0.2));
+    overflow: hidden;
+    color: var(--text-primary);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    animation: modal-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes modal-pop {
+    from { transform: scale(0.9) translateY(10px); opacity: 0; }
+    to { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+.announcement-header {
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: var(--panel-border, 1px solid var(--border-dark));
+    background: var(--bg-toolbar, rgba(0,0,0,0.02));
+}
+
+.announcement-icon-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: var(--accent-color);
+    color: #fff;
+    flex-shrink: 0;
+}
+
+.announcement-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 800;
+    flex: 1;
+    color: var(--text-primary);
+}
+
+.announcement-body {
+    padding: 24px;
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text-secondary);
+}
+
+.announcement-footer {
+    padding: 16px 20px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    background: var(--bg-toolbar, rgba(0,0,0,0.02));
+    border-top: var(--panel-border, 1px solid var(--border-dark));
+}
+
+.announcement-btn {
+    padding: 8px 16px;
+    border: var(--button-border, 1px solid var(--border-dark));
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    border-radius: var(--button-radius, 6px);
+    transition: all 0.2s;
+}
+
+.announcement-btn.secondary {
+    background: var(--bg-button, #f0f0f0);
+    color: var(--text-primary);
+}
+
+.announcement-btn.primary {
+    background: var(--accent-color);
+    color: #fff;
+    border: none;
+}
+
+.announcement-btn:hover {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+}
+
+.announcement-btn:active {
+    transform: translateY(1px);
+}
+
+/* --- Retro Specific Modal Overrides (Windows 95 style) --- */
+.theme-retro .announcement-modal {
+    border-width: 3px;
+    box-shadow: 8px 8px 0 var(--shadow-color, #000);
+    border-radius: 0;
+}
+.theme-retro .announcement-btn {
+    border-radius: 0;
+    box-shadow: 2px 2px 0 var(--shadow-color, #000);
+}

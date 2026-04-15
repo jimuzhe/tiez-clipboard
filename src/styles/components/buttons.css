@@ -1,0 +1,38 @@
+/* Shared Icon Buttons */
+.btn-icon {
+  background: var(--bg-button);
+  border: var(--button-border);
+  border-radius: var(--button-radius);
+  color: var(--text-primary);
+  padding: 6px;
+  cursor: pointer;
+  box-shadow: var(--button-shadow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease,
+    color 0.18s ease;
+}
+
+.btn-icon:hover {
+  transform: var(--button-hover-transform);
+  box-shadow: var(--button-hover-shadow);
+  background: var(--bg-input);
+  border-color: var(--button-hover-border-color);
+}
+
+.btn-icon:active {
+  transform: var(--button-active-transform);
+  box-shadow: var(--button-active-shadow);
+}
+
+.btn-icon.active {
+  background: var(--button-active-filled-background);
+  color: var(--button-active-filled-color);
+  border-color: var(--button-active-filled-border-color);
+  box-shadow: var(--button-active-filled-shadow);
+}

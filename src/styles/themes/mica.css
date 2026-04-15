@@ -1,0 +1,211 @@
+/* Mica Theme */
+:root.theme-mica,
+body.theme-mica {
+  background-color: transparent !important;
+  --bg-window: rgba(248, 248, 248, calc(0.9 * var(--surface-opacity-scale, 1)));
+  --bg-content: transparent;
+  --bg-toolbar: transparent;
+  --bg-panel: rgba(255, 255, 255, 0.48);
+  --bg-input: rgba(255, 255, 255, 0.74);
+  --bg-element: rgba(255, 255, 255, 0.62);
+  --bg-button: rgba(255, 255, 255, 0.46);
+
+  --text-primary: #1a2435;
+  --text-secondary: #607188;
+  --text-muted: #8c97ab;
+
+  --accent-color: #4f7dff;
+  --accent-color-rgb: 79, 125, 255;
+  --accent-hover: #3f6ce9;
+
+  --line-soft: rgba(40, 56, 84, 0.12);
+  --line-strong: rgba(40, 56, 84, 0.2);
+  --shadow-xs: 0 4px 10px rgba(15, 23, 42, 0.06);
+  --shadow-sm: 0 10px 22px rgba(15, 23, 42, 0.08);
+  --shadow-md: 0 18px 36px rgba(15, 23, 42, 0.1);
+  --shadow-lg: 0 20px 48px rgba(15, 23, 42, 0.12);
+  --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.52);
+
+  --shell-background: rgba(248, 248, 248, calc(0.9 * var(--surface-opacity-scale, 1)));
+  --shell-border: 1px solid rgba(255, 255, 255, 0.42);
+  --shell-shadow: 0 18px 48px rgba(15, 23, 42, 0.12);
+  --shell-radius: 10px;
+
+  --toolbar-border: 1px solid rgba(128, 128, 128, 0.15);
+
+  --input-border: 1px solid rgba(128, 128, 128, 0.18);
+  --input-radius: 12px;
+  --input-shadow: none;
+  --input-focus-shadow: 0 0 0 3px rgba(79, 125, 255, 0.14);
+
+  --button-border: 1px solid rgba(128, 128, 128, 0.18);
+  --button-radius: 10px;
+  --button-shadow: var(--shadow-xs);
+  --button-hover-shadow: var(--shadow-sm);
+  --button-active-shadow: var(--shadow-xs);
+  --button-active-filled-shadow: 0 12px 24px rgba(79, 125, 255, 0.26);
+
+  --card-border: 1px solid rgba(128, 128, 128, 0.16);
+  --card-radius: 14px;
+  --card-shadow: none;
+  --card-hover-shadow: var(--shadow-sm);
+  --card-selected-background: rgba(79, 125, 255, 0.1);
+  --card-selected-border-color: rgba(79, 125, 255, 0.34);
+  --card-selected-shadow: 0 12px 28px rgba(79, 125, 255, 0.16);
+
+  --panel-border: 1px solid rgba(255, 255, 255, 0.3);
+  --panel-radius: 14px;
+  --panel-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+  --panel-divider-color: rgba(0, 0, 0, 0.05);
+
+  --data-panel-border: 1px solid rgba(128, 128, 128, 0.16);
+  --data-panel-shadow: none;
+
+  --menu-border: 1px solid rgba(128, 128, 128, 0.16);
+  --menu-shadow: var(--shadow-md);
+
+  --scrollbar-size: 8px;
+  --scrollbar-size-thin: 4px;
+  --scrollbar-radius: 999px;
+  --scrollbar-track-background: transparent;
+  --scrollbar-track-border-start: none;
+  --scrollbar-thumb-color: rgba(96, 113, 136, 0.55);
+  --scrollbar-thumb-hover-color: rgba(79, 125, 255, 0.7);
+  --scrollbar-thumb-border: 2px solid transparent;
+  --scrollbar-chat-thumb-border: 2px solid transparent;
+
+  --queue-border: 1px solid rgba(255, 255, 255, 0.38);
+  --queue-shadow: 0 18px 42px rgba(15, 23, 42, 0.12);
+
+  --reset-button-border: 1px solid rgba(255, 99, 99, 0.2);
+}
+
+body.theme-mica {
+  position: relative;
+  isolation: isolate;
+}
+
+body.theme-mica::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  background-image: var(--custom-bg-image, none);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  z-index: 0;
+  opacity: 0.18;
+  pointer-events: none;
+  border-radius: calc(var(--shell-radius) + 1px);
+}
+
+body.has-custom-bg.theme-mica::before {
+  opacity: var(--custom-bg-opacity, 0.45);
+}
+
+body.theme-mica:not(.has-custom-bg)::before {
+  background-image: linear-gradient(160deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.04) 100%);
+  opacity: 0.2;
+}
+
+body.theme-mica #root {
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+  isolation: isolate;
+  background-clip: padding-box;
+}
+
+body.theme-mica #root::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 0, 0, 0.03) 2px, rgba(0, 0, 0, 0.03) 4px),
+    repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(0, 0, 0, 0.03) 2px, rgba(0, 0, 0, 0.03) 4px);
+  pointer-events: none;
+  border-radius: inherit;
+  opacity: 0.2;
+}
+
+body.theme-mica #root > * {
+  position: relative;
+  z-index: 1;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root.theme-mica:not(.light-mode),
+  body.theme-mica:not(.light-mode) {
+    --bg-window: rgba(24, 24, 24, calc(0.82 * var(--surface-opacity-scale, 1)));
+    --bg-panel: rgba(36, 36, 36, 0.52);
+    --bg-input: rgba(255, 255, 255, 0.12);
+    --bg-element: rgba(45, 45, 45, 0.65);
+    --bg-button: rgba(255, 255, 255, 0.05);
+
+    --text-primary: #e8e8e8;
+    --text-secondary: #a8a8a8;
+    --text-muted: #8b8b8b;
+
+    --line-soft: rgba(255, 255, 255, 0.1);
+    --line-strong: rgba(255, 255, 255, 0.16);
+    --shadow-xs: 0 4px 12px rgba(0, 0, 0, 0.16);
+    --shadow-sm: 0 10px 24px rgba(0, 0, 0, 0.2);
+    --shadow-md: 0 18px 36px rgba(0, 0, 0, 0.24);
+    --shadow-lg: 0 22px 44px rgba(0, 0, 0, 0.28);
+    --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+
+    --shell-background: rgba(24, 24, 24, calc(0.82 * var(--surface-opacity-scale, 1)));
+    --shell-border: 1px solid rgba(255, 255, 255, 0.08);
+    --shell-shadow: 0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+    --toolbar-border: 1px solid rgba(255, 255, 255, 0.08);
+    --panel-border: 1px solid rgba(255, 255, 255, 0.08);
+    --menu-border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  body.theme-mica:not(.light-mode) #root::before {
+    background-image:
+      repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255, 255, 255, 0.02) 2px, rgba(255, 255, 255, 0.02) 4px),
+      repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(255, 255, 255, 0.02) 2px, rgba(255, 255, 255, 0.02) 4px);
+  }
+
+  body.theme-mica:not(.light-mode):not(.has-custom-bg)::before {
+    background-image: linear-gradient(150deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.015) 100%);
+    opacity: 0.16;
+  }
+}
+
+:root.dark-mode.theme-mica,
+body.dark-mode.theme-mica {
+  --bg-window: rgba(24, 24, 24, calc(0.82 * var(--surface-opacity-scale, 1)));
+  --bg-panel: rgba(36, 36, 36, 0.52);
+  --bg-input: rgba(255, 255, 255, 0.12);
+  --bg-element: rgba(45, 45, 45, 0.65);
+  --bg-button: rgba(255, 255, 255, 0.05);
+
+  --text-primary: #e8e8e8;
+  --text-secondary: #a8a8a8;
+  --text-muted: #8b8b8b;
+
+  --line-soft: rgba(255, 255, 255, 0.1);
+  --line-strong: rgba(255, 255, 255, 0.16);
+  --shadow-xs: 0 4px 12px rgba(0, 0, 0, 0.16);
+  --shadow-sm: 0 10px 24px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 18px 36px rgba(0, 0, 0, 0.24);
+  --shadow-lg: 0 22px 44px rgba(0, 0, 0, 0.28);
+  --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+
+  --shell-background: rgba(24, 24, 24, calc(0.82 * var(--surface-opacity-scale, 1)));
+  --shell-border: 1px solid rgba(255, 255, 255, 0.08);
+  --shell-shadow: 0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+  --toolbar-border: 1px solid rgba(255, 255, 255, 0.08);
+  --panel-border: 1px solid rgba(255, 255, 255, 0.08);
+  --menu-border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+body.compact-preview.theme-mica #root,
+body.theme-mica.compact-preview #root,
+body.dark-mode.compact-preview.theme-mica #root {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}

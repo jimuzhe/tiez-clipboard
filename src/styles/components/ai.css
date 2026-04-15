@@ -1,0 +1,129 @@
+/* AI Assistant Styles */
+.ai-options-menu {
+  background: var(--bg-element) !important;
+  border: var(--menu-border) !important;
+  box-shadow: var(--menu-shadow) !important;
+  border-radius: var(--menu-radius) !important;
+}
+
+.ai-option-item {
+  transition: all 0.14s ease;
+  font-weight: 600;
+  border-radius: 10px;
+}
+
+.ai-option-item:hover {
+  background: var(--menu-item-hover-background) !important;
+  color: var(--menu-item-hover-color) !important;
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.ai-btn.active {
+  color: var(--accent-color);
+  border-color: var(--accent-color);
+  background: transparent !important;
+}
+
+/* AI Profile Library Styles */
+.ai-profile-card {
+  padding: 10px 12px;
+  background: transparent;
+  border-bottom: 1px solid var(--panel-divider-color);
+  color: var(--text-primary);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background 0.2s;
+}
+
+.ai-profile-card:last-child {
+  border-bottom: none;
+}
+
+.ai-profile-card:hover {
+  background: rgba(var(--accent-color-rgb), 0.06);
+}
+
+.ai-profile-card::before {
+  display: none;
+}
+
+.ai-profile-name {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+
+.ai-profile-sub {
+  font-size: 9px;
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+  background: rgba(var(--accent-color-rgb), 0.08);
+  padding: 2px 6px;
+  display: inline-block;
+  border-radius: var(--radius-pill);
+}
+
+.ai-sub-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: none;
+  color: var(--accent-color);
+  margin-top: 16px;
+  margin-bottom: 8px;
+  border-left: 2px solid var(--accent-color);
+  padding-left: 8px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.light-mode) .ai-profile-sub {
+    background: rgba(255, 255, 255, 0.08);
+  }
+}
+
+/* AI Skeleton Loading */
+.ai-skeleton-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.ai-skeleton-line {
+  height: 14px;
+  background: linear-gradient(90deg,
+      rgba(128, 128, 128, 0.1) 25%,
+      rgba(128, 128, 128, 0.2) 50%,
+      rgba(128, 128, 128, 0.1) 75%);
+  background-size: 200% 100%;
+  border-radius: 4px;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+  opacity: 0.6;
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
+}

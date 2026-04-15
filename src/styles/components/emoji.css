@@ -1,0 +1,299 @@
+/* Emoji Panel - Simplified Premium */
+.emoji-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+  padding: 12px 14px 14px;
+  background: transparent;
+  position: relative;
+}
+
+/* Tabs - Minimalist */
+.emoji-tabs {
+  display: flex;
+  background: var(--bg-element);
+  padding: 3px;
+  border-radius: 12px;
+  border: 1px solid var(--line-soft);
+  position: relative;
+  z-index: 10;
+}
+
+.emoji-tab {
+  flex: 1;
+  height: 32px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  position: relative;
+  border-radius: 9px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.emoji-tab-text {
+  position: relative;
+  z-index: 2;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  transition: color 0.2s ease;
+}
+
+.emoji-tab.active .emoji-tab-text {
+  color: var(--text-primary);
+}
+
+.active-tab-indicator {
+  position: absolute;
+  inset: 0;
+  background: var(--bg-panel);
+  border-radius: 9px;
+  z-index: 1;
+  border: 1px solid var(--line-soft);
+  box-shadow: var(--shadow-xs);
+}
+
+/* Content Area */
+.emoji-content-wrapper {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.emoji-content,
+.emoji-fav-container {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 4px 0px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Scrollbar */
+.emoji-content::-webkit-scrollbar,
+.emoji-fav-container::-webkit-scrollbar {
+  width: 4px;
+}
+
+.emoji-content::-webkit-scrollbar-thumb,
+.emoji-fav-container::-webkit-scrollbar-thumb {
+  background: var(--line-soft);
+  border-radius: 10px;
+}
+
+/* Emoji Grid */
+.emoji-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.emoji-group-title {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+  padding-left: 4px;
+}
+
+.emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(36px, 1fr));
+  gap: 6px;
+}
+
+.emoji-btn {
+  height: 36px;
+  width: 100%;
+  background: var(--bg-button);
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.1s ease;
+}
+
+.emoji-btn:hover {
+  background: var(--bg-panel);
+  border-color: var(--accent-color);
+  transform: scale(1.05);
+}
+
+/* Favorites Grid - Clean Grid */
+.emoji-fav-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(78px, 1fr));
+  gap: 10px;
+  padding: 2px;
+}
+
+.emoji-fav-card {
+  aspect-ratio: 1;
+  position: relative;
+  background: var(--bg-button);
+  border: 1px solid var(--line-soft);
+  border-radius: 12px;
+  padding: 6px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.emoji-fav-card:hover {
+  border-color: var(--accent-color);
+  background: var(--bg-panel);
+}
+
+.emoji-fav-preview {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 8px;
+}
+
+.emoji-fav-preview img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+/* Remove button - Clean */
+.emoji-fav-remove {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 20px;
+  height: 20px;
+  background: var(--bg-body);
+  color: var(--text-primary);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line-strong);
+  cursor: pointer;
+  opacity: 0;
+  transition: all 0.15s ease;
+  z-index: 10;
+}
+
+.emoji-fav-card:hover .emoji-fav-remove,
+.emoji-fav-card[data-delete-visible="true"] .emoji-fav-remove {
+  opacity: 1;
+}
+
+.emoji-fav-remove:hover {
+  background: #ff4757;
+  color: white;
+  border-color: #ff4757;
+}
+
+/* Add Button Card - Ultra Minimalist */
+.emoji-fav-add {
+  border: 1px dashed var(--line-strong);
+  background: transparent;
+  cursor: pointer;
+}
+
+.emoji-fav-add-btn {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+}
+
+.add-icon-wrapper {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.emoji-fav-add:hover {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
+.emoji-fav-add:hover .emoji-fav-add-btn {
+  color: var(--accent-color);
+}
+
+/* Empty State - Background Text */
+.emoji-fav-empty {
+  position: absolute;
+  inset: 60px 20px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.emoji-fav-empty span {
+  font-size: 13px;
+  color: var(--text-muted);
+  opacity: 0.5;
+  font-weight: 500;
+  max-width: 22ch;
+  line-height: 1.5;
+}
+
+.emoji-fav-tip {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+  margin-top: 12px;
+  opacity: 0.7;
+}
+
+/* Drop Overlay - Ultra Minimalist */
+.drop-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(var(--accent-color-rgb), 0.12);
+  backdrop-filter: blur(8px);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--accent-color);
+  border-radius: 14px;
+  margin: 4px;
+  pointer-events: none;
+}
+
+.drop-overlay p {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent-color);
+  background: var(--bg-panel);
+  padding: 8px 16px;
+  border-radius: 10px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--line-soft);
+}
