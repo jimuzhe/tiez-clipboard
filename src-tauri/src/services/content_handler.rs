@@ -155,10 +155,15 @@ async fn launch_default_handler(content: &str) -> Result<(), AppError> {
             .creation_flags(0x08000000);
         cmd.spawn().map_err(|e| AppError::Internal(format!("启动默认浏览器失败: {}", e)))?;
     }
-    
-    #[cfg(not(target_os = "windows"))]
+
+    #[cfg(target_os = "macos")]
     {
         Command::new("open").arg(content).spawn().map_err(|e| AppError::Internal(format!("启动默认浏览器失败: {}", e)))?;
+    }
+
+    #[cfg(all(not(target_os = "windows"), not(target_os = "macos")))]
+    {
+        Command::new("xdg-open").arg(content).spawn().map_err(|e| AppError::Internal(format!("启动默认浏览器失败: {}", e)))?;
     }
     Ok(())
 }
@@ -262,9 +267,14 @@ async fn launch_file_with_app(
                 }
             }
             // Non-Windows fallback
-            #[cfg(not(target_os = "windows"))]
+            #[cfg(target_os = "macos")]
             {
                 Command::new("open").arg(safe_path).spawn().map_err(|e| AppError::Internal(format!("启动 UWP 程序失败 (Fallback): {}", e)))?;
+            }
+
+            #[cfg(all(not(target_os = "windows"), not(target_os = "macos")))]
+            {
+                Command::new("xdg-open").arg(safe_path).spawn().map_err(|e| AppError::Internal(format!("启动 UWP 程序失败 (Fallback): {}", e)))?;
             }
         }
     } else {
@@ -307,9 +317,14 @@ fn launch_with_default_app(
         }
     }
 
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(target_os = "macos")]
     {
         Command::new("open").arg(path_str).spawn().map_err(|e| AppError::Internal(format!("Failed to open file: {}", e)))?;
+    }
+
+    #[cfg(all(not(target_os = "windows"), not(target_os = "macos")))]
+    {
+        Command::new("xdg-open").arg(path_str).spawn().map_err(|e| AppError::Internal(format!("Failed to open file: {}", e)))?;
     }
 
     Ok(())

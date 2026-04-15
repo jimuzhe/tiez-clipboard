@@ -6,10 +6,12 @@ use crate::infrastructure::repository::clipboard_repo::ClipboardRepository;
 use crate::error::{AppResult, AppError};
 use chrono::Utc;
 use base64::{engine::general_purpose, Engine as _};
+#[cfg(target_os = "windows")]
 use regex::Regex;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::sync::atomic::Ordering;
+#[cfg(target_os = "windows")]
 use std::sync::OnceLock;
 use tauri::{Emitter, Manager, State};
 use urlencoding::decode;
@@ -147,24 +149,16 @@ pub async fn copy_to_clipboard(
         handle_window_focus_for_paste(&app_handle).await?;
     }
 
-    // 2. Calculate content hash for deduplication
-    let (content_hash, current_time) = calculate_content_hash(&content);
-    crate::LAST_APP_SET_HASH.store(content_hash, Ordering::SeqCst);
-    crate::LAST_APP_SET_HASH_ALT.store(0, Ordering::SeqCst);
-    crate::LAST_APP_SET_TIMESTAMP.store(current_time, Ordering::SeqCst);
-
-    // 3. Copy to system clipboard
-    copy_content_to_system_clipboard(
+    // 2. Copy to system clipboard
+    write_content_to_system_clipboard(
         &content,
         &effective_content_type,
         html_content.as_deref(),
         paste_with_format.unwrap_or(
             effective_content_type == "rich_text" && html_content.as_deref().is_some()
         ),
-        content_hash,
-        current_time,
     )
-    .await?;
+    ?;
 
     // 4. Perform paste action if requested
     if paste {
@@ -267,23 +261,28 @@ fn calculate_content_hash(content: &str) -> (u64, u64) {
     (content_hash, current_time)
 }
 
-async fn copy_content_to_system_clipboard(
+pub(crate) fn write_content_to_system_clipboard(
     content: &str,
     content_type: &str,
     html_content: Option<&str>,
     paste_with_format: bool,
-    content_hash: u64,
-    current_time: u64,
 ) -> AppResult<()> {
-    match content_type {
+    let (content_hash, current_time) = calculate_content_hash(content);
+
+    let clipboard_hashes = match content_type {
         "image" | "video" | "file" => copy_file_like_content(content, content_type, current_time, content_hash)?,
         ct if ct == "rich_text" || (paste_with_format && html_content.is_some()) => {
-            copy_rich_text_content(content, html_content, paste_with_format, current_time).await?
+            copy_rich_text_content(content, html_content, paste_with_format, current_time)?
         }
         _ => {
-            copy_text_with_retry(content).await?;
+            copy_text_with_retry(content)?;
+            (content_hash, 0)
         }
-    }
+    };
+
+    crate::LAST_APP_SET_HASH.store(clipboard_hashes.0, Ordering::SeqCst);
+    crate::LAST_APP_SET_HASH_ALT.store(clipboard_hashes.1, Ordering::SeqCst);
+    crate::LAST_APP_SET_TIMESTAMP.store(current_time, Ordering::SeqCst);
 
     Ok(())
 }
@@ -293,11 +292,7 @@ fn copy_file_like_content(
     content_type: &str,
     current_time: u64,
     content_hash: u64,
-) -> AppResult<()> {
-    if content_hash == 0 {
-        crate::LAST_APP_SET_HASH.store(1, Ordering::SeqCst);
-    }
-
+) -> AppResult<(u64, u64)> {
     if !content.starts_with("data:") && (content.starts_with('/') || content.contains(":\\")) {
         return copy_local_path_content(content, content_type, current_time);
     }
@@ -308,15 +303,23 @@ fn copy_file_like_content(
 
     let mut clipboard = arboard::Clipboard::new().map_err(AppError::from)?;
     clipboard.set_text(content.to_string()).map_err(AppError::from)?;
-    Ok(())
+    Ok((content_hash.max(1), 0))
 }
 
-fn copy_local_path_content(content: &str, content_type: &str, current_time: u64) -> AppResult<()> {
+fn copy_local_path_content(
+    content: &str,
+    content_type: &str,
+    current_time: u64,
+) -> AppResult<(u64, u64)> {
+    let paths = split_local_paths(content);
+
     if content_type == "image" {
-        let bytes = std::fs::read(content).map_err(AppError::from)?;
-        let (primary_hash, _secondary_hash) = copy_image_bytes_to_clipboard(bytes, current_time)?;
-        crate::LAST_APP_SET_HASH_ALT.store(primary_hash, Ordering::SeqCst);
-        return Ok(());
+        let Some(path) = paths.first() else {
+            return Err(AppError::Validation("图片文件路径为空，无法复制到剪贴板".to_string()));
+        };
+
+        let bytes = std::fs::read(path).map_err(AppError::from)?;
+        return copy_image_bytes_to_clipboard(bytes, current_time);
     }
 
     #[cfg(target_os = "windows")]
@@ -328,13 +331,15 @@ fn copy_local_path_content(content: &str, content_type: &str, current_time: u64)
     }
     #[cfg(not(target_os = "windows"))]
     {
-        crate::infrastructure::linux_api::clipboard::set_clipboard_files(vec![content.to_string()])
+        crate::infrastructure::linux_api::clipboard::set_clipboard_files(paths)
             .map_err(AppError::from)?;
     }
-    Ok(())
+
+    let (path_hash, _) = calculate_content_hash(content);
+    Ok((path_hash.max(1), 0))
 }
 
-fn copy_inline_image_content(content: &str, current_time: u64) -> AppResult<()> {
+fn copy_inline_image_content(content: &str, current_time: u64) -> AppResult<(u64, u64)> {
     let b64_data = if content.starts_with("data:image") {
         content.split(',').nth(1).unwrap_or(content)
     } else {
@@ -345,51 +350,59 @@ fn copy_inline_image_content(content: &str, current_time: u64) -> AppResult<()> 
         .decode(b64_data)
         .map_err(|e| AppError::Internal(format!("Base64 解码失败: {}", e)))?;
 
-    let (primary_hash, _secondary_hash) = copy_image_bytes_to_clipboard(bytes, current_time)?;
-    crate::LAST_APP_SET_HASH_ALT.store(primary_hash, Ordering::SeqCst);
-    Ok(())
+    copy_image_bytes_to_clipboard(bytes, current_time)
 }
 
-async fn copy_rich_text_content(
+fn copy_rich_text_content(
     content: &str,
     html_content: Option<&str>,
     paste_with_format: bool,
-    current_time: u64,
-) -> AppResult<()> {
+    _current_time: u64,
+) -> AppResult<(u64, u64)> {
     let Some(html) = html_content else {
-        return copy_text_with_retry(content).await;
+        copy_text_with_retry(content)?;
+        let (content_hash, _) = calculate_content_hash(content);
+        return Ok((content_hash.max(1), 0));
     };
 
     if !paste_with_format {
-        return copy_text_with_retry(content).await;
+        copy_text_with_retry(content)?;
+        let (content_hash, _) = calculate_content_hash(content);
+        return Ok((content_hash.max(1), 0));
     }
 
-    let (clean_html, fallback_image_data_url) = split_rich_html_and_image_fallback(html);
-    let html_for_paste = if clean_html.trim().is_empty() {
+    let (_clean_html, fallback_image_data_url) = split_rich_html_and_image_fallback(html);
+    #[cfg(target_os = "windows")]
+    let html_for_paste = if _clean_html.trim().is_empty() {
         html
     } else {
-        clean_html.as_str()
+        _clean_html.as_str()
     };
+    #[cfg(target_os = "windows")]
     let cf_html = generate_cf_html(html_for_paste);
 
     if let Some(payload) = fallback_image_data_url {
         if let Some(bytes) = resolve_rich_image_fallback_bytes(&payload) {
-            let (primary_hash, _secondary_hash) = copy_image_bytes_to_clipboard(bytes, current_time)?;
-            crate::LAST_APP_SET_HASH_ALT.store(primary_hash, Ordering::SeqCst);
+            #[cfg(target_os = "windows")]
+            let image_hashes = copy_image_bytes_to_clipboard(bytes, _current_time)?;
+            #[cfg(not(target_os = "windows"))]
+            copy_image_bytes_to_clipboard(bytes, _current_time)?;
+            let (content_hash, _) = calculate_content_hash(content);
             #[cfg(target_os = "windows")]
             {
                 unsafe {
                     crate::infrastructure::windows_api::win_clipboard::append_clipboard_text_and_html(content, &cf_html)
                         .map_err(AppError::from)?;
                 }
+                return Ok((content_hash.max(1), image_hashes.0.max(image_hashes.1)));
             }
             #[cfg(not(target_os = "windows"))]
             {
                 // Linux fallback: copy as plain text
                 let mut clipboard = arboard::Clipboard::new().map_err(AppError::from)?;
                 clipboard.set_text(content.to_string()).map_err(AppError::from)?;
+                return Ok((content_hash.max(1), 0));
             }
-            return Ok(());
         }
     }
 
@@ -404,9 +417,11 @@ async fn copy_rich_text_content(
         let mut clipboard = arboard::Clipboard::new().map_err(AppError::from)?;
         clipboard.set_text(content.to_string()).map_err(AppError::from)?;
     }
-    Ok(())
+    let (content_hash, _) = calculate_content_hash(content);
+    Ok((content_hash.max(1), 0))
 }
 
+#[cfg(target_os = "windows")]
 fn generate_cf_html(html: &str) -> String {
     static BODY_OPEN_RE: OnceLock<Regex> = OnceLock::new();
     static BODY_CLOSE_RE: OnceLock<Regex> = OnceLock::new();
@@ -481,7 +496,7 @@ fn generate_cf_html(html: &str) -> String {
 }
 fn copy_image_bytes_to_clipboard(
     bytes: Vec<u8>,
-    current_time: u64,
+    _current_time: u64,
 ) -> AppResult<(u64, u64)> {
     // Check if it's a GIF by magic number
     let is_gif = bytes.len() > 3 && &bytes[0..3] == b"GIF";
@@ -493,8 +508,6 @@ fn copy_image_bytes_to_clipboard(
         let (w, h) = img.dimensions();
         (w, h, img.into_raw())
     };
-
-    crate::LAST_APP_SET_TIMESTAMP.store(current_time, Ordering::SeqCst);
 
     let (primary_hash, secondary_hash) = if is_gif {
         let mut hasher = DefaultHasher::new();
@@ -518,15 +531,15 @@ fn copy_image_bytes_to_clipboard(
         (byte_hash, 0)
     };
 
-    // Prepare PNG data for better compatibility
-    let mut png_buf: Vec<u8> = Vec::new();
-    let img = image::load_from_memory(&bytes)
-        .map_err(|e| AppError::Internal(format!("加载图像失败: {}", e)))?;
-    img.write_to(&mut std::io::Cursor::new(&mut png_buf), image::ImageFormat::Png)
-        .map_err(|e| AppError::Internal(format!("编码 PNG 失败: {}", e)))?;
-
     #[cfg(target_os = "windows")]
     {
+        // Prepare PNG data for better compatibility.
+        let mut png_buf: Vec<u8> = Vec::new();
+        let img = image::load_from_memory(&bytes)
+            .map_err(|e| AppError::Internal(format!("加载图像失败: {}", e)))?;
+        img.write_to(&mut std::io::Cursor::new(&mut png_buf), image::ImageFormat::Png)
+            .map_err(|e| AppError::Internal(format!("编码 PNG 失败: {}", e)))?;
+
         let gif_temp_path = unsafe {
             crate::infrastructure::windows_api::win_clipboard::set_clipboard_image_with_formats(
                 crate::infrastructure::windows_api::win_clipboard::ImageData {
@@ -548,10 +561,22 @@ fn copy_image_bytes_to_clipboard(
         }
     }
 
+    #[cfg(target_os = "linux")]
+    {
+        crate::infrastructure::linux_api::clipboard::set_clipboard_image_with_formats(
+            crate::infrastructure::linux_api::clipboard::ImageData {
+                width: width as usize,
+                height: height as usize,
+                bytes: raw_bytes,
+            },
+        )
+        .map_err(AppError::from)?;
+    }
+
     Ok((primary_hash, secondary_hash))
 }
 
-async fn copy_text_with_retry(
+fn copy_text_with_retry(
     content: &str,
 ) -> AppResult<()> {
     println!("[DEBUG] Copying text to clipboard: {} chars", content.len());
@@ -570,7 +595,7 @@ async fn copy_text_with_retry(
             Err(_e) if retries > 1 => {
                 retries -= 1;
                 println!("[DEBUG] Clipboard set failed, retrying... ({} left)", retries);
-                tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+                std::thread::sleep(std::time::Duration::from_millis(50));
             }
             Err(e) => return Err(AppError::Internal(format!("Clipboard error: {}", e))),
         }
@@ -591,7 +616,7 @@ async fn perform_paste_action(
     wait_for_focus_settle().await;
     recover_focus_if_stolen(app_handle).await;
     let paste_method = resolve_paste_method(state);
-    send_paste_keystroke(&paste_method, content, Some(content_type));
+    send_paste_keystroke(&paste_method, content, Some(content_type))?;
     hide_window_after_paste(app_handle).await;
     handle_post_paste_actions(app_handle, state, id, delete_after_use, move_to_top)?;
     play_paste_sound_if_enabled(app_handle);
@@ -657,7 +682,11 @@ async fn hide_window_after_paste(app_handle: &tauri::AppHandle) {
     }
 }
 
-pub fn send_paste_keystroke(method: &str, content: Option<&str>, content_type: Option<&str>) {
+pub fn send_paste_keystroke(
+    method: &str,
+    content: Option<&str>,
+    content_type: Option<&str>,
+) -> AppResult<()> {
     println!("[DEBUG] Sending paste keystroke using method: {}", method);
     #[cfg(target_os = "windows")]
     unsafe {
@@ -681,10 +710,9 @@ pub fn send_paste_keystroke(method: &str, content: Option<&str>, content_type: O
 
     #[cfg(target_os = "linux")]
     {
-        std::process::Command::new("xdotool")
-            .args(["key", "--clearmodifiers", "ctrl+v"])
-            .spawn()
-            .ok();
+        let _ = content;
+        crate::infrastructure::linux_api::paste::simulate_paste_with_method(method, content_type)
+            .map_err(AppError::from)?;
     }
 
     #[cfg(not(any(target_os = "windows", target_os = "linux")))]
@@ -694,6 +722,17 @@ pub fn send_paste_keystroke(method: &str, content: Option<&str>, content_type: O
             .spawn()
             .ok();
     }
+
+    Ok(())
+}
+
+fn split_local_paths(content: &str) -> Vec<String> {
+    content
+        .lines()
+        .map(|line| line.trim_end_matches('\r'))
+        .filter(|line| !line.is_empty())
+        .map(|line| line.to_string())
+        .collect()
 }
 
 #[cfg(target_os = "windows")]
