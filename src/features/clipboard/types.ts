@@ -2,6 +2,11 @@ import type { MouseEvent, ReactNode } from "react";
 import type { DragControls } from "framer-motion";
 import type { ClipboardEntry, Locale } from "../../shared/types";
 
+export interface QuickPasteHint {
+  slot: string;
+  combo: string;
+}
+
 export interface ClipboardItemProps {
   item: ClipboardEntry;
   isSelected: boolean;
@@ -13,12 +18,16 @@ export interface ClipboardItemProps {
   theme: string;
   language: Locale;
   t: (key: string) => string;
+  quickPasteHint?: QuickPasteHint;
   showSourceAppIcon?: boolean;
   isAIProcessing?: boolean;
   aiEnabled?: boolean;
   tagColors?: Record<string, string>;
   aiOptionsOpen?: boolean;
   richTextSnapshotPreview?: boolean;
+  sensitiveMaskPrefixVisible?: number;
+  sensitiveMaskSuffixVisible?: number;
+  sensitiveMaskEmailDomain?: boolean;
 
   onSelect: () => void;
   onCopy: (withFormat?: boolean) => void;

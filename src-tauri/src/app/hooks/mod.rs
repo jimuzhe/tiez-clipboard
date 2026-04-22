@@ -1,21 +1,22 @@
-use tauri::{AppHandle, Emitter, Manager};
 use std::sync::atomic::Ordering;
+use tauri::{AppHandle, Emitter, Manager};
 #[cfg(target_os = "windows")]
-use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM, RECT};
-#[cfg(target_os = "windows")]
-use windows::Win32::UI::WindowsAndMessaging::{
-    CallNextHookEx, KBDLLHOOKSTRUCT, MSLLHOOKSTRUCT,
-    WM_KEYDOWN, WM_SYSKEYDOWN, WM_KEYUP, WM_SYSKEYUP,
-    WM_LBUTTONDOWN, WM_RBUTTONDOWN, WM_MBUTTONDOWN
-};
+use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, RECT, WPARAM};
 #[cfg(target_os = "windows")]
 use windows::Win32::UI::Input::KeyboardAndMouse::{
-    GetAsyncKeyState, VK_CONTROL, VK_SHIFT, VK_MENU, VK_LWIN, VK_RWIN,
-    RegisterHotKey, UnregisterHotKey, MOD_WIN, MOD_NOREPEAT
+    GetAsyncKeyState, RegisterHotKey, UnregisterHotKey, MOD_NOREPEAT, MOD_WIN, VK_CONTROL, VK_LWIN,
+    VK_MENU, VK_RWIN, VK_SHIFT,
+};
+#[cfg(target_os = "windows")]
+use windows::Win32::UI::WindowsAndMessaging::{
+    CallNextHookEx, KBDLLHOOKSTRUCT, MSLLHOOKSTRUCT, WM_KEYDOWN, WM_KEYUP, WM_LBUTTONDOWN,
+    WM_MBUTTONDOWN, WM_RBUTTONDOWN, WM_SYSKEYDOWN, WM_SYSKEYUP,
 };
 
 use crate::global_state::*;
+#[cfg(target_os = "windows")]
 use crate::app_state::SettingsState;
+#[cfg(target_os = "windows")]
 use crate::app::window_manager::{toggle_window, hide_window_cmd};
 #[cfg(target_os = "windows")]
 use crate::infrastructure::windows_ext::WindowExt;
@@ -23,12 +24,62 @@ use crate::infrastructure::windows_ext::WindowExt;
 // Store registered hotkey IDs for cleanup
 static BLOCKED_HOTKEY_IDS: std::sync::Mutex<Vec<i32>> = std::sync::Mutex::new(Vec::new());
 
+#[cfg(target_os = "windows")]
+fn quick_paste_index_from_vk(vk: u32) -> Option<usize> {
+    match vk {
+        0x31 | 0x61 => Some(0),
+        0x32 | 0x62 => Some(1),
+        0x33 | 0x63 => Some(2),
+        0x34 | 0x64 => Some(3),
+        0x35 | 0x65 => Some(4),
+        0x36 | 0x66 => Some(5),
+        0x37 | 0x67 => Some(6),
+        0x38 | 0x68 => Some(7),
+        0x39 | 0x69 => Some(8),
+        0x30 | 0x60 => Some(9),
+        _ => None,
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn quick_paste_modifier_from_settings() -> String {
+    if let Some(handle) = GLOBAL_APP_HANDLE.get() {
+        let settings = handle.state::<SettingsState>();
+        return settings
+            .quick_paste_modifier
+            .lock()
+            .unwrap()
+            .clone()
+            .to_ascii_lowercase();
+    }
+
+    "disabled".to_string()
+}
+
+#[cfg(target_os = "windows")]
+fn quick_paste_modifier_active(
+    modifier: &str,
+    ctrl_down: bool,
+    alt_down: bool,
+    shift_down: bool,
+    win_down: bool,
+) -> bool {
+    match modifier {
+        "disabled" => false,
+        "ctrl" => ctrl_down && !alt_down && !shift_down && !win_down,
+        "alt" => alt_down && !ctrl_down && !shift_down && !win_down,
+        "shift" => shift_down && !ctrl_down && !alt_down && !win_down,
+        "win" => win_down && !ctrl_down && !alt_down && !shift_down,
+        _ => ctrl_down && !alt_down && !shift_down && !win_down,
+    }
+}
+
 #[tauri::command]
 pub fn set_recording_mode(app_handle: AppHandle, enabled: bool) -> Result<(), String> {
     IS_RECORDING.store(enabled, Ordering::SeqCst);
-    
+
     let mut ids = BLOCKED_HOTKEY_IDS.lock().unwrap();
-    
+
     #[cfg(target_os = "windows")]
     if enabled {
         // Register ALL Win+ combinations to block system from handling them
@@ -36,32 +87,38 @@ pub fn set_recording_mode(app_handle: AppHandle, enabled: bool) -> Result<(), St
             if let Ok(hwnd_raw) = window.hwnd() {
                 let hwnd = HWND(hwnd_raw.0);
                 let mut id_counter = 0x1000i32;
-                
+
                 // Block Win + A-Z
                 for vk in 0x41u32..=0x5Au32 {
                     unsafe {
-                        if RegisterHotKey(Some(hwnd), id_counter, MOD_WIN | MOD_NOREPEAT, vk).is_ok() {
+                        if RegisterHotKey(Some(hwnd), id_counter, MOD_WIN | MOD_NOREPEAT, vk)
+                            .is_ok()
+                        {
                             ids.push(id_counter);
                         }
                     }
                     id_counter += 1;
                 }
-                
+
                 // Block Win + 0-9
                 for vk in 0x30u32..=0x39u32 {
                     unsafe {
-                        if RegisterHotKey(Some(hwnd), id_counter, MOD_WIN | MOD_NOREPEAT, vk).is_ok() {
+                        if RegisterHotKey(Some(hwnd), id_counter, MOD_WIN | MOD_NOREPEAT, vk)
+                            .is_ok()
+                        {
                             ids.push(id_counter);
                         }
                     }
                     id_counter += 1;
                 }
-                
+
                 // Block special keys
                 let special_keys = [0x20u32, 0x0D, 0x09, 0x1B, 0x2C]; // Space, Enter, Tab, Esc, PrintScreen
                 for vk in special_keys {
                     unsafe {
-                        if RegisterHotKey(Some(hwnd), id_counter, MOD_WIN | MOD_NOREPEAT, vk).is_ok() {
+                        if RegisterHotKey(Some(hwnd), id_counter, MOD_WIN | MOD_NOREPEAT, vk)
+                            .is_ok()
+                        {
                             ids.push(id_counter);
                         }
                     }
@@ -84,13 +141,17 @@ pub fn set_recording_mode(app_handle: AppHandle, enabled: bool) -> Result<(), St
             }
         }
     }
-    
+
     Ok(())
 }
 
 // Low-level Keyboard Hook Procedure
 #[cfg(target_os = "windows")]
-pub unsafe extern "system" fn keyboard_proc(n_code: i32, w_param: WPARAM, l_param: LPARAM) -> LRESULT {
+pub unsafe extern "system" fn keyboard_proc(
+    n_code: i32,
+    w_param: WPARAM,
+    l_param: LPARAM,
+) -> LRESULT {
     let msg = w_param.0 as u32;
     let is_down = msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN;
     let is_up = msg == WM_KEYUP || msg == WM_SYSKEYUP;
@@ -104,8 +165,8 @@ pub unsafe extern "system" fn keyboard_proc(n_code: i32, w_param: WPARAM, l_para
             let ctrl_down = GetAsyncKeyState(VK_CONTROL.0 as i32) as u16 & 0x8000 != 0;
             let shift_down = GetAsyncKeyState(VK_SHIFT.0 as i32) as u16 & 0x8000 != 0;
             let alt_down = GetAsyncKeyState(VK_MENU.0 as i32) as u16 & 0x8000 != 0;
-            let win_down = (GetAsyncKeyState(VK_LWIN.0 as i32) as u16 & 0x8000 != 0) || 
-                          (GetAsyncKeyState(VK_RWIN.0 as i32) as u16 & 0x8000 != 0);
+            let win_down = (GetAsyncKeyState(VK_LWIN.0 as i32) as u16 & 0x8000 != 0)
+                || (GetAsyncKeyState(VK_RWIN.0 as i32) as u16 & 0x8000 != 0);
 
             // ESC to cancel
             if vk == 0x1B && is_down {
@@ -118,7 +179,7 @@ pub unsafe extern "system" fn keyboard_proc(n_code: i32, w_param: WPARAM, l_para
 
             let is_win = vk == 0x5B || vk == 0x5C;
             let is_other_modifier = (vk >= 0x10 && vk <= 0x12) || (vk >= 0xA0 && vk <= 0xA5);
-            
+
             if is_other_modifier {
                 return CallNextHookEx(None, n_code, w_param, l_param);
             }
@@ -152,19 +213,21 @@ pub unsafe extern "system" fn keyboard_proc(n_code: i32, w_param: WPARAM, l_para
                         0xDD => "]".to_string(),
                         0xDE => "'".to_string(),
                         k if k >= 0x70 && k <= 0x87 => format!("F{}", k - 0x6F),
-                        k if (k >= 0x30 && k <= 0x39) || (k >= 0x41 && k <= 0x5A) => 
-                            format!("{}", char::from_u32(k).unwrap()),
-                        _ => format!("Key_{}", vk)
+                        k if (k >= 0x30 && k <= 0x39) || (k >= 0x41 && k <= 0x5A) => {
+                            format!("{}", char::from_u32(k).unwrap())
+                        }
+                        _ => format!("Key_{}", vk),
                     };
 
-                    let final_hotkey = format!("{}{}{}{}{}", 
+                    let final_hotkey = format!(
+                        "{}{}{}{}{}",
                         if ctrl_down { "Ctrl+" } else { "" },
                         if shift_down { "Shift+" } else { "" },
                         if alt_down { "Alt+" } else { "" },
                         if win_down { "Win+" } else { "" },
                         key_name
                     );
-                    
+
                     println!("Recorded Hotkey: {}", final_hotkey);
                     let _ = handle.emit("hotkey-recorded", final_hotkey);
                     IS_RECORDING.store(false, Ordering::SeqCst);
@@ -175,88 +238,155 @@ pub unsafe extern "system" fn keyboard_proc(n_code: i32, w_param: WPARAM, l_para
 
         // 3. Global Paste Sound Trigger (Ctrl+V)
         {
-             let ctrl_down = (GetAsyncKeyState(VK_CONTROL.0 as i32) as u16 & 0x8000) != 0;
-             let alt_down = (GetAsyncKeyState(VK_MENU.0 as i32) as u16 & 0x8000) != 0;
-             let shift_down = (GetAsyncKeyState(VK_SHIFT.0 as i32) as u16 & 0x8000) != 0;
-             let win_down = (GetAsyncKeyState(VK_LWIN.0 as i32) as u16 & 0x8000 != 0) || (GetAsyncKeyState(VK_RWIN.0 as i32) as u16 & 0x8000 != 0);
+            let ctrl_down = (GetAsyncKeyState(VK_CONTROL.0 as i32) as u16 & 0x8000) != 0;
+            let alt_down = (GetAsyncKeyState(VK_MENU.0 as i32) as u16 & 0x8000) != 0;
+            let shift_down = (GetAsyncKeyState(VK_SHIFT.0 as i32) as u16 & 0x8000) != 0;
+            let win_down = (GetAsyncKeyState(VK_LWIN.0 as i32) as u16 & 0x8000 != 0)
+                || (GetAsyncKeyState(VK_RWIN.0 as i32) as u16 & 0x8000 != 0);
 
-             if vk == 0x56 && ctrl_down && !alt_down && !shift_down && !win_down {
-                  if is_down {
-                       if let Some(handle) = GLOBAL_APP_HANDLE.get() {
+            if vk == 0x56 && ctrl_down && !alt_down && !shift_down && !win_down {
+                if is_down {
+                    if let Some(handle) = GLOBAL_APP_HANDLE.get() {
+                        let settings = handle.state::<SettingsState>();
+                        if settings.sound_enabled.load(Ordering::Relaxed) {
+                            std::thread::spawn(move || {
+                                let _ = handle.emit("play-sound", "paste");
+                            });
+                        }
+                    }
+                }
+            }
+        }
 
-                          let settings = handle.state::<SettingsState>();
-                          if settings.sound_enabled.load(Ordering::Relaxed) {
-                              std::thread::spawn(move || {
-                                  let _ = handle.emit("play-sound", "paste");
-                              });
-                          }
-                      }
-                  }
-             }
+        // 4. Quick Paste by Modifier+Number
+        {
+            let ctrl_down = (GetAsyncKeyState(VK_CONTROL.0 as i32) as u16 & 0x8000) != 0;
+            let alt_down = (GetAsyncKeyState(VK_MENU.0 as i32) as u16 & 0x8000) != 0;
+            let shift_down = (GetAsyncKeyState(VK_SHIFT.0 as i32) as u16 & 0x8000) != 0;
+            let win_down = (GetAsyncKeyState(VK_LWIN.0 as i32) as u16 & 0x8000 != 0)
+                || (GetAsyncKeyState(VK_RWIN.0 as i32) as u16 & 0x8000 != 0);
+            let quick_paste_modifier = quick_paste_modifier_from_settings();
+
+            if is_up
+                && matches!(
+                    vk,
+                    0x11 | 0xA2 | 0xA3 | 0x12 | 0xA4 | 0xA5 | 0x10 | 0xA0 | 0xA1 | 0x5B | 0x5C
+                )
+            {
+                QUICK_PASTE_DIGIT_MASK.store(0, Ordering::SeqCst);
+            }
+
+            if let Some(index) = quick_paste_index_from_vk(vk) {
+                let bit = 1u32 << index;
+
+                if is_up {
+                    let pressed_mask = QUICK_PASTE_DIGIT_MASK.fetch_and(!bit, Ordering::SeqCst);
+                    if pressed_mask & bit != 0 {
+                        return LRESULT(1);
+                    }
+                }
+
+                if is_down
+                    && quick_paste_modifier_active(
+                        &quick_paste_modifier,
+                        ctrl_down,
+                        alt_down,
+                        shift_down,
+                        win_down,
+                    )
+                {
+                    let pressed_mask = QUICK_PASTE_DIGIT_MASK.fetch_or(bit, Ordering::SeqCst);
+                    if pressed_mask & bit != 0 {
+                        return LRESULT(1);
+                    }
+
+                    if let Some(handle) = GLOBAL_APP_HANDLE.get() {
+                        let handle_clone = handle.clone();
+                        tauri::async_runtime::spawn(async move {
+                            if let Err(err) =
+                                crate::services::clipboard_ops::paste_history_item_by_index(
+                                    handle_clone,
+                                    index,
+                                )
+                                .await
+                            {
+                                eprintln!(
+                                    "[ERROR] Quick paste by {}+{} failed: {}",
+                                    quick_paste_modifier,
+                                    index + 1,
+                                    err
+                                );
+                            }
+                        });
+                    }
+
+                    return LRESULT(1);
+                }
+            }
         }
 
         // 5. Global Navigation Keys (Up/Down, Enter, Esc)
         if NAVIGATION_ENABLED.load(Ordering::SeqCst) && !IS_RECORDING.load(Ordering::SeqCst) {
-             if IS_HIDDEN.load(Ordering::Relaxed) {
-                 return CallNextHookEx(None, n_code, w_param, l_param);
-             }
-             let allow_navigation = if let Some(handle) = GLOBAL_APP_HANDLE.get() {
-                 let settings = handle.state::<SettingsState>();
-                 settings.arrow_key_selection.load(Ordering::Relaxed)
-             } else {
-                 true
-             };
+            if IS_HIDDEN.load(Ordering::Relaxed) {
+                return CallNextHookEx(None, n_code, w_param, l_param);
+            }
+            let allow_navigation = if let Some(handle) = GLOBAL_APP_HANDLE.get() {
+                let settings = handle.state::<SettingsState>();
+                settings.arrow_key_selection.load(Ordering::Relaxed)
+            } else {
+                true
+            };
 
-             if !allow_navigation {
-                 return CallNextHookEx(None, n_code, w_param, l_param);
-             }
+            if !allow_navigation {
+                return CallNextHookEx(None, n_code, w_param, l_param);
+            }
 
-             let is_navigation_key = vk == 0x26 || vk == 0x28 || vk == 0x0D || vk == 0x1B;
-             let is_enter = vk == 0x0D;
-             let _is_escape = vk == 0x1B;
-             
-              if is_navigation_key && is_down {
-                   // Only Enter requires navigation mode to be active
-                   // Escape can always close the window when it's visible
-                   if is_enter && !NAVIGATION_MODE_ACTIVE.load(Ordering::Relaxed) {
-                       return CallNextHookEx(None, n_code, w_param, l_param);
-                   }
-                   let ctrl_down = (GetAsyncKeyState(VK_CONTROL.0 as i32) as u16 & 0x8000) != 0;
-                   let alt_down = (GetAsyncKeyState(VK_MENU.0 as i32) as u16 & 0x8000) != 0;
-                   let win_down = (GetAsyncKeyState(VK_LWIN.0 as i32) as u16 & 0x8000 != 0) || (GetAsyncKeyState(VK_RWIN.0 as i32) as u16 & 0x8000 != 0);
+            let is_navigation_key = vk == 0x26 || vk == 0x28 || vk == 0x0D || vk == 0x1B;
+            let is_enter = vk == 0x0D;
+            let _is_escape = vk == 0x1B;
 
-                   if !ctrl_down && !alt_down && !win_down {
-                       if let Some(handle) = GLOBAL_APP_HANDLE.get() {
-                           let action = match vk {
-                               0x26 => "up",
-                               0x28 => "down",
-                               0x0D => "enter",
-                               0x1B => "escape",
-                               _ => "",
-                           };
-                           
-                           if !action.is_empty() {
-                               if vk == 0x26 || vk == 0x28 {
-                                   NAVIGATION_MODE_ACTIVE.store(true, Ordering::Relaxed);
-                               } else if vk == 0x1B {
-                                   NAVIGATION_MODE_ACTIVE.store(false, Ordering::Relaxed);
-                               }
-                               if action == "escape" {
-                                   let handle_clone = handle.clone();
-                                   tauri::async_runtime::spawn(async move {
-                                       let _ = handle_clone.emit("navigation-action", "escape");
-                                       toggle_window(&handle_clone);
-                                  });
-                              } else {
-                                  let _ = handle.emit("navigation-action", action);
-                              }
-                              return LRESULT(1);
-                          }
-                      }
-                  }
-             }
+            if is_navigation_key && is_down {
+                // Only Enter requires navigation mode to be active
+                // Escape can always close the window when it's visible
+                if is_enter && !NAVIGATION_MODE_ACTIVE.load(Ordering::Relaxed) {
+                    return CallNextHookEx(None, n_code, w_param, l_param);
+                }
+                let ctrl_down = (GetAsyncKeyState(VK_CONTROL.0 as i32) as u16 & 0x8000) != 0;
+                let alt_down = (GetAsyncKeyState(VK_MENU.0 as i32) as u16 & 0x8000) != 0;
+                let win_down = (GetAsyncKeyState(VK_LWIN.0 as i32) as u16 & 0x8000 != 0)
+                    || (GetAsyncKeyState(VK_RWIN.0 as i32) as u16 & 0x8000 != 0);
+
+                if !ctrl_down && !alt_down && !win_down {
+                    if let Some(handle) = GLOBAL_APP_HANDLE.get() {
+                        let action = match vk {
+                            0x26 => "up",
+                            0x28 => "down",
+                            0x0D => "enter",
+                            0x1B => "escape",
+                            _ => "",
+                        };
+
+                        if !action.is_empty() {
+                            if vk == 0x26 || vk == 0x28 {
+                                NAVIGATION_MODE_ACTIVE.store(true, Ordering::Relaxed);
+                            } else if vk == 0x1B {
+                                NAVIGATION_MODE_ACTIVE.store(false, Ordering::Relaxed);
+                            }
+                            if action == "escape" {
+                                let handle_clone = handle.clone();
+                                tauri::async_runtime::spawn(async move {
+                                    let _ = handle_clone.emit("navigation-action", "escape");
+                                    toggle_window(&handle_clone);
+                                });
+                            } else {
+                                let _ = handle.emit("navigation-action", action);
+                            }
+                            return LRESULT(1);
+                        }
+                    }
+                }
+            }
         }
-
     }
     CallNextHookEx(None, n_code, w_param, l_param)
 }
@@ -266,14 +396,18 @@ pub unsafe extern "system" fn keyboard_proc(n_code: i32, w_param: WPARAM, l_para
 pub unsafe extern "system" fn mouse_proc(n_code: i32, w_param: WPARAM, l_param: LPARAM) -> LRESULT {
     if n_code >= 0 {
         let msg = w_param.0 as u32;
-        if msg == WM_MBUTTONDOWN || msg == WM_LBUTTONDOWN || msg == WM_RBUTTONDOWN || 
-           msg == windows::Win32::UI::WindowsAndMessaging::WM_LBUTTONUP || 
-           msg == windows::Win32::UI::WindowsAndMessaging::WM_RBUTTONUP {
-            
+        if msg == WM_MBUTTONDOWN
+            || msg == WM_LBUTTONDOWN
+            || msg == WM_RBUTTONDOWN
+            || msg == windows::Win32::UI::WindowsAndMessaging::WM_LBUTTONUP
+            || msg == windows::Win32::UI::WindowsAndMessaging::WM_RBUTTONUP
+        {
             // Track mouse state globally
             if msg == WM_LBUTTONDOWN || msg == WM_RBUTTONDOWN {
                 IS_MOUSE_BUTTON_DOWN.store(true, Ordering::SeqCst);
-            } else if msg == windows::Win32::UI::WindowsAndMessaging::WM_LBUTTONUP || msg == windows::Win32::UI::WindowsAndMessaging::WM_RBUTTONUP {
+            } else if msg == windows::Win32::UI::WindowsAndMessaging::WM_LBUTTONUP
+                || msg == windows::Win32::UI::WindowsAndMessaging::WM_RBUTTONUP
+            {
                 IS_MOUSE_BUTTON_DOWN.store(false, Ordering::SeqCst);
                 return CallNextHookEx(None, n_code, w_param, l_param); // Return early for up events
             }
@@ -294,37 +428,41 @@ pub unsafe extern "system" fn mouse_proc(n_code: i32, w_param: WPARAM, l_param: 
                         if !IGNORE_BLUR.load(Ordering::Relaxed) {
                             let mouse_struct = *(l_param.0 as *const MSLLHOOKSTRUCT);
                             let point = mouse_struct.pt;
-                            
-                                    if let Ok(hwnd_raw) = window.hwnd() {
-                                        let main_hwnd = HWND(hwnd_raw.0);
-                                        if !WindowExt::is_window_visible(main_hwnd) {
-                                            return CallNextHookEx(None, n_code, w_param, l_param);
-                                        }
-                                        let mut rect = RECT::default();
-                                        let _ = windows::Win32::UI::WindowsAndMessaging::GetWindowRect(main_hwnd, &mut rect);
 
-                                        // Boundary check: Is point outside the rect? (with 5px margin of safety)
-                                        let margin = 5;
-                                        let is_outside = point.x < rect.left - margin || point.x > rect.right + margin ||
-                                            point.y < rect.top - margin || point.y > rect.bottom + margin;
+                            if let Ok(hwnd_raw) = window.hwnd() {
+                                let main_hwnd = HWND(hwnd_raw.0);
+                                if !WindowExt::is_window_visible(main_hwnd) {
+                                    return CallNextHookEx(None, n_code, w_param, l_param);
+                                }
+                                let mut rect = RECT::default();
+                                let _ = windows::Win32::UI::WindowsAndMessaging::GetWindowRect(
+                                    main_hwnd, &mut rect,
+                                );
 
-                                        if is_outside {
-                                            // Status check before hiding
-                                            if !WindowExt::is_window_visible(main_hwnd) {
-                                                return CallNextHookEx(None, n_code, w_param, l_param);
-                                            }
+                                // Boundary check: Is point outside the rect? (with 5px margin of safety)
+                                let margin = 5;
+                                let is_outside = point.x < rect.left - margin
+                                    || point.x > rect.right + margin
+                                    || point.y < rect.top - margin
+                                    || point.y > rect.bottom + margin;
 
-                                            if WINDOW_PINNED.load(Ordering::Relaxed) {
-                                                // Pinned: Just reset focusable state to ensure we don't retain focus
-                                                let _ = window.set_focusable(false);
-                                            } else {
-                                                let _ = hide_window_cmd(handle.clone());
-                                            }
-                                        }
+                                if is_outside {
+                                    // Status check before hiding
+                                    if !WindowExt::is_window_visible(main_hwnd) {
+                                        return CallNextHookEx(None, n_code, w_param, l_param);
+                                    }
+
+                                    if WINDOW_PINNED.load(Ordering::Relaxed) {
+                                        // Pinned: Just reset focusable state to ensure we don't retain focus
+                                        let _ = window.set_focusable(false);
+                                    } else {
+                                        let _ = hide_window_cmd(handle.clone());
                                     }
                                 }
                             }
                         }
+                    }
+                }
             }
 
             // Handle configured middle mouse hotkey
@@ -397,9 +535,15 @@ pub fn parse_hotkey_for_hook(hotkey: &str) -> Option<HookHotkey> {
             }
         }
     }
-    
+
     if vk != 0 {
-        Some(HookHotkey { vk, ctrl, shift, alt, win })
+        Some(HookHotkey {
+            vk,
+            ctrl,
+            shift,
+            alt,
+            win,
+        })
     } else {
         None
     }

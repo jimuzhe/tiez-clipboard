@@ -93,11 +93,11 @@ export const useClipboardActions = ({
     async (e: ReactMouseEvent, id: number, currentPinned: boolean) => {
       e.stopPropagation();
       try {
-        await invoke("toggle_clipboard_pin", { id, isPinned: !currentPinned });
+        const newId = await invoke<number>("toggle_clipboard_pin", { id, isPinned: !currentPinned });
         setHistory((prev) =>
           prev
             .map((item) =>
-              item.id === id ? { ...item, is_pinned: !currentPinned } : item
+              item.id === id ? { ...item, id: newId, is_pinned: !currentPinned } : item
             )
             .sort((a, b) => {
               if (a.is_pinned === b.is_pinned) return b.timestamp - a.timestamp;

@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { DEFAULT_THEME } from "../../../shared/config/themes";
 import type { ClipboardEntry, Locale } from "../../../shared/types";
-import type { AppState, DefaultAppsMap, InstalledAppOption } from "../types";
-import type { AiProfile } from "../../settings/types";
+import type { AppState, DefaultAppsMap, InstalledAppOption, QuickPasteModifier } from "../types";
+import type { AiProfile, AppCleanupPolicy } from "../../settings/types";
 
 const DEFAULT_AI_KEY = import.meta.env.VITE_AI_DEFAULT_API_KEY ?? "";
 
 export const useAppState = (): AppState => {
   const [showSettings, setShowSettings] = useState(false);
+  const [settingsSubpage, setSettingsSubpage] = useState<"home" | "advanced">("home");
   const [showTagManager, setShowTagManager] = useState(false);
   const [tagManagerEnabled, setTagManagerEnabled] = useState(true);
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({
@@ -18,6 +19,7 @@ export const useAppState = (): AppState => {
     cloud_sync: true,
     ai: true,
     file_transfer: true,
+    advanced: true,
     default_apps: true,
     data: true
   });
@@ -47,6 +49,7 @@ export const useAppState = (): AppState => {
   const [sequentialHotkey, setSequentialHotkey] = useState<string>("Alt+V");
   const [richPasteHotkey, setRichPasteHotkey] = useState<string>("Ctrl+Shift+Z");
   const [searchHotkey, setSearchHotkey] = useState<string>("Alt+F");
+  const [quickPasteModifier, setQuickPasteModifier] = useState<QuickPasteModifier>("disabled");
   const [sequentialMode, setSequentialModeState] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isRecordingSequential, setIsRecordingSequential] = useState(false);
@@ -62,6 +65,11 @@ export const useAppState = (): AppState => {
     "secret"
   ]);
   const [privacyProtectionCustomRules, setPrivacyProtectionCustomRules] = useState<string>("");
+  const [sensitiveMaskPrefixVisible, setSensitiveMaskPrefixVisible] = useState(3);
+  const [sensitiveMaskSuffixVisible, setSensitiveMaskSuffixVisible] = useState(3);
+  const [sensitiveMaskEmailDomain, setSensitiveMaskEmailDomain] = useState(false);
+  const [cleanupRules, setCleanupRules] = useState<string>("");
+  const [appCleanupPolicies, setAppCleanupPolicies] = useState<AppCleanupPolicy[]>([]);
   const [captureFiles, setCaptureFiles] = useState(true);
   const [captureRichText, setCaptureRichText] = useState(false);
   const [richTextSnapshotPreview, setRichTextSnapshotPreview] = useState(false);
@@ -164,6 +172,8 @@ export const useAppState = (): AppState => {
   return {
     showSettings,
     setShowSettings,
+    settingsSubpage,
+    setSettingsSubpage,
     showTagManager,
     setShowTagManager,
     tagManagerEnabled,
@@ -222,6 +232,8 @@ export const useAppState = (): AppState => {
     setRichPasteHotkey,
     searchHotkey,
     setSearchHotkey,
+    quickPasteModifier,
+    setQuickPasteModifier,
     sequentialMode,
     setSequentialModeState,
     isRecording,
@@ -242,6 +254,16 @@ export const useAppState = (): AppState => {
     setPrivacyProtectionKinds,
     privacyProtectionCustomRules,
     setPrivacyProtectionCustomRules,
+    sensitiveMaskPrefixVisible,
+    setSensitiveMaskPrefixVisible,
+    sensitiveMaskSuffixVisible,
+    setSensitiveMaskSuffixVisible,
+    sensitiveMaskEmailDomain,
+    setSensitiveMaskEmailDomain,
+    cleanupRules,
+    setCleanupRules,
+    appCleanupPolicies,
+    setAppCleanupPolicies,
     captureFiles,
     setCaptureFiles,
     captureRichText,

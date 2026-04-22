@@ -1,16 +1,18 @@
+use crate::global_state::LAST_ACTIVE_HWND;
 use std::path::Path;
 use std::sync::atomic::Ordering;
 use windows::Win32::Foundation::CloseHandle;
 use windows::Win32::Foundation::HWND;
 use windows::Win32::System::DataExchange::GetClipboardOwner;
 use windows::Win32::System::ProcessStatus::GetModuleFileNameExW;
-use windows::Win32::System::Threading::{GetCurrentProcessId, OpenProcess, PROCESS_QUERY_INFORMATION, PROCESS_VM_READ};
+use windows::Win32::System::Threading::{
+    GetCurrentProcessId, OpenProcess, PROCESS_QUERY_INFORMATION, PROCESS_VM_READ,
+};
 use windows::Win32::UI::Accessibility::{SetWinEventHook, HWINEVENTHOOK};
 use windows::Win32::UI::WindowsAndMessaging::{
-    GetClassNameW, GetForegroundWindow, GetWindowThreadProcessId,
-    IsWindowVisible, EVENT_SYSTEM_FOREGROUND, WINEVENT_OUTOFCONTEXT,
+    GetClassNameW, GetForegroundWindow, GetWindowThreadProcessId, IsWindowVisible,
+    EVENT_SYSTEM_FOREGROUND, WINEVENT_OUTOFCONTEXT,
 };
-use crate::global_state::LAST_ACTIVE_HWND;
 
 #[derive(Debug, Clone, Default)]
 pub struct ActiveAppInfo {
@@ -132,7 +134,9 @@ pub fn start_window_tracking(_app_handle: tauri::AppHandle) {
 
             // Keep the thread alive and processing messages
             let mut msg = windows::Win32::UI::WindowsAndMessaging::MSG::default();
-            while windows::Win32::UI::WindowsAndMessaging::GetMessageW(&mut msg, None, 0, 0).as_bool() {
+            while windows::Win32::UI::WindowsAndMessaging::GetMessageW(&mut msg, None, 0, 0)
+                .as_bool()
+            {
                 let _ = windows::Win32::UI::WindowsAndMessaging::TranslateMessage(&msg);
                 windows::Win32::UI::WindowsAndMessaging::DispatchMessageW(&msg);
             }
@@ -187,10 +191,9 @@ fn is_system_focus_window(hwnd: HWND) -> bool {
             | "ImmersiveLauncher"
             | "ShellExperienceHost"
             | "TaskSwitcherWnd"
-            | "MultitaskingViewFrame"
-            // Note: Windows.UI.Core.CoreWindow, SearchUI, Cortana, XamlExplorerHostIslandWindow,
-            // and ApplicationFrameWindow are intentionally NOT filtered because users may need
-            // to paste in Windows search box and other UWP app input fields
+            | "MultitaskingViewFrame" // Note: Windows.UI.Core.CoreWindow, SearchUI, Cortana, XamlExplorerHostIslandWindow,
+                                      // and ApplicationFrameWindow are intentionally NOT filtered because users may need
+                                      // to paste in Windows search box and other UWP app input fields
     )
 }
 

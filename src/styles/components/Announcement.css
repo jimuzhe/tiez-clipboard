@@ -1,140 +1,13 @@
 /* =========================================
-   BASE STYLES (Retro/Default Theme)
-   3D Brutalist / Windows 95 Style
+   ANNOUNCEMENT SYSTEM - THEMED & REFINED
+   Aligns with Retro, Mica, Acrylic, Sticky Note, and Paper themes.
    ========================================= */
 
-/* Overlay */
-.announcement-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.2);
-    background-image: radial-gradient(var(--text-secondary) 10%, transparent 10%);
-    background-size: 4px 4px;
-    backdrop-filter: none;
-    z-index: 9999;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-/* Modal Window */
-.announcement-modal {
-    background: var(--bg-window, #e8e8e8);
-    border: 3px solid var(--border-dark, #373737);
-    border-radius: 4px;
-    width: 85%;
-    max-width: 380px;
-    box-shadow: 8px 8px 0 0 var(--shadow-color, #373737);
-    overflow: hidden;
-    color: var(--text-primary, #373737);
-    position: relative;
-    display: flex;
-    flex-direction: column;
-}
-
-.announcement-header {
-    padding: 8px 12px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    border-bottom: 3px solid var(--border-dark, #373737);
-    background: var(--bg-toolbar, #dcdcdc);
-    min-height: 40px;
-}
-
-.announcement-icon-wrapper {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 28px;
-    height: 28px;
-    border: 2px solid var(--border-dark, #373737);
-    background: #fff;
-    border-radius: 2px;
-    flex-shrink: 0;
-    color: #000;
-}
-
-.announcement-icon-wrapper.info {
-    color: #3b82f6;
-}
-
-.announcement-icon-wrapper.warning {
-    color: #f59e0b;
-}
-
-.announcement-icon-wrapper.update {
-    color: #10b981;
-}
-
-.announcement-header h3 {
-    margin: 0;
-    font-size: 14px;
-    font-weight: 900;
-    flex: 1;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
-
-.announcement-body {
-    padding: 16px;
-    font-size: 13px;
-    line-height: 1.5;
-    background: var(--bg-element, #f3f3f3);
-}
-
-.announcement-footer {
-    padding: 12px;
-    display: flex;
-    justify-content: flex-end;
-    gap: 8px;
-    background: var(--bg-toolbar, #dcdcdc);
-    border-top: 3px solid var(--border-dark, #373737);
-}
-
-/* Buttons */
-.announcement-btn {
-    padding: 6px 12px;
-    border: 2px solid var(--border-dark, #373737);
-    font-size: 12px;
-    font-weight: 700;
-    cursor: pointer;
-    text-transform: uppercase;
-    font-family: inherit;
-    position: relative;
-    transition: transform 0.1s;
-}
-
-.announcement-btn.secondary {
-    background: var(--bg-button, #e0e0e0);
-    color: var(--text-primary, #373737);
-    box-shadow: 2px 2px 0 0 var(--shadow-color, #373737);
-}
-
-.announcement-btn.primary {
-    background: var(--accent-color, #487bdb);
-    color: white;
-    box-shadow: 2px 2px 0 0 var(--shadow-color, #373737);
-}
-
-.announcement-btn:hover {
-    transform: translate(-1px, -1px);
-    box-shadow: 3px 3px 0 0 var(--shadow-color, #373737);
-}
-
-.announcement-btn:active {
-    transform: translate(2px, 2px);
-    box-shadow: 0 0 0 0 var(--shadow-color, #373737);
-}
-
-/* Ticker Base (Retro) */
+/* --- Ticker Base (Global Default) --- */
 .announcement-ticker {
-    background: var(--bg-element, #f3f3f3);
-    border-bottom: 3px solid var(--border-dark, #373737);
-    height: 36px;
+    background: var(--bg-toolbar, var(--bg-panel, #f3f3f3));
+    border-bottom: var(--toolbar-border, 3px solid var(--border-dark, #373737));
+    height: 38px;
     overflow: hidden;
     position: relative;
     display: flex;
@@ -143,18 +16,21 @@
     font-family: var(--font-mono, monospace);
     font-size: 12px;
     font-weight: 700;
-    padding-right: 76px;
+    padding-right: 80px; /* Space for count and close */
+    z-index: 50;
+    transition: all 0.3s ease;
 }
 
 .ticker-icon {
-    width: 36px;
+    width: 38px;
     height: 100%;
-    border-right: 3px solid var(--border-dark, #373737);
+    border-right: var(--toolbar-border, 2px solid var(--border-dark));
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--bg-toolbar);
-    z-index: 2;
+    background: var(--bg-toolbar, rgba(0,0,0,0.05));
+    color: var(--accent-color);
+    z-index: 10;
     flex-shrink: 0;
 }
 
@@ -171,10 +47,9 @@
     display: flex;
     align-items: center;
     white-space: nowrap;
-    animation: marquee 20s linear infinite;
+    animation: marquee 25s linear infinite;
     padding-left: 20px;
     pointer-events: auto;
-    /* Ensure clicks are captured */
 }
 
 .ticker-track-single {
@@ -183,7 +58,7 @@
 }
 
 .ticker-track-single.ticker-track-marquee {
-    animation: marquee 20s linear infinite;
+    animation: marquee 25s linear infinite;
     padding-left: 20px;
 }
 
@@ -192,57 +67,68 @@
 }
 
 @keyframes marquee {
-    0% {
-        transform: translateX(0);
-    }
-
-    100% {
-        transform: translateX(-100%);
-    }
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-100%); }
 }
 
 .ticker-item {
     display: inline-flex;
     align-items: center;
-    margin-right: 48px;
-    gap: 8px;
+    margin-right: 60px;
+    gap: 10px;
     color: inherit;
-    /* Inherit color from parent ticker */
 }
 
 .ticker-tag {
-    padding: 1px 4px;
+    padding: 2px 6px;
     font-size: 10px;
+    font-weight: 900;
     text-transform: uppercase;
-    border-radius: 2px;
+    border-radius: 4px;
     color: #fff;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-.ticker-tag.info {
-    background: #3b82f6;
-}
+.ticker-tag.info { background: #3b82f6; }
+.ticker-tag.warning { background: #f59e0b; }
+.ticker-tag.update { background: #10b981; }
 
-.ticker-tag.warning {
-    background: #f59e0b;
-}
-
-.ticker-tag.update {
-    background: #10b981;
+.ticker-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .ticker-link {
     color: var(--accent-color);
     text-decoration: underline;
+    text-underline-offset: 2px;
     cursor: pointer;
-    opacity: 0.9;
-    /* Slightly dimmed for better readability */
-    position: relative;
-    z-index: 100;
-    pointer-events: auto;
+    font-weight: 800;
+    padding: 0 4px;
+    border-radius: 4px;
+    transition: background 0.2s;
 }
 
 .ticker-link:hover {
-    opacity: 1;
+    background: rgba(var(--accent-color-rgb, 72, 123, 219), 0.1);
+}
+
+.ticker-count {
+    position: absolute;
+    right: 38px;
+    top: 0;
+    bottom: 0;
+    width: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-toolbar, rgba(0,0,0,0.02));
+    border-left: var(--toolbar-border, 1px solid var(--border-dark));
+    color: var(--text-secondary);
+    font-size: 10px;
+    font-weight: 800;
+    z-index: 9;
 }
 
 .ticker-fixed-close {
@@ -250,446 +136,261 @@
     right: 0;
     top: 0;
     bottom: 0;
-    width: 36px;
+    width: 38px;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--bg-toolbar);
-    border-left: 3px solid var(--border-dark, #373737);
+    background: var(--bg-toolbar, rgba(0,0,0,0.05));
+    border-left: var(--toolbar-border, 1px solid var(--border-dark));
     cursor: pointer;
     z-index: 10;
     color: var(--text-secondary);
-}
-
-.ticker-count {
-    position: absolute;
-    right: 36px;
-    top: 0;
-    bottom: 0;
-    width: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--bg-toolbar);
-    border-left: 3px solid var(--border-dark, #373737);
-    color: var(--text-secondary);
-    font-size: 11px;
-    z-index: 9;
+    transition: all 0.2s;
 }
 
 .ticker-fixed-close:hover {
-    background: var(--bg-button);
-    color: #ef4444;
+    background: #ef4444;
+    color: #fff;
 }
 
 
 /* =========================================
-   DARK MODE (Base Retro)
-   ========================================= */
-@media (prefers-color-scheme: dark) {
-    .announcement-overlay {
-        background: rgba(0, 0, 0, 0.6);
-        background-image: radial-gradient(rgba(255, 255, 255, 0.2) 10%, transparent 10%);
-    }
-
-    .announcement-modal {
-        border: 3px solid #000;
-        box-shadow: 8px 8px 0 0 #000;
-    }
-
-    .announcement-header {
-        border-bottom-color: #000;
-        background: #2c2c2c;
-    }
-
-    .announcement-header h3 {
-        color: #ededed;
-    }
-
-    .announcement-icon-wrapper {
-        background: #383838;
-        border-color: #000;
-        color: #ededed;
-    }
-
-    .announcement-icon-wrapper.info {
-        color: #60a5fa;
-    }
-
-    .announcement-icon-wrapper.warning {
-        color: #fbbf24;
-    }
-
-    .announcement-icon-wrapper.update {
-        color: #34d399;
-    }
-
-    .announcement-body {
-        background: var(--bg-window);
-    }
-
-    .announcement-footer {
-        background: #2c2c2c;
-        border-top-color: #000;
-    }
-
-    .announcement-btn {
-        border-color: #000;
-        box-shadow: 2px 2px 0 0 #000;
-        color: #ededed;
-    }
-
-    .announcement-btn:hover {
-        box-shadow: 3px 3px 0 0 #000;
-    }
-
-    .announcement-btn.secondary {
-        background: #383838;
-        color: #a0a0a0;
-    }
-
-    .announcement-btn.secondary:hover {
-        background: #484848;
-        color: #fff;
-    }
-
-    .announcement-ticker {
-        background: #1e1e1e;
-        border-color: #000;
-        color: #ededed;
-    }
-
-    .ticker-icon {
-        border-color: #000;
-        background: #2c2c2c;
-    }
-
-    .ticker-fixed-close {
-        border-color: #000;
-        background: #2c2c2c;
-    }
-
-    .ticker-fixed-close:hover {
-        background: #383838;
-    }
-}
-
-/* Force dark mode for Manual Toggles (Retro)
-   Selector logic: html.dark-mode body:not(.theme-mica):not(.theme-acrylic) */
-.dark-mode body:not(.theme-mica):not(.theme-acrylic) .announcement-overlay {
-    background: rgba(0, 0, 0, 0.6);
-    background-image: radial-gradient(rgba(255, 255, 255, 0.2) 10%, transparent 10%);
-}
-
-.dark-mode body:not(.theme-mica):not(.theme-acrylic) .announcement-modal {
-    border-color: #000;
-    box-shadow: 8px 8px 0 0 #000;
-}
-
-.dark-mode body:not(.theme-mica):not(.theme-acrylic) .announcement-ticker {
-    background: #1e1e1e;
-    /* Dark background for retro dark mode */
-    border-color: #000;
-    color: #ededed;
-}
-
-/* Force light mode for Manual Toggles (Retro) */
-.light-mode body:not(.theme-mica):not(.theme-acrylic) .announcement-ticker {
-    background: #f3f3f3;
-    /* Light background for retro light mode */
-    border-color: #373737;
-    color: #373737;
-}
-
-
-/* =========================================
-   MODERN THEME OVERRIDES (Mica & Acrylic)
-   Solid Modern Design (No transparency requested)
+   THEME SPECIFIC OVERRIDES
    ========================================= */
 
-.theme-mica .announcement-overlay,
-.theme-acrylic .announcement-overlay {
-    background: rgba(0, 0, 0, 0.4);
-    background-image: none;
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+/* --- 1. Sticky Note Theme --- */
+.theme-sticky-note .announcement-ticker {
+    background: var(--bg-toolbar);
+    border-bottom: 2px dashed var(--border-dark);
+    font-family: var(--font-main);
+    color: var(--text-primary);
+    height: 40px;
 }
 
-.theme-mica .announcement-modal,
-.theme-acrylic .announcement-modal {
-    background: #ffffff;
-    /* Solid */
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    border-radius: 12px;
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
-    color: #333;
-    backdrop-filter: none;
-}
-
-.theme-mica .announcement-header,
-.theme-acrylic .announcement-header {
+.theme-sticky-note .ticker-icon,
+.theme-sticky-note .ticker-count,
+.theme-sticky-note .ticker-fixed-close {
+    border-color: var(--border-dark);
     background: transparent;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-    padding: 16px 20px;
 }
 
-.theme-mica .announcement-icon-wrapper,
-.theme-acrylic .announcement-icon-wrapper {
+.theme-sticky-note .ticker-tag {
+    border-radius: 2px;
+    transform: rotate(-2deg);
+    box-shadow: 2px 2px 0 var(--shadow-color);
+}
+
+.theme-sticky-note .ticker-link {
+    font-family: var(--font-main);
+    text-decoration: none;
+    border-bottom: 1px solid var(--accent-color);
+}
+
+/* --- 2. Paper Theme --- */
+.theme-paper .announcement-ticker {
+    background: var(--bg-toolbar);
+    border-bottom: 2px solid var(--text-primary);
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.theme-paper .ticker-icon,
+.theme-paper .ticker-count,
+.theme-paper .ticker-fixed-close {
+    border-color: var(--text-primary);
+    border-width: 2px;
     background: transparent;
-    border: none;
-    border-radius: 8px;
 }
 
-.theme-mica .announcement-icon-wrapper.info,
-.theme-acrylic .announcement-icon-wrapper.info {
-    background: rgba(59, 130, 246, 0.1);
-}
-
-.theme-mica .announcement-icon-wrapper.warning,
-.theme-acrylic .announcement-icon-wrapper.warning {
-    background: rgba(245, 158, 11, 0.1);
-}
-
-.theme-mica .announcement-icon-wrapper.update,
-.theme-acrylic .announcement-icon-wrapper.update {
-    background: rgba(16, 185, 129, 0.1);
-}
-
-.theme-mica .announcement-header h3,
-.theme-acrylic .announcement-header h3 {
-    font-family: "Segoe UI", system-ui, sans-serif;
-    text-transform: none;
-    letter-spacing: 0;
-    font-size: 16px;
-    font-weight: 600;
-}
-
-.theme-mica .announcement-body,
-.theme-acrylic .announcement-body {
-    background: transparent;
-    padding: 24px 20px;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-}
-
-.theme-mica .announcement-footer,
-.theme-acrylic .announcement-footer {
-    background: transparent;
-    border-top: 1px solid rgba(0, 0, 0, 0.05);
-    padding: 16px 20px;
-}
-
-.theme-mica .announcement-btn,
-.theme-acrylic .announcement-btn {
-    border: 1px solid transparent;
-    border-radius: 6px;
-    box-shadow: none;
-    font-family: inherit;
-    font-weight: 600;
-    text-transform: none;
-}
-
-.theme-mica .announcement-btn:hover,
-.theme-acrylic .announcement-btn:hover {
-    transform: none;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.theme-mica .announcement-btn.secondary,
-.theme-acrylic .announcement-btn.secondary {
-    background: #f5f5f5;
-    /* Solid light gray */
-    color: #555;
+.theme-paper .ticker-tag {
+    border-radius: 0;
+    border: 1px solid currentColor;
+    background: transparent !important;
+    color: inherit;
     box-shadow: none;
 }
 
-.theme-mica .announcement-btn.secondary:hover,
-.theme-acrylic .announcement-btn.secondary:hover {
-    background: #e5e5e5;
-}
+.theme-paper .ticker-tag.info { color: #2563eb; }
+.theme-paper .ticker-tag.warning { color: #d97706; }
+.theme-paper .ticker-tag.update { color: #059669; }
 
-.theme-mica .announcement-btn.primary,
-.theme-acrylic .announcement-btn.primary {
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-}
-
-/* Modern Ticker - Solid */
+/* --- 3. Mica & Acrylic (Fluent Design) --- */
 .theme-mica .announcement-ticker,
 .theme-acrylic .announcement-ticker {
-    background: #ffffff;
-    /* Solid */
-    backdrop-filter: none;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    color: #1a1a1a;
-    /* Darker for better contrast */
+    background: var(--bg-panel);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-bottom: 1px solid var(--line-soft);
+    font-family: system-ui, -apple-system, sans-serif;
+    height: 42px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
 }
 
 .theme-mica .ticker-icon,
 .theme-acrylic .ticker-icon {
+    border-right: 1px solid var(--line-soft);
+    color: var(--text-secondary);
     background: transparent;
-    border-right: none;
-    color: #666;
-}
-
-.theme-mica .ticker-fixed-close,
-.theme-acrylic .ticker-fixed-close {
-    background: transparent;
-    border-left: none;
-    /* Removed border */
-    color: #888;
 }
 
 .theme-mica .ticker-count,
-.theme-acrylic .ticker-count {
+.theme-acrylic .ticker-count,
+.theme-mica .ticker-fixed-close,
+.theme-acrylic .ticker-fixed-close {
+    border-left: 1px solid var(--line-soft);
     background: transparent;
-    border-left: none;
-    color: #888;
+}
+
+.theme-mica .ticker-tag,
+.theme-acrylic .ticker-tag {
+    border-radius: 6px;
+    font-weight: 600;
+    box-shadow: none;
 }
 
 .theme-mica .ticker-fixed-close:hover,
 .theme-acrylic .ticker-fixed-close:hover {
-    background: #f0f0f0;
-    color: #333;
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
 }
 
-/* =========================================
-   MODERN THEME - DARK MODE SUPPORT
-   (Applies via System Pref OR Manual Toggle)
-   ========================================= */
-
-/* Helper to group the complex selectors */
+/* --- Dark Mode Logic for Modern Themes --- */
 @media (prefers-color-scheme: dark) {
-
-    .theme-mica .announcement-modal,
-    .theme-acrylic .announcement-modal {
-        background: #1e1e1e;
-        /* Solid Dark */
+    .theme-mica:not(.light-mode) .announcement-ticker,
+    .theme-acrylic:not(.light-mode) .announcement-ticker {
+        background: rgba(30, 30, 30, 0.6);
         border-color: rgba(255, 255, 255, 0.1);
-        color: #eee;
-        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+        color: #e0e0e0;
     }
-
-    .theme-mica .announcement-header,
-    .theme-acrylic .announcement-header,
-    .theme-mica .announcement-footer,
-    .theme-acrylic .announcement-footer {
-        border-color: rgba(255, 255, 255, 0.1);
-    }
-
-    .theme-mica .announcement-header h3,
-    .theme-acrylic .announcement-header h3 {
-        color: #fff;
-    }
-
-    .theme-mica .announcement-ticker,
-    .theme-acrylic .announcement-ticker {
-        background: #1e1e1e;
-        /* Solid Dark */
-        border-color: rgba(255, 255, 255, 0.1);
-        color: #e8e8e8;
-        /* Brighter for better visibility */
-    }
-
-    .theme-mica .ticker-icon,
-    .theme-acrylic .ticker-icon {
-        color: #aaa;
-    }
-
-.theme-mica .ticker-fixed-close,
-.theme-acrylic .ticker-fixed-close {
-    border-left: none;
-    color: #aaa;
-}
-
-.theme-mica .ticker-count,
-.theme-acrylic .ticker-count {
-    border-left: none;
-    color: #aaa;
-}
-
-    .theme-mica .ticker-fixed-close:hover,
-    .theme-acrylic .ticker-fixed-close:hover {
-        background: #2c2c2c;
-        color: #fff;
-    }
-
-    .theme-mica .announcement-btn.secondary,
-    .theme-acrylic .announcement-btn.secondary {
-        background: #2c2c2c;
-        color: #ccc;
-    }
-
-    .theme-mica .announcement-btn.secondary:hover,
-    .theme-acrylic .announcement-btn.secondary:hover {
-        background: #383838;
-        color: #fff;
-    }
-}
-
-/* Manual Dark Toggle duplicates for Modern Theme 
-   Correct Selector: .dark-mode (on html) .theme-mica (on body)
-*/
-.dark-mode .theme-mica .announcement-modal,
-.dark-mode .theme-acrylic .announcement-modal {
-    background: #1e1e1e;
-    /* Solid Dark */
-    border-color: rgba(255, 255, 255, 0.1);
-    color: #eee;
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
-}
-
-.dark-mode .theme-mica .announcement-header,
-.dark-mode .theme-acrylic .announcement-header,
-.dark-mode .theme-mica .announcement-footer,
-.dark-mode .theme-acrylic .announcement-footer {
-    border-color: rgba(255, 255, 255, 0.1);
-}
-
-.dark-mode .theme-mica .announcement-header h3,
-.dark-mode .theme-acrylic .announcement-header h3 {
-    color: #fff;
 }
 
 .dark-mode .theme-mica .announcement-ticker,
 .dark-mode .theme-acrylic .announcement-ticker {
-    background: #1e1e1e;
-    /* Solid Dark */
+    background: rgba(30, 30, 30, 0.6);
     border-color: rgba(255, 255, 255, 0.1);
-    color: #e8e8e8;
-    /* Brighter for better visibility */
+    color: #e0e0e0;
 }
 
-.dark-mode .theme-mica .ticker-icon,
-.dark-mode .theme-acrylic .ticker-icon {
-    color: #aaa;
+
+/* =========================================
+   ANNOUNCEMENT MODAL (Universal)
+   ========================================= */
+
+.announcement-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(4px);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
 }
 
-.dark-mode .theme-mica .ticker-fixed-close,
-.dark-mode .theme-acrylic .ticker-fixed-close {
-    border-left: none;
-    color: #aaa;
+.announcement-modal {
+    background: var(--bg-window, #fff);
+    border: var(--panel-border, 2px solid var(--border-dark));
+    border-radius: var(--radius-panel, 8px);
+    width: 100%;
+    max-width: 420px;
+    box-shadow: var(--shadow-lg, 0 20px 40px rgba(0,0,0,0.2));
+    overflow: hidden;
+    color: var(--text-primary);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    animation: modal-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.dark-mode .theme-mica .ticker-count,
-.dark-mode .theme-acrylic .ticker-count {
-    border-left: none;
-    color: #aaa;
+@keyframes modal-pop {
+    from { transform: scale(0.9) translateY(10px); opacity: 0; }
+    to { transform: scale(1) translateY(0); opacity: 1; }
 }
 
-.dark-mode .theme-mica .ticker-fixed-close:hover,
-.dark-mode .theme-acrylic .ticker-fixed-close:hover {
-    background: #2c2c2c;
+.announcement-header {
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: var(--panel-border, 1px solid var(--border-dark));
+    background: var(--bg-toolbar, rgba(0,0,0,0.02));
+}
+
+.announcement-icon-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: var(--accent-color);
     color: #fff;
+    flex-shrink: 0;
 }
 
-.dark-mode .theme-mica .announcement-btn.secondary,
-.dark-mode .theme-acrylic .announcement-btn.secondary {
-    background: #2c2c2c;
-    color: #ccc;
+.announcement-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 800;
+    flex: 1;
+    color: var(--text-primary);
 }
 
-.dark-mode .theme-mica .announcement-btn.secondary:hover,
-.dark-mode .theme-acrylic .announcement-btn.secondary:hover {
-    background: #383838;
+.announcement-body {
+    padding: 24px;
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text-secondary);
+}
+
+.announcement-footer {
+    padding: 16px 20px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    background: var(--bg-toolbar, rgba(0,0,0,0.02));
+    border-top: var(--panel-border, 1px solid var(--border-dark));
+}
+
+.announcement-btn {
+    padding: 8px 16px;
+    border: var(--button-border, 1px solid var(--border-dark));
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    border-radius: var(--button-radius, 6px);
+    transition: all 0.2s;
+}
+
+.announcement-btn.secondary {
+    background: var(--bg-button, #f0f0f0);
+    color: var(--text-primary);
+}
+
+.announcement-btn.primary {
+    background: var(--accent-color);
     color: #fff;
+    border: none;
+}
+
+.announcement-btn:hover {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+}
+
+.announcement-btn:active {
+    transform: translateY(1px);
+}
+
+/* --- Retro Specific Modal Overrides (Windows 95 style) --- */
+.theme-retro .announcement-modal {
+    border-width: 3px;
+    box-shadow: 8px 8px 0 var(--shadow-color, #000);
+    border-radius: 0;
+}
+.theme-retro .announcement-btn {
+    border-radius: 0;
+    box-shadow: 2px 2px 0 var(--shadow-color, #000);
 }

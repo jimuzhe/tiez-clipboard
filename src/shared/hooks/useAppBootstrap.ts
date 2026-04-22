@@ -64,7 +64,7 @@ export const useAppBootstrap = ({
       })
       .catch(console.error);
 
-    const types = ["text", "image", "video", "code", "url"];
+    const types = ["text", "rich_text", "image", "video", "code", "url"];
     types.forEach(async (type) => {
       try {
         const name = await invoke<string>("get_system_default_app", { contentType: type });

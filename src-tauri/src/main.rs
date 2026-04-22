@@ -1,19 +1,19 @@
 #![cfg_attr(all(not(debug_assertions), target_os = "windows"), windows_subsystem = "windows")]
 
 pub mod app;
+pub mod app_state;
 pub mod database;
 pub mod domain;
 pub mod error;
-pub mod infrastructure;
-pub mod services;
-pub mod app_state;
 pub mod global_state;
+pub mod infrastructure;
 pub mod logger;
 pub mod migration;
+pub mod services;
 
-use std::sync::atomic::{Ordering};
-use crate::global_state::*;
 use crate::app::setup;
+use crate::global_state::*;
+use std::sync::atomic::Ordering;
 
 fn main() {
     // 显式安装 rustls 的 crypto provider，防止 rumqttc 因缺少 provider 而 panic
@@ -22,23 +22,32 @@ fn main() {
     let _ = dotenvy::dotenv();
 
     let app = tauri::Builder::default()
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_sql::Builder::default().build())
-        .plugin(tauri_plugin_global_shortcut::Builder::new().with_handler(|app, shortcut, event| {
-            if event.state() == tauri_plugin_global_shortcut::ShortcutState::Pressed {
-                setup::handle_global_shortcut(app, shortcut);
-            }
-        }).build())
+        .plugin(
+            tauri_plugin_global_shortcut::Builder::new()
+                .with_handler(|app, shortcut, event| {
+                    if event.state() == tauri_plugin_global_shortcut::ShortcutState::Pressed {
+                        setup::handle_global_shortcut(app, shortcut);
+                    }
+                })
+                .build(),
+        )
         .plugin(tauri_plugin_window_state::Builder::default().build())
         .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
             if args.iter().any(|a| a == "--toggle") {
                 let _ = crate::app::window_manager::toggle_window_cmd(app.clone());
             }
         }))
-        .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, Some(vec!["--minimized"])))
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            Some(vec!["--minimized"]),
+        ))
         .plugin(tauri_plugin_http::init())
         .setup(|app| {
             setup::init(app)?;
@@ -52,11 +61,9 @@ fn main() {
             app::window_manager::set_navigation_enabled,
             app::window_manager::set_navigation_mode,
             app::hooks::set_recording_mode,
-            
             services::content_handler::open_content,
             services::clipboard_ops::copy_to_clipboard,
             services::clipboard_ops::paste_latest_rich,
-            
             app::commands::get_clipboard_history,
             app::commands::search_clipboard_history,
             app::commands::delete_clipboard_entry,
@@ -69,7 +76,6 @@ fn main() {
             app::commands::update_pinned_order,
             app::commands::get_db_count,
             app::commands::get_clipboard_content,
-            
             app::commands::set_sequential_mode,
             app::commands::set_sequential_hotkey,
             app::commands::set_rich_paste_hotkey,
@@ -89,12 +95,15 @@ fn main() {
             app::commands::set_privacy_protection,
             app::commands::set_privacy_protection_kinds,
             app::commands::set_privacy_protection_custom_rules,
+            app::commands::set_cleanup_rules,
+            app::commands::set_app_cleanup_policies,
             app::commands::reset_settings,
             app::commands::get_mqtt_status,
             app::commands::get_mqtt_running,
             app::commands::restart_mqtt_client,
             app::commands::get_cloud_sync_status,
             app::commands::restart_cloud_sync_client,
+            app::commands::request_cloud_sync,
             app::commands::cloud_sync_now,
             app::commands::set_sound_enabled,
             app::commands::set_file_transfer_auto_open,
@@ -102,38 +111,45 @@ fn main() {
             app::commands::set_tray_visible,
             app::commands::set_edge_docking,
             app::commands::set_follow_mouse,
-
             app::commands::get_data_path,
             app::commands::open_folder,
             app::commands::open_data_folder,
             app::commands::open_file_with_default_app,
             app::commands::open_file_location,
             app::commands::set_data_path,
+            #[cfg(target_os = "windows")]
             app::commands::toggle_autostart,
+            #[cfg(target_os = "windows")]
             app::commands::is_autostart_enabled,
+            #[cfg(target_os = "windows")]
             app::commands::set_windows_clipboard_history,
+            #[cfg(target_os = "windows")]
             app::commands::get_windows_clipboard_history,
+            #[cfg(target_os = "windows")]
             app::commands::set_win_clipboard_disabled,
+            #[cfg(target_os = "windows")]
             app::commands::trigger_registry_win_v_optimization,
+            #[cfg(target_os = "windows")]
             app::commands::is_registry_win_v_optimized,
+            #[cfg(target_os = "windows")]
             app::commands::restart_explorer,
+            #[cfg(target_os = "windows")]
             app::commands::restart_as_admin,
+            #[cfg(target_os = "windows")]
             app::commands::check_is_admin,
+            #[cfg(target_os = "windows")]
+            app::commands::download_and_install_update,
             app::commands::quit,
             app::commands::relaunch,
-
             app::commands::set_theme,
             app::commands::get_platform_info,
             app::commands::send_system_notification,
             app::commands::register_hotkey,
             app::commands::test_hotkey_available,
-            app::commands::download_and_install_update,
-
             app::commands::toggle_clipboard_pin,
             app::commands::update_tags,
             app::commands::add_manual_item,
             app::commands::update_item_content,
-
             app::commands::save_emoji_favorite,
             app::commands::remove_emoji_favorite,
             app::commands::list_emoji_favorites,
@@ -141,7 +157,8 @@ fn main() {
             app::commands::save_emoji_favorite_url,
             app::commands::get_file_size,
             app::commands::save_file_copy,
-            
+            services::clipboard_ops::paste_text_directly,
+            services::clipboard_ops::paste_content_transiently,
             services::file_transfer::send_chat_message,
             services::file_transfer::get_chat_history,
             services::file_transfer::send_file_to_client,
@@ -151,21 +168,21 @@ fn main() {
             services::file_transfer::get_file_server_status,
             services::file_transfer::toggle_file_server,
             services::file_transfer::get_active_file_transfer_path,
-            
             services::paste_queue::get_paste_queue,
             services::paste_queue::set_paste_queue,
             services::paste_queue::paste_next_step,
-            
             app::commands::get_tag_colors,
             app::commands::set_tag_color,
-            
             app::commands::call_ai,
             app::commands::check_ai_connectivity,
-            
             infrastructure::windows_api::apps::get_system_default_app,
+            #[cfg(target_os = "windows")]
             infrastructure::windows_api::apps::get_executable_icon,
+            #[cfg(target_os = "windows")]
             infrastructure::windows_api::apps::get_file_icon,
+            #[cfg(target_os = "windows")]
             infrastructure::windows_api::apps::scan_installed_apps,
+            #[cfg(target_os = "windows")]
             infrastructure::windows_api::apps::get_associated_apps
         ])
         .on_window_event(|window, event| {
@@ -177,9 +194,9 @@ fn main() {
         Ok(app) => {
             info!(">>> [STARTUP] Tauri app built successfully.");
             app.run(|_app_handle, _event| {});
-        },
+        }
         Err(e) => {
-             error!(">>> [STARTUP] Failed to build tauri app: {}", e);
+            error!(">>> [STARTUP] Failed to build tauri app: {}", e);
         }
     }
 
@@ -188,11 +205,16 @@ fn main() {
     unsafe {
         let h_hook = HOOK_HANDLE.swap(std::ptr::null_mut(), Ordering::SeqCst);
         if !h_hook.is_null() {
-            let _ = windows::Win32::UI::WindowsAndMessaging::UnhookWindowsHookEx(windows::Win32::UI::WindowsAndMessaging::HHOOK(h_hook as _));
+            let _ = windows::Win32::UI::WindowsAndMessaging::UnhookWindowsHookEx(
+                windows::Win32::UI::WindowsAndMessaging::HHOOK(h_hook as _),
+            );
         }
         let h_mouse = HOOK_MOUSE_HANDLE.swap(std::ptr::null_mut(), Ordering::SeqCst);
         if !h_mouse.is_null() {
-            let _ = windows::Win32::UI::WindowsAndMessaging::UnhookWindowsHookEx(windows::Win32::UI::WindowsAndMessaging::HHOOK(h_mouse as _));
+            let _ = windows::Win32::UI::WindowsAndMessaging::UnhookWindowsHookEx(
+                windows::Win32::UI::WindowsAndMessaging::HHOOK(h_mouse as _),
+            );
         }
     }
 }
+

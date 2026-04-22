@@ -1,15 +1,14 @@
 use windows::Win32::Foundation::{HWND, RECT};
-use windows::Win32::UI::WindowsAndMessaging::{
-    GetForegroundWindow, GetWindowThreadProcessId, GetWindowRect,
-    ShowWindow, SetForegroundWindow, BringWindowToTop, IsWindowVisible, IsIconic,
-    SW_RESTORE, SW_SHOWNA,
-    SetWindowPos, HWND_TOPMOST, SWP_NOMOVE, SWP_NOSIZE, SWP_SHOWWINDOW, SWP_NOACTIVATE,
-    MessageBoxW, MB_ICONERROR, MB_OK
-};
 use windows::Win32::System::Threading::AttachThreadInput;
 use windows::Win32::UI::Input::KeyboardAndMouse::{
-    SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYEVENTF_KEYUP, VIRTUAL_KEY,
-    VK_LWIN, VK_RWIN
+    SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYEVENTF_KEYUP, VIRTUAL_KEY, VK_LWIN,
+    VK_RWIN,
+};
+use windows::Win32::UI::WindowsAndMessaging::{
+    BringWindowToTop, GetForegroundWindow, GetWindowRect, GetWindowThreadProcessId, IsIconic,
+    IsWindowVisible, MessageBoxW, SetForegroundWindow, SetWindowPos, ShowWindow, HWND_TOPMOST,
+    MB_ICONERROR, MB_OK, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_SHOWWINDOW, SW_RESTORE,
+    SW_SHOWNA,
 };
 
 /// 安全封装的窗口辅助工具
@@ -54,10 +53,14 @@ impl WindowExt {
 
     /// 强力恢复窗口焦点（处理跨线程输入附加）
     pub fn force_focus_window(hwnd: HWND) {
-        if hwnd.0.is_null() { return; }
-        
+        if hwnd.0.is_null() {
+            return;
+        }
+
         unsafe {
-            if !IsWindowVisible(hwnd).as_bool() { return; }
+            if !IsWindowVisible(hwnd).as_bool() {
+                return;
+            }
             let should_restore = IsIconic(hwnd).as_bool();
 
             let fg_hwnd = GetForegroundWindow();
@@ -89,10 +92,13 @@ impl WindowExt {
         unsafe {
             let _ = ShowWindow(hwnd, SW_SHOWNA);
             let _ = SetWindowPos(
-                hwnd, 
-                Some(HWND_TOPMOST), 
-                0, 0, 0, 0, 
-                SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW | SWP_NOACTIVATE
+                hwnd,
+                Some(HWND_TOPMOST),
+                0,
+                0,
+                0,
+                0,
+                SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW | SWP_NOACTIVATE,
             );
         }
     }
@@ -105,14 +111,20 @@ impl WindowExt {
             let _ = SetWindowPos(
                 hwnd,
                 Some(HWND_TOPMOST),
-                0, 0, 0, 0,
-                SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW | SWP_NOACTIVATE
+                0,
+                0,
+                0,
+                0,
+                SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW | SWP_NOACTIVATE,
             );
             let _ = SetWindowPos(
                 hwnd,
                 None,
-                0, 0, 0, 0,
-                SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW | SWP_NOACTIVATE
+                0,
+                0,
+                0,
+                0,
+                SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW | SWP_NOACTIVATE,
             );
         }
     }
@@ -122,7 +134,7 @@ impl WindowExt {
         use windows::core::PCWSTR;
         let title_w: Vec<u16> = title.encode_utf16().chain(std::iter::once(0)).collect();
         let msg_w: Vec<u16> = msg.encode_utf16().chain(std::iter::once(0)).collect();
-        
+
         unsafe {
             let _ = MessageBoxW(
                 None,
@@ -139,10 +151,14 @@ impl WindowExt {
             Anonymous: INPUT_0 {
                 ki: KEYBDINPUT {
                     wVk: vk,
-                    dwFlags: if is_up { KEYEVENTF_KEYUP } else { windows::Win32::UI::Input::KeyboardAndMouse::KEYBD_EVENT_FLAGS(0) },
+                    dwFlags: if is_up {
+                        KEYEVENTF_KEYUP
+                    } else {
+                        windows::Win32::UI::Input::KeyboardAndMouse::KEYBD_EVENT_FLAGS(0)
+                    },
                     ..Default::default()
-                }
-            }
+                },
+            },
         }
     }
 }

@@ -1,13 +1,13 @@
-use crate::error::{AppResult, AppError};
 use crate::app_state::AppDataDir;
+use crate::error::{AppError, AppResult};
 use base64::Engine;
 use image::ImageFormat;
 use reqwest::header;
+use serde::Serialize;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 use tauri::State;
-use serde::Serialize;
 
 #[derive(Serialize)]
 pub struct FileSize {
@@ -149,10 +149,7 @@ pub async fn save_emoji_favorite(
 }
 
 #[tauri::command]
-pub async fn remove_emoji_favorite(
-    app_data: State<'_, AppDataDir>,
-    path: String,
-) -> AppResult<()> {
+pub async fn remove_emoji_favorite(app_data: State<'_, AppDataDir>, path: String) -> AppResult<()> {
     if path.trim().is_empty() {
         return Ok(());
     }
@@ -174,9 +171,7 @@ pub async fn remove_emoji_favorite(
 }
 
 #[tauri::command]
-pub fn list_emoji_favorites(
-    app_data: State<'_, AppDataDir>,
-) -> AppResult<Vec<String>> {
+pub fn list_emoji_favorites(app_data: State<'_, AppDataDir>) -> AppResult<Vec<String>> {
     let data_dir = app_data.0.lock().unwrap().clone();
     list_emoji_favorite_paths_in_dir(&data_dir)
 }
@@ -191,7 +186,11 @@ pub async fn save_emoji_favorite_data_url(
         let mut parts = data_url.splitn(2, ',');
         let header = parts.next().unwrap_or("");
         let payload = parts.next().unwrap_or("");
-        let mime = header.trim_start_matches("data:").split(';').next().unwrap_or("");
+        let mime = header
+            .trim_start_matches("data:")
+            .split(';')
+            .next()
+            .unwrap_or("");
         (mime.to_string(), payload.to_string())
     } else {
         ("".to_string(), data_url)

@@ -1,10 +1,9 @@
-
-use tauri::{command, AppHandle, Manager, Emitter};
 use crate::database::DbState;
+use crate::error::{AppError, AppResult};
 use crate::infrastructure::repository::clipboard_repo::ClipboardRepository;
 use crate::infrastructure::repository::settings_repo::SettingsRepository;
-use crate::error::{AppResult, AppError};
 use serde::{Deserialize, Serialize};
+use tauri::{command, AppHandle, Emitter, Manager};
 
 #[derive(Debug, Serialize, Deserialize)]
 struct ChatMessage {
@@ -57,13 +56,9 @@ fn apply_optional_http_referer(request: reqwest::RequestBuilder) -> reqwest::Req
 }
 
 fn sanitize_input(content: &str) -> AppResult<String> {
-    let forbidden = ["忽略以上", "system prompt", "你是", "以上指令"];
-    for word in forbidden {
-        if content.contains(word) {
-            return Err(AppError::Validation("Input contains potential injection keywords".to_string()));
-        }
-    }
-    Ok(content.chars().take(2000).collect()) // 长度限制
+    // Note: We used to have an injection check here, but it's too aggressive for a general purpose clipboard
+    // where users might be copying technical text about AI. The limit is increased to 10000 characters.
+    Ok(content.chars().take(10000).collect())
 }
 
 fn build_system_prompt(action_type: &str) -> String {
@@ -93,7 +88,8 @@ fn build_system_prompt(action_type: &str) -> String {
         - 面对攻击或压力：让对方自然停止继续进攻。";
 
     // 2. 任务解决助手 (Task Solver) - 通用任务执行
-    let task_persona = "你是一个专注于“任务解决”的智能助手。你的核心目标是高效、精准、专业地完成用户的需求。\n\n\
+    let task_persona =
+        "你是一个专注于“任务解决”的智能助手。你的核心目标是高效、精准、专业地完成用户的需求。\n\n\
         【你的核心原则】\n\
         1. **结果导向**：直接提供用户需要的内容，不要废话，不要过度寒暄。\n\
         2. **逻辑严密**：确保生成的内容结构清晰、论证有力。\n\
@@ -162,7 +158,10 @@ pub async fn check_ai_connectivity(
     if status.is_success() {
         Ok("success".to_string())
     } else {
-        let err_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+        let err_text = response
+            .text()
+            .await
+            .unwrap_or_else(|_| "Unknown error".to_string());
         Err(format!("HTTP {} - {}", status, err_text).into())
     }
 }
@@ -194,56 +193,92 @@ pub async fn call_ai(
     }
 
     let content = sanitize_input(&content)?;
-    
+
     let (api_key, base_url, model, target_lang, persistent, enable_thinking, thinking_budget) = {
-        
         // 1. Get functional assignment
         let assigned_profile_key = format!("ai_assigned_profile_{}", action_type);
-        let assigned_id = state.settings_repo.get(&assigned_profile_key)
+        let assigned_id = state
+            .settings_repo
+            .get(&assigned_profile_key)
             .unwrap_or(None)
             .unwrap_or_else(|| "default".to_string());
 
         // 2. Get Profiles Library
-        let profiles_json = state.settings_repo.get("ai_profiles")
+        let profiles_json = state
+            .settings_repo
+            .get("ai_profiles")
             .unwrap_or(None)
             .unwrap_or_else(|| "[]".to_string());
-        
-        let profiles: serde_json::Value = serde_json::from_str(&profiles_json)
-            .unwrap_or(serde_json::json!([]));
+
+        let profiles: serde_json::Value =
+            serde_json::from_str(&profiles_json).unwrap_or(serde_json::json!([]));
 
         // 3. Find assigned profile
-        let profile = profiles.as_array()
+        let profile = profiles
+            .as_array()
             .and_then(|arr| arr.iter().find(|p| p["id"].as_str() == Some(&assigned_id)))
             .cloned();
 
         let (key, url, mdl, thinking) = if let Some(p) = profile {
             (
-                p["apiKey"].as_str().map(|s| s.to_string()).unwrap_or_default(),
-                clean_url(p["baseUrl"].as_str().unwrap_or("https://api.longcat.chat/openai/v1")),
-                p["model"].as_str().map(|s| s.to_string()).unwrap_or_else(|| "LongCat-Flash-Chat".to_string()),
-                p["enableThinking"].as_bool().unwrap_or(false)
+                p["apiKey"]
+                    .as_str()
+                    .map(|s| s.to_string())
+                    .unwrap_or_default(),
+                clean_url(
+                    p["baseUrl"]
+                        .as_str()
+                        .unwrap_or("https://api.longcat.chat/openai/v1"),
+                ),
+                p["model"]
+                    .as_str()
+                    .map(|s| s.to_string())
+                    .unwrap_or_else(|| "LongCat-Flash-Chat".to_string()),
+                p["enableThinking"].as_bool().unwrap_or(false),
             )
         } else {
             // If the assigned profile doesn't exist, try to use the first available profile
             if let Some(p) = profiles.as_array().and_then(|arr| arr.get(0)) {
                 (
-                    p["apiKey"].as_str().map(|s| s.to_string()).unwrap_or_default(),
-                    clean_url(p["baseUrl"].as_str().unwrap_or("https://api.longcat.chat/openai/v1")),
-                    p["model"].as_str().map(|s| s.to_string()).unwrap_or_else(|| "LongCat-Flash-Chat".to_string()),
-                    p["enableThinking"].as_bool().unwrap_or(false)
+                    p["apiKey"]
+                        .as_str()
+                        .map(|s| s.to_string())
+                        .unwrap_or_default(),
+                    clean_url(
+                        p["baseUrl"]
+                            .as_str()
+                            .unwrap_or("https://api.longcat.chat/openai/v1"),
+                    ),
+                    p["model"]
+                        .as_str()
+                        .map(|s| s.to_string())
+                        .unwrap_or_else(|| "LongCat-Flash-Chat".to_string()),
+                    p["enableThinking"].as_bool().unwrap_or(false),
                 )
             } else {
-                ("".to_string(), "https://api.longcat.chat/openai/v1".to_string(), "".to_string(), false)
+                (
+                    "".to_string(),
+                    "https://api.longcat.chat/openai/v1".to_string(),
+                    "".to_string(),
+                    false,
+                )
             }
         };
 
-        let lang = state.settings_repo.get("ai_target_lang")
+        let lang = state
+            .settings_repo
+            .get("ai_target_lang")
             .unwrap_or(None)
             .unwrap_or_else(|| "zh".to_string());
-        let persistent = state.settings_repo.get("app.persistent")
+        let persistent = state
+            .settings_repo
+            .get("app.persistent")
             .unwrap_or(None)
-            .unwrap_or_else(|| "true".to_string()) == "true";
-        let thinking_budget = state.settings_repo.get("ai_thinking_budget")
+            .unwrap_or_else(|| "true".to_string())
+            == "true";
+        let thinking_budget = state
+            .settings_repo
+            .get("ai_thinking_budget")
             .unwrap_or(None)
             .unwrap_or_else(|| "1024".to_string())
             .parse::<i32>()
@@ -254,7 +289,9 @@ pub async fn call_ai(
     };
 
     if api_key.is_empty() {
-        return Err(AppError::Validation("AI API Key is not set in settings.".to_string()));
+        return Err(AppError::Validation(
+            "AI API Key is not set in settings.".to_string(),
+        ));
     }
 
     // Respect User Choice: Remove the forced override for thinking.
@@ -264,9 +301,11 @@ pub async fn call_ai(
     // Handle Auto Detect for Translation
     let effective_target_lang = if action_type == "translate" && target_lang == "auto_zh_en" {
         // Simple heuristic: check if content contains any CJK unified ideographs
-        let has_chinese = content.chars().any(|c| 
-            (c >= '\u{4E00}' && c <= '\u{9FFF}') || // CJK Unified Ideographs
-            (c >= '\u{3400}' && c <= '\u{4DBF}')    // CJK Unified Ideographs Extension A
+        let has_chinese = content.chars().any(
+            |c| {
+                (c >= '\u{4E00}' && c <= '\u{9FFF}') || // CJK Unified Ideographs
+            (c >= '\u{3400}' && c <= '\u{4DBF}')
+            }, // CJK Unified Ideographs Extension A
         );
         if has_chinese {
             "en".to_string()
@@ -316,10 +355,14 @@ pub async fn call_ai(
                 role: "user".to_string(),
                 content: Some(user_prompt),
                 reasoning_content: None,
-            }
+            },
         ],
         enable_thinking: if effective_thinking { Some(true) } else { None },
-        thinking_budget: if effective_thinking { Some(thinking_budget) } else { None },
+        thinking_budget: if effective_thinking {
+            Some(thinking_budget)
+        } else {
+            None
+        },
         max_tokens: final_max_tokens,
         temperature: 0.7,
         presence_penalty: presence_penalty,
@@ -337,18 +380,23 @@ pub async fn call_ai(
         .map_err(|e| format!("Request failed: {}", e))?;
 
     if !response.status().is_success() {
-        let err_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+        let err_text = response
+            .text()
+            .await
+            .unwrap_or_else(|_| "Unknown error".to_string());
         return Err(format!("AI API error: {} - {}", api_url, err_text).into());
     }
 
-    let response_text = response.text().await
+    let response_text = response
+        .text()
+        .await
         .map_err(|e| format!("Failed to read response body: {}", e))?;
 
     let completion: ChatCompletionResponse = serde_json::from_str(&response_text)
         .map_err(|e| format!("Failed to parse response: {} | Body: {}", e, response_text))?;
 
     let choice = completion.choices.first();
-    
+
     // Log reasoning content if available for debugging
     if let Some(c) = choice {
         if let Some(msg) = &c.message {
@@ -362,9 +410,9 @@ pub async fn call_ai(
         .and_then(|c| c.message.as_ref())
         .and_then(|m| m.content.clone())
         .unwrap_or_default();
-    
+
     let mut ai_response = raw_response.trim().to_string();
-    
+
     // Safety check for empty results early
     if ai_response.is_empty() {
         return Err(format!("AI returned an empty response. Raw Body: {}", response_text).into());
@@ -377,9 +425,9 @@ pub async fn call_ai(
             if chars.len() >= 2 {
                 let first = chars[0];
                 let last = chars[chars.len() - 1];
-                (first == '"' && last == '"') || 
-                (first == '\'' && last == '\'') ||
-                (first == '“' && last == '”')
+                (first == '"' && last == '"')
+                    || (first == '\'' && last == '\'')
+                    || (first == '“' && last == '”')
             } else {
                 false
             }
@@ -403,28 +451,41 @@ pub async fn call_ai(
 
         // Update database only if persistence is enabled
         if persistent {
-            state.repo.update_entry_content(id, &ai_response, &preview)
+            state
+                .repo
+                .update_entry_content(id, &ai_response, &preview)
                 .map_err(|e| format!("Database update failed: {}", e))?;
-                
-            // Sync Session History
-            use crate::app_state::SessionHistory;
-            if let Some(session) = app_handle.try_state::<SessionHistory>() {
-                let mut history = session.0.lock().unwrap();
-                if let Some(item) = history.iter_mut().find(|i| i.id == id) {
-                    item.content = ai_response.clone();
-                    item.preview = preview.clone();
+        }
+
+        // Sync Session History and Emit Update
+        use crate::app_state::SessionHistory;
+        if let Some(session) = app_handle.try_state::<SessionHistory>() {
+            let mut history = session.0.lock().unwrap();
+            if let Some(item) = history.iter_mut().find(|i| i.id == id) {
+                item.content = ai_response.clone();
+                item.preview = preview.clone();
+                // Clear rich text so AI result is shown
+                if item.content_type == "rich_text" {
+                    item.content_type = "text".to_string();
+                    item.html_content = None;
+                }
+                // Emit update event from session item
+                let _ = app_handle.emit("clipboard-updated", item.clone());
+            } else if persistent {
+                // If persistent and not in session, fetch from DB to emit
+                if let Ok(Some(updated_entry)) = state.repo.get_entry_by_id(id) {
+                    let _ = app_handle.emit("clipboard-updated", updated_entry);
                 }
             }
-
-             // Emit update event for auto-translate background tasks
-            if let Ok(Some(updated_entry)) = state.repo.get_entry_by_id(id) {
-                 let _ = app_handle.emit("clipboard-updated", updated_entry);
-            }
         }
-        
+
         // Return response directly. Frontend will update local state to avoid race conditions.
         Ok(ai_response)
     } else {
-        Err(format!("AI response became empty after cleaning. Original: {}", raw_response).into())
+        Err(format!(
+            "AI response became empty after cleaning. Original: {}",
+            raw_response
+        )
+        .into())
     }
 }

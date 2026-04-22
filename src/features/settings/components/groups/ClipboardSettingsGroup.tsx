@@ -3,6 +3,7 @@ import type { ComponentType, ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { ask, message } from "@tauri-apps/plugin-dialog";
 import { ChevronDown, ChevronRight } from "lucide-react";
+import type { QuickPasteModifier } from "../../../app/types";
 
 interface LabelWithHintProps {
     label: string;
@@ -38,6 +39,8 @@ interface ClipboardSettingsGroupProps {
     isRecordingSearch: boolean;
     setIsRecordingSearch: (val: boolean) => void;
     updateSearchHotkey: (key: string) => void;
+    quickPasteModifier: QuickPasteModifier;
+    setQuickPasteModifier: (val: QuickPasteModifier) => void;
     deleteAfterPaste: boolean;
     setDeleteAfterPaste: (val: boolean) => void;
     moveToTopAfterPaste: boolean;
@@ -57,6 +60,12 @@ interface ClipboardSettingsGroupProps {
     setPrivacyProtectionKinds: (val: string[]) => void;
     privacyProtectionCustomRules: string;
     setPrivacyProtectionCustomRules: (val: string) => void;
+    sensitiveMaskPrefixVisible: number;
+    setSensitiveMaskPrefixVisible: (val: number) => void;
+    sensitiveMaskSuffixVisible: number;
+    setSensitiveMaskSuffixVisible: (val: number) => void;
+    sensitiveMaskEmailDomain: boolean;
+    setSensitiveMaskEmailDomain: (val: boolean) => void;
     privacyKindsOpen: boolean;
     setPrivacyKindsOpen: (val: boolean) => void;
     privacyRulesOpen: boolean;
@@ -79,6 +88,7 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
     const [persistentLimitDraft, setPersistentLimitDraft] = useState(
         props.persistentLimit.toString()
     );
+    const [maskSettingsOpen, setMaskSettingsOpen] = useState(false);
 
     useEffect(() => {
         setPersistentLimitDraft(props.persistentLimit.toString());
@@ -372,7 +382,11 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
                     </div>
                     <div className="setting-item">
                         <div className="item-label-group">
-                            <span className="item-label">{props.t('delete_after_paste')}</span>
+                            <props.LabelWithHint
+                            label={props.t('delete_after_paste')}
+                            hint={props.t('delete_after_paste_hint')}
+                            hintKey="delete_after_paste"
+                        />
                         </div>
                         <label className="switch">
                             <input
@@ -407,6 +421,29 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
                             />
                             <div className="toggle"><div className="left" /><div className="right" /></div>
                         </label>
+                    </div>
+                    <div className="setting-item">
+                        <props.LabelWithHint
+                            label={props.t('quick_paste_modifier')}
+                            hint={props.t('quick_paste_modifier_hint')}
+                            hintKey="quick_paste_modifier"
+                        />
+                        <select
+                            className="search-input"
+                            style={{ borderRadius: '0', padding: '6px', width: '120px', background: 'var(--bg-input)', border: '2px solid var(--border-dark)', color: 'var(--text-primary)', fontSize: '12px' }}
+                            value={props.quickPasteModifier}
+                            onChange={(e) => {
+                                const val = e.target.value as QuickPasteModifier;
+                                props.setQuickPasteModifier(val);
+                                props.saveAppSetting('quick_paste_modifier', val);
+                            }}
+                        >
+                            <option value="disabled">{props.t('quick_paste_modifier_disabled')}</option>
+                            <option value="ctrl">{props.t('quick_paste_modifier_ctrl')}</option>
+                            <option value="alt">{props.t('quick_paste_modifier_alt')}</option>
+                            <option value="shift">{props.t('quick_paste_modifier_shift')}</option>
+                            <option value="win">{props.t('quick_paste_modifier_win')}</option>
+                        </select>
                     </div>
                     <div className="setting-item">
                         <props.LabelWithHint
@@ -581,6 +618,7 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
                                     { id: 'phone', label: props.t('privacy_kind_phone') },
                                     { id: 'idcard', label: props.t('privacy_kind_idcard') },
                                     { id: 'email', label: props.t('privacy_kind_email') },
+                                    { id: 'url', label: props.t('privacy_kind_url') },
                                     { id: 'secret', label: props.t('privacy_kind_secret') },
                                     { id: 'password', label: props.t('privacy_kind_password') || "Strong Password" },
                                 ].map(opt => {
@@ -638,6 +676,76 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
                                     invoke('set_privacy_protection_custom_rules', { rules: val }).catch(console.error);
                                 }}
                             />
+                        )}
+                    </div>
+
+                    <div className="setting-item" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '6px' }}>
+                        <div className="settings-subsection-trigger">
+                            <button
+                                type="button"
+                                className="btn-icon"
+                                onClick={() => setMaskSettingsOpen(!maskSettingsOpen)}
+                                style={{ width: '24px', height: '24px' }}
+                            >
+                                {maskSettingsOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                            </button>
+                            <span className="settings-subsection-title">{props.t('sensitive_mask_settings')}</span>
+                        </div>
+                        {maskSettingsOpen && (
+                            <div style={{ width: 'calc(100% - 30px)', marginLeft: '30px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                <div className="setting-item" style={{ padding: 0, borderBottom: 'none' }}>
+                                    <span className="settings-subsection-title">{props.t('sensitive_mask_prefix_visible')}</span>
+                                    <input
+                                        type="number"
+                                        className="search-input"
+                                        style={{ width: '60px', padding: '4px 8px', textAlign: 'center' }}
+                                        min={0}
+                                        max={20}
+                                        value={props.sensitiveMaskPrefixVisible}
+                                        onChange={(e) => {
+                                            const val = Math.min(20, Math.max(0, parseInt(e.target.value) || 0));
+                                            props.setSensitiveMaskPrefixVisible(val);
+                                            invoke('save_setting', { key: 'app.sensitive_mask_prefix_visible', value: val.toString() }).catch(console.error);
+                                        }}
+                                    />
+                                </div>
+                                <div className="setting-item" style={{ padding: 0, borderBottom: 'none' }}>
+                                    <span className="settings-subsection-title">{props.t('sensitive_mask_suffix_visible')}</span>
+                                    <input
+                                        type="number"
+                                        className="search-input"
+                                        style={{ width: '60px', padding: '4px 8px', textAlign: 'center' }}
+                                        min={0}
+                                        max={20}
+                                        value={props.sensitiveMaskSuffixVisible}
+                                        onChange={(e) => {
+                                            const val = Math.min(20, Math.max(0, parseInt(e.target.value) || 0));
+                                            props.setSensitiveMaskSuffixVisible(val);
+                                            invoke('save_setting', { key: 'app.sensitive_mask_suffix_visible', value: val.toString() }).catch(console.error);
+                                        }}
+                                    />
+                                </div>
+                                <div className="setting-item" style={{ padding: 0, borderBottom: 'none' }}>
+                                    <div className="settings-subsection-label">
+                                        <props.LabelWithHint
+                                            label={props.t('sensitive_mask_email_domain')}
+                                            hint={props.t('sensitive_mask_email_domain_hint')}
+                                            hintKey="sensitive_mask_email_domain"
+                                        />
+                                    </div>
+                                    <label className="switch">
+                                        <input
+                                            type="checkbox"
+                                            checked={props.sensitiveMaskEmailDomain}
+                                            onChange={(e) => {
+                                                props.setSensitiveMaskEmailDomain(e.target.checked);
+                                                invoke('save_setting', { key: 'app.sensitive_mask_email_domain', value: e.target.checked.toString() }).catch(console.error);
+                                            }}
+                                        />
+                                        <span className="slider" />
+                                    </label>
+                                </div>
+                            </div>
                         )}
                     </div>
 

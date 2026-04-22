@@ -1,0 +1,31 @@
+# Default: normalize text files and keep LF in the repository/worktree.
+* text=auto eol=lf
+
+# Windows-native scripts should keep CRLF for better shell compatibility.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Common binary assets must never be line-normalized.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.bmp binary
+*.ico binary
+*.icns binary
+*.pdf binary
+*.zip binary
+*.7z binary
+*.gz binary
+*.tar binary
+*.ttf binary
+*.otf binary
+*.woff binary
+*.woff2 binary
+*.eot binary
+*.dll binary
+*.exe binary
+*.so binary
+*.dylib binary

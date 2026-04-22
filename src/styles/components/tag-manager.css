@@ -1,5 +1,5 @@
 .themed-tag-manager {
-  --tm-gap: 12px;
+  --tm-gap: 4px;
   --tm-sidebar-width: clamp(186px, 25%, 218px);
   --tm-sidebar-collapsed-width: 56px;
   display: flex !important;
@@ -273,6 +273,7 @@
   text-overflow: ellipsis !important;
   font-size: 13px !important;
   font-weight: 600 !important;
+  transition: padding-right 0.16s ease !important;
 }
 
 .themed-tag-manager .inline-tag-edit {
@@ -299,16 +300,26 @@
   display: flex !important;
   align-items: center !important;
   gap: 4px !important;
+  position: absolute !important;
+  top: 50% !important;
+  right: 40px !important;
+  transform: translateY(-50%) !important;
   color: var(--text-secondary) !important;
   opacity: 0 !important;
   pointer-events: none !important;
   transition: opacity 0.16s ease !important;
+  z-index: 1 !important;
 }
 
 .themed-tag-manager .tag-item:hover .tag-hover-actions,
 .themed-tag-manager .tag-item.active .tag-hover-actions {
   opacity: 1 !important;
   pointer-events: auto !important;
+}
+
+.themed-tag-manager .tag-item:hover .tag-name,
+.themed-tag-manager .tag-item.active .tag-name {
+  padding-right: 52px !important;
 }
 
 .themed-tag-manager .tag-hover-actions > span {
@@ -327,6 +338,7 @@
 
 .themed-tag-manager .tag-badge {
   margin-left: auto !important;
+  flex-shrink: 0 !important;
   min-width: 24px !important;
   height: 20px !important;
   padding: 0 6px !important;
@@ -575,23 +587,35 @@
 
 .themed-tag-manager .items-grid {
   display: grid !important;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)) !important;
-  gap: 12px !important;
+  grid-template-columns: 1fr !important;
+  gap: 10px !important;
   align-content: flex-start !important;
+}
+
+@container (min-width: 340px) {
+  .themed-tag-manager .items-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@container (min-width: 520px) {
+  .themed-tag-manager .items-grid {
+    grid-template-columns: repeat(auto-fill, minmax(152px, 1fr)) !important;
+  }
 }
 
 .themed-tag-manager .items-list {
   display: grid !important;
   grid-template-columns: 1fr !important;
-  gap: 10px !important;
+  gap: 8px !important;
 }
 
 .themed-tag-manager .themed-card {
   position: relative !important;
-  min-height: 136px !important;
+  min-height: 112px !important;
   display: flex !important;
   flex-direction: column !important;
-  padding: 12px !important;
+  padding: 10px !important;
   border: var(--card-border) !important;
   border-radius: var(--card-radius) !important;
   background: var(--bg-element) !important;
@@ -613,7 +637,7 @@
 }
 
 .themed-tag-manager .items-list .themed-card {
-  min-height: 104px !important;
+  min-height: 86px !important;
 }
 
 .themed-tag-manager .card-top-row {
@@ -621,8 +645,8 @@
   display: flex !important;
   align-items: center !important;
   justify-content: space-between !important;
-  gap: 8px !important;
-  margin-bottom: 8px !important;
+  gap: 6px !important;
+  margin-bottom: 6px !important;
   opacity: 1 !important;
 }
 
@@ -661,13 +685,13 @@
 }
 
 .themed-tag-manager .del-btn:hover {
-  color: #ff4d4f !important;
+  color: var(--accent-color) !important;
 }
 
 .themed-tag-manager .card-media {
   flex: 1 !important;
-  min-height: 92px !important;
-  margin-top: 4px !important;
+  min-height: 72px !important;
+  margin-top: 2px !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -678,7 +702,7 @@
 
 .themed-tag-manager .card-media img {
   max-width: 100% !important;
-  max-height: 140px !important;
+  max-height: 104px !important;
   object-fit: contain !important;
 }
 
@@ -686,19 +710,96 @@
   flex: 1 !important;
   padding-top: 0 !important;
   color: var(--text-primary) !important;
-  font-size: 13px !important;
+  font-size: 12px !important;
   font-weight: 500 !important;
-  line-height: 1.55 !important;
+  line-height: 1.45 !important;
   word-break: break-word !important;
   display: -webkit-box !important;
   -webkit-box-orient: vertical !important;
-  -webkit-line-clamp: 5 !important;
+  -webkit-line-clamp: 4 !important;
   overflow: hidden !important;
   min-height: 0 !important;
 }
 
 .themed-tag-manager .items-list .card-body-text {
   -webkit-line-clamp: 3 !important;
+}
+
+.themed-tag-manager.stacked-layout .items-area {
+  padding: 8px !important;
+}
+
+.themed-tag-manager.stacked-layout .items-grid {
+  gap: 8px !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+.themed-tag-manager.stacked-layout .items-list {
+  gap: 6px !important;
+}
+
+.themed-tag-manager.stacked-layout .items-grid .themed-card {
+  min-height: 96px !important;
+  padding: 8px !important;
+  border-radius: calc(var(--card-radius) - 2px) !important;
+}
+
+.themed-tag-manager.stacked-layout .items-grid .card-body-text {
+  font-size: 12px !important;
+  -webkit-line-clamp: 3 !important;
+}
+
+.themed-tag-manager.stacked-layout .items-grid .card-divider {
+  margin: 8px 0 6px !important;
+}
+
+.themed-tag-manager.stacked-layout .items-list .themed-card {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  grid-template-areas:
+    "body actions"
+    "meta meta" !important;
+  min-height: 68px !important;
+  padding: 8px 10px !important;
+  border-radius: calc(var(--card-radius) - 2px) !important;
+  background: rgba(var(--bg-panel-rgb), 0.72) !important;
+}
+
+.themed-tag-manager.stacked-layout .items-list .card-top-row {
+  grid-area: actions !important;
+  margin-bottom: 0 !important;
+  align-self: start !important;
+  justify-self: end !important;
+}
+
+.themed-tag-manager.stacked-layout .items-list .card-body-text {
+  grid-area: body !important;
+  font-size: 12px !important;
+  line-height: 1.35 !important;
+  -webkit-line-clamp: 2 !important;
+}
+
+.themed-tag-manager.stacked-layout .items-list .card-media {
+  grid-area: body !important;
+  min-height: 48px !important;
+  margin-top: 0 !important;
+}
+
+.themed-tag-manager.stacked-layout .items-list .card-divider {
+  display: none !important;
+}
+
+.themed-tag-manager.stacked-layout .items-list .card-footer {
+  grid-area: meta !important;
+  font-size: 10px !important;
+  gap: 6px !important;
+  margin-top: 4px !important;
+}
+
+.themed-tag-manager.stacked-layout .items-list .card-action-btn,
+.themed-tag-manager.stacked-layout .items-list .del-btn {
+  width: 22px !important;
+  height: 22px !important;
 }
 
 .themed-tag-manager .card-divider {
@@ -856,14 +957,45 @@
   }
 }
 
-@media (max-width: 760px) {
+@media (max-width: 340px) {
   .themed-tag-manager {
-    gap: 8px !important;
-    padding: 8px !important;
+    flex-direction: column !important;
+    gap: 4px !important;
+    padding: 6px !important;
   }
 
   .themed-tag-manager .tag-sidebar {
-    width: 168px !important;
+    width: 100% !important;
+    height: var(--tm-sidebar-height, 180px) !important;
+    max-height: none !important;
+  }
+
+  .themed-tag-manager.sidebar-collapsed .tag-sidebar {
+    width: 100% !important;
+    height: auto !important;
+  }
+
+  .themed-tag-manager .tag-scroll {
+    max-height: none !important;
+  }
+
+  .themed-tag-manager .tag-divider {
+    display: flex !important;
+    width: 100% !important;
+    height: 4px !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: row-resize !important;
+  }
+
+  .themed-tag-manager .tag-content {
+    flex: 1 !important;
+    min-height: 0 !important;
+  }
+
+  .themed-tag-manager .tag-divider-handle {
+    width: 36px !important;
+    height: 1px !important;
   }
 
   .themed-tag-manager .sort-btn span,
@@ -871,7 +1003,7 @@
     display: none !important;
   }
 
-  .themed-tag-manager .items-grid {
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)) !important;
+  .themed-tag-manager.stacked-layout .items-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 }

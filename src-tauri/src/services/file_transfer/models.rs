@@ -2,8 +2,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Mutex;
 use std::time::SystemTime;
-use tokio::sync::broadcast;
 use tauri::AppHandle;
+use tokio::sync::broadcast;
 
 pub struct AppState {
     pub app_handle: AppHandle,
@@ -28,10 +28,10 @@ pub struct ReceiveText {
 pub struct Message {
     pub id: u64,
     pub direction: String, // "in" = Mobile->PC, "out" = PC->Mobile
-    pub msg_type: String, // "text", "file", "image"
+    pub msg_type: String,  // "text", "file", "image"
     pub content: String,
     pub timestamp: i64,
-    pub sender_id: String, // Device unique ID
+    pub sender_id: String,   // Device unique ID
     pub sender_name: String, // Device display name (e.g., "iPhone X", "PC")
     pub file_path: Option<String>,
 }

@@ -2,14 +2,14 @@
 #[cfg(target_os = "windows")]
 use crate::infrastructure::windows_api::apps::launch_uwp_with_file;
 use crate::database::DbState;
-use crate::infrastructure::repository::settings_repo::SettingsRepository;
-use crate::infrastructure::repository::clipboard_repo::ClipboardRepository;
 use crate::error::AppError;
+use crate::infrastructure::repository::clipboard_repo::ClipboardRepository;
+use crate::infrastructure::repository::settings_repo::SettingsRepository;
 use base64::{engine::general_purpose, Engine as _};
 use std::io::Read;
-use std::process::Command;
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
+use std::process::Command;
 use tauri::{Emitter, Manager, State};
 
 #[tauri::command]
@@ -20,11 +20,20 @@ pub async fn open_content(
     mut content: String,
     content_type: String,
 ) -> Result<(), AppError> {
+    let mut html_content: Option<String> = None;
+
     // 0. Resolve full content if ID is provided and content is placeholder/truncated
     if id != 0 {
         if id > 0 {
             // Fetch from Database
-            if let Ok(Some(full_content)) = state.repo.get_entry_content(id) {
+            if content_type == "rich_text" {
+                if let Ok(Some((full_content, _, html))) =
+                    state.repo.get_entry_content_with_html(id)
+                {
+                    content = full_content;
+                    html_content = html;
+                }
+            } else if let Ok(Some(full_content)) = state.repo.get_entry_content(id) {
                 content = full_content;
             }
         } else {
@@ -33,6 +42,7 @@ pub async fn open_content(
             let session_items = session.0.lock().unwrap();
             if let Some(item) = session_items.iter().find(|i| i.id == id) {
                 content = item.content.clone();
+                html_content = item.html_content.clone();
             }
         }
     }
@@ -62,17 +72,30 @@ pub async fn open_content(
 
     // Create temp file if needed
     if !use_direct_path {
-        temp_path = create_temp_file(&content, &content_type, &filename, temp_path)?;
+        temp_path = create_temp_file(
+            &content,
+            &content_type,
+            html_content.as_deref(),
+            &filename,
+            temp_path,
+        )?;
     }
 
     let path_str = temp_path.to_str().unwrap().to_string();
     let file_path_clone = temp_path.clone();
 
     // Launch the file with appropriate application
-    launch_file_with_app(&app_path, &temp_path, &path_str, &content_type, use_direct_path).await?;
+    launch_file_with_app(
+        &app_path,
+        &temp_path,
+        &path_str,
+        &content_type,
+        use_direct_path,
+    )
+    .await?;
 
     // Start background watcher ONLY if we created a temp file
-    if !use_direct_path {
+    if !use_direct_path && content_type != "rich_text" {
         start_file_watcher(app_handle, file_path_clone, content_type, id);
     }
 
@@ -84,19 +107,22 @@ fn get_app_path_for_content_type(
     content_type: &str,
 ) -> Result<Option<String>, AppError> {
     let setting_key = format!("app.{}", content_type);
-    let mut val = state.settings_repo.get(&setting_key)
+    let mut val = state
+        .settings_repo
+        .get(&setting_key)
         .map_err(AppError::from)?
         .filter(|s| !s.trim().is_empty());
 
     // Fallback: If 'code' app is not set, use 'text' app
     if val.is_none() && content_type == "code" {
-        val = state.settings_repo.get("app.text")
+        val = state
+            .settings_repo
+            .get("app.text")
             .map_err(AppError::from)?
             .filter(|s| !s.trim().is_empty());
     }
     Ok(val)
 }
-
 
 async fn handle_url_content(app_path: &Option<String>, content: &str) -> Result<(), AppError> {
     if let Some(app) = app_path {
@@ -167,12 +193,16 @@ async fn launch_default_handler(content: &str) -> Result<(), AppError> {
         let mut cmd = Command::new("cmd");
         cmd.args(["/C", "start", "", content])
             .creation_flags(0x08000000);
-        cmd.spawn().map_err(|e| AppError::Internal(format!("启动默认浏览器失败: {}", e)))?;
+        cmd.spawn()
+            .map_err(|e| AppError::Internal(format!("启动默认浏览器失败: {}", e)))?;
     }
 
     #[cfg(target_os = "macos")]
     {
-        Command::new("open").arg(content).spawn().map_err(|e| AppError::Internal(format!("启动默认浏览器失败: {}", e)))?;
+        Command::new("open")
+            .arg(content)
+            .spawn()
+            .map_err(|e| AppError::Internal(format!("启动默认浏览器失败: {}", e)))?;
     }
 
     #[cfg(target_os = "linux")]
@@ -199,6 +229,7 @@ fn get_existing_file_path(content: &str) -> Option<std::path::PathBuf> {
 fn create_temp_file(
     content: &str,
     content_type: &str,
+    html_content: Option<&str>,
     filename: &str,
     mut temp_path: std::path::PathBuf,
 ) -> Result<std::path::PathBuf, AppError> {
@@ -207,7 +238,7 @@ fn create_temp_file(
             let is_gif = content.contains("image/gif");
             let extension = if is_gif { "gif" } else { "png" };
             temp_path.push(format!("{}.{}", filename, extension));
-            
+
             let b64_data = if content.starts_with("data:image") {
                 content.split(',').nth(1).unwrap_or(content)
             } else {
@@ -224,6 +255,21 @@ fn create_temp_file(
                 // For other images, use image crate to ensure standard peak format
                 let img = image::load_from_memory(&bytes).map_err(AppError::from)?;
                 img.save(&temp_path).map_err(AppError::from)?;
+            }
+        }
+        "rich_text" => {
+            if let Some(html) = html_content.filter(|value| !value.trim().is_empty()) {
+                temp_path.push(format!("{}.html", filename));
+                let mut file = std::fs::File::create(&temp_path).map_err(AppError::from)?;
+                use std::io::Write;
+                file.write_all(html.as_bytes())
+                    .map_err(|e| AppError::IO(e.to_string()))?;
+            } else {
+                temp_path.push(format!("{}.txt", filename));
+                let mut file = std::fs::File::create(&temp_path).map_err(AppError::from)?;
+                use std::io::Write;
+                file.write_all(content.as_bytes())
+                    .map_err(|e| AppError::IO(e.to_string()))?;
             }
         }
         _ => {
@@ -271,12 +317,14 @@ async fn launch_file_with_app(
         // ── Windows ──
         #[cfg(target_os = "windows")]
         {
-            // Check for macOS-style paths on Windows
             if app.starts_with("/Applications/") || app.contains(".app") {
                 return launch_with_default_app(path_str, content_type, use_direct_path);
             }
 
-            println!("Attempting to launch UWP app: {} for file: {}", app, path_str);
+            println!(
+                "Attempting to launch UWP app: {} for file: {}",
+                app, path_str
+            );
             if let Err(e) = launch_uwp_with_file(app, path_str).await {
                 println!("WinRT launch failed: {}, falling back to old method", e);
                 let safe_path = path_str.replace("'", "''");
@@ -315,12 +363,11 @@ fn launch_with_default_app(
     _content_type: &str,
     _use_direct_path: bool,
 ) -> Result<(), AppError> {
-
     #[cfg(target_os = "windows")]
     {
+        use windows::core::{HSTRING, PCWSTR};
         use windows::Win32::UI::Shell::ShellExecuteW;
         use windows::Win32::UI::WindowsAndMessaging::SW_SHOW;
-        use windows::core::{HSTRING, PCWSTR};
 
         let operation = HSTRING::from("open");
         let file = HSTRING::from(path_str);
@@ -346,7 +393,10 @@ fn launch_with_default_app(
 
     #[cfg(target_os = "macos")]
     {
-        Command::new("open").arg(path_str).spawn().map_err(|e| AppError::Internal(format!("Failed to open file: {}", e)))?;
+        Command::new("open")
+            .arg(path_str)
+            .spawn()
+            .map_err(|e| AppError::Internal(format!("Failed to open file: {}", e)))?;
     }
 
     #[cfg(target_os = "linux")]
@@ -385,9 +435,7 @@ fn start_file_watcher(
                 last_mtime = current_mtime;
                 println!("File changed detected: {:?}", file_path);
 
-                if let Some((new_content, preview)) =
-                    read_changed_file(&file_path, &content_type)
-                {
+                if let Some((new_content, preview)) = read_changed_file(&file_path, &content_type) {
                     update_database_with_changes(&app_handle, id, &new_content, &preview);
                 }
             }
@@ -395,10 +443,7 @@ fn start_file_watcher(
     });
 }
 
-fn read_changed_file(
-    file_path: &std::path::Path,
-    content_type: &str,
-) -> Option<(String, String)> {
+fn read_changed_file(file_path: &std::path::Path, content_type: &str) -> Option<(String, String)> {
     let mut new_content = String::new();
     let success = if content_type == "image" {
         read_image_file(file_path, &mut new_content)
@@ -488,7 +533,10 @@ fn update_database_with_changes(
                     item.content_type = "text".to_string();
                 }
                 let _ = app_handle.emit("clipboard-updated", item.clone());
-                println!("Session item updated and clipboard-updated event emitted for id: {}", id);
+                println!(
+                    "Session item updated and clipboard-updated event emitted for id: {}",
+                    id
+                );
                 return;
             }
         }
@@ -498,7 +546,11 @@ fn update_database_with_changes(
 
     let state = app_handle.state::<DbState>();
 
-    if state.repo.update_entry_content(id, new_content, preview).is_ok() {
+    if state
+        .repo
+        .update_entry_content(id, new_content, preview)
+        .is_ok()
+    {
         if let Some(session) = app_handle.try_state::<SessionHistory>() {
             let mut history = session.0.lock().unwrap();
             if let Some(item) = history.iter_mut().find(|i| i.id == id) {
@@ -513,10 +565,15 @@ fn update_database_with_changes(
 
         if let Ok(Some(updated_entry)) = state.repo.get_entry_by_id(id) {
             let _ = app_handle.emit("clipboard-updated", updated_entry);
-            println!("Database updated and clipboard-updated event emitted for id: {}", id);
+            println!(
+                "Database updated and clipboard-updated event emitted for id: {}",
+                id
+            );
+            crate::services::cloud_sync::request_cloud_sync(app_handle.clone());
         } else {
             let _ = app_handle.emit("clipboard-changed", id);
             println!("Database updated for id: {}", id);
+            crate::services::cloud_sync::request_cloud_sync(app_handle.clone());
         }
     }
 }

@@ -1,10 +1,24 @@
 import { useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { MutableRefObject } from "react";
-import type { AiProfile } from "../../features/settings/types";
+import type { AiProfile, AppCleanupPolicy } from "../../features/settings/types";
+import type { QuickPasteModifier } from "../../features/app/types";
 
 const DEFAULT_AI_KEY = import.meta.env.VITE_AI_DEFAULT_API_KEY ?? "";
 const AI_PRESET_IDS = new Set(["lc_flash_v1", "lc_think_v1", "lc_think_2601_v1"]);
+
+const normalizeQuickPasteModifier = (value: string | undefined): QuickPasteModifier => {
+  switch ((value || "").toLowerCase()) {
+    case "disabled":
+    case "ctrl":
+    case "alt":
+    case "shift":
+    case "win":
+      return value!.toLowerCase() as QuickPasteModifier;
+    default:
+      return "disabled";
+  }
+};
 
 interface UseSettingsPostInitOptions {
   settings: Record<string, string> | null;
@@ -22,6 +36,11 @@ interface UseSettingsPostInitOptions {
   setPrivacyProtection: (val: boolean) => void;
   setPrivacyProtectionKinds: (val: string[]) => void;
   setPrivacyProtectionCustomRules: (val: string) => void;
+  setSensitiveMaskPrefixVisible: (val: number) => void;
+  setSensitiveMaskSuffixVisible: (val: number) => void;
+  setSensitiveMaskEmailDomain: (val: boolean) => void;
+  setCleanupRules: (val: string) => void;
+  setAppCleanupPolicies: (val: AppCleanupPolicy[]) => void;
   setSilentStart: (val: boolean) => void;
   setFollowMouse: (val: boolean) => void;
   setShowAppBorder: (val: boolean) => void;
@@ -61,6 +80,7 @@ interface UseSettingsPostInitOptions {
   setSequentialHotkey: (val: string) => void;
   setRichPasteHotkey: (val: string) => void;
   setSearchHotkey: (val: string) => void;
+  setQuickPasteModifier: (val: QuickPasteModifier) => void;
   setSequentialModeState: (val: boolean) => void;
   setSoundEnabled: (val: boolean) => void;
   setSoundVolume: (val: number) => void;
@@ -99,6 +119,11 @@ export const useSettingsPostInit = ({
   setPrivacyProtection,
   setPrivacyProtectionKinds,
   setPrivacyProtectionCustomRules,
+  setSensitiveMaskPrefixVisible,
+  setSensitiveMaskSuffixVisible,
+  setSensitiveMaskEmailDomain,
+  setCleanupRules,
+  setAppCleanupPolicies,
   setSilentStart,
   setFollowMouse,
   setShowAppBorder,
@@ -138,6 +163,7 @@ export const useSettingsPostInit = ({
   setSequentialHotkey,
   setRichPasteHotkey,
   setSearchHotkey,
+  setQuickPasteModifier,
   setSequentialModeState,
   setSoundEnabled,
   setSoundVolume,
@@ -233,6 +259,43 @@ export const useSettingsPostInit = ({
     if (settings["app.privacy_protection_custom_rules"] !== undefined) {
       setPrivacyProtectionCustomRules(settings["app.privacy_protection_custom_rules"] || "");
     }
+    if (settings["app.sensitive_mask_prefix_visible"]) {
+      const next = parseInt(settings["app.sensitive_mask_prefix_visible"]);
+      if (Number.isFinite(next)) setSensitiveMaskPrefixVisible(Math.min(20, Math.max(0, next)));
+    }
+    if (settings["app.sensitive_mask_suffix_visible"]) {
+      const next = parseInt(settings["app.sensitive_mask_suffix_visible"]);
+      if (Number.isFinite(next)) setSensitiveMaskSuffixVisible(Math.min(20, Math.max(0, next)));
+    }
+    if (settings["app.sensitive_mask_email_domain"] !== undefined) {
+      setSensitiveMaskEmailDomain(settings["app.sensitive_mask_email_domain"] === "true");
+    }
+    if (settings["app.cleanup_rules"] !== undefined) {
+      setCleanupRules(settings["app.cleanup_rules"] || "");
+    }
+    if (settings["app.app_cleanup_policies"]) {
+      try {
+        const parsed = JSON.parse(settings["app.app_cleanup_policies"]);
+        if (Array.isArray(parsed)) {
+          setAppCleanupPolicies(
+            parsed.filter(
+              (item): item is AppCleanupPolicy =>
+                !!item &&
+                typeof item === "object" &&
+                typeof item.id === "string" &&
+                typeof item.enabled === "boolean" &&
+                typeof item.appName === "string" &&
+                typeof item.appPath === "string" &&
+                (item.action === "ignore" || item.action === "clean") &&
+                Array.isArray(item.contentTypes) &&
+                typeof item.cleanupRules === "string"
+            )
+          );
+        }
+      } catch (e) {
+        console.warn("Invalid app cleanup policies:", e);
+      }
+    }
     setSilentStart(settings["app.silent_start"] !== "false");
     setFollowMouse(settings["app.follow_mouse"] !== "false");
     setShowAppBorder(settings["app.show_app_border"] !== "false");
@@ -280,6 +343,7 @@ export const useSettingsPostInit = ({
     if (settings["app.sequential_hotkey"]) setSequentialHotkey(settings["app.sequential_hotkey"]);
     if (settings["app.rich_paste_hotkey"]) setRichPasteHotkey(settings["app.rich_paste_hotkey"]);
     if (settings["app.search_hotkey"] !== undefined) setSearchHotkey(settings["app.search_hotkey"]);
+    setQuickPasteModifier(normalizeQuickPasteModifier(settings["app.quick_paste_modifier"]));
     if (settings["app.sequential_mode"] === "true") setSequentialModeState(true);
     if (settings["app.sound_enabled"] === "true") setSoundEnabled(true);
     if (settings["app.sound_volume"]) {
@@ -398,6 +462,11 @@ export const useSettingsPostInit = ({
     setPrivacyProtection,
     setPrivacyProtectionKinds,
     setPrivacyProtectionCustomRules,
+    setSensitiveMaskPrefixVisible,
+    setSensitiveMaskSuffixVisible,
+    setSensitiveMaskEmailDomain,
+    setCleanupRules,
+    setAppCleanupPolicies,
     setSilentStart,
     setFollowMouse,
     setShowAppBorder,
@@ -436,6 +505,7 @@ export const useSettingsPostInit = ({
     setSequentialHotkey,
     setRichPasteHotkey,
     setSearchHotkey,
+    setQuickPasteModifier,
     setSequentialModeState,
     setSoundEnabled,
     setSoundVolume,

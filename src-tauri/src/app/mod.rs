@@ -1,5 +1,5 @@
-pub mod window_manager;
-pub mod hooks;
 pub mod commands;
-pub mod system;
+pub mod hooks;
 pub mod setup;
+pub mod system;
+pub mod window_manager;

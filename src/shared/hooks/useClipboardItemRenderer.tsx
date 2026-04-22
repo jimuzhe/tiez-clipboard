@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import type { Dispatch, SetStateAction, MouseEvent, ReactNode } from "react";
 import type { DragControls } from "framer-motion";
 import ClipboardItem from "../../features/clipboard/components/ClipboardItem";
+import type { QuickPasteHint } from "../../features/clipboard/types";
 import type { ClipboardEntry } from "../types";
 import type { Locale } from "../types";
 
@@ -20,6 +21,10 @@ interface UseClipboardItemRendererOptions {
   compactMode: boolean;
   showSourceAppIcon: boolean;
   richTextSnapshotPreview: boolean;
+  sensitiveMaskPrefixVisible: number;
+  sensitiveMaskSuffixVisible: number;
+  sensitiveMaskEmailDomain: boolean;
+  quickPasteHintsById: Record<number, QuickPasteHint>;
   processingAiId: number | null;
   aiEnabled: boolean;
   aiOptionsOpenId: number | null;
@@ -63,6 +68,10 @@ export const useClipboardItemRenderer = ({
   compactMode,
   showSourceAppIcon,
   richTextSnapshotPreview,
+  sensitiveMaskPrefixVisible,
+  sensitiveMaskSuffixVisible,
+  sensitiveMaskEmailDomain,
+  quickPasteHintsById,
   processingAiId,
   aiEnabled,
   aiOptionsOpenId,
@@ -103,9 +112,13 @@ export const useClipboardItemRenderer = ({
           theme={theme}
           language={language}
           t={t}
+          quickPasteHint={quickPasteHintsById[item.id]}
           compactMode={compactMode}
           showSourceAppIcon={showSourceAppIcon}
           richTextSnapshotPreview={richTextSnapshotPreview}
+          sensitiveMaskPrefixVisible={sensitiveMaskPrefixVisible}
+          sensitiveMaskSuffixVisible={sensitiveMaskSuffixVisible}
+          sensitiveMaskEmailDomain={sensitiveMaskEmailDomain}
           onSelect={() => setSelectedIndex(index)}
           onCopy={(withFormat) =>
             copyToClipboard(item.id, item.content, item.content_type, withFormat)
@@ -180,6 +193,10 @@ export const useClipboardItemRenderer = ({
       compactMode,
       showSourceAppIcon,
       richTextSnapshotPreview,
+      sensitiveMaskPrefixVisible,
+      sensitiveMaskSuffixVisible,
+      sensitiveMaskEmailDomain,
+      quickPasteHintsById,
       processingAiId,
       aiEnabled,
       aiOptionsOpenId,

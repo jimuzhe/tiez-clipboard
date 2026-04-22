@@ -1,3 +1,4 @@
+#[cfg(windows)]
 use base64::Engine;
 
 #[cfg(windows)]

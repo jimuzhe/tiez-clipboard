@@ -29,6 +29,10 @@ const AppSelector = ({ type, installedApps, onSelect, theme, t, colorMode }: { t
                         ext = ".txt";
                         keywords = ["text", "note", "code", "edit", "write", "office", "word", "记事本", "文档"];
                         break;
+                    case "rich_text":
+                        ext = ".html";
+                        keywords = ["word", "office", "write", "writer", "wps", "browser", "chrome", "edge", "firefox", "document", "html"];
+                        break;
                     case "html": case "link": case "url":
                         ext = ".html";
                         keywords = ["browser", "chrome", "edge", "firefox", "web", "internet"];

@@ -62,18 +62,15 @@ fn run_alignment(app_handle: AppHandle) {
                 Err(_) => break,
             };
 
-            let rows = match stmt.query_map(
-                [cursor_ts, cursor_id, batch_size],
-                |row| {
-                    let id: i64 = row.get(0)?;
-                    let ts: i64 = row.get(1)?;
-                    let content: String = row.get(2)?;
-                    let preview: String = row.get(3)?;
-                    let html: Option<String> = row.get(4)?;
-                    let is_sensitive: i32 = row.get(5)?;
-                    Ok((id, ts, content, preview, html, is_sensitive == 1))
-                },
-            ) {
+            let rows = match stmt.query_map([cursor_ts, cursor_id, batch_size], |row| {
+                let id: i64 = row.get(0)?;
+                let ts: i64 = row.get(1)?;
+                let content: String = row.get(2)?;
+                let preview: String = row.get(3)?;
+                let html: Option<String> = row.get(4)?;
+                let is_sensitive: i32 = row.get(5)?;
+                Ok((id, ts, content, preview, html, is_sensitive == 1))
+            }) {
                 Ok(r) => r,
                 Err(_) => break,
             };
@@ -97,7 +94,9 @@ fn run_alignment(app_handle: AppHandle) {
                 .map(|h| h.starts_with(ENCRYPT_PREFIX))
                 .unwrap_or(false);
 
-            if *is_sensitive && (!content_encrypted || !preview_encrypted || (html.is_some() && !html_encrypted)) {
+            if *is_sensitive
+                && (!content_encrypted || !preview_encrypted || (html.is_some() && !html_encrypted))
+            {
                 let _ = db_state.repo.encrypt_entry_with_conn(&conn_guard, *id);
             } else if !*is_sensitive && (content_encrypted || preview_encrypted || html_encrypted) {
                 let _ = db_state.repo.decrypt_entry_with_conn(&conn_guard, *id);

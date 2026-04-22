@@ -58,6 +58,7 @@ const SortableItem = ({
   index,
   renderItem,
   isFirst,
+  compactMode,
   onDragStart,
   onDragEnd
 }: {
@@ -65,6 +66,7 @@ const SortableItem = ({
   index: number;
   renderItem: RenderItem;
   isFirst?: boolean;
+  compactMode: boolean;
   onDragStart?: () => void;
   onDragEnd?: () => void;
 }) => {
@@ -83,7 +85,9 @@ const SortableItem = ({
         paddingTop: isFirst ? "4px" : undefined
       }}
     >
-      {renderItem(item, index, controls, true)}
+      <div style={{ paddingBottom: compactMode ? "2px" : "4px" }}>
+        {renderItem(item, index, controls, true)}
+      </div>
     </Reorder.Item>
   );
 };
@@ -233,8 +237,16 @@ const AppMainContent = ({
       <motion.div
         initial={{ opacity: 0, x: 20 }}
         animate={{ opacity: 1, x: 0 }}
-        className="settings-view"
-        style={{ display: "flex", flexDirection: "column", gap: "12px" }}
+        className={`settings-view ${settingsPanelProps.settingsSubpage === "advanced" ? "advanced-view-shell" : ""}`}
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: settingsPanelProps.settingsSubpage === "advanced" ? "0" : "12px",
+          height: "100%",
+          maxHeight: "100%",
+          width: "100%",
+          maxWidth: settingsPanelProps.settingsSubpage === "advanced" ? "none" : undefined
+        }}
       >
         <SettingsPanel {...settingsPanelProps} />
       </motion.div>
@@ -292,6 +304,7 @@ const AppMainContent = ({
                       index={index}
                       renderItem={renderItemContent}
                       isFirst={index === 0}
+                      compactMode={compactMode}
                       onDragStart={handlePinnedDragStart}
                       onDragEnd={handlePinnedDragEnd}
                     />

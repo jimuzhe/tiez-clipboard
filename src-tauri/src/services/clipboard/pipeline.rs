@@ -1,9 +1,12 @@
-use tauri::{AppHandle, Manager, Emitter};
-use crate::domain::models::ClipboardEntry;
-use crate::app_state::{SettingsState, SessionHistory, AppDataDir, PasteQueue};
+use crate::app_state::{AppDataDir, PasteQueue, SessionHistory, SettingsState};
 use crate::database::DbState;
-use crate::database::is_text_type;
+use crate::database::{calc_image_hash, is_text_type};
+use crate::domain::models::ClipboardEntry;
+use crate::infrastructure::windows_api::window_tracker::{
+    get_clipboard_source_app_info, ActiveAppInfo,
+};
 use crate::services::clipboard::utils::*;
+use base64::Engine;
 use std::sync::atomic::Ordering;
 use std::time::{SystemTime, UNIX_EPOCH};
 #[cfg(target_os = "windows")]
@@ -21,7 +24,7 @@ use crate::infrastructure::windows_api::window_tracker::{
     get_clipboard_source_app_info,
     ActiveAppInfo,
 };
-use base64::Engine;
+use tauri::{AppHandle, Emitter, Manager};
 
 #[derive(Debug, Clone)]
 pub enum ClipboardData {
@@ -44,7 +47,11 @@ pub struct PipelineContext {
 }
 
 impl PipelineContext {
-    pub fn new(app_handle: AppHandle, data: ClipboardData, source_snapshot: Option<ActiveAppInfo>) -> Self {
+    pub fn new(
+        app_handle: AppHandle,
+        data: ClipboardData,
+        source_snapshot: Option<ActiveAppInfo>,
+    ) -> Self {
         let active_app = source_snapshot.unwrap_or_else(get_clipboard_source_app_info);
         let timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -82,14 +89,16 @@ impl ClipboardPipeline {
                 Box::new(ValidationStage),
                 Box::new(PersistenceStage),
                 Box::new(DistributionStage),
-            ]
+            ],
         }
     }
 
     pub fn execute(&self, context: &mut PipelineContext) {
         for stage in &self.stages {
             stage.process(context);
-            if context.should_stop { break; }
+            if context.should_stop {
+                break;
+            }
         }
     }
 }
@@ -112,8 +121,13 @@ impl PipelineStage for DiscoveryStage {
                     let path = &f[0];
                     let lower = path.to_lowercase();
                     if lower.ends_with(".gif") {
-                         ("image".to_string(), path.clone(), None)
-                    } else if lower.ends_with(".png") || lower.ends_with(".jpg") || lower.ends_with(".jpeg") || lower.ends_with(".bmp") || lower.ends_with(".webp") {
+                        ("image".to_string(), path.clone(), None)
+                    } else if lower.ends_with(".png")
+                        || lower.ends_with(".jpg")
+                        || lower.ends_with(".jpeg")
+                        || lower.ends_with(".bmp")
+                        || lower.ends_with(".webp")
+                    {
                         #[cfg(target_os = "linux")]
                         {
                             // On Linux, keep file path so paste to file managers preserves filename.
@@ -127,15 +141,35 @@ impl PipelineStage for DiscoveryStage {
                                     let mut bytes: Vec<u8> = Vec::new();
                                     let mut cursor = std::io::Cursor::new(&mut bytes);
                                     if img.write_to(&mut cursor, image::ImageFormat::Png).is_ok() {
-                                        let b64 = base64::engine::general_purpose::STANDARD.encode(bytes);
-                                        ("image".to_string(), format!("data:image/png;base64,{}", b64), None)
-                                    } else { ("file".to_string(), content, None) }
-                                } else { ("file".to_string(), content, None) }
-                            } else { ("file".to_string(), content, None) }
+                                        let b64 =
+                                            base64::engine::general_purpose::STANDARD.encode(bytes);
+                                        (
+                                            "image".to_string(),
+                                            format!("data:image/png;base64,{}", b64),
+                                            None,
+                                        )
+                                    } else {
+                                        ("file".to_string(), content, None)
+                                    }
+                                } else {
+                                    ("file".to_string(), content, None)
+                                }
+                            } else {
+                                ("file".to_string(), content, None)
+                            }
                         }
-                    } else if lower.ends_with(".mp4") || lower.ends_with(".mkv") || lower.ends_with(".avi") || lower.ends_with(".mov") || lower.ends_with(".wmv") || lower.ends_with(".flv") || lower.ends_with(".webm") {
+                    } else if lower.ends_with(".mp4")
+                        || lower.ends_with(".mkv")
+                        || lower.ends_with(".avi")
+                        || lower.ends_with(".mov")
+                        || lower.ends_with(".wmv")
+                        || lower.ends_with(".flv")
+                        || lower.ends_with(".webm")
+                    {
                         ("video".to_string(), path.clone(), None)
-                    } else { ("file".to_string(), content, None) }
+                    } else {
+                        ("file".to_string(), content, None)
+                    }
                 } else {
                     ("file".to_string(), content, None)
                 }
@@ -144,8 +178,9 @@ impl PipelineStage for DiscoveryStage {
 
         let preview = build_entry_preview(&content_type, &content, html_content.as_deref());
 
-        let is_external = (content_type == "file" || content_type == "video" || content_type == "image")
-            && !content.starts_with("data:");
+        let is_external =
+            (content_type == "file" || content_type == "video" || content_type == "image")
+                && !content.starts_with("data:");
 
         ctx.entry = Some(ClipboardEntry {
             id: 0,
@@ -176,23 +211,81 @@ impl PipelineStage for TransformationStage {
         // Normalization (already partially done but let's be thorough)
         entry.content = entry.content.trim().replace("\r\n", "\n");
 
+        let app_cleanup_policies_raw = settings.app_cleanup_policies.lock().unwrap().clone();
+        if !app_cleanup_policies_raw.trim().is_empty() {
+            let app_cleanup_policies = parse_app_cleanup_policies(&app_cleanup_policies_raw);
+            for policy in app_cleanup_policies {
+                if !app_cleanup_policy_matches(
+                    &policy,
+                    &ctx.source_app,
+                    ctx.source_app_path.as_deref(),
+                    &entry.content_type,
+                ) {
+                    continue;
+                }
+
+                if policy.action.eq_ignore_ascii_case("ignore") {
+                    ctx.should_stop = true;
+                    return;
+                }
+
+                if is_text_type(&entry.content_type) && !policy.cleanup_rules.trim().is_empty() {
+                    let rules = parse_cleanup_rules(&policy.cleanup_rules);
+                    if !rules.is_empty() {
+                        let cleaned = apply_cleanup_rules(&entry.content, &rules);
+                        if cleaned.trim().is_empty() || cleaned == "__IGNORE_CAPTURE__" {
+                            ctx.should_stop = true;
+                            return;
+                        }
+                        entry.content = cleaned.trim().replace("\r\n", "\n");
+                        entry.preview =
+                            build_entry_preview(&entry.content_type, &entry.content, None);
+                    }
+                }
+            }
+        }
+
+        if is_text_type(&entry.content_type) {
+            let cleanup_rules_raw = settings.cleanup_rules.lock().unwrap().clone();
+            if !cleanup_rules_raw.trim().is_empty() {
+                let cleanup_rules = parse_cleanup_rules(&cleanup_rules_raw);
+                if !cleanup_rules.is_empty() {
+                    let cleaned = apply_cleanup_rules(&entry.content, &cleanup_rules);
+                    if cleaned.trim().is_empty() || cleaned == "__IGNORE_CAPTURE__" {
+                        ctx.should_stop = true;
+                        return;
+                    }
+                    entry.content = cleaned.trim().replace("\r\n", "\n");
+                    entry.preview = build_entry_preview(&entry.content_type, &entry.content, None);
+                }
+            }
+        }
+
         // Sensitive Info
         let protect_kinds = settings.privacy_protection_kinds.lock().unwrap().clone();
-        let custom_rules = settings.privacy_protection_custom_rules.lock().unwrap().clone();
-        if settings.privacy_protection.load(Ordering::Relaxed) && is_text_type(&entry.content_type) {
+        let custom_rules = settings
+            .privacy_protection_custom_rules
+            .lock()
+            .unwrap()
+            .clone();
+        if settings.privacy_protection.load(Ordering::Relaxed) && is_text_type(&entry.content_type)
+        {
             if contains_sensitive_info(&entry.content, &protect_kinds, &custom_rules) {
                 entry.tags.push("sensitive".to_string());
             }
         }
-        
+
         // Rich Text Image Processing
         if let Some(html) = &entry.html_content {
             let app_data_dir = ctx.app_handle.state::<AppDataDir>();
             let data_dir = app_data_dir.0.lock().unwrap().clone();
-            
+
             entry.html_content = if settings.persistent.load(Ordering::Relaxed) {
                 let html_with_local_assets = process_local_images_in_html(html, &data_dir);
-                Some(externalize_rich_image_fallback(&html_with_local_assets, &data_dir))
+                Some(externalize_rich_image_fallback(
+                    &html_with_local_assets,
+                    &data_dir,
+                ))
             } else {
                 Some(embed_local_images(html))
             };
@@ -206,15 +299,37 @@ impl PipelineStage for ValidationStage {
     fn process(&self, ctx: &mut PipelineContext) {
         let settings = ctx.app_handle.state::<SettingsState>();
 
-        // Sequential Echo Check
-        if settings.sequential_mode.load(Ordering::Relaxed) {
+        // Recent paste echo check
+        {
             let entry = ctx.entry.as_ref().unwrap();
             let queue_state = ctx.app_handle.state::<PasteQueue>();
             let queue = queue_state.0.lock().unwrap();
-            if queue.last_action_was_paste && queue.last_pasted_content.as_deref() == Some(&entry.content) {
-                println!("Ignoring echo paste from queue");
-                ctx.should_stop = true;
-                return;
+            if queue.last_action_was_paste {
+                let now_ms = SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_millis() as u64;
+                if now_ms.saturating_sub(queue.last_paste_timestamp_ms) >= 10_000 {
+                    drop(queue);
+                    crate::services::clipboard_ops::clear_recent_paste_marker(&ctx.app_handle);
+                } else {
+                    let entry_fingerprint = build_clipboard_text_fingerprint(
+                        &entry.content_type,
+                        &entry.content,
+                        entry.html_content.as_deref(),
+                    );
+                    let exact_match = queue.last_pasted_content.as_deref() == Some(&entry.content);
+                    let fingerprint_match = !entry_fingerprint.is_empty()
+                        && queue.last_pasted_fingerprint.as_deref()
+                            == Some(entry_fingerprint.as_str());
+                    if exact_match || fingerprint_match {
+                        println!("Ignoring echo paste from recent paste marker");
+                        drop(queue);
+                        crate::services::clipboard_ops::clear_recent_paste_marker(&ctx.app_handle);
+                        ctx.should_stop = true;
+                        return;
+                    }
+                }
             }
         }
 
@@ -223,16 +338,28 @@ impl PipelineStage for ValidationStage {
             let persistent_enabled = settings.persistent.load(Ordering::Relaxed);
             let db_state = ctx.app_handle.state::<DbState>();
             let conn = db_state.conn.lock().unwrap();
-            
+
             let mut existing_id = None;
             let (content, content_type, html_content) = {
                 let e = ctx.entry.as_ref().unwrap();
-                (e.content.clone(), e.content_type.clone(), e.html_content.clone())
+                (
+                    e.content.clone(),
+                    e.content_type.clone(),
+                    e.html_content.clone(),
+                )
             };
 
             // Try precise match and normalized match
             let normalized_content = content.trim().replace("\r\n", "\n");
             let normalized_html = |html: &str| html.trim().replace("\r\n", "\n");
+            let recent_self_copy_window = {
+                let last_app_time = crate::LAST_APP_SET_TIMESTAMP.load(Ordering::Relaxed);
+                let now_secs = SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_secs();
+                last_app_time != 0 && now_secs.saturating_sub(last_app_time) < 10
+            };
             let htmls_equivalent = |a: Option<&str>, b: Option<&str>| -> bool {
                 match (a, b) {
                     (None, None) => true,
@@ -241,17 +368,22 @@ impl PipelineStage for ValidationStage {
                 }
             };
             let rich_text_html_matches = |id: i64| -> bool {
-                if let Ok(Some((_content, c_type, h_content))) =
-                    db_state.repo.get_entry_content_with_html_with_conn(&conn, id)
+                if let Ok(Some((stored_content, c_type, h_content))) = db_state
+                    .repo
+                    .get_entry_content_with_html_with_conn(&conn, id)
                 {
                     if c_type != "rich_text" {
                         return false;
                     }
-                    return htmls_equivalent(html_content.as_deref(), h_content.as_deref());
+                    if htmls_equivalent(html_content.as_deref(), h_content.as_deref()) {
+                        return true;
+                    }
+                    return recent_self_copy_window
+                        && stored_content.trim().replace("\r\n", "\n") == normalized_content;
                 }
                 false
             };
-            
+
             // For rich text, we want to deduplicate against all text types
             let types_to_check = if content_type == "rich_text" {
                 vec!["rich_text", "text", "code", "url"]
@@ -260,15 +392,29 @@ impl PipelineStage for ValidationStage {
             };
 
             for t in types_to_check {
-                if let Ok(Some(id)) = db_state.repo.find_by_content_with_conn(&conn, &content, Some(t)) {
-                    if content_type == "rich_text" && t == "rich_text" && !rich_text_html_matches(id) {
+                if let Ok(Some(id)) =
+                    db_state
+                        .repo
+                        .find_by_content_with_conn(&conn, &content, Some(t))
+                {
+                    if content_type == "rich_text"
+                        && t == "rich_text"
+                        && !rich_text_html_matches(id)
+                    {
                         continue;
                     }
                     existing_id = Some(id);
                     break;
                 }
-                if let Ok(Some(id)) = db_state.repo.find_by_content_with_conn(&conn, &normalized_content, Some(t)) {
-                    if content_type == "rich_text" && t == "rich_text" && !rich_text_html_matches(id) {
+                if let Ok(Some(id)) =
+                    db_state
+                        .repo
+                        .find_by_content_with_conn(&conn, &normalized_content, Some(t))
+                {
+                    if content_type == "rich_text"
+                        && t == "rich_text"
+                        && !rich_text_html_matches(id)
+                    {
                         continue;
                     }
                     existing_id = Some(id);
@@ -284,7 +430,7 @@ impl PipelineStage for ValidationStage {
                     entry_mut.id = id;
                 }
             }
-            
+
             // Session history cleanup
             let session_history = ctx.app_handle.state::<SessionHistory>();
             let mut removed_ids = Vec::new();
@@ -293,14 +439,30 @@ impl PipelineStage for ValidationStage {
                 let session = session_history.0.lock().unwrap();
                 let entry = ctx.entry.as_ref().expect("entry exists");
                 let normalized_content = entry.content.trim().replace("\r\n", "\n");
+                let entry_image_hash = if entry.content_type == "image" {
+                    calc_image_hash(&entry.content)
+                } else {
+                    None
+                };
                 for item in session.iter() {
                     let item_normalized = item.content.trim().replace("\r\n", "\n");
-                    let html_match = if entry.content_type == "rich_text" && item.content_type == "rich_text" {
-                        htmls_equivalent(item.html_content.as_deref(), entry.html_content.as_deref())
-                    } else {
-                        true
-                    };
-                    let match_found = (item.content == entry.content || item_normalized == normalized_content) && html_match;
+                    let rich_text_match =
+                        if entry.content_type == "rich_text" && item.content_type == "rich_text" {
+                            htmls_equivalent(
+                                item.html_content.as_deref(),
+                                entry.html_content.as_deref(),
+                            ) || (recent_self_copy_window && item_normalized == normalized_content)
+                        } else {
+                            true
+                        };
+                    let image_match = entry.content_type == "image"
+                        && item.content_type == "image"
+                        && entry_image_hash.is_some()
+                        && calc_image_hash(&item.content) == entry_image_hash;
+                    let text_match = (item.content == entry.content
+                        || item_normalized == normalized_content)
+                        && rich_text_match;
+                    let match_found = image_match || text_match;
                     if match_found {
                         removed_ids.push(item.id);
                         if !persistent_enabled {
@@ -335,11 +497,16 @@ impl PipelineStage for PersistenceStage {
             let app_data_dir = ctx.app_handle.state::<AppDataDir>();
             let data_dir = app_data_dir.0.lock().unwrap().clone();
             let conn = db_state.conn.lock().unwrap();
-            
+
             if let Ok(id) = db_state.repo.save_with_conn(&conn, entry, Some(&data_dir)) {
                 entry.id = id;
-                if let Ok(deleted_ids) = db_state.repo.enforce_limit_with_conn(&conn, Some(&data_dir)) {
-                    for rid in deleted_ids { let _ = ctx.app_handle.emit("clipboard-removed", rid); }
+                if let Ok(deleted_ids) = db_state
+                    .repo
+                    .enforce_limit_with_conn(&conn, Some(&data_dir))
+                {
+                    for rid in deleted_ids {
+                        let _ = ctx.app_handle.emit("clipboard-removed", rid);
+                    }
                 }
             }
         } else {
@@ -366,7 +533,11 @@ impl PipelineStage for PersistenceStage {
                         existing.file_preview_exists = entry.file_preview_exists;
                         existing.is_pinned = preserved_pinned;
                         existing.pinned_order = preserved_pinned_order;
-                        existing.tags = if entry.tags.is_empty() { preserved_tags } else { entry.tags.clone() };
+                        existing.tags = if entry.tags.is_empty() {
+                            preserved_tags
+                        } else {
+                            entry.tags.clone()
+                        };
                         existing.use_count = preserved_use_count + 1;
 
                         updated_entry = Some(existing.clone());
@@ -380,7 +551,11 @@ impl PipelineStage for PersistenceStage {
             }
 
             // Use a unique negative ID for new session-only items
-            let id = -(SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_micros() as i64 / 1000);
+            let id = -(SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_micros() as i64
+                / 1000);
             entry.id = id;
             let session_history = ctx.app_handle.state::<SessionHistory>();
             let mut session = session_history.0.lock().unwrap();
@@ -429,6 +604,8 @@ impl PipelineStage for DistributionStage {
                 queue.items.clear();
                 queue.last_action_was_paste = false;
                 queue.last_pasted_content = None;
+                queue.last_pasted_fingerprint = None;
+                queue.last_paste_timestamp_ms = 0;
             }
             queue.items.push_back(entry.id);
         }
@@ -439,6 +616,12 @@ impl PipelineStage for DistributionStage {
         }
 
         // Notify
-        let _ = ctx.app_handle.emit("clipboard-updated", truncate_entry_for_ui(entry.clone()));
+        let _ = ctx
+            .app_handle
+            .emit("clipboard-updated", truncate_entry_for_ui(entry.clone()));
+
+        if settings.persistent.load(Ordering::Relaxed) && entry.id > 0 {
+            crate::services::cloud_sync::request_cloud_sync(ctx.app_handle.clone());
+        }
     }
 }

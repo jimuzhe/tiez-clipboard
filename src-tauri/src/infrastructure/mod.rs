@@ -1,7 +1,7 @@
-#[cfg(target_os = "windows")]
-pub mod windows_ext;
 pub mod encryption;
 pub mod repository;
+#[cfg(target_os = "windows")]
+pub mod windows_ext;
 
 #[cfg(target_os = "windows")]
 pub mod windows_api;
@@ -31,6 +31,7 @@ pub mod windows_api {
 #[cfg(not(any(target_os = "windows", target_os = "linux")))]
 pub mod windows_api {
     pub mod win_clipboard {
+        #[derive(Clone)]
         pub struct ImageData { pub width: usize, pub height: usize, pub bytes: Vec<u8> }
         static SEQ: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
         pub fn get_clipboard_sequence_number() -> u32 { SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed) }
@@ -39,7 +40,8 @@ pub mod windows_api {
         pub unsafe fn get_clipboard_raw_format(_name: &str) -> Option<Vec<u8>> { None }
         pub unsafe fn set_clipboard_files(_paths: Vec<String>) -> Result<(), String> { Ok(()) }
         pub unsafe fn set_clipboard_text_and_html(_text: &str, _: &str) -> Result<(), String> { Ok(()) }
-        pub fn set_clipboard_image_with_formats(_data: ImageData) -> Result<(), String> { Ok(()) }
+        pub unsafe fn append_clipboard_text_and_html(_text: &str, _: &str) -> Result<(), String> { Ok(()) }
+        pub fn set_clipboard_image_with_formats(_data: ImageData, _gif_bytes: Option<&Vec<u8>>, _png_bytes: Option<&Vec<u8>>) -> Result<Option<String>, String> { Ok(None) }
     }
 
     pub mod window_tracker {
@@ -64,7 +66,7 @@ pub mod windows_api {
     }
 
     pub mod apps {
-        pub fn launch_uwp_with_file(_package: &str, _file: &str) -> Result<(), Box<dyn std::error::Error>> { Ok(()) }
+        pub async fn launch_uwp_with_file(_package: &str, _file: &str) -> Result<(), Box<dyn std::error::Error>> { Ok(()) }
         pub fn get_system_default_app(_ext: &str) -> String { "".into() }
         pub fn get_executable_icon(_executable_path: String) -> Result<Option<String>, String> { Ok(None) }
         pub fn get_file_icon(_file_path: String) -> Result<Option<String>, String> { Ok(None) }

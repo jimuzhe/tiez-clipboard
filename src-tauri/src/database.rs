@@ -24,21 +24,15 @@ const SENSITIVE_KEYS: &[&str] = &[
     "cloud_sync_webdav_password",
 ];
 
-pub const SENSITIVE_TAGS: &[&str] = &[
-    "sensitive",
-    "密码",
-];
+pub const SENSITIVE_TAGS: &[&str] = &["sensitive", "密码"];
 
 pub fn is_sensitive_key(key: &str) -> bool {
     SENSITIVE_KEYS.iter().any(|k| k.eq_ignore_ascii_case(key))
 }
 
 pub fn has_sensitive_tag(tags: &[String]) -> bool {
-    tags.iter().any(|t| {
-        SENSITIVE_TAGS
-            .iter()
-            .any(|s| s.eq_ignore_ascii_case(t))
-    })
+    tags.iter()
+        .any(|t| SENSITIVE_TAGS.iter().any(|s| s.eq_ignore_ascii_case(t)))
 }
 
 pub fn is_text_type(content_type: &str) -> bool {
@@ -58,34 +52,68 @@ pub fn calc_text_hash(content: &str) -> u64 {
     hasher.finish()
 }
 
-pub fn calc_image_hash(base64_data: &str) -> Option<i64> {
-    let parts: Vec<&str> = base64_data.splitn(2, ',').collect();
-    let payload = if parts.len() == 2 { parts[1] } else { base64_data };
-    let payload_clean = payload.replace("\r", "").replace("\n", "");
-    
-    use base64::Engine;
-    let decoded = base64::engine::general_purpose::STANDARD.decode(payload_clean.trim()).ok()?;
+fn calc_visual_hash(img: &image::DynamicImage) -> i64 {
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
 
-    let img = image::load_from_memory(&decoded).ok()?;
     let thumb = img.resize_exact(32, 32, image::imageops::FilterType::Nearest);
-    
+    let mut hasher = DefaultHasher::new();
+    thumb.as_bytes().hash(&mut hasher);
+    hasher.finish() as i64
+}
+
+pub fn calc_image_hash_from_bytes(bytes: &[u8]) -> Option<i64> {
+    if let Ok(img) = image::load_from_memory(bytes) {
+        return Some(calc_visual_hash(&img));
+    }
+
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
     let mut hasher = DefaultHasher::new();
-    thumb.as_bytes().hash(&mut hasher);
+    bytes.hash(&mut hasher);
     Some(hasher.finish() as i64)
+}
+
+pub fn calc_image_hash_from_rgba(width: u32, height: u32, rgba: &[u8]) -> Option<i64> {
+    let buffer = image::RgbaImage::from_raw(width, height, rgba.to_vec())?;
+    let img = image::DynamicImage::ImageRgba8(buffer);
+    Some(calc_visual_hash(&img))
+}
+
+pub fn calc_image_hash(base64_data: &str) -> Option<i64> {
+    let trimmed = base64_data.trim();
+    let bytes =
+        if !trimmed.starts_with("data:") && (trimmed.starts_with('/') || trimmed.contains(":\\")) {
+            std::fs::read(trimmed).ok()?
+        } else {
+            let parts: Vec<&str> = trimmed.splitn(2, ',').collect();
+            let payload = if parts.len() == 2 { parts[1] } else { trimmed };
+            let payload_clean = payload.replace("\r", "").replace("\n", "");
+            if payload_clean.trim().is_empty() {
+                return None;
+            }
+            base64::engine::general_purpose::STANDARD
+                .decode(payload_clean)
+                .ok()?
+        };
+
+    // Prefer a visual fingerprint so the same image still deduplicates after
+    // apps like WeChat re-encode PNG/DIB payloads during paste.
+    calc_image_hash_from_bytes(&bytes)
 }
 
 pub fn init_db(path: &str) -> Result<Connection> {
     let conn = Connection::open(path)?;
-    
+
     // Performance and space pragmas
-    conn.execute_batch("
+    conn.execute_batch(
+        "
         PRAGMA journal_mode = WAL;
         PRAGMA synchronous = NORMAL;
         PRAGMA auto_vacuum = FULL;
-    ")?;
-    
+    ",
+    )?;
+
     // Run migrations
     crate::infrastructure::repository::migrations::run_migrations(&conn)?;
 
@@ -97,31 +125,67 @@ pub fn init_db(path: &str) -> Result<Connection> {
 
 // save_entry removed (migrated to repository)
 
+fn image_ext_from_data_url_header(header: &str) -> Option<&'static str> {
+    let mime = header
+        .strip_prefix("data:")?
+        .split(';')
+        .next()?
+        .trim()
+        .to_ascii_lowercase();
+
+    match mime.as_str() {
+        "image/png" => Some("png"),
+        "image/jpeg" => Some("jpg"),
+        "image/gif" => Some("gif"),
+        "image/webp" => Some("webp"),
+        "image/bmp" => Some("bmp"),
+        "image/svg+xml" => Some("svg"),
+        _ => None,
+    }
+}
+
+fn image_ext_from_bytes(bytes: &[u8]) -> Option<&'static str> {
+    match image::guess_format(bytes).ok()? {
+        image::ImageFormat::Png => Some("png"),
+        image::ImageFormat::Jpeg => Some("jpg"),
+        image::ImageFormat::Gif => Some("gif"),
+        image::ImageFormat::WebP => Some("webp"),
+        image::ImageFormat::Bmp => Some("bmp"),
+        _ => None,
+    }
+}
+
 pub fn save_image_to_file(data_url: &str, data_dir: &std::path::Path) -> Option<String> {
     use std::io::Write;
     let parts: Vec<&str> = data_url.splitn(2, ',').collect();
-    if parts.len() < 2 { return None; }
-    
-    let decoded = base64::engine::general_purpose::STANDARD.decode(parts[1]).ok()?;
-    
+    if parts.len() < 2 {
+        return None;
+    }
+
+    let ext = image_ext_from_data_url_header(parts[0]).unwrap_or("png");
+    let decoded = base64::engine::general_purpose::STANDARD
+        .decode(parts[1])
+        .ok()?;
+    let ext = image_ext_from_bytes(&decoded).unwrap_or(ext);
+
     let attachments_dir = data_dir.join("attachments");
     if !attachments_dir.exists() {
         let _ = std::fs::create_dir_all(&attachments_dir);
     }
-    
+
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
     use std::hash::{Hash, Hasher};
     decoded.hash(&mut hasher);
     let hash = hasher.finish();
-    
-    let file_name = format!("img_{:x}.png", hash);
+
+    let file_name = format!("img_{:x}.{}", hash, ext);
     let file_path = attachments_dir.join(&file_name);
-    
+
     if !file_path.exists() {
         let mut file = std::fs::File::create(&file_path).ok()?;
         file.write_all(&decoded).ok()?;
     }
-    
+
     Some(file_path.to_string_lossy().to_string())
 }
 
@@ -185,6 +249,14 @@ pub fn seed_defaults(conn: &Connection) -> Result<()> {
     );
     let _ = conn.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('app.privacy_protection_kinds', 'phone,idcard,email,secret')", []);
     let _ = conn.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('app.privacy_protection_custom_rules', '')", []);
+    let _ = conn.execute(
+        "INSERT OR IGNORE INTO settings (key, value) VALUES ('app.cleanup_rules', '')",
+        [],
+    );
+    let _ = conn.execute(
+        "INSERT OR IGNORE INTO settings (key, value) VALUES ('app.app_cleanup_policies', '[]')",
+        [],
+    );
     let _ = conn.execute(
         "INSERT OR IGNORE INTO settings (key, value) VALUES ('app.use_win_v_shortcut', 'false')",
         [],
@@ -416,6 +488,10 @@ pub fn seed_defaults(conn: &Connection) -> Result<()> {
         "INSERT OR IGNORE INTO settings (key, value) VALUES ('app.paste_method', 'ctrl_v')",
         [],
     );
+    let _ = conn.execute(
+        "INSERT OR IGNORE INTO settings (key, value) VALUES ('app.quick_paste_modifier', 'disabled')",
+        [],
+    );
 
     // Storage limit settings
     let _ = conn.execute(
@@ -430,17 +506,20 @@ pub fn seed_defaults(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
-// Migrated to repositories: toggle_pin, update_pinned_order, get_entry_by_content, 
-// update_entry_content, insert_entry, get_entry_content, get_entry_content_full, 
-// get_entry_content_with_html, get_entry_by_id, update_entry_tags, get_all_tags, 
+// Migrated to repositories: toggle_pin, update_pinned_order, get_entry_by_content,
+// update_entry_content, insert_entry, get_entry_content, get_entry_content_full,
+// get_entry_content_with_html, get_entry_by_id, update_entry_tags, get_all_tags,
 // create_tag, rename_tag, delete_tag_globally, get_entries_by_tag, set_tag_color, get_tag_colors
-
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::infrastructure::repository::clipboard_repo::{SqliteClipboardRepository, ClipboardRepository};
-    use crate::infrastructure::repository::settings_repo::{SqliteSettingsRepository, SettingsRepository};
+    use crate::infrastructure::repository::clipboard_repo::{
+        ClipboardRepository, SqliteClipboardRepository,
+    };
+    use crate::infrastructure::repository::settings_repo::{
+        SettingsRepository, SqliteSettingsRepository,
+    };
 
     // 辅助函数：创建一个内存中的临时测试数据库
     fn setup_test_db() -> Connection {
@@ -464,11 +543,13 @@ mod tests {
                 pinned_order INTEGER NOT NULL DEFAULT 0
             )",
             [],
-        ).unwrap();
+        )
+        .unwrap();
         conn.execute(
             "CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)",
             [],
-        ).unwrap();
+        )
+        .unwrap();
         conn.execute(
             "CREATE TABLE entry_tags (
                 entry_id INTEGER NOT NULL,
@@ -476,7 +557,8 @@ mod tests {
                 PRIMARY KEY (entry_id, tag)
             )",
             [],
-        ).unwrap();
+        )
+        .unwrap();
         conn.execute(
             "CREATE TABLE cloud_sync_tombstones (
                 content_type TEXT NOT NULL,
@@ -485,21 +567,23 @@ mod tests {
                 PRIMARY KEY (content_type, content_hash)
             )",
             [],
-        ).unwrap();
+        )
+        .unwrap();
         conn.execute(
             "CREATE TABLE cloud_sync_local_index (
                 sync_key TEXT PRIMARY KEY,
                 digest TEXT NOT NULL
             )",
             [],
-        ).unwrap();
+        )
+        .unwrap();
         conn
     }
 
     #[test]
     fn test_save_and_get_history() {
         let conn = setup_test_db();
-        
+
         let entry = ClipboardEntry {
             id: 0,
             content_type: "text".to_string(),
@@ -536,10 +620,10 @@ mod tests {
         let conn = setup_test_db();
         let conn_arc = Arc::new(Mutex::new(conn));
         let repo = SqliteSettingsRepository::new(conn_arc);
-        
+
         // 测试设置保存
         repo.set("test_key", "test_value").unwrap();
-        
+
         // 测试设置读取
         let val = repo.get("test_key").unwrap();
         assert_eq!(val, Some("test_value".to_string()));

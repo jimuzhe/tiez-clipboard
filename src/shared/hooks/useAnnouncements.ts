@@ -112,13 +112,22 @@ export function useAnnouncements() {
         setAnnouncements(validAnnouncements);
       } catch (error) {
         console.warn("Failed to fetch announcements/ping.", error);
-        setAnnouncements([]);
+        // We don't clear existing announcements on polling failure to avoid flickering
       } finally {
         setLoading(false);
       }
     };
 
+    // 1. Initial fetch
     fetchAnnouncements();
+
+    // 2. Setup periodic polling (every 6 hours)
+    const POLLING_INTERVAL = 6 * 60 * 60 * 1000;
+    const interval = setInterval(fetchAnnouncements, POLLING_INTERVAL);
+
+    return () => {
+      clearInterval(interval);
+    };
   }, []);
 
   const dismissAnnouncement = (id: string, forever: boolean = true) => {

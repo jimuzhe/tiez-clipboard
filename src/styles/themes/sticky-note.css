@@ -47,7 +47,7 @@ body.theme-sticky-note {
   --title-font-weight: 700;
   --title-font-size: 18px;
 
-  --input-border: 1px dashed rgba(240, 167, 11, 0.7);
+  --input-border: 1px solid rgba(240, 167, 11, 0.7);
   --input-radius: 8px;
   --input-shadow: none;
   --input-focus-shadow: 0 0 0 3px rgba(240, 167, 11, 0.14);
@@ -62,7 +62,7 @@ body.theme-sticky-note {
   --button-active-filled-shadow: 0 10px 22px rgba(240, 167, 11, 0.24);
 
   --card-border: none;
-  --card-radius: 6px 6px 12px 6px;
+  --card-radius: 8px;
   --card-shadow: 0 4px 16px rgba(93, 64, 55, 0.08);
   --card-hover-shadow: 0 12px 24px rgba(93, 64, 55, 0.14);
   --card-hover-transform: translateY(-2px) rotate(0deg);
@@ -79,21 +79,21 @@ body.theme-sticky-note {
   --panel-header-background: rgba(255, 255, 255, 0.14);
   --panel-divider-color: rgba(122, 92, 80, 0.1);
 
-  --data-panel-border: 1px dashed rgba(199, 163, 93, 0.58);
+  --data-panel-border: 1px solid rgba(199, 163, 93, 0.58);
   --data-panel-shadow: none;
   --data-panel-hover-background: rgba(255, 255, 255, 0.85);
 
   --segment-active-background: rgba(255, 255, 255, 0.8);
   --segment-active-shadow: 0 4px 10px rgba(93, 64, 55, 0.1);
 
-  --tags-border: 1px dashed rgba(199, 163, 93, 0.58);
+  --tags-border: 1px solid rgba(199, 163, 93, 0.58);
   --tags-shadow: 0 10px 18px rgba(93, 64, 55, 0.08);
   --tag-chip-border: none;
   --tag-chip-radius: 999px;
   --tag-chip-shadow: none;
   --tag-chip-hover-shadow: none;
 
-  --menu-border: 1px dashed rgba(199, 163, 93, 0.58);
+  --menu-border: 1px solid rgba(199, 163, 93, 0.58);
   --menu-shadow: 0 16px 26px rgba(93, 64, 55, 0.12);
 
   --scrollbar-size: 8px;
@@ -114,15 +114,14 @@ body.theme-sticky-note {
   --queue-shadow: 0 16px 32px rgba(93, 64, 55, 0.14);
   --queue-count-shadow: 0 6px 14px rgba(93, 64, 55, 0.1);
 
-  --reset-button-border: 1px dashed rgba(240, 167, 11, 0.5);
+  --reset-button-border: 1px solid rgba(240, 167, 11, 0.5);
   --reset-button-shadow: none;
 }
 
-body.theme-sticky-note #root {
-  background-image:
-    radial-gradient(rgba(0, 0, 0, 0.04) 1px, transparent 1px),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.4), rgba(255, 243, 188, 0.22));
-  background-size: 15px 15px, 100% 100%;
+body.theme-sticky-note {
+  background-color: var(--bg-body);
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.4), rgba(255, 243, 188, 0.22));
+  background-size: 100% 100%;
 }
 
 .theme-sticky-note .header-title {
@@ -145,7 +144,6 @@ body.theme-sticky-note #root {
 .theme-sticky-note .history-item:nth-child(5n) {
   --rotate: 0.4deg;
 }
-
 
 .theme-sticky-note .search-input {
   font-family: var(--font-main);
@@ -195,7 +193,6 @@ body.theme-sticky-note #root {
   .theme-sticky-note:not(.light-mode) .history-item {
     background: #3a3a3c !important;
   }
-
 }
 
 :root.dark-mode.theme-sticky-note,
@@ -230,6 +227,3 @@ body.dark-mode.theme-sticky-note .history-item {
   background: #3a3a3c !important;
 }
 
-.theme-sticky-note .settings-group {
-  overflow: hidden !important;
-}

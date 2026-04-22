@@ -3,14 +3,17 @@ import { useEffect } from "react";
 interface UseSettingsPanelResetOptions {
   showSettings: boolean;
   setCollapsedGroups: (val: Record<string, boolean>) => void;
+  setSettingsSubpage: (val: "home" | "advanced") => void;
 }
 
 export const useSettingsPanelReset = ({
   showSettings,
-  setCollapsedGroups
+  setCollapsedGroups,
+  setSettingsSubpage
 }: UseSettingsPanelResetOptions) => {
   useEffect(() => {
     if (showSettings) {
+      setSettingsSubpage("home");
       setCollapsedGroups({
         general: true,
         clipboard: true,
@@ -23,5 +26,5 @@ export const useSettingsPanelReset = ({
         data: true
       });
     }
-  }, [showSettings, setCollapsedGroups]);
+  }, [showSettings, setCollapsedGroups, setSettingsSubpage]);
 };

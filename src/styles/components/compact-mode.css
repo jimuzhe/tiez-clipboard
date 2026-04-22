@@ -111,7 +111,7 @@
 /* Tags Overlay - Absolute Position in Compact Mode */
 .history-item.compact .item-tags-container {
     position: absolute;
-    bottom: 2px;
+    bottom: 0px;
     right: 4px;
     margin: 0 !important;
     z-index: 5;
@@ -122,7 +122,8 @@
 }
 
 /* Larger tags styling for better readability */
-.history-item.compact .item-tags-container .tag-chip {
+.history-item.compact .item-tags-container .tag-chip,
+.history-item.compact .quick-paste-corner-badge.tag-chip {
     font-size: var(--clipboard-tag-font-size) !important;
     padding: 0px 4px !important;
     min-height: 16px;
@@ -644,6 +645,33 @@ html.theme-acrylic .history-item.compact .compact-pinned-indicator {
 .history-item.compact .item-actions [style*="overflow-y: auto"]::-webkit-scrollbar-thumb {
     background: var(--scrollbar-thumb-color);
     border-radius: var(--scrollbar-radius);
+}
+
+.history-item.compact .item-meta-right {
+    gap: 6px;
+}
+
+.history-item.compact .item-meta-right-info {
+    opacity: 1;
+}
+
+.history-item.compact .item-meta-right-info .meta-time {
+    display: none;
+}
+
+.history-item.compact .item-meta-right-info .quick-paste-hint {
+    padding: 0 4px;
+    font-size: 9px;
+    background: transparent;
+}
+
+.history-item.compact .quick-paste-corner-badge {
+    left: 10px;
+    bottom: 0px;
+}
+
+.history-item.compact:has(.drag-handle) .quick-paste-corner-badge {
+    left: 24px;
 }
 
 body.theme-mica .history-item.compact,

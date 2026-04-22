@@ -106,20 +106,20 @@ const FileTransferSettingsGroup = ({
                         </div>
                         <div className="setting-item no-border">
                             <div className="item-label-group"><span className="item-label">Local IP</span></div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', opacity: 0.9 }}>
+                            <div className="data-panel" style={{ minWidth: '160px', justifyContent: 'flex-start', padding: '6px 10px', height: 'auto' }}>
                                 {availableIps && availableIps.length > 1 && setLocalIp ? (
                                     <select
                                         className="search-input"
                                         style={{
-                                            borderRadius: '4px',
-                                            padding: '2px 6px',
-                                            width: 'auto',
-                                            minWidth: '100px',
+                                            border: 'none',
                                             background: 'transparent',
-                                            border: '1px solid var(--border-color)',
-                                            color: 'inherit',
-                                            fontSize: 'inherit',
-                                            height: '24px'
+                                            padding: 0,
+                                            margin: 0,
+                                            fontSize: '11px',
+                                            height: 'auto',
+                                            width: 'auto',
+                                            minWidth: '0',
+                                            boxShadow: 'none'
                                         }}
                                         value={localIp}
                                         onChange={(e) => {
@@ -133,9 +133,9 @@ const FileTransferSettingsGroup = ({
                                         ))}
                                     </select>
                                 ) : (
-                                    <span>{localIp}</span>
+                                    <span style={{ fontSize: '11px' }}>{localIp}</span>
                                 )}
-                                <span>:{Number(actualPort) > 0 ? actualPort : fileServerPort}</span>
+                                <span style={{ fontSize: '11px', opacity: 0.7 }}>:{Number(actualPort) > 0 ? actualPort : fileServerPort}</span>
                             </div>
                         </div>
                         <div className="setting-item">
@@ -214,24 +214,22 @@ const FileTransferSettingsGroup = ({
                                     </div>
                                     <div className="transfer-info">
                                         <div className="scan-title">{t('scan_to_send')}</div>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                            <div className="info-row">
-                                                <span className="info-label">STATUS:</span>
-                                                <span className="status-online">ONLINE</span>
-                                            </div>
-                                            <div className="info-row">
-                                                <span className="info-label">HOST:</span>
-                                                <span className="info-value">{localIp}</span>
-                                            </div>
-                                            <div className="info-row">
-                                                <span className="info-label">PORT:</span>
-                                                <span className="info-value">{actualPort}</span>
-                                            </div>
-                                            <div className="open-browser-btn" onClick={() => {
-                                                if (onOpenChat) onOpenChat();
-                                            }}>
-                                                {t('open_page')}
-                                            </div>
+                                        <div className="info-row">
+                                            <span className="info-label">STATUS</span>
+                                            <span className="status-online">ONLINE</span>
+                                        </div>
+                                        <div className="info-row">
+                                            <span className="info-label">HOST</span>
+                                            <span className="info-value">{localIp}</span>
+                                        </div>
+                                        <div className="info-row">
+                                            <span className="info-label">PORT</span>
+                                            <span className="info-value">{actualPort}</span>
+                                        </div>
+                                        <div className="open-browser-btn" onClick={() => {
+                                            if (onOpenChat) onOpenChat();
+                                        }}>
+                                            {t('open_page')}
                                         </div>
                                     </div>
                                 </div>

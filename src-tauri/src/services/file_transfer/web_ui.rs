@@ -51,17 +51,39 @@ fn file_transfer_theme_variants(theme: &str) -> (&'static str, &'static str, &'s
             --send-button-shadow: 0 10px 22px rgba(0, 0, 0, 0.2);
             "#,
             r#"
-            body.theme-sticky-note {
-                background-image:
-                    radial-gradient(rgba(0, 0, 0, 0.04) 1px, transparent 1px),
-                    linear-gradient(180deg, rgba(255, 255, 255, 0.4), rgba(255, 243, 188, 0.22));
-                background-size: 15px 15px, 100% 100%;
+            body.theme-sticky-note {{
+                background-color: var(--bg-body);
+                background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.4), rgba(255, 243, 188, 0.22));
+                background-size: 100% 100%;
+            }}
+            body.theme-sticky-note.dark-mode {{
+                background-image: linear-gradient(180deg, rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.22));
+            }}
+            @media (prefers-color-scheme: dark) {{
+                body.theme-sticky-note:not(.light-mode) {{
+                    background-image: linear-gradient(180deg, rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.22));
+                }}
+            }}
+            .theme-sticky-note .avatar,
+            .theme-sticky-note .bubble,
+            .theme-sticky-note .text-input,
+            .theme-sticky-note .retro-btn {
+                border-style: solid !important;
             }
-            "#
+            .theme-sticky-note .message.received .bubble {
+                transform: rotate(-0.5deg);
+                box-shadow: 2px 2px 0 var(--shadow-color);
+            }
+            .theme-sticky-note .message.sent .bubble {
+                transform: rotate(0.8deg);
+                box-shadow: -2px 2px 0 var(--shadow-color);
+            }
+            "#,
         ),
         "paper" => (
             r#"
             --bg-body: #f4ecd8;
+            --bg-window: #fdf6e3;
             --bg-panel: rgba(255, 253, 247, 0.78);
             --bg-input: #ffffff;
             --bg-button: rgba(139, 90, 43, 0.08);
@@ -79,13 +101,9 @@ fn file_transfer_theme_variants(theme: &str) -> (&'static str, &'static str, &'s
             --panel-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
             --input-border: 1px solid #d5c4a1;
             --input-radius: 2px;
-            --input-shadow: inset 0 1px 3px rgba(0,0,0,0.03);
+            --input-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.03);
             --button-border: 1px solid rgba(139, 90, 43, 0.3);
             --button-radius: 4px;
-            --button-shadow: none;
-            --button-active-transform: translateY(0);
-            --button-active-shadow: none;
-            --button-active-filled-shadow: 0 4px 10px rgba(139, 90, 43, 0.12);
             --send-button-background: rgba(139, 90, 43, 0.12);
             --send-button-color: var(--text-primary);
             --send-button-border: 1px solid rgba(139, 90, 43, 0.28);
@@ -110,11 +128,25 @@ fn file_transfer_theme_variants(theme: &str) -> (&'static str, &'static str, &'s
             --send-button-shadow: 0 4px 10px rgba(0, 0, 0, 0.18);
             "#,
             r#"
-            body.theme-paper {
+            body.theme-paper {{
                 background-image: linear-gradient(rgba(139, 90, 43, 0.06) 1px, transparent 1px);
                 background-size: 100% 1.65em;
-            }
-            "#
+            }}
+            body.theme-paper::before {{
+                content: "";
+                position: fixed;
+                inset: 0;
+                background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+                opacity: 0.04;
+                pointer-events: none;
+                z-index: 9999;
+            }}
+            @media (prefers-color-scheme: dark) {{
+                body.theme-paper:not(.light-mode) {{
+                    background-image: linear-gradient(rgba(213, 196, 161, 0.04) 1px, transparent 1px);
+                }}
+            }}
+            "#,
         ),
         "mica" => (
             r#"
@@ -127,98 +159,90 @@ fn file_transfer_theme_variants(theme: &str) -> (&'static str, &'static str, &'s
             --text-secondary: #607188;
             --accent-color: #4f7dff;
             --shadow-color: rgba(15, 23, 42, 0.1);
-            --font-mono: "Segoe UI", system-ui, -apple-system, sans-serif;
-            --content-font-family: var(--font-mono);
+            --font-mono: system-ui, -apple-system, sans-serif;
             --radius: 12px;
             --bubble-received-bg: rgba(255, 255, 255, 0.9);
             --panel-border: 1px solid rgba(255, 255, 255, 0.3);
-            --panel-radius: 14px;
-            --panel-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
-            --input-border: 1px solid rgba(128, 128, 128, 0.18);
-            --input-radius: 12px;
-            --input-shadow: none;
-            --button-border: 1px solid rgba(128, 128, 128, 0.18);
-            --button-radius: 10px;
-            --button-shadow: 0 4px 10px rgba(15, 23, 42, 0.06);
-            --button-active-transform: translateY(1px);
-            --button-active-shadow: 0 4px 10px rgba(15, 23, 42, 0.06);
-            --button-active-filled-shadow: 0 12px 24px rgba(79, 125, 255, 0.26);
-            --send-button-background: rgba(79, 125, 255, 0.16);
-            --send-button-color: var(--text-primary);
-            --send-button-border: 1px solid rgba(79, 125, 255, 0.24);
-            --send-button-shadow: 0 12px 24px rgba(79, 125, 255, 0.18);
+            --send-button-background: #4f7dff;
+            --send-button-color: #ffffff;
             "#,
             r#"
             --bg-body: #1a1a1a;
             --bg-panel: rgba(36, 36, 36, 0.52);
             --bg-input: rgba(255, 255, 255, 0.12);
+            --bg-element: rgba(45, 45, 45, 0.65);
             --bg-button: rgba(255, 255, 255, 0.05);
-            --border-dark: rgba(255, 255, 255, 0.08);
             --text-primary: #e8e8e8;
             --text-secondary: #a8a8a8;
             --accent-color: #4f7dff;
-            --shadow-color: rgba(0, 0, 0, 0.24);
+            --border-dark: rgba(255, 255, 255, 0.08);
             --bubble-received-bg: rgba(40, 40, 40, 0.9);
-            --panel-border: 1px solid rgba(255, 255, 255, 0.08);
-            --button-border: 1px solid rgba(255, 255, 255, 0.08);
-            --send-button-background: rgba(79, 125, 255, 0.2);
-            --send-button-color: var(--text-primary);
-            --send-button-border: 1px solid rgba(79, 125, 255, 0.26);
-            --send-button-shadow: 0 12px 24px rgba(0, 0, 0, 0.22);
+            --send-button-background: #4f7dff;
+            --send-button-color: #ffffff;
             "#,
-            ""
+            r#"
+            .theme-mica header, .theme-mica footer {{
+                backdrop-filter: blur(20px) saturate(180%);
+                -webkit-backdrop-filter: blur(20px) saturate(180%);
+            }}
+            .theme-mica .message.received .bubble {{
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
+            }}
+            .theme-mica .retro-btn.send-btn {{
+                background: var(--send-button-background);
+                color: var(--send-button-color);
+                border: none;
+                box-shadow: 0 4px 12px rgba(79, 125, 255, 0.3);
+            }}
+            "#,
         ),
         "acrylic" => (
             r#"
-            --bg-body: #f4f6fb;
+            --bg-body: #f3f3f3;
             --bg-panel: rgba(255, 255, 255, 0.34);
             --bg-input: rgba(255, 255, 255, 0.52);
             --bg-button: rgba(255, 255, 255, 0.2);
-            --border-dark: rgba(255, 255, 255, 0.28);
+            --border-dark: rgba(255, 255, 255, 0.32);
             --text-primary: #162234;
             --text-secondary: #607188;
             --accent-color: #4f7dff;
-            --shadow-color: rgba(15, 23, 42, 0.12);
-            --font-mono: "Segoe UI", system-ui, -apple-system, sans-serif;
-            --content-font-family: var(--font-mono);
-            --radius: 12px;
-            --bubble-received-bg: rgba(255, 255, 255, 0.9);
-            --panel-border: 1px solid rgba(255, 255, 255, 0.28);
-            --panel-radius: 14px;
-            --panel-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
-            --input-border: 1px solid rgba(255, 255, 255, 0.28);
-            --input-radius: 12px;
-            --input-shadow: none;
-            --button-border: 1px solid rgba(255, 255, 255, 0.28);
-            --button-radius: 10px;
-            --button-shadow: none;
-            --button-active-transform: translateY(1px);
-            --button-active-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
-            --button-active-filled-shadow: 0 14px 26px rgba(79, 125, 255, 0.24);
-            --send-button-background: rgba(79, 125, 255, 0.16);
-            --send-button-color: var(--text-primary);
-            --send-button-border: 1px solid rgba(79, 125, 255, 0.24);
-            --send-button-shadow: 0 14px 26px rgba(79, 125, 255, 0.18);
+            --shadow-color: rgba(15, 23, 42, 0.08);
+            --font-mono: system-ui, -apple-system, sans-serif;
+            --radius: 10px;
+            --bubble-received-bg: rgba(255, 255, 255, 0.4);
+            --send-button-background: #4f7dff;
+            --send-button-color: #ffffff;
             "#,
             r#"
-            --bg-body: #16181d;
+            --bg-body: #141414;
             --bg-panel: rgba(28, 28, 28, 0.38);
             --bg-input: rgba(255, 255, 255, 0.12);
             --bg-button: rgba(255, 255, 255, 0.06);
-            --border-dark: rgba(255, 255, 255, 0.1);
+            --border-dark: rgba(255, 255, 255, 0.12);
             --text-primary: #e8e8e8;
             --text-secondary: #b2b2b2;
             --accent-color: #4f7dff;
-            --shadow-color: rgba(0, 0, 0, 0.28);
-            --bubble-received-bg: rgba(45, 45, 45, 0.88);
-            --panel-border: 1px solid rgba(255, 255, 255, 0.1);
-            --button-border: 1px solid rgba(255, 255, 255, 0.1);
-            --send-button-background: rgba(79, 125, 255, 0.2);
-            --send-button-color: var(--text-primary);
-            --send-button-border: 1px solid rgba(79, 125, 255, 0.26);
-            --send-button-shadow: 0 14px 26px rgba(0, 0, 0, 0.22);
+            --bubble-received-bg: rgba(45, 45, 45, 0.42);
+            --send-button-background: #4f7dff;
+            --send-button-color: #ffffff;
             "#,
-            ""
+            r#"
+            .theme-acrylic header, .theme-acrylic footer {{
+                backdrop-filter: blur(30px) saturate(145%);
+                -webkit-backdrop-filter: blur(30px) saturate(145%);
+            }}
+            .theme-acrylic .message.received .bubble {{
+                backdrop-filter: blur(15px);
+                -webkit-backdrop-filter: blur(15px);
+            }}
+            .theme-acrylic .retro-btn.send-btn {{
+                background: var(--send-button-background);
+                color: var(--send-button-color);
+                border: none;
+                box-shadow: 0 4px 12px rgba(79, 125, 255, 0.3);
+            }}
+            "#,
         ),
         _ => (
             r#"
@@ -274,7 +298,7 @@ fn file_transfer_theme_variants(theme: &str) -> (&'static str, &'static str, &'s
             --send-button-border: 2px solid #000000;
             --send-button-shadow: none;
             "#,
-            ""
+            "",
         ),
     }
 }
@@ -287,9 +311,7 @@ fn file_transfer_theme_css(theme: &str, color_mode: &str) -> String {
         _ => String::new(),
     };
 
-    format!(
-        ":root {{{light}}}\n{dark_css}\n{extra}"
-    )
+    format!(":root {{{light}}}\n{dark_css}\n{extra}")
 }
 
 pub fn render_index(theme: &str, color_mode: &str, logo_base64: &str) -> String {
@@ -300,7 +322,8 @@ pub fn render_index(theme: &str, color_mode: &str, logo_base64: &str) -> String 
         _ => "",
     };
 
-    format!(r#"
+    format!(
+        r#"
 <!DOCTYPE html>
 <html lang="zh">
 <head>
@@ -321,10 +344,6 @@ pub fn render_index(theme: &str, color_mode: &str, logo_base64: &str) -> String 
             --radius: 0px;
             --bubble-received-bg: #ffffff;
             --app-height: 100vh;
-            --footer-shift: 0px;
-            --composer-height: 76px;
-            --control-height: clamp(40px, 6.6vh, 58px);
-            --side-width: clamp(72px, 14vw, 92px);
         }}
 
         @media (prefers-color-scheme: dark) {{
@@ -366,19 +385,24 @@ pub fn render_index(theme: &str, color_mode: &str, logo_base64: &str) -> String 
             }}
         }}
 
+        html, body {{
+            height: 100%;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            position: fixed;
+            top: 0;
+            left: 0;
+        }}
+
         body {{
             background-color: var(--bg-body);
             color: var(--text-primary);
             font-family: var(--content-font-family, var(--font-mono));
-            margin: 0; padding: 0;
-            display: flex; flex-direction: column;
-            height: 100dvh;
+            display: flex;
+            flex-direction: column;
             height: var(--app-height);
-            overflow: hidden;
-            position: fixed;
-            inset: 0;
-            width: 100%;
-            overscroll-behavior: none;
             transition: background 0.3s;
         }}
 
@@ -408,18 +432,10 @@ pub fn render_index(theme: &str, color_mode: &str, logo_base64: &str) -> String 
         .status-dot {{ width: 8px; height: 8px; background: #4caf50; border-radius: 50%; box-shadow: 0 0 5px #4caf50; }}
 
         #chat-box {{
-            flex: 1; min-height: 0; overflow-y: auto; padding: 16px;
+            flex: 1; overflow-y: auto; padding: 16px;
             display: flex; flex-direction: column; gap: 16px;
             scroll-behavior: smooth;
-            -webkit-overflow-scrolling: touch;
-            overscroll-behavior: contain;
-            scrollbar-width: none;
-            padding-bottom: calc(var(--composer-height) + var(--footer-shift) + env(safe-area-inset-bottom) + 16px);
-            scroll-padding-bottom: calc(var(--composer-height) + var(--footer-shift) + env(safe-area-inset-bottom) + 12px);
-        }}
-
-        #chat-box::-webkit-scrollbar {{
-            display: none;
+            padding-bottom: 40px;
         }}
 
         .timestamp {{
@@ -545,24 +561,20 @@ pub fn render_index(theme: &str, color_mode: &str, logo_base64: &str) -> String 
         .progress-inner {{ height: 100%; background: var(--accent-color); width: 0%; transition: width 0.2s; }}
 
         footer {{
-            padding: 8px 16px;
-            padding-bottom: calc(8px + env(safe-area-inset-bottom));
-            background: transparent;
-            border-top: none;
-            display: flex; gap: 12px; align-items: center;
+            padding: 10px 16px;
+            padding-bottom: calc(10px + env(safe-area-inset-bottom));
+            background: var(--bg-panel);
+            border-top: 2px solid var(--border-dark);
+            display: flex; gap: 12px; align-items: flex-end;
             flex-shrink: 0;
             z-index: 10;
-            transform: translateY(calc(-1 * var(--footer-shift)));
-            transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
-            will-change: transform;
         }}
         .theme-mica footer, .theme-acrylic footer {{
-            background: transparent;
-            backdrop-filter: none;
-            border-top: none;
+            background: rgba(255,255,255,0.7); backdrop-filter: blur(20px);
+            border-top: 1px solid rgba(0,0,0,0.1);
         }}
         @media (prefers-color-scheme: dark) {{
-            .theme-mica footer, .theme-acrylic footer {{ background: transparent; }}
+            .theme-mica footer, .theme-acrylic footer {{ background: rgba(30,30,30,0.7); }}
         }}
         
         .retro-btn {{
@@ -572,7 +584,7 @@ pub fn render_index(theme: &str, color_mode: &str, logo_base64: &str) -> String 
             display: flex; align-items: center; justify-content: center;
             cursor: pointer; color: var(--text-primary);
             transition: all 0.1s;
-            height: var(--control-height);
+            height: 40px;
             flex-shrink: 0;
             border-radius: var(--button-radius, var(--radius));
         }}
@@ -589,11 +601,10 @@ pub fn render_index(theme: &str, color_mode: &str, logo_base64: &str) -> String 
             .theme-mica .retro-btn, .theme-acrylic .retro-btn {{ background: rgba(255,255,255,0.1); }}
         }}
 
-        .add-btn {{ width: var(--side-width); min-width: var(--side-width); padding: 0; font-size: 24px; font-weight: 900; }}
+        .add-btn {{ width: 40px; font-size: 24px; font-weight: 900; }}
         .send-btn {{
-            width: var(--side-width);
-            min-width: var(--side-width);
-            padding: 0;
+            min-width: 72px;
+            padding: 0 16px;
             background: var(--send-button-background, var(--accent-color));
             color: var(--send-button-color, #ffffff);
             border: var(--send-button-border, var(--button-border, 2px solid var(--border-dark)));
@@ -601,15 +612,13 @@ pub fn render_index(theme: &str, color_mode: &str, logo_base64: &str) -> String 
         }}
         
         .text-input {{ 
-            flex: 1; height: var(--control-height); min-height: var(--control-height); max-height: 100px; padding: calc((var(--control-height) - 20px) / 2) 12px;
+            flex: 1; height: 40px; min-height: 40px; max-height: 100px; padding: 10px 12px;
             background: var(--bg-input); border: var(--input-border, 2px solid var(--border-dark));
             box-shadow: var(--input-shadow, inset 2px 2px 0 rgba(0,0,0,0.1));
             font-size: 14px; font-family: var(--content-font-family, var(--font-mono));
             color: var(--text-primary); outline: none;
             border-radius: var(--input-radius, var(--radius)); -webkit-appearance: none;
             resize: none; overflow-y: auto; line-height: 20px;
-            display: block;
-            margin: 0;
         }}
         .theme-mica .text-input, .theme-acrylic .text-input {{ box-shadow: none; border-width: 1px; }}
         @media (prefers-color-scheme: dark) {{
@@ -739,8 +748,6 @@ pub fn render_index(theme: &str, color_mode: &str, logo_base64: &str) -> String 
         const textInput = document.getElementById('text-input');
         const sendBtn = document.getElementById('send-btn');
         const chatBox = document.getElementById('chat-box');
-        const footer = document.querySelector('footer');
-        const fsTextarea = document.getElementById('fs-textarea');
         
         const now = new Date();
         document.getElementById('time-now').innerText = `${{now.getHours().toString().padStart(2,'0')}}:${{now.getMinutes().toString().padStart(2,'0')}}`;
@@ -758,38 +765,53 @@ pub fn render_index(theme: &str, color_mode: &str, logo_base64: &str) -> String 
             chatBox.scrollTop = chatBox.scrollHeight;
         }}
 
-        function syncComposerMetrics() {{
-            if (!footer) return;
-            const composerHeight = Math.ceil(footer.getBoundingClientRect().height);
-            document.documentElement.style.setProperty('--composer-height', `${{composerHeight}}px`);
-        }}
-
         function syncViewportMetrics() {{
-            const root = document.documentElement;
             const vv = window.visualViewport;
-            const activeElement = document.activeElement;
-            const mainInputFocused = activeElement === textInput;
             if (!vv) {{
-                root.style.setProperty('--app-height', `${{window.innerHeight}}px`);
-                root.style.setProperty('--footer-shift', '0px');
-                syncComposerMetrics();
+                document.documentElement.style.setProperty('--app-height', `${{window.innerHeight}}px`);
                 return;
             }}
 
-            const layoutHeight = Math.max(window.innerHeight, vv.height + vv.offsetTop);
-            const overlap = Math.max(0, layoutHeight - (vv.height + vv.offsetTop));
-            const footerShift = mainInputFocused && overlap > 80 ? overlap : 0;
+            // Pull the height from the visual viewport (excludes keyboard)
+            document.documentElement.style.setProperty('--app-height', `${{vv.height}}px`);
+            
+            // Keep the fixed body aligned with the visual viewport's top/left
+            document.body.style.transform = `translate(${{vv.offsetLeft}}px, ${{vv.offsetTop}}px)`;
+            
+            // Prevent the browser from scrolling the layout viewport away from origin
+            if (window.scrollY !== 0 || window.scrollX !== 0) {{
+                window.scrollTo(0, 0);
+            }}
+        }}
 
-            root.style.setProperty('--app-height', `${{Math.round(layoutHeight)}}px`);
-            root.style.setProperty('--footer-shift', `${{Math.round(footerShift)}}px`);
-            syncComposerMetrics();
+        if (window.visualViewport) {{
+            window.visualViewport.addEventListener('resize', syncViewportMetrics);
+            window.visualViewport.addEventListener('scroll', syncViewportMetrics);
+        }}
+        window.addEventListener('resize', syncViewportMetrics);
+        // Also sync on focus/blur to handle various keyboard states
+        document.addEventListener('focusin', () => setTimeout(syncViewportMetrics, 50));
+        document.addEventListener('focusout', () => setTimeout(syncViewportMetrics, 50));
+        syncViewportMetrics();
+
+        function escapeHTML(str) {{
+            if (!str) return '';
+            return str.replace(/[&<>"']/g, function(m) {{
+                return {{
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#39;'
+                }}[m];
+            }});
         }}
 
         function normalizeFileName(name) {{
             if (!name) return '';
             const base = name.split('/').pop().split('\\').pop();
             const m = base.match(/^\d{{8,}}_(.+)$/);
-            return m ? m[1] : base;
+            return escapeHTML(m ? m[1] : base);
         }}
         function extractNameFromContent(content, file_path) {{
             if (content && content.startsWith('/download/') && content.includes('?name=')) {{
@@ -819,14 +841,14 @@ pub fn render_index(theme: &str, color_mode: &str, logo_base64: &str) -> String 
             const div = document.createElement('div');
             div.className = `message ${{direction}}`;
             
-            let bubbleContent = content;
+            let bubbleContent = escapeHTML(content);
             if (msgType === 'image' || (content.match(/\.(jpg|jpeg|png|gif|webp)$/i) && file_path)) {{
                 const useContent = content.startsWith('data:') || content.startsWith('/download/') || content.startsWith('http');
-                const src = useContent ? content : (file_path || content);
+                const src = escapeHTML(useContent ? content : (file_path || content));
                 bubbleContent = `<img src="${{src}}" class="img-preview" onclick="openOverlay('${{src}}')">`;
             }} else if (msgType === 'video') {{
                 const useContent = content.startsWith('/download/') || content.startsWith('http');
-                const src = useContent ? content : (file_path || content);
+                const src = escapeHTML(useContent ? content : (file_path || content));
                 bubbleContent = `<video class="video-preview" controls src="${{src}}"></video>`;
             }} else if (msgType === 'file' || file_path) {{
                  const rawName = extractNameFromContent(content, file_path);
@@ -842,6 +864,7 @@ pub fn render_index(theme: &str, color_mode: &str, logo_base64: &str) -> String 
                  `;
             }}
 
+            const escapedSenderName = escapeHTML(senderName);
             div.innerHTML = `
                 ${{direction === 'received' ? (() => {{
                     const name = (senderName || '').trim();
@@ -850,10 +873,10 @@ pub fn render_index(theme: &str, color_mode: &str, logo_base64: &str) -> String 
                     if (isPc) {{
                         return `<div class="avatar"><img src="${{TIEZ_LOGO}}" alt="TieZ"></div>`;
                     }}
-                    return `<div class="avatar">${{name ? name[0] : '?'}}</div>`;
+                    return `<div class="avatar">${{name ? escapeHTML(name[0]) : '?'}}</div>`;
                 }})() : ''}}
                 <div class="bubble">
-                    ${{senderName !== 'System' ? `<div style="font-size:10px; opacity:0.6; margin-bottom:2px">${{senderName}}</div>` : ''}}
+                    ${{escapedSenderName && escapedSenderName !== 'System' ? `<div style="font-size:10px; opacity:0.6; margin-bottom:2px">${{escapedSenderName}}</div>` : ''}}
                     ${{bubbleContent}}
                 </div>
             `;
@@ -903,24 +926,17 @@ pub fn render_index(theme: &str, color_mode: &str, logo_base64: &str) -> String 
         textInput.addEventListener('focus', () => {{
             setTimeout(() => {{
                 syncViewportMetrics();
-                textInput.scrollIntoView({{ block: 'nearest', inline: 'nearest' }});
                 scrollToBottom();
             }}, 80);
         }});
 
-        textInput.addEventListener('blur', () => {{
-            setTimeout(syncViewportMetrics, 120);
-        }});
-
         window.addEventListener('resize', syncViewportMetrics);
         window.addEventListener('orientationchange', syncViewportMetrics);
-        window.addEventListener('load', syncComposerMetrics);
         if (window.visualViewport) {{
             window.visualViewport.addEventListener('resize', syncViewportMetrics);
             window.visualViewport.addEventListener('scroll', syncViewportMetrics);
         }}
         syncViewportMetrics();
-        syncComposerMetrics();
 
         // WebSocket Setup
         let socket;
@@ -1041,7 +1057,7 @@ pub fn render_index(theme: &str, color_mode: &str, logo_base64: &str) -> String 
                     const list = pendingUploads.get(file.name) || [];
                     const idx = list.indexOf(el);
                     if (idx >= 0) {{ list.splice(idx, 1); }}
-                    if (list.length === 0) pendingUploads.delete(file.name);
+                    if (list.length === 0) pendingUploads.delete(name);
                     break;
                 }}
             }}
@@ -1072,5 +1088,10 @@ pub fn render_index(theme: &str, color_mode: &str, logo_base64: &str) -> String 
     </script>
 </body>
 </html>
-    "#, theme = theme, logo_base64 = logo_base64)
+    "#,
+        theme = theme,
+        mode_class = mode_class,
+        theme_css = theme_css,
+        logo_base64 = logo_base64
+    )
 }

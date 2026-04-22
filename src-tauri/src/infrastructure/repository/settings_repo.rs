@@ -1,8 +1,8 @@
-use rusqlite::{params, Connection, Result};
-use std::sync::{Arc, Mutex};
-use std::collections::HashMap;
-use crate::infrastructure::encryption::{self, ENCRYPT_PREFIX};
 use crate::database::is_sensitive_key;
+use crate::infrastructure::encryption::{self, ENCRYPT_PREFIX};
+use rusqlite::{params, Connection, Result};
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
 const LEGACY_PLAIN_PREFIX: &str = "plain:";
 
@@ -83,7 +83,7 @@ impl SqliteSettingsRepository {
     pub fn get_raw(conn: &Connection, key: &str) -> Result<Option<String>> {
         let mut stmt = conn.prepare("SELECT value FROM settings WHERE key = ?")?;
         let mut rows = stmt.query(params![key])?;
-        
+
         if let Some(row) = rows.next()? {
             let value: String = row.get(0)?;
             if let Some(decrypted) = Self::try_decrypt_legacy_or_sensitive(key, &value) {
@@ -125,7 +125,7 @@ impl SettingsRepository for SqliteSettingsRepository {
     fn set(&self, key: &str, value: &str) -> Result<()> {
         let conn = self.conn.lock().unwrap();
         let final_value = self.maybe_encrypt(key, value);
-        
+
         conn.execute(
             "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
             params![key, final_value],
@@ -137,11 +137,11 @@ impl SettingsRepository for SqliteSettingsRepository {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare("SELECT value FROM settings WHERE key = ?")?;
         let mut rows = stmt.query(params![key])?;
-        
+
         if let Some(row) = rows.next()? {
             let value: String = row.get(0)?;
             let decrypted = self.maybe_decrypt(key, &value);
-            
+
             // Auto-migrate to encrypted if it was plaintext and is sensitive.
             // Also migrate legacy encrypted mqtt_username back to plaintext.
             #[cfg(not(feature = "portable"))]
@@ -161,7 +161,7 @@ impl SettingsRepository for SqliteSettingsRepository {
                     );
                 }
             }
-            
+
             Ok(Some(decrypted))
         } else {
             Ok(None)
@@ -174,12 +174,12 @@ impl SettingsRepository for SqliteSettingsRepository {
         let rows = stmt.query_map([], |row| {
             Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
         })?;
-        
+
         let mut settings = HashMap::new();
         for row in rows {
             let (key, value) = row?;
             let decrypted = self.maybe_decrypt(&key, &value);
-            
+
             // Auto-migrate to encrypted if it was plaintext and is sensitive.
             // Also migrate legacy encrypted mqtt_username back to plaintext.
             #[cfg(not(feature = "portable"))]
@@ -199,7 +199,7 @@ impl SettingsRepository for SqliteSettingsRepository {
                     );
                 }
             }
-            
+
             settings.insert(key, decrypted);
         }
         Ok(settings)

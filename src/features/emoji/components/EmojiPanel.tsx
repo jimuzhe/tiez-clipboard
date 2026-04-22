@@ -4,6 +4,7 @@ import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { open } from "@tauri-apps/plugin-dialog";
 import { Plus, X } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface EmojiPanelProps {
   t: (key: string) => string;
@@ -52,7 +53,7 @@ const FALLBACK_GROUPS: EmojiGroup[] = [
   },
   {
     name: "物品",
-    emojis: ["📱", "💻", "🖥️", "⌨️", "🖱️", "📷", "🎥", "📺", "🔦", "💡", "🔋", "🔌", "📦", "📌", "✏️", "📚", "🧰", "🧲", "🧯", "🧪"]
+    emojis: ["📱", "💻", "🖥️", "键盘", "🖱️", "📷", "🎥", "📺", "🔦", "💡", "🔋", "🔌", "📦", "📌", "✏️", "📚", "🧰", "🧲", "🧯", "🧪"]
   },
   {
     name: "符号",
@@ -316,6 +317,21 @@ const EmojiPanel = ({ t, favorites, setFavorites, activeTab, setActiveTab, saveS
   };
 
   const handleSend = async (content: string, contentType: string) => {
+    if (contentType === "text") {
+      await invoke("paste_text_directly", { content });
+      return;
+    }
+
+    if (contentType === "image") {
+      await invoke("paste_content_transiently", {
+        content,
+        contentType,
+        id: 0,
+        pasteWithFormat: false
+      });
+      return;
+    }
+
     await invoke("copy_to_clipboard", {
       content,
       contentType,
@@ -497,134 +513,178 @@ const EmojiPanel = ({ t, favorites, setFavorites, activeTab, setActiveTab, saveS
     <div className="emoji-panel">
       <div className="emoji-tabs">
         <button
-          className={`btn-icon emoji-tab ${activeTab === "emoji" ? "active" : ""}`}
+          className={`emoji-tab ${activeTab === "emoji" ? "active" : ""}`}
           onClick={() => handleTabChange("emoji")}
         >
-          {t("emoji_tab") || "Emoji"}
+          <span className="emoji-tab-text">{t("emoji_tab") || "Emoji"}</span>
+          {activeTab === "emoji" && (
+            <motion.div layoutId="active-indicator" className="active-tab-indicator" />
+          )}
         </button>
         <button
-          className={`btn-icon emoji-tab ${activeTab === "favorites" ? "active" : ""}`}
+          className={`emoji-tab ${activeTab === "favorites" ? "active" : ""}`}
           onClick={() => handleTabChange("favorites")}
         >
-          {t("emoji_favorites") || "收藏"}
+          <span className="emoji-tab-text">{t("emoji_favorites") || "收藏"}</span>
+          {activeTab === "favorites" && (
+            <motion.div layoutId="active-indicator" className="active-tab-indicator" />
+          )}
         </button>
       </div>
 
-      {activeTab === "emoji" && (
-        <div className="emoji-content">
-          {emojiGroups.map((group) => (
-            <div key={group.name} className="emoji-group">
-              <div className="emoji-group-title">{group.name}</div>
-              <div className="emoji-grid">
-                {group.emojis.map((emoji) => (
-                  <button
-                    key={`${group.name}-${emoji}`}
-                    className="emoji-btn"
-                    onClick={() => handleSend(emoji, "text")}
-                    title={emoji}
-                  >
-                    {emoji}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
-          {flatEmoji.length === 0 && (
-            <div className="emoji-empty">{t("emoji_empty") || "暂无表情"}</div>
-          )}
-        </div>
-      )}
+      <div className="emoji-content-wrapper">
+        <AnimatePresence mode="wait" initial={false}>
+          {activeTab === "emoji" ? (
+            <motion.div 
+              key="emoji"
+              className="emoji-content"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.15 }}
+            >
+              {emojiGroups.map((group) => (
+                <div key={group.name} className="emoji-group">
+                  <div className="emoji-group-title">{group.name}</div>
+                  <div className="emoji-grid">
+                    {group.emojis.map((emoji) => (
+                      <motion.button
+                        key={`${group.name}-${emoji}`}
+                        className="emoji-btn"
+                        onClick={() => handleSend(emoji, "text")}
+                        title={emoji}
+                        whileHover={{ scale: 1.15 }}
+                        whileTap={{ scale: 0.9 }}
+                      >
+                        {emoji}
+                      </motion.button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              {flatEmoji.length === 0 && (
+                <div className="emoji-empty">{t("emoji_empty") || "暂无表情"}</div>
+              )}
+            </motion.div>
+          ) : (
+            <motion.div
+              key="favorites"
+              className="emoji-fav-container"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.15 }}
+              onClick={() => setDeleteTarget(null)}
+              onContextMenu={(e) => {
+                if ((e.target as HTMLElement).closest(".emoji-fav-card")) return;
+                setDeleteTarget(null);
+              }}
+              onDragOver={(e) => {
+                e.preventDefault();
+                if (!isDragging) setIsDragging(true);
+              }}
+              onDragLeave={(e) => {
+                if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+                setIsDragging(false);
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                setIsDragging(false);
+                void handleDomDrop(e);
+              }}
+            >
+              <div className="emoji-fav-grid">
+                {favorites.map((path, idx) => {
+                  const name = path.split(/[/\\]/).pop() || path;
+                  const isDeleteVisible = deleteTarget === path;
+                  return (
+                    <motion.div
+                      key={path}
+                      layout
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: idx * 0.01 }}
+                      className="emoji-fav-card"
+                      data-delete-visible={isDeleteVisible}
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setDeleteTarget(path);
+                      }}
+                    >
+                      <button
+                        className="emoji-fav-remove"
+                        title={t("delete") || "删除"}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeFavoritePath(path);
+                        }}
+                      >
+                        <X size={14} />
+                      </button>
+                      <button
+                        className="emoji-fav-preview"
+                        title={name}
+                        onClick={() => handleSend(path, "image")}
+                      >
+                        <img
+                          src={convertFileSrc(path)}
+                          alt={name}
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            removeFavoritePath(path);
+                          }}
+                        />
+                      </button>
+                    </motion.div>
+                  );
+                })}
 
-      {activeTab === "favorites" && (
-        <div
-          className={`emoji-content ${isDragging ? "dragging" : ""}`}
-          onClick={() => setDeleteTarget(null)}
-          onContextMenu={(e) => {
-            if ((e.target as HTMLElement).closest(".emoji-fav-card")) return;
-            setDeleteTarget(null);
-          }}
-          onDragOver={(e) => {
-            e.preventDefault();
-            if (!isDragging) setIsDragging(true);
-          }}
-          onDragLeave={(e) => {
-            if (e.currentTarget.contains(e.relatedTarget as Node)) return;
-            setIsDragging(false);
-          }}
-          onDrop={(e) => {
-            e.preventDefault();
-            setIsDragging(false);
-            void handleDomDrop(e);
-          }}
-        >
-          <div className={`emoji-fav-grid ${isDragging ? "dragging" : ""}`}>
-            <div className="emoji-fav-card emoji-fav-add">
-              <button
-                className="emoji-fav-preview emoji-fav-add-btn"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  void handleSelectFiles();
-                }}
-                title={t("emoji_add_files") || "添加表情"}
-              >
-                <Plus size={18} />
-                <span>{t("emoji_add_files") || "添加表情"}</span>
-              </button>
-            </div>
-            {favorites.map((path) => {
-              const name = path.split(/[/\\]/).pop() || path;
-              const isDeleteVisible = deleteTarget === path;
-              return (
-                <div
-                  key={path}
-                  className="emoji-fav-card"
-                  data-delete-visible={isDeleteVisible}
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setDeleteTarget(path);
-                  }}
+                <motion.div 
+                  className="emoji-fav-card emoji-fav-add"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                 >
                   <button
-                    className="btn-icon emoji-fav-remove"
-                    title={t("delete") || "删除"}
+                    className="emoji-fav-add-btn"
                     onClick={(e) => {
                       e.stopPropagation();
-                      removeFavoritePath(path);
+                      void handleSelectFiles();
                     }}
+                    title={t("emoji_add_files") || "添加表情"}
                   >
-                    <X size={12} />
+                    <div className="add-icon-wrapper">
+                      <Plus size={22} strokeWidth={2.5} />
+                    </div>
                   </button>
-                  <button
-                    className="emoji-fav-preview"
-                    title={name}
-                    onClick={() => handleSend(path, "image")}
-                  >
-                    <img
-                      src={convertFileSrc(path)}
-                      alt={name}
-                      onError={(e) => {
-                        e.currentTarget.onerror = null;
-                        removeFavoritePath(path);
-                      }}
-                    />
-                  </button>
-                </div>
-              );
-            })}
-          </div>
+                </motion.div>
+              </div>
 
-          {!hasFavorites && (
-            <div className="emoji-fav-empty">
-              <div className="emoji-empty-title">{t("emoji_empty") || "暂无表情"}</div>
-              <div className="emoji-empty-desc">{t("emoji_fav_hint") || "点击或拖拽图片快速添加"}</div>
-            </div>
+              {!hasFavorites && (
+                <div className="emoji-fav-empty">
+                  <span>{t("emoji_fav_hint") || "点击添加按钮、或拖拽图片到这里"}</span>
+                </div>
+              )}
+              {hasFavorites && (
+                <div className="emoji-fav-tip">{t("emoji_fav_tip") || "可直接拖拽图片添加"}</div>
+              )}
+              
+              <AnimatePresence>
+                {isDragging && (
+                  <motion.div 
+                    className="drop-overlay"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                  >
+                    <p>{t("emoji_drop_hint") || "松开鼠标即可添加"}</p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
           )}
-          {hasFavorites && (
-            <div className="emoji-fav-tip">{t("emoji_fav_tip") || "可直接拖拽表情添加"}</div>
-          )}
-        </div>
-      )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 };

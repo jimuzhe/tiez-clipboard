@@ -127,7 +127,7 @@ const AppearanceSettingsGroup = ({
                     <div className="item-label-group" style={{ marginBottom: '8px' }}>
                         <span className="item-label">{t('color_mode')}</span>
                     </div>
-                    <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
+                    <div className="settings-inline-choice-row">
                         {[
                             { id: 'system', name: t('mode_system') },
                             { id: 'light', name: t('mode_light') },
@@ -139,8 +139,7 @@ const AppearanceSettingsGroup = ({
                                     setColorMode(modeItem.id);
                                     saveAppSetting('color_mode', modeItem.id);
                                 }}
-                                className={`btn-icon ${colorMode === modeItem.id ? 'active' : ''}`}
-                                style={{ flex: 1, height: '36px', fontSize: '12px', fontWeight: 'bold' }}
+                                className={`btn-icon settings-inline-choice-btn ${colorMode === modeItem.id ? 'active' : ''}`}
                             >
                                 {modeItem.name}
                             </button>
@@ -152,7 +151,7 @@ const AppearanceSettingsGroup = ({
                     <div className="item-label-group" style={{ marginBottom: '8px' }}>
                         <span className="item-label">{t('language')}</span>
                     </div>
-                    <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
+                    <div className="settings-inline-choice-row">
                         {[
                             { id: 'zh', name: '简体' },
                             { id: 'tw', name: '繁體' },
@@ -164,8 +163,7 @@ const AppearanceSettingsGroup = ({
                                     setLanguage(lang.id as Locale);
                                     saveAppSetting('language', lang.id);
                                 }}
-                                className={`btn-icon ${language === lang.id ? 'active' : ''}`}
-                                style={{ flex: 1, height: '36px', fontSize: '12px', fontWeight: 'bold' }}
+                                className={`btn-icon settings-inline-choice-btn ${language === lang.id ? 'active' : ''}`}
                             >
                                 {lang.name}
                             </button>

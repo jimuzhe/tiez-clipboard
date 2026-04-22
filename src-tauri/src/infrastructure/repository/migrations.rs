@@ -9,15 +9,18 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
         [],
     )?;
 
-    let current_version: i32 = conn.query_row(
-        "SELECT COALESCE(MAX(version), 0) FROM schema_migrations",
-        [],
-        |row| row.get(0),
-    ).unwrap_or(0);
+    let current_version: i32 = conn
+        .query_row(
+            "SELECT COALESCE(MAX(version), 0) FROM schema_migrations",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap_or(0);
 
     // Migration 1: Initial Baseline
     if current_version < 1 {
-        conn.execute_batch("
+        conn.execute_batch(
+            "
             CREATE TABLE IF NOT EXISTS clipboard_history (
                 id INTEGER PRIMARY KEY,
                 content_type TEXT NOT NULL,
@@ -30,7 +33,8 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
                 key TEXT PRIMARY KEY,
                 value TEXT NOT NULL
             );
-        ")?;
+        ",
+        )?;
         conn.execute("INSERT INTO schema_migrations (version) VALUES (1)", [])?;
     }
 
@@ -47,7 +51,10 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
 
         for (name, def) in columns {
             if !has_column(conn, "clipboard_history", name)? {
-                conn.execute(&format!("ALTER TABLE clipboard_history ADD COLUMN {} {}", name, def), [])?;
+                conn.execute(
+                    &format!("ALTER TABLE clipboard_history ADD COLUMN {} {}", name, def),
+                    [],
+                )?;
             }
         }
         conn.execute("INSERT INTO schema_migrations (version) VALUES (2)", [])?;
@@ -56,7 +63,10 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
     // Migration 3: Add is_external
     if current_version < 3 {
         if !has_column(conn, "clipboard_history", "is_external")? {
-            conn.execute("ALTER TABLE clipboard_history ADD COLUMN is_external INTEGER NOT NULL DEFAULT 0", [])?;
+            conn.execute(
+                "ALTER TABLE clipboard_history ADD COLUMN is_external INTEGER NOT NULL DEFAULT 0",
+                [],
+            )?;
         }
         conn.execute("INSERT INTO schema_migrations (version) VALUES (3)", [])?;
     }
@@ -70,30 +80,39 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
             )",
             [],
         )?;
-        
+
         // Insert default tags
-        let _ = conn.execute("INSERT OR IGNORE INTO saved_tags (name) VALUES ('sensitive')", []);
-        let _ = conn.execute("INSERT OR IGNORE INTO saved_tags (name) VALUES ('密码')", []);
-        
+        let _ = conn.execute(
+            "INSERT OR IGNORE INTO saved_tags (name) VALUES ('sensitive')",
+            [],
+        );
+        let _ = conn.execute(
+            "INSERT OR IGNORE INTO saved_tags (name) VALUES ('密码')",
+            [],
+        );
+
         conn.execute("INSERT INTO schema_migrations (version) VALUES (4)", [])?;
     }
 
     // Migration 5: Performance indexes
     if current_version < 5 {
-        conn.execute_batch("
+        conn.execute_batch(
+            "
             CREATE INDEX IF NOT EXISTS idx_clipboard_history_pinned_order_time
                 ON clipboard_history (is_pinned, pinned_order, timestamp);
             CREATE INDEX IF NOT EXISTS idx_clipboard_history_type_hash
                 ON clipboard_history (content_type, content_hash);
             CREATE INDEX IF NOT EXISTS idx_clipboard_history_timestamp
                 ON clipboard_history (timestamp);
-        ")?;
+        ",
+        )?;
         conn.execute("INSERT INTO schema_migrations (version) VALUES (5)", [])?;
     }
 
     // Migration 6: Normalize tags into entry_tags
     if current_version < 6 {
-        conn.execute_batch("
+        conn.execute_batch(
+            "
             CREATE TABLE IF NOT EXISTS entry_tags (
                 entry_id INTEGER NOT NULL,
                 tag TEXT NOT NULL,
@@ -101,7 +120,8 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
             );
             CREATE INDEX IF NOT EXISTS idx_entry_tags_tag ON entry_tags (tag);
             CREATE INDEX IF NOT EXISTS idx_entry_tags_entry ON entry_tags (entry_id);
-        ")?;
+        ",
+        )?;
 
         // Backfill entry_tags from clipboard_history.tags JSON
         conn.execute("BEGIN", [])?;
@@ -117,7 +137,9 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
                 let (id, tags_json) = row?;
                 let tags: Vec<String> = serde_json::from_str(&tags_json).unwrap_or_default();
                 for tag in tags {
-                    if tag.trim().is_empty() { continue; }
+                    if tag.trim().is_empty() {
+                        continue;
+                    }
                     conn.execute(
                         "INSERT OR IGNORE INTO entry_tags (entry_id, tag) VALUES (?1, ?2)",
                         params![id, tag],

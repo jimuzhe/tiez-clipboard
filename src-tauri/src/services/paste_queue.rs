@@ -1,9 +1,9 @@
-use crate::app_state::{PasteQueue, SessionHistory, AppDataDir};
+use crate::app_state::{AppDataDir, PasteQueue, SessionHistory};
 use crate::database::DbState;
+use crate::error::AppResult;
 use crate::infrastructure::repository::clipboard_repo::ClipboardRepository;
 use crate::infrastructure::repository::settings_repo::SettingsRepository;
 use tauri::{Emitter, Manager, State};
-use crate::error::AppResult;
 
 #[allow(dead_code)]
 const WM_PASTE: u32 = 0x0302;
@@ -28,7 +28,12 @@ pub fn set_paste_queue(
     item_ids: Vec<i64>,
 ) -> AppResult<()> {
     if item_ids.is_empty() {
-        state.inner().0.lock().unwrap().items.clear();
+        let mut queue = state.inner().0.lock().unwrap();
+        queue.items.clear();
+        queue.last_action_was_paste = false;
+        queue.last_pasted_content = None;
+        queue.last_pasted_fingerprint = None;
+        queue.last_paste_timestamp_ms = 0;
         return Ok(());
     }
 
@@ -39,6 +44,8 @@ pub fn set_paste_queue(
     }
     queue.last_action_was_paste = false;
     queue.last_pasted_content = None;
+    queue.last_pasted_fingerprint = None;
+    queue.last_paste_timestamp_ms = 0;
     drop(queue);
 
     // Automatically prepare the first item
@@ -83,7 +90,6 @@ pub async fn paste_next_step(app_handle: tauri::AppHandle) {
     // 1. Pop item from queue (Scope the lock)
     let id_opt = {
         let mut queue = state.inner().0.lock().unwrap();
-        queue.last_action_was_paste = true;
         queue.items.pop_front()
     };
 
@@ -91,20 +97,27 @@ pub async fn paste_next_step(app_handle: tauri::AppHandle) {
         // 2. Get Content (DB Lock acquired here, safe because Queue lock is released)
         let content_opt = if id < 0 {
             let s = session.inner().0.lock().unwrap();
-            s.iter()
-                .find(|i| i.id == id)
-                .map(|i| (i.content.clone(), i.content_type.clone(), i.html_content.clone()))
+            s.iter().find(|i| i.id == id).map(|i| {
+                (
+                    i.content.clone(),
+                    i.content_type.clone(),
+                    i.html_content.clone(),
+                )
+            })
         } else {
-            db_state.repo.get_entry_content_with_html(id).unwrap_or(None)
+            db_state
+                .repo
+                .get_entry_content_with_html(id)
+                .unwrap_or(None)
         };
 
         if let Some((content, c_type, html_content)) = content_opt {
-            // CRITICAL: Update last_pasted_content BEFORE modifying clipboard to prevent race condition
-            // where the monitor sees the change before we've marked it as an echo.
-            {
-                let mut queue = state.inner().0.lock().unwrap();
-                queue.last_pasted_content = Some(content.clone());
-            }
+            crate::services::clipboard_ops::remember_recent_paste(
+                &app_handle,
+                &content,
+                &c_type,
+                html_content.as_deref(),
+            );
 
             if let Err(err) = crate::services::clipboard_ops::prepare_clipboard_payload(
                 &content,
@@ -114,15 +127,22 @@ pub async fn paste_next_step(app_handle: tauri::AppHandle) {
             )
             .await
             {
-                eprintln!("[ERROR] Failed to prepare clipboard payload for sequential paste: {err}");
+                eprintln!(
+                    "[ERROR] Failed to prepare clipboard payload for sequential paste: {err}"
+                );
                 let _ = app_handle.emit("queue-item-pasted", id);
                 return;
             }
 
             // Get paste method from settings
             let paste_method = {
-                let db_state = app_handle.state::<DbState>(); 
-                db_state.settings_repo.get("app.paste_method").ok().flatten().unwrap_or_else(|| "ctrl_v".to_string())
+                let db_state = app_handle.state::<DbState>();
+                db_state
+                    .settings_repo
+                    .get("app.paste_method")
+                    .ok()
+                    .flatten()
+                    .unwrap_or_else(|| "shift_insert".to_string())
             };
 
             // Send paste keystroke using centralized logic
@@ -139,7 +159,7 @@ pub async fn paste_next_step(app_handle: tauri::AppHandle) {
             crate::services::clipboard_ops::send_paste_keystroke(
                 &paste_method,
                 Some(&content),
-                Some(&c_type)
+                Some(&c_type),
             );
 
             // Settle time
@@ -151,14 +171,17 @@ pub async fn paste_next_step(app_handle: tauri::AppHandle) {
                 #[cfg(target_os = "windows")]
                 unsafe {
                     use windows::Win32::UI::Input::KeyboardAndMouse::{
-                        VK_MENU, SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT,
+                        SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, VK_MENU,
                     };
                     let alt_restore = INPUT {
                         r#type: INPUT_KEYBOARD,
                         Anonymous: INPUT_0 {
                             ki: KEYBDINPUT {
                                 wVk: VK_MENU,
-                                dwFlags: windows::Win32::UI::Input::KeyboardAndMouse::KEYBD_EVENT_FLAGS(0),
+                                dwFlags:
+                                    windows::Win32::UI::Input::KeyboardAndMouse::KEYBD_EVENT_FLAGS(
+                                        0,
+                                    ),
                                 ..Default::default()
                             },
                         },
@@ -168,12 +191,22 @@ pub async fn paste_next_step(app_handle: tauri::AppHandle) {
             }
 
             // Perform deletion if delete_after_paste is enabled
-            let delete_after_paste = {
+            let mut actual_delete = {
                 let settings_state = app_handle.state::<crate::app_state::SettingsState>();
-                settings_state.delete_after_paste.load(std::sync::atomic::Ordering::Relaxed)
+                settings_state
+                    .delete_after_paste
+                    .load(std::sync::atomic::Ordering::Relaxed)
             };
 
-            if delete_after_paste {
+            if actual_delete && id > 0 {
+                if let Ok(Some(entry)) = db_state.repo.get_entry_by_id(id) {
+                    if entry.is_pinned || !entry.tags.is_empty() {
+                        actual_delete = false;
+                    }
+                }
+            }
+
+            if actual_delete {
                 // Remove from session history first
                 {
                     let mut s = session.inner().0.lock().unwrap();

@@ -1,15 +1,19 @@
 import type { Dispatch, SetStateAction } from "react";
 import type { ClipboardEntry, Locale } from "../../shared/types";
-import type { AiProfile } from "../settings/types";
+import type { AiProfile, AppCleanupPolicy } from "../settings/types";
 
 export type StateSetter<T> = Dispatch<SetStateAction<T>>;
 
 export type InstalledAppOption = { label: string; value: string };
 export type DefaultAppsMap = Record<string, string>;
+export type SettingsSubpage = "home" | "advanced";
+export type QuickPasteModifier = "disabled" | "ctrl" | "alt" | "shift" | "win";
 
 export interface AppState {
   showSettings: boolean;
   setShowSettings: StateSetter<boolean>;
+  settingsSubpage: SettingsSubpage;
+  setSettingsSubpage: StateSetter<SettingsSubpage>;
   showTagManager: boolean;
   setShowTagManager: StateSetter<boolean>;
   tagManagerEnabled: boolean;
@@ -68,6 +72,8 @@ export interface AppState {
   setRichPasteHotkey: StateSetter<string>;
   searchHotkey: string;
   setSearchHotkey: StateSetter<string>;
+  quickPasteModifier: QuickPasteModifier;
+  setQuickPasteModifier: StateSetter<QuickPasteModifier>;
   sequentialMode: boolean;
   setSequentialModeState: StateSetter<boolean>;
   isRecording: boolean;
@@ -88,6 +94,16 @@ export interface AppState {
   setPrivacyProtectionKinds: StateSetter<string[]>;
   privacyProtectionCustomRules: string;
   setPrivacyProtectionCustomRules: StateSetter<string>;
+  sensitiveMaskPrefixVisible: number;
+  setSensitiveMaskPrefixVisible: StateSetter<number>;
+  sensitiveMaskSuffixVisible: number;
+  setSensitiveMaskSuffixVisible: StateSetter<number>;
+  sensitiveMaskEmailDomain: boolean;
+  setSensitiveMaskEmailDomain: StateSetter<boolean>;
+  cleanupRules: string;
+  setCleanupRules: StateSetter<string>;
+  appCleanupPolicies: AppCleanupPolicy[];
+  setAppCleanupPolicies: StateSetter<AppCleanupPolicy[]>;
   captureFiles: boolean;
   setCaptureFiles: StateSetter<boolean>;
   captureRichText: boolean;

@@ -1,14 +1,24 @@
 header {
-  padding: var(--spacing-md) 0;
+  padding: 6px 0;
   background: var(--bg-toolbar);
   border-bottom: var(--toolbar-border);
   box-shadow: var(--toolbar-shadow);
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-sm);
+  gap: 4px;
   flex-shrink: 0;
   user-select: none;
   cursor: default;
+}
+
+.window-drag-region {
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+
+.window-no-drag {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
 }
 
 .header-top {
@@ -17,6 +27,7 @@ header {
   align-items: center;
   padding: 0 var(--spacing-md);
   gap: var(--spacing-sm);
+  min-height: 20px;
 }
 
 .header-leading {
@@ -32,7 +43,7 @@ header {
   align-items: center;
   flex: 1;
   min-width: 0;
-  min-height: 32px;
+  min-height: 20px;
   cursor: grab;
 }
 
@@ -58,10 +69,39 @@ header {
   white-space: nowrap;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.header-actions .btn-icon,
+.header-leading > .btn-icon {
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
+}
+
+.header-actions .btn-icon:hover,
+.header-leading > .btn-icon:hover {
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.08);
+}
+
+.header-actions .btn-icon:active,
+.header-leading > .btn-icon:active {
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.05);
+}
+
+.header-chat-btn {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  flex: 0 0 30px;
+  box-sizing: border-box;
+}
+
 .search-container {
   position: relative;
   width: 100%;
-  margin-top: 4px;
+  margin-top: 2px;
   overflow: visible !important;
   padding: 0 var(--spacing-md);
 }
@@ -88,6 +128,16 @@ select.search-input,
 select.search-input option {
   background: var(--bg-input);
   color: var(--text-primary);
+}
+
+/* Hide number input spinner arrows */
+.search-input[type="number"]::-webkit-inner-spin-button,
+.search-input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.search-input[type="number"] {
+  -moz-appearance: textfield;
 }
 
 .search-input:focus {

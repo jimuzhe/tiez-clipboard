@@ -1,26 +1,27 @@
+use crate::error::{AppError, AppResult};
 use base64::Engine;
 use image::{ImageBuffer, Rgba};
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::ffi::OsStr;
-use std::process::Command;
 use std::os::windows::process::CommandExt;
 use std::path::Path;
+use std::process::Command;
 use std::sync::{Mutex, OnceLock};
-use crate::error::{AppResult, AppError};
-use windows::Win32::Storage::FileSystem::{FILE_ATTRIBUTE_DIRECTORY, FILE_ATTRIBUTE_NORMAL};
+use windows::core::{PCWSTR, PWSTR};
 use windows::Win32::Graphics::Gdi::{
-    BITMAPINFO, BITMAPINFOHEADER, BI_RGB, CreateCompatibleDC, CreateDIBSection, DIB_RGB_COLORS,
-    DeleteDC, DeleteObject, HGDIOBJ, RGBQUAD, SelectObject,
+    CreateCompatibleDC, CreateDIBSection, DeleteDC, DeleteObject, SelectObject, BITMAPINFO,
+    BITMAPINFOHEADER, BI_RGB, DIB_RGB_COLORS, HGDIOBJ, RGBQUAD,
 };
+use windows::Win32::Storage::FileSystem::{FILE_ATTRIBUTE_DIRECTORY, FILE_ATTRIBUTE_NORMAL};
 use windows::Win32::UI::Shell::{
-    AssocQueryStringW, ExtractIconExW, SHGetFileInfoW, SHFILEINFOW, SHGFI_ICON, SHGFI_LARGEICON,
-    SHGFI_USEFILEATTRIBUTES, ASSOCSTR_FRIENDLYAPPNAME, ASSOCSTR_EXECUTABLE, ASSOCF_VERIFY,
+    AssocQueryStringW, ExtractIconExW, SHGetFileInfoW, ASSOCF_VERIFY, ASSOCSTR_EXECUTABLE,
+    ASSOCSTR_FRIENDLYAPPNAME, SHFILEINFOW, SHGFI_ICON, SHGFI_LARGEICON, SHGFI_USEFILEATTRIBUTES,
 };
 use windows::Win32::UI::WindowsAndMessaging::{
-    DestroyIcon, DrawIconEx, GetSystemMetrics, HICON, DI_NORMAL, SM_CXICON, SM_CXSMICON, SM_CYICON, SM_CYSMICON,
+    DestroyIcon, DrawIconEx, GetSystemMetrics, DI_NORMAL, HICON, SM_CXICON, SM_CXSMICON, SM_CYICON,
+    SM_CYSMICON,
 };
-use windows::core::{PCWSTR, PWSTR};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct AppInfo {
@@ -35,41 +36,75 @@ static FILE_ICON_CACHE: OnceLock<Mutex<HashMap<String, Option<String>>>> = OnceL
 pub async fn scan_installed_apps() -> AppResult<Vec<AppInfo>> {
     let mut apps = Vec::new();
     println!("Starting app scan...");
-    
+
     // 1. Add known system apps directly (Backend Fallback)
     let sys_root = std::env::var("SystemRoot").unwrap_or("C:\\Windows".to_string());
-    
+
     let common_apps = vec![
-        ("Notepad (记事本)", format!(r"{}\System32\notepad.exe", sys_root)),
-        ("Paint (画图)", format!(r"{}\System32\mspaint.exe", sys_root)),
-        ("Calculator (计算器)", format!(r"{}\System32\calc.exe", sys_root)),
-        ("Command Prompt (CMD)", format!(r"{}\System32\cmd.exe", sys_root)),
-        ("PowerShell", format!(r"{}\System32\WindowsPowerShell\v1.0\powershell.exe", sys_root)),
+        (
+            "Notepad (记事本)",
+            format!(r"{}\System32\notepad.exe", sys_root),
+        ),
+        (
+            "Paint (画图)",
+            format!(r"{}\System32\mspaint.exe", sys_root),
+        ),
+        (
+            "Calculator (计算器)",
+            format!(r"{}\System32\calc.exe", sys_root),
+        ),
+        (
+            "Command Prompt (CMD)",
+            format!(r"{}\System32\cmd.exe", sys_root),
+        ),
+        (
+            "PowerShell",
+            format!(
+                r"{}\System32\WindowsPowerShell\v1.0\powershell.exe",
+                sys_root
+            ),
+        ),
         ("Registry Editor", format!(r"{}\regedit.exe", sys_root)),
-        ("Snipping Tool", format!(r"{}\System32\SnippingTool.exe", sys_root)),
+        (
+            "Snipping Tool",
+            format!(r"{}\System32\SnippingTool.exe", sys_root),
+        ),
         ("Explorer", format!(r"{}\explorer.exe", sys_root)),
     ];
 
     for (name, path) in common_apps {
         if Path::new(&path).exists() {
-            apps.push(AppInfo { name: name.to_string(), path });
+            apps.push(AppInfo {
+                name: name.to_string(),
+                path,
+            });
         }
     }
 
     // Check for common browsers
     let program_files = std::env::var("ProgramFiles").unwrap_or(r"C:\Program Files".to_string());
-    let program_files_x86 = std::env::var("ProgramFiles(x86)").unwrap_or(r"C:\Program Files (x86)".to_string());
+    let program_files_x86 =
+        std::env::var("ProgramFiles(x86)").unwrap_or(r"C:\Program Files (x86)".to_string());
 
     let chrome_path = format!(r"{}\Google\Chrome\Application\chrome.exe", program_files);
     if Path::new(&chrome_path).exists() {
-        apps.push(AppInfo { name: "Google Chrome".to_string(), path: chrome_path });
+        apps.push(AppInfo {
+            name: "Google Chrome".to_string(),
+            path: chrome_path,
+        });
     }
-    
-    let edge_path = format!(r"{}\Microsoft\Edge\Application\msedge.exe", program_files_x86);
+
+    let edge_path = format!(
+        r"{}\Microsoft\Edge\Application\msedge.exe",
+        program_files_x86
+    );
     if Path::new(&edge_path).exists() {
-        apps.push(AppInfo { name: "Microsoft Edge".to_string(), path: edge_path });
+        apps.push(AppInfo {
+            name: "Microsoft Edge".to_string(),
+            path: edge_path,
+        });
     }
-    
+
     // 2. Run PowerShell Scan (Best Effort)
     let ps_script = r#"
         $ErrorActionPreference = 'SilentlyContinue'
@@ -93,7 +128,13 @@ pub async fn scan_installed_apps() -> AppResult<Vec<AppInfo>> {
     "#;
 
     let output_res = Command::new("powershell")
-        .args(["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", ps_script])
+        .args([
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-Command",
+            ps_script,
+        ])
         .creation_flags(0x08000000) // CREATE_NO_WINDOW
         .output();
 
@@ -103,14 +144,25 @@ pub async fn scan_installed_apps() -> AppResult<Vec<AppInfo>> {
             if let Ok(scanned) = serde_json::from_str::<Vec<AppInfo>>(&json_str) {
                 apps.extend(scanned);
             } else if let Ok(single) = serde_json::from_str::<AppInfo>(&json_str) {
-                 apps.push(single);
+                apps.push(single);
             }
         }
     }
 
     // 3. Deduplicate and Filter
-    let invalid_keywords = ["uninstall", "卸载", "setup", "install", "config", "help", "readme", "update", "修复", "remove"];
-    
+    let invalid_keywords = [
+        "uninstall",
+        "卸载",
+        "setup",
+        "install",
+        "config",
+        "help",
+        "readme",
+        "update",
+        "修复",
+        "remove",
+    ];
+
     apps.retain(|app| {
         let name_lower = app.name.to_lowercase();
         !invalid_keywords.iter().any(|&k| name_lower.contains(k))
@@ -124,9 +176,14 @@ pub async fn scan_installed_apps() -> AppResult<Vec<AppInfo>> {
 
 #[tauri::command]
 pub async fn get_associated_apps(extension: String) -> AppResult<Vec<AppInfo>> {
-    let ext = if extension.starts_with('.') { extension.clone() } else { format!(".{}", extension) };
-    
-    let ps_script = format!(r#"
+    let ext = if extension.starts_with('.') {
+        extension.clone()
+    } else {
+        format!(".{}", extension)
+    };
+
+    let ps_script = format!(
+        r#"
         $ErrorActionPreference = 'SilentlyContinue'
         [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
         
@@ -166,10 +223,18 @@ pub async fn get_associated_apps(extension: String) -> AppResult<Vec<AppInfo>> {
         }}
 
         $list | ConvertTo-Json -Depth 2 -Compress
-    "#, ext);
+    "#,
+        ext
+    );
 
     let output = Command::new("powershell")
-        .args(["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", &ps_script])
+        .args([
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-Command",
+            &ps_script,
+        ])
         .creation_flags(0x08000000)
         .output()
         .map_err(|e| e.to_string())?;
@@ -189,8 +254,9 @@ pub fn get_system_default_app(content_type: String) -> AppResult<String> {
     let ext = match content_type.as_str() {
         "image" => ".png",
         "video" => ".mp4",
-        "code" => ".txt", 
-        "text" => ".txt", 
+        "code" => ".txt",
+        "text" => ".txt",
+        "rich_text" => ".html",
         "file" => ".txt",
         "link" | "url" => "http",
         _ => return Ok("系统默认".to_string()),
@@ -199,7 +265,10 @@ pub fn get_system_default_app(content_type: String) -> AppResult<String> {
     unsafe {
         let mut buffer = [0u16; 1024];
         let mut size = buffer.len() as u32;
-        let ext_wide: Vec<u16> = std::ffi::OsStr::new(ext).encode_wide().chain(std::iter::once(0)).collect();
+        let ext_wide: Vec<u16> = std::ffi::OsStr::new(ext)
+            .encode_wide()
+            .chain(std::iter::once(0))
+            .collect();
         let ext_pcwstr = PCWSTR(ext_wide.as_ptr());
 
         let res = AssocQueryStringW(
@@ -208,17 +277,19 @@ pub fn get_system_default_app(content_type: String) -> AppResult<String> {
             ext_pcwstr,
             PCWSTR::null(),
             Some(PWSTR(buffer.as_mut_ptr())),
-            &mut size
+            &mut size,
         );
 
         if res.is_ok() {
-            let len = (0..size as usize).position(|i| buffer[i] == 0).unwrap_or(size as usize);
+            let len = (0..size as usize)
+                .position(|i| buffer[i] == 0)
+                .unwrap_or(size as usize);
             let name = String::from_utf16_lossy(&buffer[0..len]);
             if !name.trim().is_empty() {
                 return Ok(name);
             }
         }
-        
+
         // Fallback to executable name
         let mut size = buffer.len() as u32;
         let res = AssocQueryStringW(
@@ -227,10 +298,12 @@ pub fn get_system_default_app(content_type: String) -> AppResult<String> {
             ext_pcwstr,
             PCWSTR::null(),
             Some(PWSTR(buffer.as_mut_ptr())),
-            &mut size
+            &mut size,
         );
-         if res.is_ok() {
-            let len = (0..size as usize).position(|i| buffer[i] == 0).unwrap_or(size as usize);
+        if res.is_ok() {
+            let len = (0..size as usize)
+                .position(|i| buffer[i] == 0)
+                .unwrap_or(size as usize);
             let path_str = String::from_utf16_lossy(&buffer[0..len]);
             if let Some(name) = Path::new(&path_str).file_name() {
                 return Ok(name.to_string_lossy().to_string());
@@ -435,7 +508,11 @@ unsafe fn extract_file_icon_handle(file_path: &str) -> AppResult<Option<HICON>> 
             },
             false,
         )
-    } else if let Some(ext) = path.extension().and_then(|value| value.to_str()).filter(|value| !value.is_empty()) {
+    } else if let Some(ext) = path
+        .extension()
+        .and_then(|value| value.to_str())
+        .filter(|value| !value.is_empty())
+    {
         (format!(".{}", ext), FILE_ATTRIBUTE_NORMAL, true)
     } else {
         (trimmed.to_string(), FILE_ATTRIBUTE_NORMAL, true)
@@ -475,7 +552,11 @@ unsafe fn render_icon_to_png_bytes(icon: HICON) -> AppResult<Vec<u8>> {
     render_icon_to_png_bytes_with_size(icon, width, height)
 }
 
-unsafe fn render_icon_to_png_bytes_with_size(icon: HICON, width: i32, height: i32) -> AppResult<Vec<u8>> {
+unsafe fn render_icon_to_png_bytes_with_size(
+    icon: HICON,
+    width: i32,
+    height: i32,
+) -> AppResult<Vec<u8>> {
     let bitmap_info = BITMAPINFO {
         bmiHeader: BITMAPINFOHEADER {
             biSize: std::mem::size_of::<BITMAPINFOHEADER>() as u32,
@@ -491,21 +572,28 @@ unsafe fn render_icon_to_png_bytes_with_size(icon: HICON, width: i32, height: i3
     let mut bits = std::ptr::null_mut();
     let mem_dc = CreateCompatibleDC(None);
     if mem_dc.0.is_null() {
-        return Err(AppError::Internal("Failed to create icon memory DC".to_string()));
+        return Err(AppError::Internal(
+            "Failed to create icon memory DC".to_string(),
+        ));
     }
 
     let bitmap = match CreateDIBSection(None, &bitmap_info, DIB_RGB_COLORS, &mut bits, None, 0) {
         Ok(bitmap) => bitmap,
         Err(err) => {
             let _ = DeleteDC(mem_dc);
-            return Err(AppError::Internal(format!("Failed to create icon bitmap: {}", err)));
+            return Err(AppError::Internal(format!(
+                "Failed to create icon bitmap: {}",
+                err
+            )));
         }
     };
 
     let old_bitmap = SelectObject(mem_dc, HGDIOBJ(bitmap.0));
     let result = (|| -> AppResult<Vec<u8>> {
         if bits.is_null() {
-            return Err(AppError::Internal("Icon bitmap has no backing buffer".to_string()));
+            return Err(AppError::Internal(
+                "Icon bitmap has no backing buffer".to_string(),
+            ));
         }
 
         let pixel_len = (width as usize) * (height as usize) * 4;
@@ -523,7 +611,9 @@ unsafe fn render_icon_to_png_bytes_with_size(icon: HICON, width: i32, height: i3
         }
 
         let image = ImageBuffer::<Rgba<u8>, Vec<u8>>::from_raw(width as u32, height as u32, rgba)
-            .ok_or_else(|| AppError::Internal("Failed to build icon image buffer".to_string()))?;
+            .ok_or_else(|| {
+            AppError::Internal("Failed to build icon image buffer".to_string())
+        })?;
         let mut png_bytes = Vec::new();
         let mut cursor = std::io::Cursor::new(&mut png_bytes);
         image
@@ -540,12 +630,14 @@ unsafe fn render_icon_to_png_bytes_with_size(icon: HICON, width: i32, height: i3
 
 // Moved from main.rs
 pub async fn launch_uwp_with_file(app_id: &str, file_path: &str) -> AppResult<()> {
-    
     let path = std::path::Path::new(file_path);
     if !path.exists() {
-        return Err(AppError::Validation(format!("File does not exist: {}", file_path)));
+        return Err(AppError::Validation(format!(
+            "File does not exist: {}",
+            file_path
+        )));
     }
-    
+
     let family_name = app_id.split('!').next().unwrap_or(app_id);
 
     let ps_script = format!(
@@ -571,7 +663,13 @@ pub async fn launch_uwp_with_file(app_id: &str, file_path: &str) -> AppResult<()
     );
 
     let output = Command::new("powershell")
-        .args(["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", &ps_script])
+        .args([
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-Command",
+            &ps_script,
+        ])
         .creation_flags(0x08000000)
         .output()
         .map_err(|e| format!("Starting PowerShell failed: {}", e))?;

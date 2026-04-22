@@ -20,7 +20,7 @@ const DefaultAppsSettingsGroup = ({
     defaultApps,
     setShowAppSelector
 }: DefaultAppsSettingsGroupProps) => {
-    const APP_TYPES = ['text', 'image', 'video', 'code', 'url'] as const;
+    const APP_TYPES = ['text', 'rich_text', 'image', 'video', 'code', 'url'] as const;
     const getTypeName = (type: string) => {
         switch (type) {
             case "code": return t('type_code');

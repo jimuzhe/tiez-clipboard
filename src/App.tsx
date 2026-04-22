@@ -47,6 +47,8 @@ import { AnnouncementSystem } from "./shared/components/Announcement";
 import { useAnnouncements } from "./shared/hooks/useAnnouncements";
 import { useOverlays } from "./shared/hooks/useOverlays";
 import type { ClipboardEntry } from "./shared/types";
+import type { QuickPasteModifier } from "./features/app/types";
+import type { QuickPasteHint } from "./features/clipboard/types";
 import type { VirtualClipboardListHandle } from "./features/clipboard/types";
 
 const insertHistoryItem = (list: ClipboardEntry[], item: ClipboardEntry) => {
@@ -80,11 +82,47 @@ const insertHistoryItem = (list: ClipboardEntry[], item: ClipboardEntry) => {
   return next;
 };
 
+const QUICK_PASTE_MODIFIER_LABELS: Record<
+  Exclude<QuickPasteModifier, "disabled">,
+  string
+> = {
+  ctrl: "Ctrl",
+  alt: "Alt",
+  shift: "Shift",
+  win: "Win"
+};
+
+const buildQuickPasteHintsById = (
+  items: ClipboardEntry[],
+  quickPasteModifier: QuickPasteModifier
+): Record<number, QuickPasteHint> => {
+  if (quickPasteModifier === "disabled") return {};
+
+  const modifierLabel = QUICK_PASTE_MODIFIER_LABELS[quickPasteModifier];
+  const next: Record<number, QuickPasteHint> = {};
+
+  const pinnedItems = items.filter(item => item.is_pinned);
+
+  pinnedItems.slice(0, 10).forEach((item, index) => {
+    const slot = index === 9 ? "0" : String(index + 1);
+    next[item.id] = {
+      slot,
+      combo: `${modifierLabel}+${slot}`
+    };
+  });
+
+  return next;
+};
+
 const App = () => {
+  type FileTransferSourceView = "clipboard" | "settings" | "tag_manager" | "emoji_panel";
+
   const appState = useAppState();
   const {
     showSettings,
     setShowSettings,
+    settingsSubpage,
+    setSettingsSubpage,
     showTagManager,
     setShowTagManager,
     tagManagerEnabled,
@@ -136,6 +174,8 @@ const App = () => {
     setRichPasteHotkey,
     searchHotkey,
     setSearchHotkey,
+    quickPasteModifier,
+    setQuickPasteModifier,
     sequentialMode,
     setSequentialModeState,
     isRecording,
@@ -154,6 +194,14 @@ const App = () => {
     setPrivacyProtection,
     setPrivacyProtectionKinds,
     setPrivacyProtectionCustomRules,
+    sensitiveMaskPrefixVisible,
+    setSensitiveMaskPrefixVisible,
+    sensitiveMaskSuffixVisible,
+    setSensitiveMaskSuffixVisible,
+    sensitiveMaskEmailDomain,
+    setSensitiveMaskEmailDomain,
+    setCleanupRules,
+    setAppCleanupPolicies,
     captureFiles,
     setCaptureFiles,
     captureRichText,
@@ -274,12 +322,18 @@ const App = () => {
 
   const effectiveShowEmojiPanel = showEmojiPanel && emojiPanelEnabled;
   const effectiveShowTagManager = showTagManager && tagManagerEnabled;
+  const [fileTransferSourceView, setFileTransferSourceView] =
+    useState<FileTransferSourceView>("clipboard");
 
   const debouncedSearch = useDebounce(search, 400);
   const searchInputRef = useInputFocus<HTMLInputElement>();
   const tagColors = useTagColors();
   const virtualListRef = useRef<VirtualClipboardListHandle | null>(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [quickPasteVersion, setQuickPasteVersion] = useState(0);
+  const [quickPasteHintsById, setQuickPasteHintsById] = useState<
+    Record<number, QuickPasteHint>
+  >({});
   const PAGE_SIZE = 200;
   const { fetchHistory, loadMoreHistory } = useHistoryFetch({
     debouncedSearch,
@@ -312,6 +366,89 @@ const App = () => {
   });
 
   const showScrollTopVisible = showScrollTop && scrollTopButtonEnabled;
+  const quickPasteRefreshSeed = useMemo(
+    () =>
+      history
+        .filter(item => item.is_pinned)
+        .slice(0, 10)
+        .map(
+          (item) =>
+            `${item.id}:${item.timestamp}:${item.pinned_order || 0}`
+        )
+        .join("|"),
+    [history]
+  );
+
+  const getCurrentSourceView = useCallback((): FileTransferSourceView => {
+    if (effectiveShowTagManager) return "tag_manager";
+    if (effectiveShowEmojiPanel) return "emoji_panel";
+    if (showSettings) return "settings";
+    return "clipboard";
+  }, [effectiveShowEmojiPanel, effectiveShowTagManager, showSettings]);
+
+  const restoreViewAfterChat = useCallback(
+    (sourceView: FileTransferSourceView) => {
+      setShowTagManager(sourceView === "tag_manager");
+      setShowEmojiPanel(sourceView === "emoji_panel");
+      setShowSettings(sourceView === "settings");
+    },
+    [setShowEmojiPanel, setShowSettings, setShowTagManager]
+  );
+
+  const openFileTransfer = useCallback(() => {
+    const sourceView = getCurrentSourceView();
+    setFileTransferSourceView(sourceView);
+    setShowTagManager(false);
+    setShowEmojiPanel(false);
+    setShowSettings(true);
+    setChatMode(true);
+  }, [getCurrentSourceView, setChatMode, setShowEmojiPanel, setShowSettings, setShowTagManager]);
+
+  const closeFileTransfer = useCallback(() => {
+    setChatMode(false);
+    restoreViewAfterChat(fileTransferSourceView);
+  }, [fileTransferSourceView, restoreViewAfterChat, setChatMode]);
+
+  const handleHeaderBack = useCallback(() => {
+    if (chatMode) {
+      closeFileTransfer();
+      return;
+    }
+    if (effectiveShowEmojiPanel) {
+      setShowEmojiPanel(false);
+      return;
+    }
+    if (effectiveShowTagManager) {
+      setShowTagManager(false);
+      return;
+    }
+    if (showSettings) {
+      if (settingsSubpage !== "home") {
+        setSettingsSubpage("home");
+        return;
+      }
+      setShowSettings(false);
+    }
+  }, [
+    chatMode,
+    closeFileTransfer,
+    effectiveShowEmojiPanel,
+    effectiveShowTagManager,
+    setShowEmojiPanel,
+    setShowSettings,
+    setSettingsSubpage,
+    setShowTagManager,
+    settingsSubpage,
+    showSettings
+  ]);
+
+  const handleToggleHeaderChat = useCallback(() => {
+    if (chatMode) {
+      closeFileTransfer();
+      return;
+    }
+    openFileTransfer();
+  }, [chatMode, closeFileTransfer, openFileTransfer]);
 
   const handleListScroll = useCallback((offset: number) => {
     handleSearchScroll(offset);
@@ -440,6 +577,11 @@ const App = () => {
     setPrivacyProtection,
     setPrivacyProtectionKinds,
     setPrivacyProtectionCustomRules,
+    setSensitiveMaskPrefixVisible,
+    setSensitiveMaskSuffixVisible,
+    setSensitiveMaskEmailDomain,
+    setCleanupRules,
+    setAppCleanupPolicies,
     setSilentStart,
     setFollowMouse,
     setShowAppBorder,
@@ -479,6 +621,7 @@ const App = () => {
     setSequentialHotkey,
     setRichPasteHotkey,
     setSearchHotkey,
+    setQuickPasteModifier,
     setSequentialModeState,
     setSoundEnabled,
     setSoundVolume,
@@ -570,6 +713,33 @@ const App = () => {
     }
   }, [tagManagerEnabled, showTagManager, setShowTagManager]);
 
+  useEffect(() => {
+    if (quickPasteModifier === "disabled") {
+      setQuickPasteHintsById({});
+      return;
+    }
+
+    let cancelled = false;
+
+    invoke<ClipboardEntry[]>("get_clipboard_history", {
+      limit: 10,
+      offset: 0
+    })
+      .then((items) => {
+        if (cancelled) return;
+        setQuickPasteHintsById(buildQuickPasteHintsById(items, quickPasteModifier));
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error("获取数字快速粘贴映射失败", err);
+        setQuickPasteHintsById({});
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [quickPasteModifier, quickPasteRefreshSeed, quickPasteVersion]);
+
   useAppBootstrap({
     fetchEffectiveTransferPath,
     setDataPath,
@@ -610,11 +780,14 @@ const App = () => {
         const withoutItem = prev.filter(item => item.id !== updatedItem.id);
         return insertHistoryItem(withoutItem, updatedItem);
       });
+      setQuickPasteVersion((prev) => prev + 1);
     },
     onRemoved: (id) => {
       setHistory(prev => prev.filter(item => item.id !== id));
+      setQuickPasteVersion((prev) => prev + 1);
     },
     onChanged: () => {
+      setQuickPasteVersion((prev) => prev + 1);
       fetchHistory(true);
     }
   });
@@ -627,7 +800,7 @@ const App = () => {
 
   useToastListener({ pushToast });
 
-  useSettingsPanelReset({ showSettings, setCollapsedGroups });
+  useSettingsPanelReset({ showSettings, setCollapsedGroups, setSettingsSubpage });
 
   useTagManagerRefresh({
     showTagManager: effectiveShowTagManager,
@@ -658,7 +831,14 @@ const App = () => {
   }, [setAppSettings]);
 
   const saveSetting = useCallback((key: string, val: string) => {
-    invoke("save_setting", { key, value: val }).catch(console.error);
+    invoke("save_setting", { key, value: val })
+      .then(() => {
+        if (key === "app.emoji_favorites") {
+          return invoke("request_cloud_sync");
+        }
+        return undefined;
+      })
+      .catch(console.error);
   }, []);
 
   useSettingsSync({
@@ -810,6 +990,10 @@ const App = () => {
     compactMode,
     showSourceAppIcon,
     richTextSnapshotPreview,
+    sensitiveMaskPrefixVisible,
+    sensitiveMaskSuffixVisible,
+    sensitiveMaskEmailDomain,
+    quickPasteHintsById,
     processingAiId,
     aiEnabled,
     aiOptionsOpenId,
@@ -844,7 +1028,7 @@ const App = () => {
     fetchEffectiveTransferPath,
     handleResetSettings,
     toggleGroup,
-    onOpenChat: () => setChatMode(true),
+    onOpenChat: openFileTransfer,
     state: appState
   });
 
@@ -864,7 +1048,7 @@ const App = () => {
         setShowEmojiPanel={setShowEmojiPanel}
         emojiPanelEnabled={emojiPanelEnabled}
         chatMode={chatMode}
-        setChatMode={setChatMode}
+        
         fileServerEnabled={fileServerEnabled}
         isWindowPinned={isWindowPinned}
         setIsWindowPinned={setIsWindowPinned}
@@ -882,8 +1066,11 @@ const App = () => {
         setEditingTagsId={setEditingTagsId}
         theme={theme}
         colorMode={colorMode}
+        settingsTitle={showSettings && settingsSubpage === "advanced" ? t("advanced_settings") : t("settings")}
         typeFilter={typeFilter}
         setTypeFilter={setTypeFilter}
+        onBack={handleHeaderBack}
+        onToggleChat={handleToggleHeaderChat}
       />
 
       <AnnouncementSystem

@@ -1,16 +1,16 @@
 
-import { memo, useState, useEffect } from "react";
+import { memo, useState, useEffect, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getVersion } from "@tauri-apps/api/app";
-import { HelpCircle } from "lucide-react";
+import { ChevronRight, HelpCircle } from "lucide-react";
 import { motion } from "framer-motion";
 import type { Locale } from "../../../shared/types";
-import type { DefaultAppsMap, InstalledAppOption } from "../../app/types";
-import type { AiProfile, AiProfileStatusMap, EditableAiProfile } from "../types";
+import type { DefaultAppsMap, InstalledAppOption, SettingsSubpage } from "../../app/types";
+import type { AiProfile, AiProfileStatusMap, AppCleanupPolicy, EditableAiProfile } from "../types";
 import AppSelectorModal from "./AppSelectorModal";
-import UpdateModal from "./UpdateModal";
-import type { UpdateModalData } from "../types";
+
+
 import AiProfileModal from "./AiProfileModal";
 import GeneralSettingsGroup from "./groups/GeneralSettingsGroup";
 import ClipboardSettingsGroup from "./groups/ClipboardSettingsGroup";
@@ -21,8 +21,10 @@ import DefaultAppsSettingsGroup from "./groups/DefaultAppsSettingsGroup";
 import DataSettingsGroup from "./groups/DataSettingsGroup";
 import FileTransferSettingsGroup from "./groups/FileTransferSettingsGroup";
 import AiSettingsGroup from "./groups/AiSettingsGroup";
+import AdvancedSettingsGroup from "./groups/AdvancedSettingsGroup";
 import SettingsFooter from "./SettingsFooter";
 import { CLOUD_SYNC_ENABLED } from "../../../shared/config/edition";
+import type { QuickPasteModifier } from "../../app/types";
 
 const SETTINGS_DEBUG = import.meta.env.DEV;
 const settingsLog = (...args: unknown[]) => {
@@ -42,6 +44,8 @@ interface SettingsPanelProps {
 
     // State
     collapsedGroups: Record<string, boolean>;
+    settingsSubpage: SettingsSubpage;
+    setSettingsSubpage: (val: SettingsSubpage) => void;
     autoStart: boolean;
     silentStart: boolean;
     persistent: boolean;
@@ -60,11 +64,22 @@ interface SettingsPanelProps {
     isRecordingRich: boolean;
     searchHotkey: string;
     isRecordingSearch: boolean;
+    quickPasteModifier: QuickPasteModifier;
     privacyProtection: boolean;
     privacyProtectionKinds: string[];
     setPrivacyProtectionKinds: (val: string[]) => void;
     privacyProtectionCustomRules: string;
     setPrivacyProtectionCustomRules: (val: string) => void;
+    sensitiveMaskPrefixVisible: number;
+    setSensitiveMaskPrefixVisible: (val: number) => void;
+    sensitiveMaskSuffixVisible: number;
+    setSensitiveMaskSuffixVisible: (val: number) => void;
+    sensitiveMaskEmailDomain: boolean;
+    setSensitiveMaskEmailDomain: (val: boolean) => void;
+    cleanupRules: string;
+    setCleanupRules: (val: string) => void;
+    appCleanupPolicies: AppCleanupPolicy[];
+    setAppCleanupPolicies: (val: AppCleanupPolicy[]) => void;
     hotkey: string;
     showHotkeyHint: boolean;
     winClipboardDisabled: boolean;
@@ -164,6 +179,7 @@ interface SettingsPanelProps {
     updateRichPasteHotkey: (key: string) => void;
     setIsRecordingSearch: (val: boolean) => void;
     updateSearchHotkey: (key: string) => void;
+    setQuickPasteModifier: (val: QuickPasteModifier) => void;
     setPrivacyProtection: (val: boolean) => void;
     setShowHotkeyHint: (val: boolean) => void;
     setIsRecording: (val: boolean) => void;
@@ -241,10 +257,13 @@ interface SettingsPanelProps {
 const SettingsPanel = (props: SettingsPanelProps) => {
     const {
         t, theme, language, colorMode,
-        collapsedGroups, autoStart, silentStart, persistent, persistentLimitEnabled, persistentLimit, deduplicate, captureFiles, captureRichText, richTextSnapshotPreview, deleteAfterPaste, moveToTopAfterPaste,
+        collapsedGroups, settingsSubpage, setSettingsSubpage, autoStart, silentStart, persistent, persistentLimitEnabled, persistentLimit, deduplicate, captureFiles, captureRichText, richTextSnapshotPreview, deleteAfterPaste, moveToTopAfterPaste,
         sequentialMode, sequentialHotkey, isRecordingSequential,
-        richPasteHotkey, isRecordingRich, searchHotkey, isRecordingSearch,
-        privacyProtection, privacyProtectionKinds, setPrivacyProtectionKinds, privacyProtectionCustomRules, setPrivacyProtectionCustomRules, registryWinVEnabled, setRegistryWinVEnabled, showSearchBox, setShowSearchBox, scrollTopButtonEnabled, setScrollTopButtonEnabled, arrowKeySelection, setArrowKeySelection,
+        richPasteHotkey, isRecordingRich, searchHotkey, isRecordingSearch, quickPasteModifier,
+        privacyProtection, privacyProtectionKinds, setPrivacyProtectionKinds, privacyProtectionCustomRules, setPrivacyProtectionCustomRules,
+        sensitiveMaskPrefixVisible, setSensitiveMaskPrefixVisible, sensitiveMaskSuffixVisible, setSensitiveMaskSuffixVisible, sensitiveMaskEmailDomain, setSensitiveMaskEmailDomain,
+        cleanupRules, setCleanupRules, appCleanupPolicies, setAppCleanupPolicies,
+        registryWinVEnabled, setRegistryWinVEnabled, showSearchBox, setShowSearchBox, scrollTopButtonEnabled, setScrollTopButtonEnabled, arrowKeySelection, setArrowKeySelection,
         soundEnabled, setSoundEnabled, pasteSoundEnabled, setPasteSoundEnabled,
         soundVolume, setSoundVolume,
         pasteMethod, setPasteMethod,
@@ -262,7 +281,7 @@ const SettingsPanel = (props: SettingsPanelProps) => {
         toggleGroup, setAutoStart, setSilentStart, setPersistent, setPersistentLimitEnabled, setPersistentLimit, setDeduplicate, setCaptureFiles, setCaptureRichText, setRichTextSnapshotPreview, setDeleteAfterPaste, setMoveToTopAfterPaste, saveAppSetting,
         setSequentialModeState, setIsRecordingSequential, updateSequentialHotkey,
         setIsRecordingRich, updateRichPasteHotkey,
-        setIsRecordingSearch, updateSearchHotkey,
+        setIsRecordingSearch, updateSearchHotkey, setQuickPasteModifier,
         setPrivacyProtection,
         setIsRecording, isRecording, hotkey, hotkeyParts, updateHotkey,
         setTheme, setColorMode, setLanguage, showAppBorder, setShowAppBorder, showSourceAppIcon, setShowSourceAppIcon, compactMode, setCompactMode, checkHotkeyConflict,
@@ -294,7 +313,6 @@ const SettingsPanel = (props: SettingsPanelProps) => {
     const [editingProfile, setEditingProfile] = useState<EditableAiProfile | null>(null);
     const [profileStatuses, setProfileStatuses] = useState<AiProfileStatusMap>({});
     const [updateStatus, setUpdateStatus] = useState<string>("");
-    const [updateModalData, setUpdateModalData] = useState<UpdateModalData | null>(null);
     const [openHints, setOpenHints] = useState<Set<string>>(new Set());
     const [privacyKindsOpen, setPrivacyKindsOpen] = useState(false);
     const [privacyRulesOpen, setPrivacyRulesOpen] = useState(false);
@@ -450,12 +468,48 @@ const SettingsPanel = (props: SettingsPanelProps) => {
         };
     }, []);
 
+    const openAdvancedSettingsWindow = useCallback(async () => {
+        setSettingsSubpage("advanced");
+    }, [setSettingsSubpage]);
+
     return (
         <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}
+            style={{ display: 'flex', flexDirection: 'column', gap: '4px', minHeight: '100%', flex: 1 }}
         >
+            {settingsSubpage === "advanced" ? (
+                <>
+                    <AdvancedSettingsGroup
+                        t={t}
+                        cleanupRules={cleanupRules}
+                        setCleanupRules={setCleanupRules}
+                        appCleanupPolicies={appCleanupPolicies}
+                        setAppCleanupPolicies={setAppCleanupPolicies}
+                        installedApps={installedApps}
+                    />
+
+                    <AiProfileModal
+                        editingProfile={editingProfile}
+                        t={t}
+                        onClose={() => setEditingProfile(null)}
+                        onSave={handleSaveProfile}
+                        setEditingProfile={setEditingProfile}
+                    />
+
+                    <AppSelectorModal
+                        show={showAppSelector}
+                        installedApps={installedApps}
+                        theme={theme}
+                        colorMode={colorMode}
+                        t={t}
+                        onClose={() => setShowAppSelector(null)}
+                        onSave={saveAppSetting}
+                    />
+
+                </>
+            ) : (
+                <>
             {/* General Settings */}
             <GeneralSettingsGroup
                 t={t}
@@ -520,6 +574,8 @@ const SettingsPanel = (props: SettingsPanelProps) => {
                 isRecordingSearch={isRecordingSearch}
                 setIsRecordingSearch={setIsRecordingSearch}
                 updateSearchHotkey={updateSearchHotkey}
+                quickPasteModifier={quickPasteModifier}
+                setQuickPasteModifier={setQuickPasteModifier}
                 deleteAfterPaste={deleteAfterPaste}
                 setDeleteAfterPaste={setDeleteAfterPaste}
                 moveToTopAfterPaste={moveToTopAfterPaste}
@@ -539,6 +595,12 @@ const SettingsPanel = (props: SettingsPanelProps) => {
                 setPrivacyProtectionKinds={setPrivacyProtectionKinds}
                 privacyProtectionCustomRules={privacyProtectionCustomRules}
                 setPrivacyProtectionCustomRules={setPrivacyProtectionCustomRules}
+                sensitiveMaskPrefixVisible={sensitiveMaskPrefixVisible}
+                setSensitiveMaskPrefixVisible={setSensitiveMaskPrefixVisible}
+                sensitiveMaskSuffixVisible={sensitiveMaskSuffixVisible}
+                setSensitiveMaskSuffixVisible={setSensitiveMaskSuffixVisible}
+                sensitiveMaskEmailDomain={sensitiveMaskEmailDomain}
+                setSensitiveMaskEmailDomain={setSensitiveMaskEmailDomain}
                 privacyKindsOpen={privacyKindsOpen}
                 setPrivacyKindsOpen={setPrivacyKindsOpen}
                 privacyRulesOpen={privacyRulesOpen}
@@ -723,12 +785,26 @@ const SettingsPanel = (props: SettingsPanelProps) => {
                 dataPath={dataPath}
             />
 
+            <div className="settings-group">
+                <button
+                    type="button"
+                    className="group-header settings-nav-card"
+                    onClick={openAdvancedSettingsWindow}
+                >
+                    <div style={{ minWidth: 0, textAlign: "left" }}>
+                        <h3 style={{ margin: 0 }}>{t("advanced_settings")}</h3>
+                        <div className="settings-subpage-note">{t("advanced_settings_entry_desc")}</div>
+                    </div>
+                    <ChevronRight size={16} />
+                </button>
+            </div>
+
             <SettingsFooter
                 t={t}
                 appVersion={appVersion}
                 updateStatus={updateStatus}
                 setUpdateStatus={setUpdateStatus}
-                setUpdateModalData={setUpdateModalData}
+                
                 onResetSettings={handleResetSettings}
                 emailCopied={emailCopied}
                 setEmailCopied={setEmailCopied}
@@ -752,12 +828,8 @@ const SettingsPanel = (props: SettingsPanelProps) => {
                 onSave={saveAppSetting}
             />
 
-            <UpdateModal
-                data={updateModalData}
-                t={t}
-                onClose={() => setUpdateModalData(null)}
-                setUpdateStatus={setUpdateStatus}
-            />
+                </>
+            )}
         </motion.div>
     );
 };

@@ -9,9 +9,9 @@ use windows::Win32::System::DataExchange::{
 };
 #[cfg(target_os = "windows")]
 use windows::Win32::UI::WindowsAndMessaging::{
-    CreateWindowExW, DefWindowProcW, DispatchMessageW, GetMessageW, RegisterClassW,
-    WM_CLIPBOARDUPDATE, WNDCLASSW, MSG, GWLP_USERDATA, SetWindowLongPtrW, GetWindowLongPtrW,
-    HWND_MESSAGE,
+    CreateWindowExW, DefWindowProcW, DispatchMessageW, GetMessageW, GetWindowLongPtrW,
+    RegisterClassW, SetWindowLongPtrW, GWLP_USERDATA, HWND_MESSAGE, MSG, WM_CLIPBOARDUPDATE,
+    WNDCLASSW,
 };
 #[cfg(target_os = "linux")]
 use crate::infrastructure::linux_api::{detect_display_server, DisplayServer};
@@ -22,7 +22,10 @@ pub fn listen_clipboard(callback: Arc<dyn Fn() + Send + Sync + 'static>) {
         unsafe {
             let instance = windows::Win32::System::LibraryLoader::GetModuleHandleW(None).unwrap();
             let window_class = "TieZClipboardListener";
-            let window_class_w: Vec<u16> = window_class.encode_utf16().chain(std::iter::once(0)).collect();
+            let window_class_w: Vec<u16> = window_class
+                .encode_utf16()
+                .chain(std::iter::once(0))
+                .collect();
 
             let wnd_class = WNDCLASSW {
                 lpfnWndProc: Some(wnd_proc),
@@ -38,7 +41,10 @@ pub fn listen_clipboard(callback: Arc<dyn Fn() + Send + Sync + 'static>) {
                 PCWSTR(window_class_w.as_ptr()),
                 PCWSTR(std::ptr::null()),
                 Default::default(),
-                0, 0, 0, 0,
+                0,
+                0,
+                0,
+                0,
                 Some(HWND_MESSAGE), // Use HWND_MESSAGE for invisible message-only window
                 None,
                 Some(HINSTANCE(instance.0)),
@@ -46,7 +52,10 @@ pub fn listen_clipboard(callback: Arc<dyn Fn() + Send + Sync + 'static>) {
             ) {
                 Ok(hwnd) => hwnd,
                 Err(e) => {
-                    eprintln!("[ERROR] Failed to create clipboard listener window: {:?}", e);
+                    eprintln!(
+                        "[ERROR] Failed to create clipboard listener window: {:?}",
+                        e
+                    );
                     return;
                 }
             };
@@ -249,7 +258,12 @@ fn listen_clipboard_polling(callback: Arc<dyn Fn() + Send + Sync + 'static>) {
 }
 
 #[cfg(target_os = "windows")]
-unsafe extern "system" fn wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
+unsafe extern "system" fn wnd_proc(
+    hwnd: HWND,
+    msg: u32,
+    wparam: WPARAM,
+    lparam: LPARAM,
+) -> LRESULT {
     match msg {
         WM_CLIPBOARDUPDATE => {
             let ptr = GetWindowLongPtrW(hwnd, GWLP_USERDATA);

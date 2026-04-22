@@ -39,6 +39,8 @@ type PreviewPayload = {
 
 const RICH_IMAGE_FALLBACK_PREFIX = "<!--TIEZ_RICH_IMAGE:";
 const RICH_IMAGE_FALLBACK_SUFFIX = "-->";
+const TABULAR_RICH_HTML_RE = /<(table|tr|td|th|thead|tbody|tfoot|colgroup|col)\b/i;
+const SPREADSHEET_SOURCE_RE = /\b(excel|et|wps|sheet|spreadsheet|calc)\b/i;
 
 const extractRichImageFallback = (html?: string): { cleanHtml?: string; imagePayload?: string } => {
     if (!html) return {};
@@ -64,6 +66,23 @@ const resolveRichImageSrc = (payload: string): string | null => {
     if (value.startsWith("data:image/")) return value;
     if (/^https?:\/\/asset\.localhost\//i.test(value)) return value;
     return toTauriLocalImageSrc(value);
+};
+
+const isAnimatedGifSrc = (src?: string | null): boolean => {
+    const value = (src || "").trim().toLowerCase();
+    if (!value) return false;
+    return value.startsWith("data:image/gif") || /\.gif(?:$|[?#])/i.test(value);
+};
+
+const richHtmlLooksTabular = (html?: string): boolean => {
+    if (!html) return false;
+    return TABULAR_RICH_HTML_RE.test(html);
+};
+
+const isSpreadsheetLikeSource = (sourceApp?: string): boolean => {
+    const value = (sourceApp || "").trim();
+    if (!value) return false;
+    return SPREADSHEET_SOURCE_RE.test(value);
 };
 
 const COMPACT_PREVIEW_DEBUG = false;
@@ -155,27 +174,67 @@ const CompactPreviewWindow = () => {
     const requestResizeRef = useRef<() => void>(() => {});
     const previewBoundsRef = useRef({ width: 560, height: 560, mediaWidth: 520, mediaHeight: 360 });
     const lastSentSizeRef = useRef<{ width: number; height: number } | null>(null);
-    const richImageFallbackSrc = useMemo(() => {
+    const richImageFallback = useMemo(() => {
         if (!payload || payload.contentType !== "rich_text" || !payload.htmlContent) return null;
         const { imagePayload } = extractRichImageFallback(payload.htmlContent);
         if (!imagePayload) return null;
         const src = resolveRichImageSrc(imagePayload);
         if (!src) return null;
-        return src;
+        return {
+            payload: imagePayload,
+            src
+        };
     }, [payload]);
+    const richTextCleanHtml = useMemo(() => {
+        if (!payload || payload.contentType !== "rich_text" || !payload.htmlContent) return "";
+        const { cleanHtml } = extractRichImageFallback(payload.htmlContent);
+        return cleanHtml || payload.htmlContent;
+    }, [payload]);
+    const richTextHasAnimatedImageFallback = useMemo(() => (
+        isAnimatedGifSrc(richImageFallback?.payload || richImageFallback?.src || null)
+    ), [richImageFallback]);
+    const preferHtmlRichPreview = useMemo(() => {
+        if (!payload || payload.contentType !== "rich_text" || !payload.htmlContent) return false;
+        return (
+            !richTextHasAnimatedImageFallback
+            && !richHtmlLooksTabular(richTextCleanHtml)
+            && !isSpreadsheetLikeSource(payload.sourceApp)
+        );
+    }, [payload, richTextCleanHtml, richTextHasAnimatedImageFallback]);
+    const preferGeneratedRichPreview = useMemo(() => {
+        if (!payload || payload.contentType !== "rich_text" || !payload.htmlContent) return false;
+        return (
+            !preferHtmlRichPreview
+            && (
+                !!payload.richTextSnapshotPreview
+                || richHtmlLooksTabular(richTextCleanHtml)
+                || isSpreadsheetLikeSource(payload.sourceApp)
+            )
+        );
+    }, [payload, preferHtmlRichPreview, richTextCleanHtml]);
     const richTextSnapshotSrc = useMemo(() => {
         if (!payload || payload.contentType !== "rich_text" || !payload.htmlContent) return null;
-        if (!payload.richTextSnapshotPreview) return null;
-        const { cleanHtml } = extractRichImageFallback(payload.htmlContent);
-        const htmlForSnapshot = cleanHtml || payload.htmlContent;
-        return getRichTextSnapshotDataUrl(htmlForSnapshot, {
+        if (!preferGeneratedRichPreview) return null;
+        if (!richTextCleanHtml) return null;
+        return getRichTextSnapshotDataUrl(richTextCleanHtml, {
             width: 560,
             maxHeight: 1200
         });
-    }, [payload]);
+    }, [payload, preferGeneratedRichPreview, richTextCleanHtml]);
     const effectiveRichTextSnapshotSrc = snapshotFailed ? null : richTextSnapshotSrc;
-    const effectiveRichImageFallbackSrc = richImageFallbackFailed ? null : richImageFallbackSrc;
-    const useSnapshotPreviewImage = !effectiveRichImageFallbackSrc && !!effectiveRichTextSnapshotSrc;
+    const effectiveRichImageFallbackSrc = richImageFallbackFailed ? null : (richImageFallback?.src || null);
+    // For tabular/spreadsheet sources, prefer the real clipboard bitmap image
+    // (same image you see when pasting Excel into WeChat) over the generated SVG snapshot.
+    const preferImageFallbackForTabular = (
+        richHtmlLooksTabular(richTextCleanHtml) || isSpreadsheetLikeSource(payload?.sourceApp)
+    ) && !!effectiveRichImageFallbackSrc;
+    const richTextPreviewSrc = richTextHasAnimatedImageFallback
+        ? (effectiveRichImageFallbackSrc || effectiveRichTextSnapshotSrc)
+        : preferImageFallbackForTabular
+            ? (effectiveRichImageFallbackSrc || effectiveRichTextSnapshotSrc)
+            : (effectiveRichTextSnapshotSrc || null);
+    const useSnapshotPreviewImage = !!richTextPreviewSrc && richTextPreviewSrc === effectiveRichTextSnapshotSrc;
+    const useRichImageFallback = !!richTextPreviewSrc && richTextPreviewSrc === effectiveRichImageFallbackSrc;
 
     useEffect(() => {
         compactPreviewLog("window mounted", { label: getCurrentWindow().label });
@@ -432,33 +491,7 @@ const CompactPreviewWindow = () => {
             );
         }
         if (payload.contentType === "rich_text" && payload.htmlContent) {
-            if (effectiveRichImageFallbackSrc) {
-                compactPreviewLog("render rich_text as fallback image");
-                return (
-                    <img
-                        src={effectiveRichImageFallbackSrc}
-                        alt="rich text preview"
-                        onLoad={() => {
-                            compactPreviewLog("rich fallback image loaded, request resize");
-                            requestResizeRef.current?.();
-                        }}
-                        onError={() => {
-                            richPreviewFailureLog("fallback image load error -> switch to snapshot", {
-                                srcLength: (effectiveRichImageFallbackSrc || "").length,
-                                srcSample: (effectiveRichImageFallbackSrc || "").slice(0, 140),
-                                sourceApp: payload.sourceApp || ""
-                            });
-                            setRichImageFallbackFailed(true);
-                        }}
-                        style={{
-                            width: "auto",
-                            height: "auto",
-                            borderRadius: "4px"
-                        }}
-                    />
-                );
-            }
-            if (effectiveRichTextSnapshotSrc) {
+            if (useSnapshotPreviewImage && effectiveRichTextSnapshotSrc) {
                 compactPreviewLog("render rich_text as html snapshot image");
                 return (
                     <img
@@ -495,6 +528,32 @@ const CompactPreviewWindow = () => {
                     />
                 );
             }
+            if (useRichImageFallback && effectiveRichImageFallbackSrc) {
+                compactPreviewLog("render rich_text as fallback image");
+                return (
+                    <img
+                        src={effectiveRichImageFallbackSrc}
+                        alt="rich text preview"
+                        onLoad={() => {
+                            compactPreviewLog("rich fallback image loaded, request resize");
+                            requestResizeRef.current?.();
+                        }}
+                        onError={() => {
+                            richPreviewFailureLog("fallback image load error -> switch to html", {
+                                srcLength: (effectiveRichImageFallbackSrc || "").length,
+                                srcSample: (effectiveRichImageFallbackSrc || "").slice(0, 140),
+                                sourceApp: payload.sourceApp || ""
+                            });
+                            setRichImageFallbackFailed(true);
+                        }}
+                        style={{
+                            width: "auto",
+                            height: "auto",
+                            borderRadius: "4px"
+                        }}
+                    />
+                );
+            }
             const { cleanHtml } = extractRichImageFallback(payload.htmlContent);
             return (
                 <HtmlContent
@@ -519,7 +578,7 @@ const CompactPreviewWindow = () => {
         <div className="compact-preview-root">
             <div
                 ref={containerRef}
-                className={`compact-popover-portal compact-preview-window theme-${normalizeThemeId(payload?.theme || DEFAULT_THEME)} ${payload?.contentType === "image" ? "compact-preview-image" : ""} ${payload?.contentType === "image" || payload?.contentType === "video" || !!effectiveRichImageFallbackSrc ? "compact-preview-media" : ""} ${payload?.colorMode === "dark" ? "dark-mode" : ""}`}
+                className={`compact-popover-portal compact-preview-window theme-${normalizeThemeId(payload?.theme || DEFAULT_THEME)} ${payload?.contentType === "image" ? "compact-preview-image" : ""} ${payload?.contentType === "image" || payload?.contentType === "video" || !!richTextPreviewSrc ? "compact-preview-media" : ""} ${payload?.colorMode === "dark" ? "dark-mode" : ""}`}
                 style={{
                     display: "flex",
                     flexDirection: "column"

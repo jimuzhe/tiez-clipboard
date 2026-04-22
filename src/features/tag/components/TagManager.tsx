@@ -3,7 +3,7 @@ import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { listen, emit } from '@tauri-apps/api/event';
 import {
     Edit2, Trash2, X, ChevronRight, LayoutGrid, List,
-    Clock, MousePointer2, ChevronLeft, Plus, Search, ExternalLink
+    Clock, MousePointer2, ChevronLeft, Plus, Search, ExternalLink, CheckSquare, Copy
 } from 'lucide-react';
 import { getTagColor } from "../../../shared/lib/utils";
 import type { ClipboardEntry } from "../../../shared/types";
@@ -19,6 +19,7 @@ interface TagInfo {
 }
 
 export default function TagManager({ t, theme }: TagManagerProps) {
+    const TAG_MANAGER_VIEW_MODE_KEY = "tiez_tag_manager_view_mode";
     const [tags, setTags] = useState<TagInfo[]>([]);
     const [tagSearch, setTagSearch] = useState('');
     const [selectedTag, setSelectedTag] = useState<string | null>(null);
@@ -27,7 +28,14 @@ export default function TagManager({ t, theme }: TagManagerProps) {
     const [editingTag, setEditingTag] = useState<string | null>(null);
     const [newTagName, setNewTagName] = useState('');
     const [loading, setLoading] = useState(false);
-    const [viewMode, setViewMode] = useState<'list' | 'grid'>('grid');
+    const [viewMode, setViewMode] = useState<'list' | 'grid'>(() => {
+        try {
+            const saved = window.localStorage.getItem(TAG_MANAGER_VIEW_MODE_KEY);
+            return saved === 'list' ? 'list' : 'grid';
+        } catch {
+            return 'grid';
+        }
+    });
     const [isDeleting, setIsDeleting] = useState(false);
     const [deleteConfirmation, setDeleteConfirmation] = useState<{ show: boolean, tagName: string | null }>({ show: false, tagName: null });
     const [itemDeleteConfirmation, setItemDeleteConfirmation] = useState<{ show: boolean, id: number | null }>({ show: false, id: null });
@@ -36,9 +44,24 @@ export default function TagManager({ t, theme }: TagManagerProps) {
     const [isCreatingItem, setIsCreatingItem] = useState(false);
     const [editingItem, setEditingItem] = useState<{ id: number, content: string } | null>(null);
     const [newItemContent, setNewItemContent] = useState('');
+    const [sidebarWidth, setSidebarWidth] = useState(130);
+    const [sidebarHeight, setSidebarHeight] = useState(180);
+    const [isResizing, setIsResizing] = useState(false);
+    const [isStacked, setIsStacked] = useState(false);
+    const [isManageMode, setIsManageMode] = useState(false);
+    const [selectedItemIds, setSelectedItemIds] = useState<Set<number>>(new Set());
+    const containerRef = useRef<HTMLDivElement>(null);
 
     const selectedTagRef = useRef<string | null>(null);
     useEffect(() => { selectedTagRef.current = selectedTag; }, [selectedTag]);
+
+    useEffect(() => {
+        try {
+            window.localStorage.setItem(TAG_MANAGER_VIEW_MODE_KEY, viewMode);
+        } catch {
+            // Ignore storage write failures and keep UI functional.
+        }
+    }, [viewMode]);
 
     useEffect(() => {
         let unlisteners: (() => void)[] = [];
@@ -58,6 +81,63 @@ export default function TagManager({ t, theme }: TagManagerProps) {
     }, [isDeleting]);
 
     useEffect(() => { fetchTags(); }, []);
+
+    useEffect(() => {
+        const mediaQuery = window.matchMedia("(max-width: 340px)");
+        const updateLayoutMode = () => {
+            setIsStacked(mediaQuery.matches);
+        };
+
+        updateLayoutMode();
+        mediaQuery.addEventListener("change", updateLayoutMode);
+
+        return () => mediaQuery.removeEventListener("change", updateLayoutMode);
+    }, []);
+
+    useEffect(() => {
+        if (!isResizing) return;
+
+        const handleMouseMove = (event: MouseEvent) => {
+            const bounds = containerRef.current?.getBoundingClientRect();
+            if (!bounds) return;
+            if (isStacked) {
+                const maxHeight = Math.max(140, bounds.height - 180);
+                const nextHeight = Math.min(Math.max(event.clientY - bounds.top, 120), maxHeight);
+                setSidebarHeight(nextHeight);
+                return;
+            }
+
+            const dragPos = event.clientX - bounds.left;
+            
+            // Auto collapse threshold: 110px
+            if (dragPos < 110) {
+                if (!isCollapsed) setIsCollapsed(true);
+                setSidebarWidth(48);
+            } else {
+                if (isCollapsed) setIsCollapsed(false);
+                const nextWidth = Math.min(dragPos, 320);
+                setSidebarWidth(nextWidth);
+            }
+        };
+
+        const handleMouseUp = () => {
+            setIsResizing(false);
+            document.body.style.cursor = "";
+            document.body.style.userSelect = "";
+        };
+
+        document.body.style.cursor = isStacked ? "row-resize" : "col-resize";
+        document.body.style.userSelect = "none";
+        window.addEventListener("mousemove", handleMouseMove);
+        window.addEventListener("mouseup", handleMouseUp);
+
+        return () => {
+            window.removeEventListener("mousemove", handleMouseMove);
+            window.removeEventListener("mouseup", handleMouseUp);
+            document.body.style.cursor = "";
+            document.body.style.userSelect = "";
+        };
+    }, [isResizing, isStacked]);
 
     const fetchTags = async () => {
         try {
@@ -193,7 +273,12 @@ export default function TagManager({ t, theme }: TagManagerProps) {
 
     return (
         <div
-            className={`themed-tag-manager theme-${theme} ${isCollapsed ? 'sidebar-collapsed' : ''}`}
+            ref={containerRef}
+            className={`themed-tag-manager theme-${theme} ${isCollapsed ? 'sidebar-collapsed' : ''} ${isStacked ? 'stacked-layout' : ''}`}
+            style={{ 
+                ["--tm-sidebar-width" as any]: isCollapsed ? '48px' : `${sidebarWidth}px`,
+                ["--tm-sidebar-height" as any]: `${sidebarHeight}px`
+            } as any}
             onMouseDown={() => invoke('activate_window_focus').catch(console.error)}
         >
             {/* Sidebar with CRUD support */}
@@ -204,7 +289,13 @@ export default function TagManager({ t, theme }: TagManagerProps) {
                     <button
                         className="collapse-toggle"
                         title={isCollapsed ? (t('open') || '展开') : (t('collapse') || '收起')}
-                        onClick={() => setIsCollapsed(!isCollapsed)}
+                        onClick={() => {
+                            const newCollapsed = !isCollapsed;
+                            setIsCollapsed(newCollapsed);
+                            if (!newCollapsed && sidebarWidth < 110) {
+                                setSidebarWidth(160);
+                            }
+                        }}
                     >
                         {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
                     </button>
@@ -255,6 +346,7 @@ export default function TagManager({ t, theme }: TagManagerProps) {
                             key={tag.name}
                             className={`tag-item ${selectedTag === tag.name ? 'active' : ''}`}
                             onClick={() => loadTagItems(tag.name)}
+                            title={tag.name}
                         >
                             <div className="tag-color-wrapper" onClick={(e) => e.stopPropagation()}>
                                 <div
@@ -297,19 +389,19 @@ export default function TagManager({ t, theme }: TagManagerProps) {
                                 <>
                                     <span className="tag-name">{tag.name}</span>
                                     <div className="tag-hover-actions">
-                                        <span title="重命名" onClick={(e) => {
-                                            e.stopPropagation();
-                                            if (tag.name === 'sensitive' || tag.name === '密码') return;
-                                            setEditingTag(tag.name);
-                                            setNewTagName(tag.name);
-                                        }} style={{
-                                            opacity: (tag.name === 'sensitive' || tag.name === '密码') ? 0.2 : 1,
-                                            cursor: (tag.name === 'sensitive' || tag.name === '密码') ? 'not-allowed' : 'pointer',
-                                            display: 'flex',
-                                            alignItems: 'center'
-                                        }}>
-                                            <Edit2 size={12} />
-                                        </span>
+                                        {(tag.name !== 'sensitive' && tag.name !== '密码') && (
+                                            <span title="重命名" onClick={(e) => {
+                                                e.stopPropagation();
+                                                setEditingTag(tag.name);
+                                                setNewTagName(tag.name);
+                                            }} style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                cursor: 'pointer'
+                                            }}>
+                                                <Edit2 size={12} />
+                                            </span>
+                                        )}
                                         {(tag.name !== 'sensitive' && tag.name !== '密码') && (
                                             <span title="删除" onClick={(e) => {
                                                 e.stopPropagation();
@@ -338,6 +430,18 @@ export default function TagManager({ t, theme }: TagManagerProps) {
                     )}
                 </div>
             </div>
+
+            {!isCollapsed && (
+                <div 
+                    className={`tag-divider ${isResizing ? 'active' : ''} ${isStacked ? 'stacked' : ''}`}
+                    onMouseDown={(e) => {
+                        e.preventDefault();
+                        setIsResizing(true);
+                    }}
+                >
+                    <div className="tag-divider-handle" />
+                </div>
+            )}
 
             {/* Right Main Area */}
             <div className="tag-content">
@@ -369,10 +473,62 @@ export default function TagManager({ t, theme }: TagManagerProps) {
                     </div>
                     <div className="toolbar-right">
                         {selectedTag && (
-                            <button className="add-item-btn btn-icon" onClick={() => setIsCreatingItem(true)} title={t('add_item')}>
-                                <Plus size={16} />
-                                <span>{t('add_item') || '添加'}</span>
-                            </button>
+                            <div className="toolbar-actions">
+                                {isManageMode ? (
+                                    <>
+                                        <button
+                                            className="sort-btn"
+                                            onClick={() => {
+                                                setIsManageMode(false);
+                                                setSelectedItemIds(new Set());
+                                            }}
+                                        >
+                                            {t('cancel') || '取消'}
+                                        </button>
+                                        <button
+                                            className="sort-btn danger"
+                                            disabled={selectedItemIds.size === 0}
+                                            onClick={() => setItemDeleteConfirmation({ show: true, id: -1 })}
+                                        >
+                                            <Trash2 size={14} />
+                                            <span>{t('delete_selected') || '删除选中'}</span>
+                                        </button>
+                                        <button
+                                            className="sort-btn active"
+                                            disabled={selectedItemIds.size === 0}
+                                            onClick={async () => {
+                                                const selectedItems = tagItems.filter(item => selectedItemIds.has(item.id));
+                                                if (selectedItems.length > 0) {
+                                                    const combinedContent = selectedItems.map(item => item.content).join('\n');
+                                                    await invoke('copy_to_clipboard', {
+                                                        content: combinedContent,
+                                                        contentType: 'text',
+                                                        paste: true,
+                                                        id: -1,
+                                                        deleteAfterUse: false
+                                                    });
+                                                    setIsManageMode(false);
+                                                    setSelectedItemIds(new Set());
+                                                }
+                                            }}
+                                        >
+                                            <Copy size={14} />
+                                            <span>{t('copy_selected') || '复制选中'}</span>
+                                        </button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <button
+                                            className={`sort-btn manage-btn ${isManageMode ? 'active' : ''}`}
+                                            onClick={() => setIsManageMode(true)}
+                                            title={t('manage_items') || '管理条目'}
+                                        >
+                                            <CheckSquare size={14} />
+                                            <span>{t('manage') || '管理'}</span>
+                                        </button>
+                                    </>
+                                )}
+                            </div>
                         )}
                     <div className="view-toggle">
                         <button
@@ -395,40 +551,65 @@ export default function TagManager({ t, theme }: TagManagerProps) {
                     {loading ? <div className="status-msg">{t('processing')}</div> : sortedItems.length === 0 ? (
                         <div className="status-msg">{selectedTag ? t('no_items') : t('select_tag_to_begin')}</div>
                     ) : (
-                        <div className={`items-${viewMode}`}>
+                        <div className={`items-${viewMode} ${isManageMode ? 'manage-mode' : ''}`}>
                             {sortedItems.map(item => (
-                                <div key={item.id} className="themed-card" onClick={() => copyToClipboard(item.id, item.content, item.content_type)}>
+                                <div
+                                    key={item.id}
+                                    className={`themed-card ${selectedItemIds.has(item.id) ? 'selected' : ''}`}
+                                    onClick={() => {
+                                        if (isManageMode) {
+                                            setSelectedItemIds(prev => {
+                                                const next = new Set(prev);
+                                                if (next.has(item.id)) next.delete(item.id);
+                                                else next.add(item.id);
+                                                return next;
+                                            });
+                                        } else {
+                                            copyToClipboard(item.id, item.content, item.content_type);
+                                        }
+                                    }}
+                                >
                                     <div className="card-top-row">
                                         <div className="card-actions-left">
-                                            {item.content_type === 'text' || item.content_type === 'code' ? (
-                                                <button className="card-action-btn" title="编辑" onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setEditingItem({ id: item.id, content: item.content });
-                                                }}>
-                                                    <Edit2 size={10} />
-                                                </button>
-                                            ) : null}
-                                            <button
-                                                className="card-action-btn"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    invoke('open_content', {
-                                                        id: item.id,
-                                                        content: item.content,
-                                                        contentType: item.content_type
-                                                    });
-                                                }}
-                                                title={t('open')}
-                                            >
-                                                <ExternalLink size={10} />
-                                            </button>
+                                            {isManageMode ? (
+                                                <div className={`selection-indicator ${selectedItemIds.has(item.id) ? 'checked' : ''}`}>
+                                                    <div className="inner-check" />
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    {(item.content_type === 'text' || item.content_type === 'code') && (
+                                                        <button className="card-action-btn" title="编辑" onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setEditingItem({ id: item.id, content: item.content });
+                                                        }}>
+                                                            <Edit2 size={10} />
+                                                        </button>
+                                                    )}
+                                                    <button
+                                                        className="card-action-btn"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            invoke('open_content', {
+                                                                id: item.id,
+                                                                content: item.content,
+                                                                contentType: item.content_type
+                                                            });
+                                                        }}
+                                                        title={t('open')}
+                                                    >
+                                                        <ExternalLink size={10} />
+                                                    </button>
+                                                </>
+                                            )}
                                         </div>
-                                        <button className="del-btn" title="删除" onClick={(e) => {
-                                            e.stopPropagation();
-                                            setItemDeleteConfirmation({ show: true, id: item.id });
-                                        }}>
-                                            <X size={10} />
-                                        </button>
+                                        {!isManageMode && (
+                                            <button className="del-btn" title="删除" onClick={(e) => {
+                                                e.stopPropagation();
+                                                setItemDeleteConfirmation({ show: true, id: item.id });
+                                            }}>
+                                                <X size={10} />
+                                            </button>
+                                        )}
                                     </div>
 
                                     {item.content_type === 'image' ? (
@@ -454,6 +635,18 @@ export default function TagManager({ t, theme }: TagManagerProps) {
                         </div>
                     )}
                 </div>
+                {selectedTag && !isManageMode && (
+                    <button
+                        className="fab-add-btn"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setIsCreatingItem(true);
+                        }}
+                        title={t('add_item')}
+                    >
+                        <Plus size={24} />
+                    </button>
+                )}
             </div>
 
             {/* Modals for Create (Rename is handled inline now) */}
@@ -499,7 +692,18 @@ export default function TagManager({ t, theme }: TagManagerProps) {
                                 {t('cancel')}
                             </button>
                             <button className="confirm-dialog-button primary" onClick={async () => {
-                                if (itemDeleteConfirmation.id) {
+                                if (itemDeleteConfirmation.id === -1) {
+                                    // Bulk delete
+                                    try {
+                                        for (const id of Array.from(selectedItemIds)) {
+                                            await invoke('delete_clipboard_entry', { id });
+                                        }
+                                        setIsManageMode(false);
+                                        setSelectedItemIds(new Set());
+                                        if (selectedTag) await loadTagItems(selectedTag);
+                                        emit('clipboard-changed');
+                                    } catch (err) { console.error(err); }
+                                } else if (itemDeleteConfirmation.id) {
                                     await invoke('delete_clipboard_entry', { id: itemDeleteConfirmation.id });
                                     loadTagItems(selectedTag!);
                                     emit('clipboard-changed');
@@ -565,28 +769,29 @@ export default function TagManager({ t, theme }: TagManagerProps) {
             )}
             <style>{`
                 .themed-tag-manager {
-                    display: flex;
+                    display: grid;
+                    grid-template-columns: var(--tag-sidebar-width, 130px) auto 1fr;
                     height: 100%;
                     background: var(--bg-content);
                     font-family: var(--font-main, ui-monospace, monospace);
                     color: var(--text-primary);
-                    gap: 16px;
-                    padding: 16px;
+                    gap: 0;
+                    padding: 0;
                 }
 
                 /* Sidebar */
                 .tag-sidebar {
-                    width: 220px;
+                    width: var(--tag-sidebar-width, 130px);
                     flex-shrink: 0;
                     display: flex;
                     flex-direction: column;
                     background: var(--bg-panel);
-                    border-radius: var(--radius-lg);
-                    box-shadow: 0 2px 12px var(--shadow);
+                    border-radius: 0;
+                    box-shadow: none;
                     overflow: hidden;
                     border: var(--panel-border);
                 }
-                .sidebar-collapsed .tag-sidebar { width: 56px; }
+                .sidebar-collapsed .tag-sidebar { width: 48px; }
                 
                 .sidebar-header {
                     padding: 16px 20px;
@@ -671,6 +876,8 @@ export default function TagManager({ t, theme }: TagManagerProps) {
                     border-radius: var(--radius-sm);
                     transition: all 0.15s;
                     position: relative;
+                    overflow: hidden;
+                    width: 100%;
                 }
                 .tag-item:hover { background: var(--bg-main); }
                 .tag-item.active { 
@@ -705,6 +912,7 @@ export default function TagManager({ t, theme }: TagManagerProps) {
                     overflow: hidden; 
                     text-overflow: ellipsis; 
                     min-width: 0; 
+                    margin-right: 4px;
                 }
                 
                 /* Inline Edit Input */
@@ -727,8 +935,11 @@ export default function TagManager({ t, theme }: TagManagerProps) {
                     display: none; 
                     gap: 4px; 
                     align-items: center; 
+                    margin-left: auto;
+                    flex-shrink: 0;
                 }
                 .tag-item:hover .tag-hover-actions { display: flex; }
+                .tag-item:hover .tag-badge { display: none; }
                 
                 .tag-badge { 
                     font-size: 11px; 
@@ -782,7 +993,13 @@ export default function TagManager({ t, theme }: TagManagerProps) {
                 .toggle-btn:hover { background: var(--bg-input); }
                 .toggle-btn.active { background: var(--accent-color); color: white; }
 
-                .items-area { flex: 1; overflow-y: auto; padding: 16px; background: var(--bg-content); }
+                .items-area { 
+                    flex: 1; 
+                    overflow-y: auto; 
+                    padding: 16px 16px 80px 16px; 
+                    background: var(--bg-content); 
+                    position: relative;
+                }
 
                 .items-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
                 .items-list { display: flex; flex-direction: column; gap: 8px; }
@@ -1251,13 +1468,13 @@ export default function TagManager({ t, theme }: TagManagerProps) {
 
                 .theme-mica .selected-tag-indicator,
                 .theme-acrylic .selected-tag-indicator {
-                    padding: 10px 18px;
+                    padding: 8px 16px;
                     border-radius: var(--radius-pill);
                     background: rgba(var(--accent-color-rgb), 0.12);
                     border: 1px solid rgba(var(--accent-color-rgb), 0.16);
                     color: var(--accent-color);
-                    font-size: 16px;
-                    font-weight: 700;
+                    font-size: 14px;
+                    font-weight: 600;
                     gap: 10px;
                     opacity: 1;
                 }
@@ -1276,10 +1493,10 @@ export default function TagManager({ t, theme }: TagManagerProps) {
 
                 .theme-mica .sort-btn,
                 .theme-acrylic .sort-btn {
-                    min-height: 48px;
-                    padding: 0 18px;
+                    min-height: 40px;
+                    padding: 0 16px;
                     border: 1px solid rgba(var(--accent-color-rgb), 0.14);
-                    border-radius: 16px;
+                    border-radius: 14px;
                     background: transparent;
                     color: var(--text-secondary);
                     box-shadow: none;
@@ -1291,8 +1508,8 @@ export default function TagManager({ t, theme }: TagManagerProps) {
 
                 .theme-mica .sort-btn span,
                 .theme-acrylic .sort-btn span {
-                    font-size: 15px;
-                    font-weight: 700;
+                    font-size: 13px;
+                    font-weight: 500;
                 }
 
                 .theme-mica .sort-btn:hover,
@@ -1312,16 +1529,16 @@ export default function TagManager({ t, theme }: TagManagerProps) {
                 .theme-mica .add-item-btn,
                 .theme-acrylic .add-item-btn {
                     width: auto !important;
-                    min-height: 52px;
-                    padding: 0 22px;
+                    min-height: 40px;
+                    padding: 0 18px;
                     border: none;
-                    border-radius: 18px;
+                    border-radius: 14px;
                     background: var(--accent-color);
                     color: #ffffff;
                     box-shadow: 0 12px 24px rgba(var(--accent-color-rgb), 0.26);
-                    gap: 10px;
-                    font-size: 16px;
-                    font-weight: 700;
+                    gap: 8px;
+                    font-size: 14px;
+                    font-weight: 600;
                 }
 
                 .theme-mica .add-item-btn span,
@@ -1578,6 +1795,210 @@ export default function TagManager({ t, theme }: TagManagerProps) {
                 
                 .custom-scrollbar::-webkit-scrollbar { width: var(--scrollbar-size-thin); }
                 .custom-scrollbar::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb-color); border-radius: var(--scrollbar-radius); }
+
+                @media (max-width: 320px) {
+                    .themed-tag-manager {
+                        flex-direction: column;
+                        padding: 8px;
+                        gap: 12px;
+                        overflow-y: auto;
+                    }
+                    .tag-sidebar {
+                        width: 100% !important;
+                        height: 240px;
+                        flex-shrink: 0;
+                    }
+                    .tag-content {
+                        min-height: 300px;
+                    }
+                }
+
+                .tag-divider {
+                    width: 4px;
+                    height: 100%;
+                    cursor: col-resize;
+                    margin: 0;
+                    background: transparent;
+                    transition: background 0.2s;
+                    position: relative;
+                    z-index: 10;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+                .tag-divider:hover, .tag-divider.active {
+                    background: rgba(var(--accent-color-rgb), 0.1);
+                }
+                .tag-divider-handle {
+                    width: 1px;
+                    height: 32px;
+                    background: var(--accent-color);
+                    opacity: 0.22;
+                    border-radius: 2px;
+                    transition: opacity 0.2s, height 0.2s;
+                }
+                .tag-divider:hover .tag-divider-handle, .tag-divider.active .tag-divider-handle {
+                    opacity: 0.6;
+                    height: 48px;
+                }
+
+                /* Multi-selection Management Styles */
+                .toolbar-actions {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                }
+
+                .manage-btn {
+                    margin-left: 12px !important;
+                }
+                @media (max-width: 500px) {
+                    .manage-btn span {
+                        display: none;
+                    }
+                }
+
+
+                .sort-btn.danger {
+                    color: #ff4d4f !important;
+                }
+                .sort-btn.danger:hover:not(:disabled) {
+                    background: rgba(255, 77, 79, 0.1) !important;
+                }
+                .sort-btn:disabled {
+                    opacity: 0.4;
+                    cursor: not-allowed;
+                }
+                
+                .theme-mica .sort-btn.danger:hover:not(:disabled),
+                .theme-acrylic .sort-btn.danger:hover:not(:disabled) {
+                    background: rgba(255, 77, 79, 0.15);
+                }
+
+                .selection-indicator {
+                    width: 20px;
+                    height: 20px;
+                    border: 2px solid var(--border);
+                    border-radius: 6px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    transition: all 0.2s;
+                    background: var(--bg-main);
+                }
+                .selection-indicator.checked {
+                    background: var(--accent-color);
+                    border-color: var(--accent-color);
+                }
+                .inner-check {
+                    width: 7px;
+                    height: 4px;
+                    border-left: 2px solid white;
+                    border-bottom: 2px solid white;
+                    transform: rotate(-45deg);
+                    opacity: 0;
+                    transition: opacity 0.2s;
+                    margin-top: -2px;
+                }
+                .selection-indicator.checked .inner-check {
+                    opacity: 1;
+                }
+
+                .manage-mode .themed-card {
+                    border-color: var(--border);
+                }
+                .manage-mode .themed-card:hover {
+                    border-color: var(--accent-light);
+                    transform: none;
+                    box-shadow: none;
+                }
+                .manage-mode .themed-card.selected {
+                    background: rgba(var(--accent-color-rgb), 0.05);
+                    border-color: var(--accent-color);
+                    box-shadow: 0 0 0 1px var(--accent-color);
+                }
+
+                /* Ensure card top row shows up in manage mode to hold selection indicator */
+                .manage-mode .themed-card .card-top-row {
+                    opacity: 1 !important;
+                }
+                .manage-mode .card-actions-left {
+                    display: flex !important;
+                }
+                .manage-mode .card-top-row {
+                    right: auto !important;
+                    left: 14px !important;
+                }
+
+                /* Premium adjustments for modern themes */
+                .theme-mica .manage-btn, .theme-acrylic .manage-btn {
+                    min-height: 40px;
+                    border-radius: 14px;
+                    padding: 0 16px;
+                    background: var(--bg-input) !important;
+                    margin-left: 0;
+                }
+
+                .theme-mica .action-btn-primary, .theme-acrylic .action-btn-primary,
+                .theme-mica .action-btn-danger, .theme-acrylic .action-btn-danger,
+                .theme-mica .action-btn-secondary, .theme-acrylic .action-btn-secondary {
+                    min-height: 40px;
+                    border-radius: 14px;
+                }
+
+                .theme-mica .selection-indicator, .theme-acrylic .selection-indicator {
+                    border-radius: 8px;
+                    border-color: rgba(var(--accent-color-rgb), 0.2);
+                }
+                
+                .theme-mica .manage-mode .themed-card.selected,
+                .theme-acrylic .manage-mode .themed-card.selected {
+                    background: rgba(var(--accent-color-rgb), 0.08);
+                    box-shadow: 0 12px 28px rgba(var(--accent-color-rgb), 0.15);
+                }
+
+                .fab-add-btn {
+                    position: absolute;
+                    bottom: 20px;
+                    right: 20px;
+                    width: 44px;
+                    height: 44px;
+                    border-radius: 50%;
+                    background: var(--accent-color);
+                    color: white;
+                    border: none;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    cursor: pointer;
+                    box-shadow: 0 4px 12px rgba(var(--accent-color-rgb), 0.3);
+                    transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+                    z-index: 100;
+                    opacity: 0.85;
+                }
+                .fab-add-btn:hover {
+                    background: var(--accent-hover);
+                    transform: scale(1.08) translateY(-2px);
+                    box-shadow: 0 12px 24px rgba(var(--accent-color-rgb), 0.4);
+                    opacity: 1;
+                }
+                .fab-add-btn:active {
+                    transform: scale(0.95);
+                }
+                
+                .theme-mica .fab-add-btn, .theme-acrylic .fab-add-btn {
+                    width: 48px;
+                    height: 48px;
+                    background: var(--accent-color);
+                    box-shadow: 0 10px 24px rgba(var(--accent-color-rgb), 0.4);
+                    border: 1px solid rgba(255, 255, 255, 0.25);
+                }
+                
+                /* Ensure tag-content is the anchor for FAB */
+                .tag-content { 
+                    position: relative; 
+                }
+
             `}</style>
         </div >
     );

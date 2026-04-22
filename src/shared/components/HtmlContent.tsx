@@ -168,9 +168,15 @@ const sanitizeHTML = (html: string, preview?: boolean) => {
   });
 
   const bodyClone = doc.body.cloneNode(true) as HTMLElement;
-  bodyClone.querySelectorAll("style, script").forEach(el => el.remove());
-  const hasRenderableText = (bodyClone.textContent || "").trim().length > 0;
-  const hasRenderableElement = !!bodyClone.querySelector("*");
+  bodyClone.querySelectorAll("style, script, meta, link, xml").forEach(el => el.remove());
+  
+  const textContent = (bodyClone.textContent || "").trim();
+  const TRUNCATION_MARKER = "... [HTML Truncated]";
+  
+  // If the ONLY content is the truncation marker, treat it as not renderable
+  // so we fallback to the clean plain text preview.
+  const hasRenderableText = textContent.length > 0 && textContent !== TRUNCATION_MARKER;
+  const hasRenderableElement = !!bodyClone.querySelector("p, div, span, img, table, ul, ol, li, h1, h2, h3, h4, h5, h6, blockquote, pre");
 
   return { html: doc.body.innerHTML, hasRenderable: hasRenderableText || hasRenderableElement };
 };

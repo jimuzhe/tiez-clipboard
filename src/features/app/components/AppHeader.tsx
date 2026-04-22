@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { getTagColor } from "../../../shared/lib/utils";
+import { getTagColor, getTagTextColor } from "../../../shared/lib/utils";
 
 interface AppHeaderProps {
   t: (key: string) => string;
@@ -27,7 +27,6 @@ interface AppHeaderProps {
   setShowEmojiPanel: (val: boolean) => void;
   emojiPanelEnabled: boolean;
   chatMode: boolean;
-  setChatMode: (val: boolean) => void;
   fileServerEnabled: boolean;
   isWindowPinned: boolean;
   setIsWindowPinned: (val: boolean) => void;
@@ -45,8 +44,11 @@ interface AppHeaderProps {
   setEditingTagsId: (val: number | null) => void;
   theme: string;
   colorMode: string;
+  settingsTitle: string;
   typeFilter: string | null;
   setTypeFilter: (val: string | null) => void;
+  onBack: () => void;
+  onToggleChat: () => void;
 }
 
 const AppHeader = ({
@@ -60,7 +62,6 @@ const AppHeader = ({
   setShowEmojiPanel,
   emojiPanelEnabled,
   chatMode,
-  setChatMode,
   fileServerEnabled,
   isWindowPinned,
   setIsWindowPinned,
@@ -78,8 +79,11 @@ const AppHeader = ({
   setEditingTagsId,
   theme,
   colorMode,
+  settingsTitle,
   typeFilter,
-  setTypeFilter
+  setTypeFilter,
+  onBack,
+  onToggleChat
 }: AppHeaderProps) => {
   const getTypeName = (type: string) => {
     switch (type) {
@@ -122,7 +126,7 @@ const AppHeader = ({
       handleDragStart();
     }}
   >
-    <div className="header-top" 
+    <div className="header-top"
       onMouseDown={(e) => { {/* TODO 平台区分仅限Linux */}
         // Don't drag if clicking on interactive elements
         const target = e.target as HTMLElement;
@@ -133,12 +137,7 @@ const AppHeader = ({
       }}>
       <div className="header-leading">
         {(showSettings || showTagManager || showEmojiPanel) && (
-          <button className="btn-icon" onMouseDown={(e) => e.stopPropagation()} onClick={() => {
-            if (chatMode) setChatMode(false);
-            else if (showEmojiPanel) setShowEmojiPanel(false);
-            else if (showTagManager) setShowTagManager(false);
-            else setShowSettings(false);
-          }}>
+          <button className="btn-icon window-no-drag" onMouseDown={(e) => e.stopPropagation()} onClick={onBack}>
             <ChevronLeft size={18} />
           </button>
         )}
@@ -149,12 +148,12 @@ const AppHeader = ({
                 : showTagManager && tagManagerEnabled
                   ? (t('tag_manager') || '标签管理')
                   : showSettings
-                    ? t('settings')
+                    ? settingsTitle
                     : t('app_name')}
             </span>
           </div>
       </div>
-      <div style={{ display: 'flex', gap: '4px' }}>
+      <div className="header-actions window-no-drag">
         {/* Pin Button - Always visible but single instance */}
         <button
           className={`btn-icon ${isWindowPinned ? 'active' : ''}`}
@@ -191,23 +190,12 @@ const AppHeader = ({
         )}
         {fileServerEnabled && (
           <button
-            className={`btn-icon ${chatMode && showSettings ? 'active' : ''}`}
+            className={`btn-icon header-chat-btn ${chatMode && showSettings ? 'active' : ''}`}
             title="Chat"
             onMouseDown={(e) => e.stopPropagation()}
-            onClick={() => {
-              if (showTagManager) setShowTagManager(false);
-              if (!showSettings) {
-                setShowSettings(true);
-                setChatMode(true);
-              } else {
-                setChatMode(!chatMode);
-              }
-            }}
+            onClick={onToggleChat}
           >
-            <div style={{ position: 'relative' }}>
-              <MessageSquare size={16} />
-              {/* Keep the indicator/badge if needed, though not present in original code */}
-            </div>
+            <MessageSquare size={16} />
           </button>
         )}
         <button className="btn-icon" title={t('hide')} onMouseDown={(e) => e.stopPropagation()} onClick={async () => {
@@ -232,7 +220,7 @@ const AppHeader = ({
             transition={{ duration: 0.2, ease: "circOut" }}
             style={{ flexShrink: 0 }}
           >
-            <div className="search-container">
+            <div className="search-container window-no-drag">
               <div style={{ position: 'relative' }}>
                 <Search size={14} className="search-icon" />
                 <input
@@ -271,21 +259,24 @@ const AppHeader = ({
                   <div className="tags-dropdown">
                     <div className="tags-label">{t('tags') || "Tags"}</div>
                     <div className="tags-list">
-                      {allTags.map(tag => (
-                        <span
-                          className="tag-chip"
-                          key={tag}
-                          onMouseDown={(e) => {
-                            e.preventDefault();
-                            setSearch("tag:" + tag);
-                            setShowTagFilter(false);
-                          }}
-                          data-tag={tag}
-                          style={{ background: getTagColor(tag, theme) }}
-                        >
-                          {tag}
-                        </span>
-                      ))}
+                      {allTags.map(tag => {
+                        const tagBackground = getTagColor(tag, theme);
+                        return (
+                          <span
+                            className="tag-chip"
+                            key={tag}
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              setSearch("tag:" + tag);
+                              setShowTagFilter(false);
+                            }}
+                            data-tag={tag}
+                            style={{ background: tagBackground, color: getTagTextColor(tagBackground) }}
+                          >
+                            {tag}
+                          </span>
+                        );
+                      })}
                     </div>
                   </div>
                 )}

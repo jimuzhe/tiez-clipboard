@@ -21,33 +21,41 @@ use crate::app::system::tray_subclass_proc;
 #[cfg(target_os = "windows")]
 use windows::Win32::Foundation::{HINSTANCE, HWND, POINT, RECT};
 #[cfg(target_os = "windows")]
-use windows::Win32::UI::WindowsAndMessaging::{
-    GetCursorPos, GetWindowRect, RegisterWindowMessageW, GWL_EXSTYLE, WS_EX_NOACTIVATE,
-};
+use windows::Win32::System::LibraryLoader::GetModuleHandleW;
 #[cfg(target_os = "windows")]
 use windows::Win32::UI::Input::KeyboardAndMouse::GetAsyncKeyState;
 #[cfg(target_os = "windows")]
 use windows::Win32::UI::Shell::SetWindowSubclass;
 #[cfg(target_os = "windows")]
-use windows::Win32::System::LibraryLoader::GetModuleHandleW;
+use windows::Win32::UI::WindowsAndMessaging::{
+    GetCursorPos, GetWindowRect, RegisterWindowMessageW, GWL_EXSTYLE, WS_EX_NOACTIVATE,
+};
 
 static WINDOW_SIZE_SAVE_PENDING: AtomicBool = AtomicBool::new(false);
 static LAST_WINDOW_SIZE_EVENT_MS: AtomicU64 = AtomicU64::new(0);
 static LAST_WINDOW_SIZE: OnceLock<Mutex<(u32, u32)>> = OnceLock::new();
 
+#[derive(Clone, Copy, Debug)]
+struct WindowRect {
+    x: i32,
+    y: i32,
+    width: i32,
+    height: i32,
+}
+
 pub fn init(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     let app_handle = app.handle().clone();
-    
+
     // Initialize GLOBAL_APP_HANDLE for Win32 hooks
     let _ = GLOBAL_APP_HANDLE.set(app_handle.clone());
-    
+
     // 1. Data Directory & Migration
     let app_dir = resolve_data_dir(app)?;
-    
+
     // 2. Logger Initialization
     crate::logger::init(app_dir.join("tiez.log"));
     info!(">>> [STARTUP] TieZ starting up...");
-    
+
     // 3. Database Initialization
     let db_path = app_dir.join("clipboard.db");
     let db_path_str = db_path.to_string_lossy();
@@ -61,33 +69,35 @@ pub fn init(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     })?;
     let conn_arc = std::sync::Arc::new(std::sync::Mutex::new(conn));
     let settings_repo = SqliteSettingsRepository::new(conn_arc.clone());
-    
+
     // 4. Initial Settings & Reset Safety
     apply_startup_resets(&settings_repo);
-    
+
     let settings = load_settings(&settings_repo);
-    
+
     // 5. App State Management
     setup_state(app, conn_arc.clone(), &settings, app_dir.clone());
-    app.manage(EncryptionQueueState(init_encryption_queue(app_handle.clone())));
+    app.manage(EncryptionQueueState(init_encryption_queue(
+        app_handle.clone(),
+    )));
     spawn_sensitive_alignment(app_handle.clone());
-    
+
     // 6. Window Initialization (Pinned/Focus)
     setup_main_window(app, &settings);
 
     // 6.1 External Drag-Drop (Web Images)
     #[cfg(windows)]
     crate::infrastructure::windows_api::drag_drop::register_emoji_drag_drop(app_handle.clone());
-    
+
     // 7. Background Services & Monitors
     start_services(app, &settings, app_handle.clone());
-    
+
     // 8. Tray Setup
     setup_tray(app, settings.hide_tray_icon);
-    
+
     // 9. Theme Initial Application
     apply_initial_theme(app);
-    
+
     // 10. Win32 Hook Initialization
     #[cfg(target_os = "windows")]
     init_win32_hooks(app);
@@ -101,10 +111,10 @@ pub fn init(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
 
 fn resolve_data_dir(app: &App) -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
     let default_app_dir = app.path().app_data_dir()?;
-    
+
     // Perform migration if needed
     crate::migration::perform_migration_v028(&default_app_dir);
-    
+
     // Cleanup temp files
     std::thread::spawn(|| {
         let temp_dir = std::env::temp_dir();
@@ -150,7 +160,8 @@ fn resolve_data_dir(app: &App) -> Result<std::path::PathBuf, Box<dyn std::error:
 }
 
 fn apply_startup_resets(repo: &impl SettingsRepository) {
-    let paste_method = repo.get("app.paste_method").unwrap_or(Some("ctrl_v".to_string())).unwrap_or("ctrl_v".to_string());
+    let paste_method = repo.get("app.paste_method").unwrap_or(Some("shift_insert".to_string())).unwrap_or("shift_insert".to_string());
+    #[cfg(target_os = "windows")]
     if paste_method == "game_mode" && !crate::app::commands::system_cmd::check_is_admin() {
         info!(">>> [STARTUP] Game Mode active without Admin privileges. Resetting to default.");
         let _ = repo.set("app.paste_method", "ctrl_v");
@@ -169,10 +180,13 @@ pub struct StartupSettings {
     pub privacy_protection: bool,
     pub privacy_kinds: String,
     pub privacy_custom: String,
+    pub cleanup_rules: String,
+    pub app_cleanup_policies: String,
     pub sequential_mode: bool,
     pub sequential_hotkey: String,
     pub rich_paste_hotkey: String,
     pub search_hotkey: String,
+    pub quick_paste_modifier: String,
     pub sound_enabled: bool,
     pub hide_tray_icon: bool,
     pub edge_docking: bool,
@@ -187,26 +201,112 @@ pub struct StartupSettings {
 
 fn load_settings(repo: &impl SettingsRepository) -> StartupSettings {
     StartupSettings {
-        theme: repo.get("app.theme").unwrap_or(Some("retro".to_string())).unwrap_or("retro".to_string()),
-        persistent: repo.get("app.persistent").unwrap_or(Some("true".to_string())).map(|v| v == "true").unwrap_or(true),
-        capture_files: repo.get("app.capture_files").unwrap_or(Some("true".to_string())).map(|v| v == "true").unwrap_or(true),
-        capture_rich_text: repo.get("app.capture_rich_text").unwrap_or(Some("false".to_string())).map(|v| v == "true").unwrap_or(false),
-        deduplicate: repo.get("app.deduplicate").unwrap_or(Some("true".to_string())).map(|v| v == "true").unwrap_or(true),
-        auto_copy_file: repo.get("file_transfer_auto_copy").unwrap_or(Some("false".to_string())).map(|v| v == "true").unwrap_or(false),
-        silent_start: repo.get("app.silent_start").unwrap_or(Some("true".to_string())).map(|v| v == "true").unwrap_or(true),
-        delete_after_paste: repo.get("app.delete_after_paste").unwrap_or(Some("false".to_string())).map(|v| v == "true").unwrap_or(false),
-        privacy_protection: repo.get("app.privacy_protection").unwrap_or(Some("true".to_string())).map(|v| v == "true").unwrap_or(true),
-        privacy_kinds: repo.get("app.privacy_protection_kinds").unwrap_or(Some("phone,idcard,email,secret".to_string())).unwrap_or("phone,idcard,email,secret".to_string()),
-        privacy_custom: repo.get("app.privacy_protection_custom_rules").unwrap_or(Some("".to_string())).unwrap_or("".to_string()),
-        sequential_mode: repo.get("app.sequential_mode").unwrap_or(Some("false".to_string())).map(|v| v == "true").unwrap_or(false),
-        sequential_hotkey: repo.get("app.sequential_hotkey").unwrap_or(Some("Alt+V".to_string())).unwrap_or("Alt+V".to_string()),
-        rich_paste_hotkey: repo.get("app.rich_paste_hotkey").unwrap_or(Some("Ctrl+Shift+Z".to_string())).unwrap_or("Ctrl+Shift+Z".to_string()),
-        search_hotkey: repo.get("app.search_hotkey").unwrap_or(Some("Alt+F".to_string())).unwrap_or("Alt+F".to_string()),
-        sound_enabled: repo.get("app.sound_enabled").unwrap_or(Some("false".to_string())).map(|v| v == "true").unwrap_or(false),
-        hide_tray_icon: repo.get("app.hide_tray_icon").unwrap_or(Some("false".to_string())).map(|v| v == "true").unwrap_or(false),
-        edge_docking: repo.get("app.edge_docking").unwrap_or(Some("false".to_string())).map(|v| v == "true").unwrap_or(false),
-        follow_mouse: repo.get("app.follow_mouse").unwrap_or(Some("true".to_string())).map(|v| v == "true").unwrap_or(true),
-        window_pinned: repo.get("app.window_pinned").unwrap_or(Some("false".to_string())).map(|v| v == "true").unwrap_or(false),
+        theme: repo
+            .get("app.theme")
+            .unwrap_or(Some("retro".to_string()))
+            .unwrap_or("retro".to_string()),
+        persistent: repo
+            .get("app.persistent")
+            .unwrap_or(Some("true".to_string()))
+            .map(|v| v == "true")
+            .unwrap_or(true),
+        capture_files: repo
+            .get("app.capture_files")
+            .unwrap_or(Some("true".to_string()))
+            .map(|v| v == "true")
+            .unwrap_or(true),
+        capture_rich_text: repo
+            .get("app.capture_rich_text")
+            .unwrap_or(Some("false".to_string()))
+            .map(|v| v == "true")
+            .unwrap_or(false),
+        deduplicate: repo
+            .get("app.deduplicate")
+            .unwrap_or(Some("true".to_string()))
+            .map(|v| v == "true")
+            .unwrap_or(true),
+        auto_copy_file: repo
+            .get("file_transfer_auto_copy")
+            .unwrap_or(Some("false".to_string()))
+            .map(|v| v == "true")
+            .unwrap_or(false),
+        silent_start: repo
+            .get("app.silent_start")
+            .unwrap_or(Some("true".to_string()))
+            .map(|v| v == "true")
+            .unwrap_or(true),
+        delete_after_paste: repo
+            .get("app.delete_after_paste")
+            .unwrap_or(Some("false".to_string()))
+            .map(|v| v == "true")
+            .unwrap_or(false),
+        privacy_protection: repo
+            .get("app.privacy_protection")
+            .unwrap_or(Some("true".to_string()))
+            .map(|v| v == "true")
+            .unwrap_or(true),
+        privacy_kinds: repo
+            .get("app.privacy_protection_kinds")
+            .unwrap_or(Some("phone,idcard,email,secret".to_string()))
+            .unwrap_or("phone,idcard,email,secret".to_string()),
+        privacy_custom: repo
+            .get("app.privacy_protection_custom_rules")
+            .unwrap_or(Some("".to_string()))
+            .unwrap_or("".to_string()),
+        cleanup_rules: repo
+            .get("app.cleanup_rules")
+            .unwrap_or(Some("".to_string()))
+            .unwrap_or("".to_string()),
+        app_cleanup_policies: repo
+            .get("app.app_cleanup_policies")
+            .unwrap_or(Some("[]".to_string()))
+            .unwrap_or("[]".to_string()),
+        sequential_mode: repo
+            .get("app.sequential_mode")
+            .unwrap_or(Some("false".to_string()))
+            .map(|v| v == "true")
+            .unwrap_or(false),
+        sequential_hotkey: repo
+            .get("app.sequential_hotkey")
+            .unwrap_or(Some("Alt+V".to_string()))
+            .unwrap_or("Alt+V".to_string()),
+        rich_paste_hotkey: repo
+            .get("app.rich_paste_hotkey")
+            .unwrap_or(Some("Ctrl+Shift+Z".to_string()))
+            .unwrap_or("Ctrl+Shift+Z".to_string()),
+        search_hotkey: repo
+            .get("app.search_hotkey")
+            .unwrap_or(Some("Alt+F".to_string()))
+            .unwrap_or("Alt+F".to_string()),
+        quick_paste_modifier: repo
+            .get("app.quick_paste_modifier")
+            .unwrap_or(Some("disabled".to_string()))
+            .unwrap_or("disabled".to_string()),
+        sound_enabled: repo
+            .get("app.sound_enabled")
+            .unwrap_or(Some("false".to_string()))
+            .map(|v| v == "true")
+            .unwrap_or(false),
+        hide_tray_icon: repo
+            .get("app.hide_tray_icon")
+            .unwrap_or(Some("false".to_string()))
+            .map(|v| v == "true")
+            .unwrap_or(false),
+        edge_docking: repo
+            .get("app.edge_docking")
+            .unwrap_or(Some("false".to_string()))
+            .map(|v| v == "true")
+            .unwrap_or(false),
+        follow_mouse: repo
+            .get("app.follow_mouse")
+            .unwrap_or(Some("true".to_string()))
+            .map(|v| v == "true")
+            .unwrap_or(true),
+        window_pinned: repo
+            .get("app.window_pinned")
+            .unwrap_or(Some("false".to_string()))
+            .map(|v| v == "true")
+            .unwrap_or(false),
         window_width: repo
             .get("app.window_width")
             .ok()
@@ -217,18 +317,39 @@ fn load_settings(repo: &impl SettingsRepository) -> StartupSettings {
             .ok()
             .flatten()
             .and_then(|v| v.parse::<u32>().ok()),
-        main_hotkey: repo.get("app.hotkey").unwrap_or(Some("Win+V".to_string())).unwrap_or("Win+V".to_string()),
-        arrow_key_selection: repo.get("app.arrow_key_selection").unwrap_or(Some("false".to_string())).map(|v| v == "true").unwrap_or(false),
-        auto_close_server: repo.get("file_transfer_auto_close").unwrap_or(Some("false".to_string())).map(|v| v == "true").unwrap_or(false),
+        main_hotkey: repo
+            .get("app.hotkey")
+            .unwrap_or(Some("Win+V".to_string()))
+            .unwrap_or("Win+V".to_string()),
+        arrow_key_selection: repo
+            .get("app.arrow_key_selection")
+            .unwrap_or(Some("false".to_string()))
+            .map(|v| v == "true")
+            .unwrap_or(false),
+        auto_close_server: repo
+            .get("file_transfer_auto_close")
+            .unwrap_or(Some("false".to_string()))
+            .map(|v| v == "true")
+            .unwrap_or(false),
     }
 }
 
-fn setup_state(app: &App, conn_arc: std::sync::Arc<std::sync::Mutex<rusqlite::Connection>>, s: &StartupSettings, app_dir: std::path::PathBuf) {
+fn setup_state(
+    app: &App,
+    conn_arc: std::sync::Arc<std::sync::Mutex<rusqlite::Connection>>,
+    s: &StartupSettings,
+    app_dir: std::path::PathBuf,
+) {
     let repo = SqliteClipboardRepository::new(conn_arc.clone());
     let settings_repo = SqliteSettingsRepository::new(conn_arc.clone());
     let tag_repo = SqliteTagRepository::new(conn_arc.clone());
-    app.manage(DbState { conn: conn_arc, repo, settings_repo, tag_repo });
-    
+    app.manage(DbState {
+        conn: conn_arc,
+        repo,
+        settings_repo,
+        tag_repo,
+    });
+
     app.manage(SettingsState {
         deduplicate: AtomicBool::new(s.deduplicate),
         persistent: AtomicBool::new(s.persistent),
@@ -240,12 +361,25 @@ fn setup_state(app: &App, conn_arc: std::sync::Arc<std::sync::Mutex<rusqlite::Co
         silent_start: AtomicBool::new(s.silent_start),
         delete_after_paste: AtomicBool::new(s.delete_after_paste),
         privacy_protection: AtomicBool::new(s.privacy_protection),
-        privacy_protection_kinds: std::sync::Mutex::new(s.privacy_kinds.split(',').map(|x| x.trim().to_string()).collect()),
-        privacy_protection_custom_rules: std::sync::Mutex::new(s.privacy_custom.lines().map(|x| x.trim().to_string()).collect()),
+        privacy_protection_kinds: std::sync::Mutex::new(
+            s.privacy_kinds
+                .split(',')
+                .map(|x| x.trim().to_string())
+                .collect(),
+        ),
+        privacy_protection_custom_rules: std::sync::Mutex::new(
+            s.privacy_custom
+                .lines()
+                .map(|x| x.trim().to_string())
+                .collect(),
+        ),
+        cleanup_rules: std::sync::Mutex::new(s.cleanup_rules.clone()),
+        app_cleanup_policies: std::sync::Mutex::new(s.app_cleanup_policies.clone()),
         sequential_mode: AtomicBool::new(s.sequential_mode),
         sequential_paste_hotkey: std::sync::Mutex::new(s.sequential_hotkey.clone()),
         rich_paste_hotkey: std::sync::Mutex::new(s.rich_paste_hotkey.clone()),
         search_hotkey: std::sync::Mutex::new(s.search_hotkey.clone()),
+        quick_paste_modifier: std::sync::Mutex::new(s.quick_paste_modifier.clone()),
         sound_enabled: AtomicBool::new(s.sound_enabled),
         hide_tray_icon: AtomicBool::new(s.hide_tray_icon),
         edge_docking: AtomicBool::new(s.edge_docking),
@@ -254,61 +388,224 @@ fn setup_state(app: &App, conn_arc: std::sync::Arc<std::sync::Mutex<rusqlite::Co
         main_hotkey: std::sync::Mutex::new(s.main_hotkey.clone()),
         monitors: std::sync::Mutex::new(Vec::new()),
     });
-    
-    app.manage(SessionHistory(std::sync::Mutex::new(std::collections::VecDeque::new())));
+
+    app.manage(SessionHistory(std::sync::Mutex::new(
+        std::collections::VecDeque::new(),
+    )));
     app.manage(AppDataDir(std::sync::Mutex::new(app_dir)));
     app.manage(crate::services::file_transfer::ChatState::default());
-    app.manage(crate::services::file_transfer::SharedFileState(std::sync::Mutex::new(std::collections::HashMap::new())));
-    app.manage(crate::services::file_transfer::ServerInfo { port: std::sync::atomic::AtomicU16::new(0), ip: std::sync::Mutex::new(String::new()) });
+    app.manage(crate::services::file_transfer::SharedFileState(
+        std::sync::Mutex::new(std::collections::HashMap::new()),
+    ));
+    app.manage(crate::services::file_transfer::ServerInfo {
+        port: std::sync::atomic::AtomicU16::new(0),
+        ip: std::sync::Mutex::new(String::new()),
+    });
     app.manage(crate::services::file_transfer::UploadSessions::default());
     app.manage(crate::services::file_transfer::ServerActivityState::default());
-    app.manage(crate::services::file_transfer::WsBroadcaster(std::sync::Mutex::new(None)));
-    app.manage(crate::services::file_transfer::OnlineDevices(std::sync::Mutex::new(std::collections::HashMap::new())));
+    app.manage(crate::services::file_transfer::WsBroadcaster(
+        std::sync::Mutex::new(None),
+    ));
+    app.manage(crate::services::file_transfer::OnlineDevices(
+        std::sync::Mutex::new(std::collections::HashMap::new()),
+    ));
     app.manage(PasteQueue::default());
 }
 
 fn setup_main_window(app: &App, s: &StartupSettings) {
     let effective_pinned = s.window_pinned;
     WINDOW_PINNED.store(effective_pinned, Ordering::Relaxed);
-    
+
     if let Some(window) = app.get_webview_window("main") {
         if let (Some(w), Some(h)) = (s.window_width, s.window_height) {
             if w >= 360 && h >= 240 {
-                let _ = window.set_size(tauri::Size::Physical(tauri::PhysicalSize { width: w, height: h }));
+                let _ = window.set_size(tauri::Size::Physical(tauri::PhysicalSize {
+                    width: w,
+                    height: h,
+                }));
             }
         }
         let _ = window.set_always_on_top(effective_pinned);
         let _ = window.set_focusable(!effective_pinned);
-        
+
         #[cfg(windows)]
         if let Ok(hwnd) = window.hwnd() {
             unsafe {
-                let ex_style = windows::Win32::UI::WindowsAndMessaging::GetWindowLongPtrW(HWND(hwnd.0), GWL_EXSTYLE);
+                let ex_style = windows::Win32::UI::WindowsAndMessaging::GetWindowLongPtrW(
+                    HWND(hwnd.0),
+                    GWL_EXSTYLE,
+                );
                 if effective_pinned {
                     let _ = windows::Win32::UI::WindowsAndMessaging::SetWindowLongPtrW(
                         HWND(hwnd.0),
                         GWL_EXSTYLE,
-                        ex_style | WS_EX_NOACTIVATE.0 as isize
+                        ex_style | WS_EX_NOACTIVATE.0 as isize,
                     );
                 } else {
                     let _ = windows::Win32::UI::WindowsAndMessaging::SetWindowLongPtrW(
                         HWND(hwnd.0),
                         GWL_EXSTYLE,
-                        ex_style & !(WS_EX_NOACTIVATE.0 as isize)
+                        ex_style & !(WS_EX_NOACTIVATE.0 as isize),
                     );
                 }
             }
         }
+
+        if repair_window_position_if_needed(&window, s.edge_docking) {
+            IS_HIDDEN.store(false, Ordering::Relaxed);
+            CURRENT_DOCK.store(0, Ordering::Relaxed);
+        }
     }
+
+    schedule_window_position_repair(app.handle().clone(), s.edge_docking);
 
     // Handle silent start
     let args: Vec<String> = std::env::args().collect();
-    let is_autostart = args.contains(&"--autostart".to_string()) || args.contains(&"--minimized".to_string());
+    let is_autostart =
+        args.contains(&"--autostart".to_string()) || args.contains(&"--minimized".to_string());
     if !is_autostart && !s.silent_start {
         if let Some(window) = app.get_webview_window("main") {
             let _ = window.show();
         }
     }
+}
+
+fn schedule_window_position_repair(app_handle: AppHandle, edge_docking_enabled: bool) {
+    std::thread::spawn(move || {
+        for _ in 0..8 {
+            std::thread::sleep(std::time::Duration::from_millis(250));
+
+            let Some(window) = app_handle.get_webview_window("main") else {
+                continue;
+            };
+
+            if repair_window_position_if_needed(&window, edge_docking_enabled) {
+                IS_HIDDEN.store(false, Ordering::Relaxed);
+                CURRENT_DOCK.store(0, Ordering::Relaxed);
+                info!(">>> [STARTUP] Repaired off-screen window position after state restore.");
+                break;
+            }
+        }
+    });
+}
+
+fn repair_window_position_if_needed(
+    window: &tauri::WebviewWindow,
+    edge_docking_enabled: bool,
+) -> bool {
+    let Ok(position) = window.outer_position() else {
+        return false;
+    };
+    let Ok(size) = window.outer_size() else {
+        return false;
+    };
+    let Ok(monitors) = window.available_monitors() else {
+        return false;
+    };
+    if monitors.is_empty() {
+        return false;
+    }
+
+    let rect = WindowRect {
+        x: position.x,
+        y: position.y,
+        width: size.width as i32,
+        height: size.height as i32,
+    };
+
+    if rect.width <= 0 || rect.height <= 0 {
+        return false;
+    }
+
+    let visible_enough = monitors
+        .iter()
+        .any(|monitor| window_rect_has_enough_visible_area(rect, monitor, edge_docking_enabled));
+    if visible_enough {
+        return false;
+    }
+
+    let target_monitor = window
+        .current_monitor()
+        .ok()
+        .flatten()
+        .or_else(|| window.primary_monitor().ok().flatten())
+        .or_else(|| monitors.first().cloned());
+
+    let Some(monitor) = target_monitor else {
+        return false;
+    };
+
+    let (target_x, target_y) = clamp_window_rect_to_monitor(rect, &monitor);
+    if target_x == rect.x && target_y == rect.y {
+        return false;
+    }
+
+    let _ = window.set_position(tauri::Position::Physical(tauri::PhysicalPosition {
+        x: target_x,
+        y: target_y,
+    }));
+    true
+}
+
+fn window_rect_has_enough_visible_area(
+    rect: WindowRect,
+    monitor: &tauri::Monitor,
+    edge_docking_enabled: bool,
+) -> bool {
+    let monitor_pos = monitor.position();
+    let monitor_size = monitor.size();
+    let monitor_left = monitor_pos.x;
+    let monitor_top = monitor_pos.y;
+    let monitor_right = monitor_left + monitor_size.width as i32;
+    let monitor_bottom = monitor_top + monitor_size.height as i32;
+
+    let visible_left = rect.x.max(monitor_left);
+    let visible_top = rect.y.max(monitor_top);
+    let visible_right = (rect.x + rect.width).min(monitor_right);
+    let visible_bottom = (rect.y + rect.height).min(monitor_bottom);
+    let visible_width = (visible_right - visible_left).max(0);
+    let visible_height = (visible_bottom - visible_top).max(0);
+
+    if visible_width == 0 || visible_height == 0 {
+        return false;
+    }
+
+    let min_visible_width = if edge_docking_enabled {
+        24.min(rect.width)
+    } else {
+        1
+    };
+    let min_visible_height = if edge_docking_enabled {
+        24.min(rect.height)
+    } else {
+        1
+    };
+
+    visible_width >= min_visible_width && visible_height >= min_visible_height
+}
+
+fn clamp_window_rect_to_monitor(rect: WindowRect, monitor: &tauri::Monitor) -> (i32, i32) {
+    let monitor_pos = monitor.position();
+    let monitor_size = monitor.size();
+    let margin = 10;
+
+    let min_x = monitor_pos.x + margin;
+    let min_y = monitor_pos.y + margin;
+    let max_x = (monitor_pos.x + monitor_size.width as i32 - rect.width - margin).max(min_x);
+    let max_y = (monitor_pos.y + monitor_size.height as i32 - rect.height - margin).max(min_y);
+
+    let target_x = if rect.width + margin * 2 >= monitor_size.width as i32 {
+        monitor_pos.x
+    } else {
+        rect.x.clamp(min_x, max_x)
+    };
+    let target_y = if rect.height + margin * 2 >= monitor_size.height as i32 {
+        monitor_pos.y
+    } else {
+        rect.y.clamp(min_y, max_y)
+    };
+
+    (target_x, target_y)
 }
 
 fn start_services(app: &App, s: &StartupSettings, app_handle: AppHandle) {
@@ -319,13 +616,20 @@ fn start_services(app: &App, s: &StartupSettings, app_handle: AppHandle) {
     crate::services::mqtt_sub::start_mqtt_client(app_handle.clone());
     crate::services::cloud_sync::start_cloud_sync_client(app_handle.clone());
     start_edge_docking_monitor(app_handle.clone());
-    
+
     let db_state = app.state::<DbState>();
-    if db_state.settings_repo.get("file_server_enabled").unwrap_or(Some("false".to_string())) == Some("true".to_string()) {
-        let port = db_state.settings_repo.get("file_server_port")
+    if db_state
+        .settings_repo
+        .get("file_server_enabled")
+        .unwrap_or(Some("false".to_string()))
+        == Some("true".to_string())
+    {
+        let port = db_state
+            .settings_repo
+            .get("file_server_port")
             .unwrap_or(None)
             .and_then(|x| x.parse::<u16>().ok());
-            
+
         let h = app_handle.clone();
         tauri::async_runtime::spawn(async move {
             let _ = crate::services::file_transfer::toggle_file_server(h, true, port).await;
@@ -335,35 +639,8 @@ fn start_services(app: &App, s: &StartupSettings, app_handle: AppHandle) {
     // Daily app announcement ping
     init_announcement_ping(app, &db_state.settings_repo);
 
-    // Register initial hotkey
-    let hotkey_str = s.main_hotkey.clone();
-    {
-        let mut guard = HOTKEY_STRING.lock().unwrap();
-        *guard = hotkey_str.clone();
-    }
-    if !hotkey_str.is_empty() {
-        let _ = crate::app::commands::register_hotkey(app_handle.clone(), hotkey_str);
-    }
-    
-    // Sequential Hotkey
-    use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut};
-    if let Ok(shortcut) = s.sequential_hotkey.replace("Win", "Super").parse::<Shortcut>() {
-        let _ = app.global_shortcut().register(shortcut);
-    }
-
-    // Rich Paste Hotkey
-    if !s.rich_paste_hotkey.is_empty() {
-        if let Ok(shortcut) = s.rich_paste_hotkey.replace("Win", "Super").parse::<Shortcut>() {
-            let _ = app.global_shortcut().register(shortcut);
-        }
-    }
-
-    // Search Hotkey (show window + focus search box)
-    if !s.search_hotkey.is_empty() {
-        if let Ok(shortcut) = s.search_hotkey.replace("Win", "Super").parse::<Shortcut>() {
-            let _ = app.global_shortcut().register(shortcut);
-        }
-    }
+    // Register active hotkeys based on current settings.
+    let _ = crate::app::commands::register_hotkey(app_handle.clone(), s.main_hotkey.clone());
 
     // Win+V Optimization
     #[cfg(target_os = "windows")]
@@ -483,9 +760,21 @@ fn start_edge_docking_monitor(app_handle: AppHandle) {
                 let is_mouse_near_edge = if is_hidden_by_edge {
                     let current_dock = CURRENT_DOCK.load(Ordering::Relaxed);
                     match current_dock {
-                        1 => point.y <= screen_top + threshold && point.x >= rect.left && point.x <= rect.right,   // Top
-                        2 => point.x <= screen_left + threshold && point.y >= rect.top && point.y <= rect.bottom,  // Left
-                        3 => point.x >= screen_right - threshold && point.y >= rect.top && point.y <= rect.bottom, // Right
+                        1 => {
+                            point.y <= screen_top + threshold
+                                && point.x >= rect.left
+                                && point.x <= rect.right
+                        } // Top
+                        2 => {
+                            point.x <= screen_left + threshold
+                                && point.y >= rect.top
+                                && point.y <= rect.bottom
+                        } // Left
+                        3 => {
+                            point.x >= screen_right - threshold
+                                && point.y >= rect.top
+                                && point.y <= rect.bottom
+                        } // Right
                         _ => false,
                     }
                 } else {
@@ -543,18 +832,27 @@ fn start_edge_docking_monitor(app_handle: AppHandle) {
                             match dock_actual {
                                 DockPosition::Top => {
                                     let _ = window.set_position(tauri::Position::Physical(
-                                        tauri::PhysicalPosition { x: rect.left, y: screen_top },
+                                        tauri::PhysicalPosition {
+                                            x: rect.left,
+                                            y: screen_top,
+                                        },
                                     ));
                                 }
                                 DockPosition::Left => {
                                     let _ = window.set_position(tauri::Position::Physical(
-                                        tauri::PhysicalPosition { x: screen_left, y: rect.top },
+                                        tauri::PhysicalPosition {
+                                            x: screen_left,
+                                            y: rect.top,
+                                        },
                                     ));
                                 }
                                 DockPosition::Right => {
                                     let w = rect.right - rect.left;
                                     let _ = window.set_position(tauri::Position::Physical(
-                                        tauri::PhysicalPosition { x: screen_right - w, y: rect.top },
+                                        tauri::PhysicalPosition {
+                                            x: screen_right - w,
+                                            y: rect.top,
+                                        },
                                     ));
                                 }
                                 _ => {}
@@ -580,12 +878,17 @@ fn start_edge_docking_monitor(app_handle: AppHandle) {
                             #[cfg(windows)]
                             if let Ok(hwnd) = window.hwnd() {
                                 unsafe {
-                                    let ex_style = windows::Win32::UI::WindowsAndMessaging::GetWindowLongPtrW(HWND(hwnd.0), GWL_EXSTYLE);
-                                    let _ = windows::Win32::UI::WindowsAndMessaging::SetWindowLongPtrW(
-                                        HWND(hwnd.0),
-                                        GWL_EXSTYLE,
-                                        ex_style | WS_EX_NOACTIVATE.0 as isize
-                                    );
+                                    let ex_style =
+                                        windows::Win32::UI::WindowsAndMessaging::GetWindowLongPtrW(
+                                            HWND(hwnd.0),
+                                            GWL_EXSTYLE,
+                                        );
+                                    let _ =
+                                        windows::Win32::UI::WindowsAndMessaging::SetWindowLongPtrW(
+                                            HWND(hwnd.0),
+                                            GWL_EXSTYLE,
+                                            ex_style | WS_EX_NOACTIVATE.0 as isize,
+                                        );
                                 }
                             }
                             let _ = app_handle.emit("window-pinned-changed", true);
@@ -638,7 +941,11 @@ fn start_edge_docking_monitor(app_handle: AppHandle) {
                         #[cfg(windows)]
                         if let Ok(hwnd) = window.hwnd() {
                             unsafe {
-                                let ex_style = windows::Win32::UI::WindowsAndMessaging::GetWindowLongPtrW(HWND(hwnd.0), GWL_EXSTYLE);
+                                let ex_style =
+                                    windows::Win32::UI::WindowsAndMessaging::GetWindowLongPtrW(
+                                        HWND(hwnd.0),
+                                        GWL_EXSTYLE,
+                                    );
                                 let next = if user_pinned {
                                     ex_style | WS_EX_NOACTIVATE.0 as isize
                                 } else {
@@ -647,7 +954,7 @@ fn start_edge_docking_monitor(app_handle: AppHandle) {
                                 let _ = windows::Win32::UI::WindowsAndMessaging::SetWindowLongPtrW(
                                     HWND(hwnd.0),
                                     GWL_EXSTYLE,
-                                    next
+                                    next,
                                 );
                             }
                         }
@@ -1050,7 +1357,8 @@ fn setup_tray(app: &App, hide_tray: bool) {
     let settings_i = MenuItem::with_id(app, "settings", "设置", true, None::<&str>).unwrap();
     let quit_i = MenuItem::with_id(app, "quit", "退出 贴汁", true, None::<&str>).unwrap();
     let menu = Menu::with_items(app, &[&show_i, &settings_i, &quit_i]).unwrap();
-    let icon = tauri::image::Image::from_bytes(include_bytes!("../../icons/tray-icon.png")).unwrap();
+    let icon =
+        tauri::image::Image::from_bytes(include_bytes!("../../icons/tray-icon.png")).unwrap();
 
     let tray = TrayIconBuilder::with_id("main_tray")
         .icon(icon)
@@ -1069,15 +1377,23 @@ fn setup_tray(app: &App, hide_tray: bool) {
             } else if event.id.as_ref() == "quit" { app.exit(0); }
         })
         .on_tray_icon_event(|tray, event| {
-            if let TrayIconEvent::Click { button: MouseButton::Left, .. } = event {
+            if let TrayIconEvent::Click {
+                button: MouseButton::Left,
+                ..
+            } = event
+            {
                 if let Some(window) = tray.app_handle().get_webview_window("main") {
                     crate::app::window_manager::show_and_raise(&window);
-                    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as u64;
+                    let now = std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap()
+                        .as_millis() as u64;
                     LAST_SHOW_TIMESTAMP.store(now, Ordering::Relaxed);
                 }
             }
         })
-        .build(app).expect("Failed to build tray");
+        .build(app)
+        .expect("Failed to build tray");
 
     let _ = tray.set_visible(!hide_tray);
     app.manage(tray);
@@ -1085,26 +1401,58 @@ fn setup_tray(app: &App, hide_tray: bool) {
 
 fn apply_initial_theme(app: &App) {
     let db_state = app.state::<DbState>();
-    let theme = db_state.settings_repo.get("app.theme").unwrap_or(Some("retro".to_string())).unwrap_or("retro".to_string());
-    let mode = db_state.settings_repo.get("app.color_mode").unwrap_or(Some("system".to_string()));
-    
+    let theme = db_state
+        .settings_repo
+        .get("app.theme")
+        .unwrap_or(Some("retro".to_string()))
+        .unwrap_or("retro".to_string());
+    let mode = db_state
+        .settings_repo
+        .get("app.color_mode")
+        .unwrap_or(Some("system".to_string()));
+
     if let Some(window) = app.get_webview_window("main") {
-        let _ = crate::app::commands::set_theme(window, app.state::<SettingsState>(), db_state, theme, mode, None);
+        let _ = crate::app::commands::set_theme(
+            window,
+            app.state::<SettingsState>(),
+            db_state,
+            theme,
+            mode,
+            None,
+        );
     }
 }
 
 #[cfg(target_os = "windows")]
 fn init_win32_hooks(_app: &App) {
     std::thread::spawn(move || {
-        use windows::Win32::UI::WindowsAndMessaging::{GetMessageW, MSG, DispatchMessageW, TranslateMessage, WH_KEYBOARD_LL, WH_MOUSE_LL, SetWindowsHookExW, UnhookWindowsHookEx};
+        use windows::Win32::UI::WindowsAndMessaging::{
+            DispatchMessageW, GetMessageW, SetWindowsHookExW, TranslateMessage,
+            UnhookWindowsHookEx, MSG, WH_KEYBOARD_LL, WH_MOUSE_LL,
+        };
         unsafe {
-            HOOK_THREAD_ID.store(windows::Win32::System::Threading::GetCurrentThreadId(), Ordering::Relaxed);
+            HOOK_THREAD_ID.store(
+                windows::Win32::System::Threading::GetCurrentThreadId(),
+                Ordering::Relaxed,
+            );
             let h_instance = GetModuleHandleW(None).expect("Failed to get module handle");
-            let h_hook = SetWindowsHookExW(WH_KEYBOARD_LL, Some(keyboard_proc), Some(HINSTANCE(h_instance.0)), 0).expect("Failed to set hook");
+            let h_hook = SetWindowsHookExW(
+                WH_KEYBOARD_LL,
+                Some(keyboard_proc),
+                Some(HINSTANCE(h_instance.0)),
+                0,
+            )
+            .expect("Failed to set hook");
             HOOK_HANDLE.store(h_hook.0 as _, Ordering::SeqCst);
-            let h_mouse_hook = SetWindowsHookExW(WH_MOUSE_LL, Some(mouse_proc), Some(HINSTANCE(h_instance.0)), 0).expect("Failed to set mouse hook");
+            let h_mouse_hook = SetWindowsHookExW(
+                WH_MOUSE_LL,
+                Some(mouse_proc),
+                Some(HINSTANCE(h_instance.0)),
+                0,
+            )
+            .expect("Failed to set mouse hook");
             HOOK_MOUSE_HANDLE.store(h_mouse_hook.0 as _, Ordering::SeqCst);
-            
+
             let mut msg = MSG::default();
             while GetMessageW(&mut msg, None, 0, 0).as_bool() {
                 let _ = TranslateMessage(&msg);
@@ -1113,7 +1461,9 @@ fn init_win32_hooks(_app: &App) {
             let _ = UnhookWindowsHookEx(h_hook);
             let h_mouse = HOOK_MOUSE_HANDLE.swap(null_mut(), Ordering::SeqCst);
             if !h_mouse.is_null() {
-                let _ = UnhookWindowsHookEx(windows::Win32::UI::WindowsAndMessaging::HHOOK(h_mouse as _));
+                let _ = UnhookWindowsHookEx(windows::Win32::UI::WindowsAndMessaging::HHOOK(
+                    h_mouse as _,
+                ));
             }
         }
     });
@@ -1142,7 +1492,10 @@ pub fn handle_global_shortcut(app: &AppHandle, shortcut: &tauri_plugin_global_sh
         let val = settings.main_hotkey.lock().unwrap().clone();
         val.replace("Win", "Super").parse::<Shortcut>()
     } {
-        if shortcut == &main_s { toggle_window(app); return; }
+        if shortcut == &main_s {
+            toggle_window(app);
+            return;
+        }
     }
 
     if let Ok(seq_s) = {
@@ -1170,7 +1523,9 @@ pub fn handle_global_shortcut(app: &AppHandle, shortcut: &tauri_plugin_global_sh
         let val = settings.rich_paste_hotkey.lock().unwrap().clone();
         val.replace("Win", "Super").parse::<Shortcut>()
     } {
-        if shortcut == &rich_s { crate::services::clipboard_ops::paste_latest_rich(app.clone()); }
+        if shortcut == &rich_s {
+            crate::services::clipboard_ops::paste_latest_rich(app.clone());
+        }
     }
 
     if let Ok(search_s) = {
@@ -1251,59 +1606,75 @@ fn persist_window_size(window: &tauri::Window, width: u32, height: u32) {
     }
 
     let app_handle = window.app_handle().clone();
-    std::thread::spawn(move || {
-        loop {
-            std::thread::sleep(std::time::Duration::from_millis(250));
-            let last_event = LAST_WINDOW_SIZE_EVENT_MS.load(Ordering::Relaxed);
-            let now = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_millis() as u64;
-            if now.saturating_sub(last_event) < 200 {
-                continue;
-            }
-
-            let (w, h) = {
-                let guard = LAST_WINDOW_SIZE.get().unwrap().lock().unwrap();
-                *guard
-            };
-
-            if let Some(db_state) = app_handle.try_state::<DbState>() {
-                let _ = db_state.settings_repo.set("app.window_width", &w.to_string());
-                let _ = db_state.settings_repo.set("app.window_height", &h.to_string());
-            }
-
-            WINDOW_SIZE_SAVE_PENDING.store(false, Ordering::SeqCst);
-            break;
+    std::thread::spawn(move || loop {
+        std::thread::sleep(std::time::Duration::from_millis(250));
+        let last_event = LAST_WINDOW_SIZE_EVENT_MS.load(Ordering::Relaxed);
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_millis() as u64;
+        if now.saturating_sub(last_event) < 200 {
+            continue;
         }
+
+        let (w, h) = {
+            let guard = LAST_WINDOW_SIZE.get().unwrap().lock().unwrap();
+            *guard
+        };
+
+        if let Some(db_state) = app_handle.try_state::<DbState>() {
+            let _ = db_state
+                .settings_repo
+                .set("app.window_width", &w.to_string());
+            let _ = db_state
+                .settings_repo
+                .set("app.window_height", &h.to_string());
+        }
+
+        WINDOW_SIZE_SAVE_PENDING.store(false, Ordering::SeqCst);
+        break;
     });
 }
 
 #[cfg(target_os = "windows")]
+fn is_mouse_button_held() -> bool {
+    unsafe {
+        (windows::Win32::UI::Input::KeyboardAndMouse::GetAsyncKeyState(0x01) as u16 & 0x8000) != 0 ||
+        (windows::Win32::UI::Input::KeyboardAndMouse::GetAsyncKeyState(0x02) as u16 & 0x8000) != 0
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+fn is_mouse_button_held() -> bool {
+    false
+}
+
+#[cfg(target_os = "windows")]
 fn handle_blur(window: &tauri::Window) {
-    if IGNORE_BLUR.load(Ordering::Relaxed) || WINDOW_PINNED.load(Ordering::Relaxed) { return; }
+    if IGNORE_BLUR.load(Ordering::Relaxed) || WINDOW_PINNED.load(Ordering::Relaxed) {
+        return;
+    }
 
     let settings = window.app_handle().state::<SettingsState>();
-    if settings.edge_docking.load(Ordering::Relaxed) { return; }
+    if settings.edge_docking.load(Ordering::Relaxed) {
+        return;
+    }
 
-    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as u64;
-    if now.saturating_sub(LAST_SHOW_TIMESTAMP.load(Ordering::Relaxed)) < 500 { return; }
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_millis() as u64;
+    if now.saturating_sub(LAST_SHOW_TIMESTAMP.load(Ordering::Relaxed)) < 500 {
+        return;
+    }
 
     if IS_MOUSE_BUTTON_DOWN.load(Ordering::SeqCst) { return; }
-    unsafe {
-        if (windows::Win32::UI::Input::KeyboardAndMouse::GetAsyncKeyState(0x01) as u16 & 0x8000) != 0 ||
-           (windows::Win32::UI::Input::KeyboardAndMouse::GetAsyncKeyState(0x02) as u16 & 0x8000) != 0 {
-               return;
-           }
-    }
+    if is_mouse_button_held() { return; }
 
     let w = window.clone();
     std::thread::spawn(move || {
         std::thread::sleep(std::time::Duration::from_millis(200));
-        let down = IS_MOUSE_BUTTON_DOWN.load(Ordering::SeqCst) || unsafe {
-            (windows::Win32::UI::Input::KeyboardAndMouse::GetAsyncKeyState(0x01) as u16 & 0x8000) != 0 ||
-            (windows::Win32::UI::Input::KeyboardAndMouse::GetAsyncKeyState(0x02) as u16 & 0x8000) != 0
-        };
+        let down = IS_MOUSE_BUTTON_DOWN.load(Ordering::SeqCst) || is_mouse_button_held();
         if !down && matches!(w.is_focused(), Ok(false)) {
             if !IGNORE_BLUR.load(Ordering::Relaxed) && !WINDOW_PINNED.load(Ordering::Relaxed) {
                 let _ = w.hide();

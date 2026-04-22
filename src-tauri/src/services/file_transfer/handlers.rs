@@ -1,24 +1,27 @@
 use axum::{
-    extract::{Multipart, State, Query, WebSocketUpgrade, ws::{WebSocket, Message as WsMessage}, Path},
-    response::{Html, IntoResponse, Json},
-    http::{header, HeaderMap, StatusCode},
     body::Body,
+    extract::{
+        ws::{Message as WsMessage, WebSocket},
+        Multipart, Path, Query, State, WebSocketUpgrade,
+    },
+    http::{header, HeaderMap, StatusCode},
+    response::{Html, IntoResponse, Json},
 };
-use futures::{StreamExt, SinkExt};
-use std::sync::Arc;
-use tokio::io::{AsyncReadExt, AsyncWriteExt, AsyncSeekExt, SeekFrom};
-use tokio::fs::File;
-use tokio_util::io::ReaderStream;
+use futures::{SinkExt, StreamExt};
 use std::collections::HashMap;
-use std::time::{SystemTime, UNIX_EPOCH};
 use std::sync::atomic::Ordering;
+use std::sync::Arc;
+use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::{Emitter, Manager};
+use tokio::fs::File;
+use tokio::io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt, SeekFrom};
+use tokio_util::io::ReaderStream;
 
+use crate::app_state::{SessionHistory, SettingsState};
+use crate::database::ClipboardEntry;
+use crate::database::DbState;
 use crate::infrastructure::repository::clipboard_repo::ClipboardRepository;
 use crate::infrastructure::repository::settings_repo::SettingsRepository;
-use crate::database::DbState;
-use crate::app_state::{SettingsState, SessionHistory};
-use crate::database::ClipboardEntry;
 
 use super::models::*;
 use super::utils::*;
@@ -48,35 +51,44 @@ pub async fn poll_messages(
     Query(params): Query<HashMap<String, String>>,
     State(state): State<Arc<AppState>>,
 ) -> Json<Vec<Message>> {
-    let last_id = params.get("last_id").and_then(|v| v.parse::<u64>().ok()).unwrap_or(0);
+    let last_id = params
+        .get("last_id")
+        .and_then(|v| v.parse::<u64>().ok())
+        .unwrap_or(0);
     let chat_state = state.app_handle.state::<ChatState>();
-    
+
     let msgs_result = {
         match chat_state.0.lock() {
-            Ok(msgs) => {
-                msgs.iter()
-                    .filter(|m| m.id > last_id)
-                    .map(|m| {
-                         let mut m_clone = m.clone();
-                         if m.msg_type == "image" && !m.content.starts_with("data:") && !m.content.starts_with("/download/") {
-                            let token = format!("temp_{}", m.id);
-                            let mut filename = "image.png".to_string();
-                            let path = std::path::Path::new(&m.content);
-                            if let Some(name) = path.file_name() {
-                                filename = name.to_string_lossy().to_string();
-                            }
-                            
-                            let shared_files = state.app_handle.state::<SharedFileState>();
-                            if let Ok(mut map) = shared_files.0.lock() {
-                                 map.insert(token.clone(), m.content.clone());
-                            }
-                            m_clone.content = format!("/download/{}?name={}", token, urlencoding::encode(&filename));
-                         }
-                         m_clone
-                    })
-                    .collect::<Vec<Message>>()
-            },
-            Err(_) => vec![]
+            Ok(msgs) => msgs
+                .iter()
+                .filter(|m| m.id > last_id)
+                .map(|m| {
+                    let mut m_clone = m.clone();
+                    if m.msg_type == "image"
+                        && !m.content.starts_with("data:")
+                        && !m.content.starts_with("/download/")
+                    {
+                        let token = format!("temp_{}", m.id);
+                        let mut filename = "image.png".to_string();
+                        let path = std::path::Path::new(&m.content);
+                        if let Some(name) = path.file_name() {
+                            filename = name.to_string_lossy().to_string();
+                        }
+
+                        let shared_files = state.app_handle.state::<SharedFileState>();
+                        if let Ok(mut map) = shared_files.0.lock() {
+                            map.insert(token.clone(), m.content.clone());
+                        }
+                        m_clone.content = format!(
+                            "/download/{}?name={}",
+                            token,
+                            urlencoding::encode(&filename)
+                        );
+                    }
+                    m_clone
+                })
+                .collect::<Vec<Message>>(),
+            Err(_) => vec![],
         }
     };
 
@@ -94,7 +106,10 @@ pub async fn ws_handler(
 #[serde(tag = "type")]
 enum WsIncoming {
     #[serde(rename = "identity")]
-    Identity { device_id: String, device_name: String },
+    Identity {
+        device_id: String,
+        device_name: String,
+    },
 }
 
 pub async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
@@ -116,31 +131,39 @@ pub async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
             if let WsMessage::Text(text) = msg {
                 if let Ok(incoming) = serde_json::from_str::<WsIncoming>(&text) {
                     match incoming {
-                        WsIncoming::Identity { device_id, device_name } => {
+                        WsIncoming::Identity {
+                            device_id,
+                            device_name,
+                        } => {
                             let online_devices = state_inner.app_handle.state::<OnlineDevices>();
                             {
                                 let mut guard = online_devices.0.lock().unwrap();
-                                guard.insert(device_id.clone(), DeviceInfo {
-                                    id: device_id.clone(),
-                                    name: device_name,
-                                    last_seen: chrono::Utc::now().timestamp_millis(),
-                                });
+                                guard.insert(
+                                    device_id.clone(),
+                                    DeviceInfo {
+                                        id: device_id.clone(),
+                                        name: device_name,
+                                        last_seen: chrono::Utc::now().timestamp_millis(),
+                                    },
+                                );
                                 current_device_id = Some(device_id);
-                                
+
                                 let devices: Vec<DeviceInfo> = guard.values().cloned().collect();
                                 let update = serde_json::json!({
                                     "type": "devices_update",
                                     "devices": devices
                                 });
                                 let _ = state_inner.ws_tx.send(update.to_string());
-                                let _ = state_inner.app_handle.emit("online-devices-updated", devices);
+                                let _ = state_inner
+                                    .app_handle
+                                    .emit("online-devices-updated", devices);
                             }
                         }
                     }
                 }
             }
         }
-        
+
         if let Some(id) = current_device_id {
             let online_devices = state_inner.app_handle.state::<OnlineDevices>();
             {
@@ -152,7 +175,9 @@ pub async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
                     "devices": devices
                 });
                 let _ = state_inner.ws_tx.send(update.to_string());
-                let _ = state_inner.app_handle.emit("online-devices-updated", devices);
+                let _ = state_inner
+                    .app_handle
+                    .emit("online-devices-updated", devices);
             }
         }
     });
@@ -169,15 +194,31 @@ pub async fn handle_text(
 ) -> axum::response::Response {
     let db_state = state.app_handle.state::<DbState>();
     update_activity(&state.app_handle);
-    
-    let sender_id = if payload.sender_id.is_empty() { "mobile" } else { &payload.sender_id };
-    let sender_name = if payload.sender_name.is_empty() { "手机" } else { &payload.sender_name };
-    
-    append_message(&state.app_handle, "in", "text", &payload.content, sender_id, sender_name, None);
+
+    let sender_id = if payload.sender_id.is_empty() {
+        "mobile"
+    } else {
+        &payload.sender_id
+    };
+    let sender_name = if payload.sender_name.is_empty() {
+        "手机"
+    } else {
+        &payload.sender_name
+    };
+
+    append_message(
+        &state.app_handle,
+        "in",
+        "text",
+        &payload.content,
+        sender_id,
+        sender_name,
+        None,
+    );
 
     let settings = state.app_handle.state::<SettingsState>();
     let session_hist = state.app_handle.state::<SessionHistory>();
-    
+
     let mut preview = payload.content.clone();
     if preview.chars().count() > 100 {
         preview = preview.chars().take(100).collect();
@@ -195,7 +236,10 @@ pub async fn handle_text(
                 html_content: None,
                 source_app: sender_name.to_string(),
                 source_app_path: None,
-                timestamp: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as i64,
+                timestamp: SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_millis() as i64,
                 preview: preview.clone(),
                 is_pinned: false,
                 tags: Vec::new(),
@@ -204,9 +248,18 @@ pub async fn handle_text(
                 pinned_order: 0,
                 file_preview_exists: true,
             };
-            db_state.repo.save(&entry, None).map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(std::io::Error::new(std::io::ErrorKind::Other, e))))
+            db_state.repo.save(&entry, None).map_err(|e| {
+                rusqlite::Error::ToSqlConversionFailure(Box::new(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    e,
+                )))
+            })
         } else {
-            let id = -(SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_micros() as i64 / 1000);
+            let id = -(SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_micros() as i64
+                / 1000);
             let entry = ClipboardEntry {
                 id,
                 content_type: "text".to_string(),
@@ -214,7 +267,10 @@ pub async fn handle_text(
                 html_content: None,
                 source_app: "File Transfer".to_string(),
                 source_app_path: None,
-                timestamp: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as i64,
+                timestamp: SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_millis() as i64,
                 preview: preview.clone(),
                 is_pinned: false,
                 tags: Vec::new(),
@@ -258,28 +314,47 @@ pub async fn upload(
 
     while let Ok(Some(field)) = multipart.next_field().await {
         let name = field.name().unwrap_or("").to_string();
-        
+
         if name == "sender_id" {
-            if let Ok(val) = field.text().await { current_sender_id = val; }
+            if let Ok(val) = field.text().await {
+                current_sender_id = val;
+            }
             continue;
         }
         if name == "sender_name" {
-            if let Ok(val) = field.text().await { current_sender_name = val; }
+            if let Ok(val) = field.text().await {
+                current_sender_name = val;
+            }
             continue;
         }
 
         if name == "file" {
             let file_name = field.file_name().unwrap_or("unknown.txt").to_string();
-            let content_type = field.content_type().unwrap_or("application/octet-stream").to_string();
-            
-            let mut save_dir = state.app_handle.path().download_dir().unwrap_or_else(|_| std::env::temp_dir());
-            if let Ok(Some(custom)) = db_state.settings_repo.get("file_transfer_path") {
-                 if !custom.trim().is_empty() { save_dir = std::path::PathBuf::from(custom); }
-            }
-            if !save_dir.exists() { let _ = std::fs::create_dir_all(&save_dir); }
+            let content_type = field
+                .content_type()
+                .unwrap_or("application/octet-stream")
+                .to_string();
 
-            let target_path = save_dir.join(format!("{}_{}", chrono::Utc::now().format("%Y%m%d%H%M%S"), file_name));
-            
+            let mut save_dir = state
+                .app_handle
+                .path()
+                .download_dir()
+                .unwrap_or_else(|_| std::env::temp_dir());
+            if let Ok(Some(custom)) = db_state.settings_repo.get("file_transfer_path") {
+                if !custom.trim().is_empty() {
+                    save_dir = std::path::PathBuf::from(custom);
+                }
+            }
+            if !save_dir.exists() {
+                let _ = std::fs::create_dir_all(&save_dir);
+            }
+
+            let target_path = save_dir.join(format!(
+                "{}_{}",
+                chrono::Utc::now().format("%Y%m%d%H%M%S"),
+                file_name
+            ));
+
             if let Ok(mut file) = File::create(&target_path).await {
                 let mut stream = field;
                 let mut write_success = true;
@@ -298,14 +373,15 @@ pub async fn upload(
                         file_name,
                         content_type,
                         current_sender_id.clone(),
-                        current_sender_name.clone()
-                    ).await;
+                        current_sender_name.clone(),
+                    )
+                    .await;
                     success = true;
                 }
             }
         }
     }
-    
+
     if success {
         (StatusCode::OK, "Upload successful").into_response()
     } else {
@@ -354,11 +430,24 @@ pub async fn upload_chunk(
         sessions_map
             .entry(meta.upload_id.clone())
             .or_insert_with(|| {
-                let mut path = state.app_handle.path().download_dir().unwrap_or_else(|_| std::env::temp_dir());
-                if let Ok(Some(custom)) = state.app_handle.state::<DbState>().settings_repo.get("file_transfer_path") {
-                    if !custom.trim().is_empty() { path = std::path::PathBuf::from(custom); }
+                let mut path = state
+                    .app_handle
+                    .path()
+                    .download_dir()
+                    .unwrap_or_else(|_| std::env::temp_dir());
+                if let Ok(Some(custom)) = state
+                    .app_handle
+                    .state::<DbState>()
+                    .settings_repo
+                    .get("file_transfer_path")
+                {
+                    if !custom.trim().is_empty() {
+                        path = std::path::PathBuf::from(custom);
+                    }
                 }
-                if !path.exists() { let _ = std::fs::create_dir_all(&path); }
+                if !path.exists() {
+                    let _ = std::fs::create_dir_all(&path);
+                }
                 path.join(format!(".tmp_{}", meta.upload_id))
             })
             .clone()
@@ -377,7 +466,11 @@ pub async fn upload_chunk(
     }
 
     if meta.chunk_index == meta.total_chunks - 1 {
-        let final_filename = format!("{}_{}", chrono::Utc::now().format("%Y%m%d%H%M%S"), meta.file_name);
+        let final_filename = format!(
+            "{}_{}",
+            chrono::Utc::now().format("%Y%m%d%H%M%S"),
+            meta.file_name
+        );
         let final_path = temp_path.parent().unwrap().join(&final_filename);
 
         if let Err(e) = tokio::fs::rename(&temp_path, &final_path).await {
@@ -390,7 +483,9 @@ pub async fn upload_chunk(
             sessions_map.remove(&meta.upload_id);
         }
 
-        let content_type = meta.content_type.unwrap_or_else(|| "application/octet-stream".to_string());
+        let content_type = meta
+            .content_type
+            .unwrap_or_else(|| "application/octet-stream".to_string());
         register_received_file(
             &state.app_handle,
             final_path,
@@ -398,7 +493,8 @@ pub async fn upload_chunk(
             content_type,
             meta.sender_id,
             meta.sender_name,
-        ).await;
+        )
+        .await;
 
         return (StatusCode::OK, "Upload complete").into_response();
     }
@@ -423,21 +519,36 @@ pub async fn handle_file_download_proxy(
     if let Some(path_str) = file_path {
         let path = std::path::PathBuf::from(&path_str);
         if path.exists() {
-            let filename = path.file_name().unwrap_or_default().to_string_lossy().to_string();
-            let mime = mime_guess::from_path(&path).first_or_octet_stream().to_string();
+            let filename = path
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .to_string();
+            let mime = mime_guess::from_path(&path)
+                .first_or_octet_stream()
+                .to_string();
             let is_image = mime.starts_with("image/");
             let is_video = mime.starts_with("video/");
             let encoded_name = urlencoding::encode(&filename);
             let disposition = if is_image || is_video {
-                format!("inline; filename=\"{}\"; filename*=UTF-8''{}", filename, encoded_name)
+                format!(
+                    "inline; filename=\"{}\"; filename*=UTF-8''{}",
+                    filename, encoded_name
+                )
             } else {
-                format!("attachment; filename=\"{}\"; filename*=UTF-8''{}", filename, encoded_name)
+                format!(
+                    "attachment; filename=\"{}\"; filename*=UTF-8''{}",
+                    filename, encoded_name
+                )
             };
 
             if let Ok(mut file) = File::open(&path).await {
                 let metadata = match file.metadata().await {
                     Ok(m) => m,
-                    Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Metadata failed").into_response(),
+                    Err(_) => {
+                        return (StatusCode::INTERNAL_SERVER_ERROR, "Metadata failed")
+                            .into_response()
+                    }
                 };
                 let total_size = metadata.len();
                 let range_header = headers.get(header::RANGE).and_then(|h| h.to_str().ok());
@@ -450,11 +561,18 @@ pub async fn handle_file_download_proxy(
                             let end = parts[1].parse::<u64>().unwrap_or(total_size - 1);
 
                             if start < total_size {
-                                let end = if end >= total_size { total_size - 1 } else { end };
+                                let end = if end >= total_size {
+                                    total_size - 1
+                                } else {
+                                    end
+                                };
                                 let content_length = end - start + 1;
 
                                 if let Ok(_) = file.seek(SeekFrom::Start(start)).await {
-                                    let stream = ReaderStream::with_capacity(file.take(content_length), 64 * 1024);
+                                    let stream = ReaderStream::with_capacity(
+                                        file.take(content_length),
+                                        64 * 1024,
+                                    );
                                     let body = Body::from_stream(stream);
 
                                     return (
@@ -463,11 +581,15 @@ pub async fn handle_file_download_proxy(
                                             (header::CONTENT_TYPE, mime),
                                             (header::CONTENT_DISPOSITION, disposition),
                                             (header::ACCEPT_RANGES, "bytes".to_string()),
-                                            (header::CONTENT_RANGE, format!("bytes {}-{}/{}", start, end, total_size)),
+                                            (
+                                                header::CONTENT_RANGE,
+                                                format!("bytes {}-{}/{}", start, end, total_size),
+                                            ),
                                             (header::CONTENT_LENGTH, content_length.to_string()),
                                         ],
                                         body,
-                                    ).into_response();
+                                    )
+                                        .into_response();
                                 }
                             }
                         }
@@ -486,7 +608,8 @@ pub async fn handle_file_download_proxy(
                         (header::CONTENT_LENGTH, total_size.to_string()),
                     ],
                     body,
-                ).into_response();
+                )
+                    .into_response();
             }
         }
     }
