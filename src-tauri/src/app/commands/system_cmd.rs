@@ -55,6 +55,7 @@ pub fn open_file_location(file_path: String) -> AppResult<()> {
     Ok(())
 }
 
+#[cfg(target_os = "windows")]
 #[tauri::command]
 pub fn toggle_autostart(enabled: bool) -> AppResult<()> {
     use winreg::enums::*;
@@ -83,6 +84,7 @@ pub fn toggle_autostart(enabled: bool) -> AppResult<()> {
     Ok(())
 }
 
+#[cfg(target_os = "windows")]
 #[tauri::command]
 pub fn is_autostart_enabled() -> AppResult<bool> {
     use winreg::enums::*;
@@ -94,6 +96,7 @@ pub fn is_autostart_enabled() -> AppResult<bool> {
     Ok(key.get_value::<String, _>("TieZ").is_ok() || key.get_value::<String, _>("tie-z").is_ok())
 }
 
+#[cfg(target_os = "windows")]
 #[tauri::command]
 pub fn set_windows_clipboard_history(enabled: bool) -> AppResult<()> {
     use winreg::enums::*;
@@ -166,6 +169,7 @@ pub fn set_windows_clipboard_history(enabled: bool) -> AppResult<()> {
     Ok(())
 }
 
+#[cfg(target_os = "windows")]
 #[tauri::command]
 pub fn get_windows_clipboard_history() -> AppResult<bool> {
     use winreg::enums::*;
@@ -193,11 +197,13 @@ pub fn get_windows_clipboard_history() -> AppResult<bool> {
     Ok(history_enabled && !v_disabled)
 }
 
+#[cfg(target_os = "windows")]
 #[tauri::command]
 pub fn set_win_clipboard_disabled(_disabled: bool) -> AppResult<()> {
     set_windows_clipboard_history(!_disabled)
 }
 
+#[cfg(target_os = "windows")]
 #[tauri::command]
 pub fn trigger_registry_win_v_optimization(enable: bool) -> AppResult<bool> {
     use winreg::enums::*;
@@ -274,11 +280,13 @@ pub fn trigger_registry_win_v_optimization(enable: bool) -> AppResult<bool> {
     Ok(changed)
 }
 
+#[cfg(target_os = "windows")]
 #[tauri::command]
 pub fn is_registry_win_v_optimized() -> AppResult<bool> {
     Ok(get_registry_win_v_optimized_status())
 }
 
+#[cfg(target_os = "windows")]
 pub fn get_registry_win_v_optimized_status() -> bool {
     use winreg::enums::*;
     use winreg::RegKey;
@@ -295,6 +303,7 @@ pub fn get_registry_win_v_optimized_status() -> bool {
     false
 }
 
+#[cfg(target_os = "windows")]
 #[tauri::command]
 pub fn restart_explorer() -> AppResult<()> {
     use std::os::windows::process::CommandExt;
@@ -320,6 +329,7 @@ pub fn relaunch(app: AppHandle) {
     app.exit(0);
 }
 
+#[cfg(target_os = "windows")]
 #[tauri::command]
 pub fn restart_as_admin(app_handle: AppHandle) -> AppResult<()> {
     use std::env;
@@ -369,6 +379,7 @@ pub fn restart_as_admin(app_handle: AppHandle) -> AppResult<()> {
     Ok(())
 }
 
+#[cfg(target_os = "windows")]
 #[tauri::command]
 pub fn check_is_admin() -> bool {
     use std::ffi::c_void;

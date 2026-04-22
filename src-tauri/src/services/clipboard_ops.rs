@@ -441,6 +441,7 @@ async fn restore_focus_before_paste(_app_handle: &tauri::AppHandle) -> AppResult
     }
 
     {
+        #[cfg(target_os = "windows")]
         let target_hwnd = HWND(last_hwnd_val as _);
         #[cfg(target_os = "windows")]
         unsafe {

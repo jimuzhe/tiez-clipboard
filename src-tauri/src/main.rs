@@ -113,16 +113,28 @@ fn main() {
             app::commands::open_file_with_default_app,
             app::commands::open_file_location,
             app::commands::set_data_path,
+            #[cfg(target_os = "windows")]
             app::commands::toggle_autostart,
+            #[cfg(target_os = "windows")]
             app::commands::is_autostart_enabled,
+            #[cfg(target_os = "windows")]
             app::commands::set_windows_clipboard_history,
+            #[cfg(target_os = "windows")]
             app::commands::get_windows_clipboard_history,
+            #[cfg(target_os = "windows")]
             app::commands::set_win_clipboard_disabled,
+            #[cfg(target_os = "windows")]
             app::commands::trigger_registry_win_v_optimization,
+            #[cfg(target_os = "windows")]
             app::commands::is_registry_win_v_optimized,
+            #[cfg(target_os = "windows")]
             app::commands::restart_explorer,
+            #[cfg(target_os = "windows")]
             app::commands::restart_as_admin,
+            #[cfg(target_os = "windows")]
             app::commands::check_is_admin,
+            #[cfg(target_os = "windows")]
+            app::commands::download_and_install_update,
             app::commands::quit,
             app::commands::relaunch,
             app::commands::set_theme,
@@ -160,9 +172,13 @@ fn main() {
             app::commands::call_ai,
             app::commands::check_ai_connectivity,
             infrastructure::windows_api::apps::get_system_default_app,
+            #[cfg(target_os = "windows")]
             infrastructure::windows_api::apps::get_executable_icon,
+            #[cfg(target_os = "windows")]
             infrastructure::windows_api::apps::get_file_icon,
+            #[cfg(target_os = "windows")]
             infrastructure::windows_api::apps::scan_installed_apps,
+            #[cfg(target_os = "windows")]
             infrastructure::windows_api::apps::get_associated_apps
         ])
         .on_window_event(|window, event| {
@@ -181,6 +197,7 @@ fn main() {
     }
 
     // Cleanup Hooks on exit
+    #[cfg(target_os = "windows")]
     unsafe {
         let h_hook = HOOK_HANDLE.swap(std::ptr::null_mut(), Ordering::SeqCst);
         if !h_hook.is_null() {
@@ -196,3 +213,4 @@ fn main() {
         }
     }
 }
+

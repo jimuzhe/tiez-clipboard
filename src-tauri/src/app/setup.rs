@@ -64,6 +64,7 @@ pub fn init(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     let db_path_str = db_path.to_string_lossy();
     let conn = database::init_db(&db_path_str).map_err(|e| {
         let err_msg = format!("数据库初始化失败: {}", e);
+        #[cfg(target_os = "windows")]
         WindowExt::show_error_box("TieZ 启动错误", &err_msg);
         e
     })?;
@@ -160,10 +161,8 @@ fn resolve_data_dir(app: &App) -> Result<std::path::PathBuf, Box<dyn std::error:
 }
 
 fn apply_startup_resets(repo: &impl SettingsRepository) {
-    let paste_method = repo
-        .get("app.paste_method")
-        .unwrap_or(Some("shift_insert".to_string()))
-        .unwrap_or("shift_insert".to_string());
+    let paste_method = repo.get("app.paste_method").unwrap_or(Some("shift_insert".to_string())).unwrap_or("shift_insert".to_string());
+    #[cfg(target_os = "windows")]
     if paste_method == "game_mode" && !crate::app::commands::system_cmd::check_is_admin() {
         info!(">>> [STARTUP] Game Mode active without Admin privileges. Resetting to default.");
         let _ = repo.set("app.paste_method", "shift_insert");
@@ -643,12 +642,8 @@ fn start_services(app: &App, s: &StartupSettings, app_handle: AppHandle) {
     let _ = crate::app::commands::register_hotkey(app_handle.clone(), s.main_hotkey.clone());
 
     // Win+V Optimization
-    if db_state
-        .settings_repo
-        .get("app.use_win_v_shortcut")
-        .unwrap_or(Some("false".to_string()))
-        == Some("true".to_string())
-    {
+    #[cfg(target_os = "windows")]
+    if db_state.settings_repo.get("app.use_win_v_shortcut").unwrap_or(Some("false".to_string())) == Some("true".to_string()) {
         if !crate::app::commands::system_cmd::get_registry_win_v_optimized_status() {
             let _ = crate::app::commands::trigger_registry_win_v_optimization(true);
         }
@@ -1277,6 +1272,19 @@ fn persist_window_size(window: &tauri::Window, width: u32, height: u32) {
     });
 }
 
+#[cfg(target_os = "windows")]
+fn is_mouse_button_held() -> bool {
+    unsafe {
+        (windows::Win32::UI::Input::KeyboardAndMouse::GetAsyncKeyState(0x01) as u16 & 0x8000) != 0 ||
+        (windows::Win32::UI::Input::KeyboardAndMouse::GetAsyncKeyState(0x02) as u16 & 0x8000) != 0
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+fn is_mouse_button_held() -> bool {
+    false
+}
+
 fn handle_blur(window: &tauri::Window) {
     if IGNORE_BLUR.load(Ordering::Relaxed) || WINDOW_PINNED.load(Ordering::Relaxed) {
         return;
@@ -1295,31 +1303,13 @@ fn handle_blur(window: &tauri::Window) {
         return;
     }
 
-    if IS_MOUSE_BUTTON_DOWN.load(Ordering::SeqCst) {
-        return;
-    }
-    unsafe {
-        if (windows::Win32::UI::Input::KeyboardAndMouse::GetAsyncKeyState(0x01) as u16 & 0x8000)
-            != 0
-            || (windows::Win32::UI::Input::KeyboardAndMouse::GetAsyncKeyState(0x02) as u16 & 0x8000)
-                != 0
-        {
-            return;
-        }
-    }
+    if IS_MOUSE_BUTTON_DOWN.load(Ordering::SeqCst) { return; }
+    if is_mouse_button_held() { return; }
 
     let w = window.clone();
     std::thread::spawn(move || {
         std::thread::sleep(std::time::Duration::from_millis(200));
-        let down = IS_MOUSE_BUTTON_DOWN.load(Ordering::SeqCst)
-            || unsafe {
-                (windows::Win32::UI::Input::KeyboardAndMouse::GetAsyncKeyState(0x01) as u16
-                    & 0x8000)
-                    != 0
-                    || (windows::Win32::UI::Input::KeyboardAndMouse::GetAsyncKeyState(0x02) as u16
-                        & 0x8000)
-                        != 0
-            };
+        let down = IS_MOUSE_BUTTON_DOWN.load(Ordering::SeqCst) || is_mouse_button_held();
         if !down && matches!(w.is_focused(), Ok(false)) {
             if !IGNORE_BLUR.load(Ordering::Relaxed) && !WINDOW_PINNED.load(Ordering::Relaxed) {
                 let _ = w.hide();

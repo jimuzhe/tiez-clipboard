@@ -12,6 +12,8 @@ pub mod ui_cmd;
 // though tauri usually expects them to be referenced via module path in generate_handler!
 pub use ai_cmd::*;
 pub use clipboard_cmd::*;
+#[cfg(target_os = "windows")]
+pub use update_cmd::*;
 pub use file_cmd::*;
 pub use history_cmd::*;
 pub use hotkey_cmd::*;

@@ -1,10 +1,14 @@
-use crate::global_state::TASKBAR_CREATED_MSG;
+#[cfg(target_os = "windows")]
 use std::sync::atomic::Ordering;
 use tauri::Manager;
 #[cfg(target_os = "windows")]
 use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
 #[cfg(target_os = "windows")]
 use windows::Win32::UI::Shell::DefSubclassProc;
+#[cfg(target_os = "windows")]
+use tauri::Manager;
+#[cfg(target_os = "windows")]
+use crate::global_state::TASKBAR_CREATED_MSG;
 
 /// 获取硬件机器码（基于硬件唯一标识）
 /// 返回格式: 8字符的十六进制字符串 (例如: "ef785433")
