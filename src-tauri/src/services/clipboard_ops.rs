@@ -234,7 +234,7 @@ pub async fn copy_to_clipboard(
             &current_type,
             html_content.as_deref(),
         );
-        handle_window_focus_for_paste(&app_handle, &content_type).await?;
+        handle_window_focus_for_paste(&app_handle, Some(&current_type)).await?;
 
     }
 
@@ -271,7 +271,7 @@ pub async fn paste_text_directly(app_handle: tauri::AppHandle, content: String) 
         return Ok(());
     }
 
-    handle_window_focus_for_paste(&app_handle).await?;
+    handle_window_focus_for_paste(&app_handle, None).await?;
     send_paste_keystroke("game_mode", Some(&content), Some("text"));
     hide_window_after_paste(&app_handle).await;
     play_paste_sound_if_enabled(&app_handle);
@@ -326,7 +326,7 @@ pub async fn paste_content_transiently(
         &current_type,
         html_content.as_deref(),
     );
-    handle_window_focus_for_paste(&app_handle).await?;
+    handle_window_focus_for_paste(&app_handle, None).await?;
 
     prepare_clipboard_payload(
         &content,

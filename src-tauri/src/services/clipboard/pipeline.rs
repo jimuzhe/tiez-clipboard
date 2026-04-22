@@ -2,9 +2,6 @@ use crate::app_state::{AppDataDir, PasteQueue, SessionHistory, SettingsState};
 use crate::database::DbState;
 use crate::database::{calc_image_hash, is_text_type};
 use crate::domain::models::ClipboardEntry;
-use crate::infrastructure::windows_api::window_tracker::{
-    get_clipboard_source_app_info, ActiveAppInfo,
-};
 use crate::services::clipboard::utils::*;
 use base64::Engine;
 use std::sync::atomic::Ordering;

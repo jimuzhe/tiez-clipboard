@@ -485,3 +485,26 @@ pub fn set_clipboard_image_with_formats(
     clipboard.set_image(image).map_err(|e| e.to_string())?;
     Ok(None)
 }
+
+// Stubs for Windows-only named clipboard format API
+// These are no-ops on Linux since named formats are a Win32 clipboard concept
+
+#[derive(Clone)]
+pub struct NamedClipboardFormat {
+    pub name: String,
+    pub data: Vec<u8>,
+}
+
+pub unsafe fn get_named_clipboard_formats(
+    _max_count: usize,
+    _max_format_bytes: usize,
+    _max_total_bytes: usize,
+) -> Vec<NamedClipboardFormat> {
+    Vec::new()
+}
+
+pub unsafe fn append_named_clipboard_formats(
+    _formats: &[NamedClipboardFormat],
+) -> Result<(), String> {
+    Ok(())
+}
