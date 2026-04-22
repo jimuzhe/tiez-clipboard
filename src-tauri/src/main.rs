@@ -178,11 +178,8 @@ fn main() {
             infrastructure::windows_api::apps::get_system_default_app,
             #[cfg(target_os = "windows")]
             infrastructure::windows_api::apps::get_executable_icon,
-            #[cfg(target_os = "windows")]
             infrastructure::windows_api::apps::get_file_icon,
-            #[cfg(target_os = "windows")]
             infrastructure::windows_api::apps::scan_installed_apps,
-            #[cfg(target_os = "windows")]
             infrastructure::windows_api::apps::get_associated_apps
         ])
         .on_window_event(|window, event| {
