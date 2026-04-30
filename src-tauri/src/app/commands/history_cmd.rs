@@ -93,15 +93,21 @@ pub fn search_clipboard_history(
     session: State<'_, SessionHistory>,
     search_term: String,
     limit: i32,
+    tag_only: Option<bool>,
 ) -> AppResult<Vec<ClipboardEntry>> {
-    let mut history = state.repo.search(&search_term, limit)?;
+    let is_tag_only = tag_only.unwrap_or(false);
+    let mut history = state.repo.search(&search_term, limit, is_tag_only)?;
 
     let term = search_term.to_lowercase();
     let session_items = session.inner().0.lock().unwrap();
     for item in session_items.iter().rev() {
-        let matches = item.content.to_lowercase().contains(&term)
-            || item.source_app.to_lowercase().contains(&term)
-            || item.tags.iter().any(|t| t.to_lowercase().contains(&term));
+        let matches = if is_tag_only {
+            item.tags.iter().any(|t| t.to_lowercase().contains(&term))
+        } else {
+            item.content.to_lowercase().contains(&term)
+                || item.source_app.to_lowercase().contains(&term)
+                || item.tags.iter().any(|t| t.to_lowercase().contains(&term))
+        };
 
         if matches {
             if !history.iter().any(|h| h.id == item.id && item.id != 0) {

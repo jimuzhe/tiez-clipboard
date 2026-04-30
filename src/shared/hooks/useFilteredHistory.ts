@@ -23,7 +23,8 @@ export const useFilteredHistory = ({
       }
 
       let effectiveSearch = lowerSearch;
-      if (effectiveSearch.startsWith("tag:")) {
+      const isTagSearch = effectiveSearch.startsWith("tag:");
+      if (isTagSearch) {
         effectiveSearch = effectiveSearch.slice(4);
       }
 
@@ -32,6 +33,10 @@ export const useFilteredHistory = ({
       }
 
       if (!effectiveSearch) return true;
+
+      if (isTagSearch) {
+        return item.tags?.some((tag) => tag.toLowerCase().includes(effectiveSearch)) ?? false;
+      }
 
       return (
         item.content?.toLowerCase().includes(effectiveSearch) ||
