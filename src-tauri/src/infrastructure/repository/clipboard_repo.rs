@@ -42,7 +42,7 @@ pub trait ClipboardRepository {
         offset: i32,
         content_type: Option<&str>,
     ) -> Result<Vec<ClipboardEntry>, String>;
-    fn search(&self, query: &str, limit: i32) -> Result<Vec<ClipboardEntry>, String>;
+    fn search(&self, query: &str, limit: i32, tag_only: bool) -> Result<Vec<ClipboardEntry>, String>;
     fn delete(&self, id: i64, data_dir: Option<&std::path::Path>) -> Result<(), String>;
     fn clear(&self, data_dir: Option<&std::path::Path>) -> Result<(), String>;
     fn get_count(&self) -> Result<i64, String>;
@@ -947,7 +947,7 @@ impl ClipboardRepository for SqliteClipboardRepository {
         Ok(history)
     }
 
-    fn search(&self, query: &str, limit: i32) -> Result<Vec<ClipboardEntry>, String> {
+    fn search(&self, query: &str, limit: i32, tag_only: bool) -> Result<Vec<ClipboardEntry>, String> {
         let conn = self.conn.lock().map_err(|e| e.to_string())?;
 
         let term = query.trim().to_lowercase();
@@ -958,19 +958,28 @@ impl ClipboardRepository for SqliteClipboardRepository {
         #[cfg(feature = "portable")]
         {
             // Portable version: Data is NOT encrypted, use conventional SQL LIKE search (fastest)
-            let mut stmt = conn.prepare(
-                "SELECT DISTINCT ch.id, ch.content_type, ch.content, ch.html_content, ch.source_app, ch.timestamp, ch.preview, ch.is_pinned, ch.tags, ch.use_count, ch.is_external, ch.pinned_order, ch.source_app_path 
+            let sql = if tag_only {
+                "SELECT DISTINCT ch.id, ch.content_type, ch.content, ch.html_content, ch.source_app, ch.timestamp, ch.preview, ch.is_pinned, ch.tags, ch.use_count, ch.is_external, ch.pinned_order, ch.source_app_path
+                 FROM clipboard_history ch
+                 INNER JOIN entry_tags et ON ch.id = et.entry_id
+                 WHERE et.tag LIKE '%' || ?1 || '%'
+                 ORDER BY ch.timestamp DESC
+                 LIMIT ?2"
+            } else {
+                "SELECT DISTINCT ch.id, ch.content_type, ch.content, ch.html_content, ch.source_app, ch.timestamp, ch.preview, ch.is_pinned, ch.tags, ch.use_count, ch.is_external, ch.pinned_order, ch.source_app_path
                  FROM clipboard_history ch
                  LEFT JOIN entry_tags et ON ch.id = et.entry_id
-                 WHERE ch.content LIKE '%' || ? || '%' 
-                    OR ch.source_app LIKE '%' || ? || '%' 
-                    OR et.tag LIKE '%' || ? || '%'
-                 ORDER BY ch.timestamp DESC 
-                 LIMIT ?",
-            ).map_err(|e| e.to_string())?;
+                 WHERE ch.content LIKE '%' || ?1 || '%'
+                    OR ch.source_app LIKE '%' || ?1 || '%'
+                    OR et.tag LIKE '%' || ?1 || '%'
+                 ORDER BY ch.timestamp DESC
+                 LIMIT ?2"
+            };
+
+            let mut stmt = conn.prepare(sql).map_err(|e| e.to_string())?;
 
             let rows = stmt
-                .query_map(params![term, term, term, limit], |row| {
+                .query_map(params![term, limit], |row| {
                     let tags_str: String =
                         row.get::<_, String>(8).unwrap_or_else(|_| "[]".to_string());
                     Ok(ClipboardEntry {
@@ -1014,24 +1023,41 @@ impl ClipboardRepository for SqliteClipboardRepository {
             };
 
             // 1) SQL search for non-sensitive (plaintext) entries
-            let sql_non_sensitive = format!(
-                "SELECT DISTINCT ch.id, ch.content_type, ch.content, ch.html_content, ch.source_app, ch.timestamp, ch.preview, ch.is_pinned, ch.tags, ch.use_count, ch.is_external, ch.pinned_order, ch.source_app_path 
-                 FROM clipboard_history ch
-                 LEFT JOIN entry_tags et ON ch.id = et.entry_id
-                 WHERE NOT EXISTS (
-                     SELECT 1 FROM entry_tags se 
-                     WHERE se.entry_id = ch.id 
-                       AND se.tag COLLATE NOCASE IN {}
-                 )
-                   AND (
-                     ch.content LIKE '%' || ?1 || '%' 
-                     OR ch.source_app LIKE '%' || ?1 || '%' 
-                     OR et.tag LIKE '%' || ?1 || '%'
-                   )
-                 ORDER BY ch.timestamp DESC, ch.id DESC
-                 LIMIT ?2",
-                sensitive_tags_sql
-            );
+            let sql_non_sensitive = if tag_only {
+                format!(
+                    "SELECT DISTINCT ch.id, ch.content_type, ch.content, ch.html_content, ch.source_app, ch.timestamp, ch.preview, ch.is_pinned, ch.tags, ch.use_count, ch.is_external, ch.pinned_order, ch.source_app_path
+                     FROM clipboard_history ch
+                     INNER JOIN entry_tags et ON ch.id = et.entry_id
+                     WHERE NOT EXISTS (
+                         SELECT 1 FROM entry_tags se
+                         WHERE se.entry_id = ch.id
+                           AND se.tag COLLATE NOCASE IN {}
+                     )
+                       AND et.tag LIKE '%' || ?1 || '%'
+                     ORDER BY ch.timestamp DESC, ch.id DESC
+                     LIMIT ?2",
+                    sensitive_tags_sql
+                )
+            } else {
+                format!(
+                    "SELECT DISTINCT ch.id, ch.content_type, ch.content, ch.html_content, ch.source_app, ch.timestamp, ch.preview, ch.is_pinned, ch.tags, ch.use_count, ch.is_external, ch.pinned_order, ch.source_app_path
+                     FROM clipboard_history ch
+                     LEFT JOIN entry_tags et ON ch.id = et.entry_id
+                     WHERE NOT EXISTS (
+                         SELECT 1 FROM entry_tags se
+                         WHERE se.entry_id = ch.id
+                           AND se.tag COLLATE NOCASE IN {}
+                     )
+                       AND (
+                         ch.content LIKE '%' || ?1 || '%'
+                         OR ch.source_app LIKE '%' || ?1 || '%'
+                         OR et.tag LIKE '%' || ?1 || '%'
+                       )
+                     ORDER BY ch.timestamp DESC, ch.id DESC
+                     LIMIT ?2",
+                    sensitive_tags_sql
+                )
+            };
 
             let mut stmt = conn
                 .prepare(&sql_non_sensitive)
@@ -1140,9 +1166,13 @@ impl ClipboardRepository for SqliteClipboardRepository {
                     }
 
                     for entry in batch.iter() {
-                        let matches = entry.content.to_lowercase().contains(&term)
-                            || entry.source_app.to_lowercase().contains(&term)
-                            || entry.tags.iter().any(|t| t.to_lowercase().contains(&term));
+                        let matches = if tag_only {
+                            entry.tags.iter().any(|t| t.to_lowercase().contains(&term))
+                        } else {
+                            entry.content.to_lowercase().contains(&term)
+                                || entry.source_app.to_lowercase().contains(&term)
+                                || entry.tags.iter().any(|t| t.to_lowercase().contains(&term))
+                        };
 
                         if matches && seen.insert(entry.id) {
                             results.push(entry.clone());
