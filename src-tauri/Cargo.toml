@@ -68,7 +68,7 @@ reqwest = { version = "0.12", default-features = false, features = ["json", "rus
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.6.3"
 objc2-foundation = { version = "0.3.2", features = ["NSData", "NSDictionary", "NSObject", "NSString", "NSArray", "NSURL"] }
-objc2-app-kit = { version = "0.3.2", features = ["NSBitmapImageRep", "NSImage", "NSImageRep", "NSWorkspace", "NSPasteboard", "NSRunningApplication"] }
+objc2-app-kit = { version = "0.3.2", features = ["NSBitmapImageRep", "NSImage", "NSImageRep", "NSWorkspace", "NSPasteboard", "NSRunningApplication", "NSWindow"] }
 
 # ============ Release 体积优化 ============
 [profile.release]

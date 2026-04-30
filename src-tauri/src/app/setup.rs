@@ -459,6 +459,17 @@ fn apply_initial_dock_visibility(app: &mut App, s: &StartupSettings) {
 #[cfg(not(target_os = "macos"))]
 fn apply_initial_dock_visibility(_app: &mut App, _s: &StartupSettings) {}
 
+/// Set NSWindowCollectionBehavior::CanJoinAllSpaces so the window is
+/// visible on every macOS Space / desktop.
+#[cfg(target_os = "macos")]
+fn set_window_all_spaces(window: &tauri::WebviewWindow) {
+    use objc2_app_kit::{NSWindow, NSWindowCollectionBehavior};
+    if let Ok(ns_window_ptr) = window.ns_window() {
+        let ns_window: &NSWindow = unsafe { &*(ns_window_ptr as *const NSWindow) };
+        ns_window.setCollectionBehavior(NSWindowCollectionBehavior::CanJoinAllSpaces);
+    }
+}
+
 fn setup_main_window(app: &App, s: &StartupSettings) {
     let effective_pinned = s.window_pinned;
     WINDOW_PINNED.store(effective_pinned, Ordering::Relaxed);
@@ -482,6 +493,10 @@ fn setup_main_window(app: &App, s: &StartupSettings) {
 
         // macOS: focusing/non-focusing window handling is different.
         // For now, relying on tauri's standard focusable property.
+
+        // macOS: make window appear on all Spaces
+        #[cfg(target_os = "macos")]
+        set_window_all_spaces(&window);
     }
 
     // Handle silent start
