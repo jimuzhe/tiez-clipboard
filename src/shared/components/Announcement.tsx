@@ -23,47 +23,79 @@ export const AnnouncementSystem: React.FC<AnnouncementProps> = ({ announcements,
         }
     }, [announcements, activeIndex]);
 
+    // Calculate cycle interval based on current announcement text length
+    const currentAnnouncement = announcements[activeIndex];
+    const textLength = currentAnnouncement
+        ? (currentAnnouncement.title + currentAnnouncement.message + (currentAnnouncement.linkText || '')).length
+        : 0;
+    // ~60px/s scroll speed, + 3s buffer after animation ends, min 13s
+    const marqueeDurationMs = Math.max(10000, Math.round((textLength * 4.5) / 60) * 1000);
+    const cycleInterval = marqueeDurationMs + 3000;
+
     useEffect(() => {
         if (announcements.length <= 1 || isPaused) {
             return;
         }
+
         const interval = window.setInterval(() => {
             setActiveIndex((prev) => {
                 if (announcements.length === 0) return 0;
                 return (prev + 1) % announcements.length;
             });
-        }, 6000);
+        }, cycleInterval);
+
         return () => {
             clearInterval(interval);
         };
-    }, [announcements.length, isPaused]);
+    }, [announcements.length, isPaused, cycleInterval]);
 
     const current = announcements[activeIndex];
 
+    if (announcements.length === 0) return null;
+
     return (
-        <>
-            <AnimatePresence>
-                {current && (
-                    <AnnouncementTicker
-                        data={current}
-                        index={activeIndex}
-                        total={announcements.length}
-                        onDismiss={onDismiss}
-                        onPauseChange={setIsPaused}
-                    />
-                )}
-            </AnimatePresence>
-        </>
+        <div 
+            className="announcement-ticker"
+            onMouseEnter={() => setIsPaused(true)}
+            onMouseLeave={() => setIsPaused(false)}
+        >
+            <div className="ticker-icon">
+                <Megaphone size={16} />
+            </div>
+            
+            <div className="ticker-content-wrapper">
+                <AnimatePresence mode="wait">
+                    <motion.div
+                        key={current.id}
+                        initial={{ opacity: 0, x: 10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -10 }}
+                        transition={{ duration: 0.3, ease: "easeOut" }}
+                        style={{ height: '100%', width: '100%' }}
+                    >
+                        <AnnouncementContent data={current} />
+                    </motion.div>
+                </AnimatePresence>
+            </div>
+
+            {announcements.length > 1 && (
+                <div className="ticker-count" title={`${activeIndex + 1}/${announcements.length}`}>
+                    {activeIndex + 1}/{announcements.length}
+                </div>
+            )}
+            
+            <div
+                className="ticker-fixed-close"
+                onClick={() => onDismiss(current.id)}
+                title="Dismiss"
+            >
+                <X size={16} />
+            </div>
+        </div>
     );
 };
 
-const AnnouncementTicker: React.FC<{
-    data: Announcement;
-    index: number;
-    total: number;
-    onDismiss: (id: string) => void;
-    onPauseChange?: (paused: boolean) => void;
-}> = ({ data, index, total, onDismiss, onPauseChange }) => {
+const AnnouncementContent: React.FC<{ data: Announcement }> = ({ data }) => {
     const wrapperRef = useRef<HTMLDivElement | null>(null);
     const trackRef = useRef<HTMLDivElement | null>(null);
     const [isOverflowing, setIsOverflowing] = useState(false);
@@ -74,8 +106,18 @@ const AnnouncementTicker: React.FC<{
         if (!wrapper || !track) return;
 
         const update = () => {
-            const overflow = track.scrollWidth > wrapper.clientWidth + 8;
-            setIsOverflowing(overflow);
+            const hasOverflow = track.scrollWidth > wrapper.clientWidth + 4;
+            setIsOverflowing(hasOverflow);
+
+            if (hasOverflow) {
+                const scrollDist = track.scrollWidth - wrapper.clientWidth + 12;
+                wrapper.style.setProperty('--scroll-dist', `-${scrollDist}px`);
+
+                // Duration proportional to text length: ~60px/s scroll speed, min 8s
+                // Scrolling occupies 70% of animation (5%-75%), so divide by 0.7*60=42
+                const duration = Math.max(8, Math.round(scrollDist / 42));
+                wrapper.style.setProperty('--marquee-duration', `${duration}s`);
+            }
         };
 
         update();
@@ -83,44 +125,19 @@ const AnnouncementTicker: React.FC<{
         ro.observe(wrapper);
         ro.observe(track);
         return () => ro.disconnect();
-    }, [data.id, data.title, data.message, data.link, data.linkText, data.type]);
+    }, [data.id, data.title, data.message]);
 
     return (
-        <motion.div
-            className="announcement-ticker"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 36, opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            onMouseEnter={() => onPauseChange?.(true)}
-            onMouseLeave={() => onPauseChange?.(false)}
-        >
-            <div className="ticker-icon">
-                <Megaphone size={16} />
-            </div>
-            <div className="ticker-content-wrapper" ref={wrapperRef}>
-                <div
-                    ref={trackRef}
-                    className={`ticker-track ticker-track-single${isOverflowing ? " ticker-track-marquee" : ""}`}
-                >
-                    <TickerItem data={data} />
-                </div>
-            </div>
-            {total > 1 && (
-                <div className="ticker-count" title={`${index + 1}/${total}`}>
-                    {index + 1}/{total}
-                </div>
-            )}
-            {/* Fixed Close Button ONLY on the right */}
+        <div className="ticker-content-wrapper-inner" ref={wrapperRef} style={{ height: '100%', overflow: 'hidden', display: 'flex', alignItems: 'center' }}>
             <div
-                className="ticker-fixed-close"
-                onClick={() => onDismiss(data.id)}
-                title="Dismiss"
+                ref={trackRef}
+                className={`ticker-track ticker-track-single${isOverflowing ? " ticker-track-marquee" : ""}`}
             >
-                <X size={16} />
+                <TickerItem data={data} />
             </div>
-        </motion.div>
+        </div>
     );
-}
+};
 
 const TickerItem: React.FC<{ data: Announcement }> = ({ data }) => {
     const textStyle = data.textColor ? { color: data.textColor } : undefined;

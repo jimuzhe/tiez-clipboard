@@ -47,7 +47,7 @@
     display: flex;
     align-items: center;
     white-space: nowrap;
-    animation: marquee 25s linear infinite;
+    animation: marquee 15s cubic-bezier(0.45, 0, 0.55, 1) forwards;
     padding-left: 20px;
     pointer-events: auto;
 }
@@ -58,7 +58,7 @@
 }
 
 .ticker-track-single.ticker-track-marquee {
-    animation: marquee 25s linear infinite;
+    animation: marquee var(--marquee-duration, 15s) cubic-bezier(0.45, 0, 0.55, 1) forwards;
     padding-left: 20px;
 }
 
@@ -68,7 +68,9 @@
 
 @keyframes marquee {
     0% { transform: translateX(0); }
-    100% { transform: translateX(-100%); }
+    5% { transform: translateX(0); }
+    75% { transform: translateX(var(--scroll-dist, -100%)); }
+    100% { transform: translateX(var(--scroll-dist, -100%)); }
 }
 
 .ticker-item {
