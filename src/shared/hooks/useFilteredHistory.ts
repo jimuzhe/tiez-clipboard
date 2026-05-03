@@ -3,14 +3,12 @@ import type { ClipboardEntry } from "../types";
 
 interface UseFilteredHistoryOptions {
   history: ClipboardEntry[];
-  debouncedSearch: string;
   search: string;
   typeFilter: string | null;
 }
 
 export const useFilteredHistory = ({
   history,
-  debouncedSearch,
   search,
   typeFilter
 }: UseFilteredHistoryOptions) => {
@@ -28,10 +26,6 @@ export const useFilteredHistory = ({
         effectiveSearch = effectiveSearch.slice(4);
       }
 
-      if (debouncedSearch && debouncedSearch === search) {
-        return true;
-      }
-
       if (!effectiveSearch) return true;
 
       if (isTagSearch) {
@@ -40,6 +34,7 @@ export const useFilteredHistory = ({
 
       return (
         item.content?.toLowerCase().includes(effectiveSearch) ||
+        item.source_app?.toLowerCase().includes(effectiveSearch) ||
         item.tags?.some((tag) => tag.toLowerCase().includes(effectiveSearch))
       );
     });
@@ -56,7 +51,5 @@ export const useFilteredHistory = ({
       }
       return b.timestamp - a.timestamp;
     });
-  }, [history, debouncedSearch, search, typeFilter]);
+  }, [history, search, typeFilter]);
 };
-
-

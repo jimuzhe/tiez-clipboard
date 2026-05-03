@@ -910,7 +910,6 @@ const App = () => {
 
   const filteredHistory = useFilteredHistory({
     history,
-    debouncedSearch,
     search,
     typeFilter
   });
