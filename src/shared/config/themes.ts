@@ -54,6 +54,16 @@ export const THEMES: ThemeDefinition[] = [
       en: "Paper & Quill",
       tw: "紙質書感"
     }
+  },
+  {
+    id: "sakura",
+    labels: {
+      zh: "樱花",
+      en: "Sakura",
+      tw: "櫻花"
+    },
+    supportsCustomBackground: true,
+    supportsSurfaceOpacity: true
   }
 ];
 
