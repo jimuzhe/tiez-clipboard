@@ -8,32 +8,32 @@
 :root.theme-sakura,
 body.theme-sakura {
   background-color: transparent !important;
-  --bg-window: rgba(255, 252, 253, calc(0.82 * var(--surface-opacity-scale, 1)));
+  --bg-window: rgba(255, 252, 253, calc(0.65 * var(--surface-opacity-scale, 1)));
   --bg-content: transparent;
-  --bg-toolbar: transparent;
-  --bg-panel: rgba(255, 245, 248, 0.55);
-  --bg-input: rgba(255, 255, 255, 0.7);
-  --bg-element: rgba(255, 235, 240, 0.6);
-  --bg-button: rgba(255, 255, 255, 0.45);
+  --bg-toolbar: rgba(255, 255, 255, 0.3);
+  --bg-panel: rgba(255, 245, 248, 0.45);
+  --bg-input: rgba(255, 255, 255, 0.6);
+  --bg-element: rgba(255, 235, 240, 0.5);
+  --bg-button: rgba(255, 255, 255, 0.5);
 
-  --text-primary: #3d2b30;
-  --text-secondary: #8a6570;
-  --text-muted: #b0939a;
+  --text-primary: #4a343a;
+  --text-secondary: #946c78;
+  --text-muted: #b89ca4;
 
-  --accent-color: #d4607a;
-  --accent-color-rgb: 212, 96, 122;
-  --accent-hover: #c04e68;
-  --border-dark: rgba(212, 160, 175, 0.45);
-  --border-light: rgba(255, 255, 255, 0.6);
-  --shadow-color: rgba(140, 60, 80, 0.1);
+  --accent-color: #ff85a1;
+  --accent-color-rgb: 255, 133, 161;
+  --accent-hover: #ff6b8e;
+  --border-dark: rgba(255, 133, 161, 0.3);
+  --border-light: rgba(255, 255, 255, 0.7);
+  --shadow-color: rgba(255, 133, 161, 0.12);
 
-  --line-soft: rgba(160, 100, 120, 0.1);
-  --line-strong: rgba(160, 100, 120, 0.18);
-  --shadow-xs: 0 2px 8px rgba(180, 100, 120, 0.06);
-  --shadow-sm: 0 8px 20px rgba(180, 100, 120, 0.08);
-  --shadow-md: 0 14px 32px rgba(180, 100, 120, 0.1);
-  --shadow-lg: 0 20px 44px rgba(180, 100, 120, 0.12);
-  --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  --line-soft: rgba(255, 133, 161, 0.1);
+  --line-strong: rgba(255, 133, 161, 0.2);
+  --shadow-xs: 0 4px 12px rgba(255, 133, 161, 0.06);
+  --shadow-sm: 0 10px 28px rgba(255, 133, 161, 0.08);
+  --shadow-md: 0 18px 40px rgba(255, 133, 161, 0.12);
+  --shadow-lg: 0 24px 50px rgba(255, 133, 161, 0.15);
+  --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.8);
 
   --font-main: "Segoe UI", system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
   --font-mono: "Cascadia Code", "JetBrains Mono", "Fira Code", monospace;
@@ -43,30 +43,35 @@ body.theme-sakura {
   --radius-card: 14px;
   --radius-control: 10px;
 
-  --shell-background: rgba(255, 250, 252, calc(0.88 * var(--surface-opacity-scale, 1)));
-  --shell-border: 1px solid rgba(255, 255, 255, 0.5);
-  --shell-shadow: 0 16px 40px rgba(160, 80, 100, 0.12);
+  --shell-background: 
+    url("data:image/svg+xml,%3Csvg width='200' height='200' viewBox='0 0 200 200' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M10 18c0 0 6-6 6-10 0-4-3-6-4-4l-2-2-2 2c-1-2-4 0-4 4 0 4 6 10 6 10z' fill='%23ffb7c5' fill-opacity='0.4' transform='translate(40,40) rotate(15) scale(0.5)'/%3E%3Cpath d='M10 18c0 0 6-6 6-10 0-4-3-6-4-4l-2-2-2 2c-1-2-4 0-4 4 0 4 6 10 6 10z' fill='%23f8c8dc' fill-opacity='0.3' transform='translate(150,50) rotate(120) scale(0.35)'/%3E%3Cpath d='M10 18c0 0 6-6 6-10 0-4-3-6-4-4l-2-2-2 2c-1-2-4 0-4 4 0 4 6 10 6 10z' fill='%23ffb7c5' fill-opacity='0.35' transform='translate(80,160) rotate(-45) scale(0.4)'/%3E%3Cpath d='M10 18c0 0 6-6 6-10 0-4-3-6-4-4l-2-2-2 2c-1-2-4 0-4 4 0 4 6 10 6 10z' fill='%23ffd1dc' fill-opacity='0.3' transform='translate(170,170) rotate(70) scale(0.3)'/%3E%3Cpath d='M10 18c0 0 6-6 6-10 0-4-3-6-4-4l-2-2-2 2c-1-2-4 0-4 4 0 4 6 10 6 10z' fill='%23ffb7c5' fill-opacity='0.25' transform='translate(10,120) rotate(190) scale(0.45)'/%3E%3Cpath d='M10 18c0 0 6-6 6-10 0-4-3-6-4-4l-2-2-2 2c-1-2-4 0-4 4 0 4 6 10 6 10z' fill='%23f8c8dc' fill-opacity='0.35' transform='translate(120,110) rotate(40) scale(0.3)'/%3E%3C/svg%3E"),
+    rgba(255, 250, 252, calc(0.7 * var(--surface-opacity-scale, 1)));
+  --shell-border: 1px solid rgba(255, 255, 255, 0.6);
+  --shell-shadow: 0 16px 48px rgba(255, 133, 161, 0.15);
+  --shell-backdrop-filter: blur(16px) saturate(160%);
   --shell-radius: 14px;
 
   --toolbar-border: 1px solid rgba(212, 96, 122, 0.12);
 
-  --title-font-family: var(--font-main);
+  --title-font-family: "Outfit", var(--font-main);
   --title-font-weight: 700;
   --title-font-size: 17px;
+  --title-color: #d4607a;
+  --title-shadow: 0 0 10px rgba(255, 133, 161, 0.2);
 
-  --input-border: 1px solid rgba(212, 96, 122, 0.2);
-  --input-radius: 10px;
-  --input-shadow: none;
-  --input-focus-shadow: 0 0 0 3px rgba(212, 96, 122, 0.1);
+  --input-border: 1px solid rgba(255, 133, 161, 0.25);
+  --input-radius: 12px;
+  --input-shadow: inset 0 1px 2px rgba(255, 133, 161, 0.05);
+  --input-focus-shadow: 0 0 0 4px rgba(255, 133, 161, 0.15);
 
-  --button-border: 1px solid rgba(212, 96, 122, 0.15);
-  --button-radius: 10px;
-  --button-shadow: var(--shadow-xs);
-  --button-hover-shadow: 0 4px 14px rgba(212, 96, 122, 0.15);
-  --button-hover-transform: translateY(-1px);
-  --button-active-transform: translateY(0);
-  --button-active-shadow: var(--shadow-xs);
-  --button-active-filled-shadow: 0 6px 16px rgba(212, 96, 122, 0.22);
+  --button-border: 1px solid rgba(255, 133, 161, 0.2);
+  --button-radius: 12px;
+  --button-shadow: 0 4px 12px rgba(255, 133, 161, 0.1);
+  --button-hover-shadow: 0 6px 18px rgba(255, 133, 161, 0.2);
+  --button-hover-transform: translateY(-1.5px) scale(1.02);
+  --button-active-transform: translateY(0) scale(0.98);
+  --button-active-shadow: 0 2px 8px rgba(255, 133, 161, 0.1);
+  --button-active-filled-shadow: 0 8px 24px rgba(255, 133, 161, 0.3);
 
   --card-border: 1px solid rgba(212, 160, 175, 0.18);
   --card-radius: 14px;
@@ -131,22 +136,17 @@ body.theme-sakura {
   isolation: isolate;
 }
 
-body.theme-sakura::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: var(--shell-radius);
-  -webkit-clip-path: inset(0 round var(--shell-radius));
-  clip-path: inset(0 round var(--shell-radius));
-  background-image:
-    radial-gradient(ellipse 3px 4px at 15% 20%, rgba(212, 96, 122, 0.07) 50%, transparent 50%),
-    radial-gradient(ellipse 2.5px 3.5px at 75% 15%, rgba(240, 160, 180, 0.06) 50%, transparent 50%),
-    radial-gradient(ellipse 3px 4px at 45% 85%, rgba(212, 96, 122, 0.05) 50%, transparent 50%),
-    radial-gradient(ellipse 2px 3px at 85% 65%, rgba(240, 160, 180, 0.06) 50%, transparent 50%),
-    radial-gradient(ellipse 2.5px 3.5px at 25% 55%, rgba(212, 96, 122, 0.04) 50%, transparent 50%);
-  background-size: 180px 160px, 220px 200px, 200px 180px, 160px 150px, 240px 220px;
-  pointer-events: none;
-  z-index: 0;
+/* --- Decorative: sakura petals animation --- */
+.theme-sakura #root {
+  background-size: 180px 180px, 100% 100%;
+  background-repeat: repeat, no-repeat;
+  background-position: center;
+  animation: sakura-float 90s linear infinite;
+}
+
+@keyframes sakura-float {
+  from { background-position: 0 0; }
+  to { background-position: 500px 1000px; }
 }
 
 /* --- Decorative: subtle sakura glow on window --- */
@@ -162,9 +162,9 @@ body.theme-sakura #root::after {
   position: absolute;
   top: -60px;
   right: -40px;
-  width: 200px;
-  height: 200px;
-  background: radial-gradient(circle, rgba(212, 96, 122, 0.06) 0%, transparent 70%);
+  width: 260px;
+  height: 260px;
+  background: radial-gradient(circle, rgba(255, 133, 161, 0.15) 0%, transparent 70%);
   pointer-events: none;
   border-radius: 50%;
   z-index: 0;
@@ -206,21 +206,21 @@ body.theme-sakura #root > * {
   :root.theme-sakura:not(.light-mode),
   body.theme-sakura:not(.light-mode) {
     background-color: transparent !important;
-    --bg-window: rgba(30, 22, 26, calc(0.88 * var(--surface-opacity-scale, 1)));
+    --bg-window: rgba(36, 26, 30, calc(0.85 * var(--surface-opacity-scale, 1)));
     --bg-content: transparent;
-    --bg-toolbar: transparent;
-    --bg-panel: rgba(40, 28, 33, 0.55);
-    --bg-input: rgba(255, 255, 255, 0.06);
-    --bg-element: rgba(55, 38, 44, 0.5);
-    --bg-button: rgba(255, 255, 255, 0.04);
+    --bg-toolbar: rgba(255, 255, 255, 0.03);
+    --bg-panel: rgba(48, 34, 40, 0.5);
+    --bg-input: rgba(255, 255, 255, 0.08);
+    --bg-element: rgba(65, 45, 52, 0.45);
+    --bg-button: rgba(255, 255, 255, 0.06);
 
-    --text-primary: #eddce2;
-    --text-secondary: #b89aa4;
-    --text-muted: #8a6e78;
+    --text-primary: #fcecef;
+    --text-secondary: #d4a5b2;
+    --text-muted: #a67d8a;
 
-    --accent-color: #e87088;
-    --accent-color-rgb: 232, 112, 136;
-    --accent-hover: #d85a72;
+    --accent-color: #ff9fb4;
+    --accent-color-rgb: 255, 159, 180;
+    --accent-hover: #ff85a1;
 
     --border-dark: rgba(255, 255, 255, 0.08);
     --shadow-color: rgba(0, 0, 0, 0.3);
