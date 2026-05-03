@@ -165,6 +165,11 @@ body.theme-paper::before {
     --line-soft: rgba(213, 196, 161, 0.08);
     --panel-header-background: #3c3836;
     --panel-divider-color: #504945;
+
+    --card-selected-background: rgba(215, 153, 33, 0.15);
+    --card-selected-border-color: rgba(215, 153, 33, 0.3);
+    --data-panel-border: 1px solid #504945;
+    --data-panel-hover-background: #3c3836;
   }
 }
 
@@ -192,4 +197,9 @@ body.dark-mode.theme-paper {
   --line-soft: rgba(213, 196, 161, 0.08);
   --panel-header-background: #3c3836;
   --panel-divider-color: #504945;
+
+  --card-selected-background: rgba(215, 153, 33, 0.15);
+  --card-selected-border-color: rgba(215, 153, 33, 0.3);
+  --data-panel-border: 1px solid #504945;
+  --data-panel-hover-background: #3c3836;
 }

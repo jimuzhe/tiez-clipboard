@@ -1,0 +1,337 @@
+/* =========================================
+   SAKURA THEME
+   Glassmorphism + cherry blossom decorations
+   A warm, airy, spring-inspired aesthetic
+   ========================================= */
+
+/* --- Light Mode --- */
+:root.theme-sakura,
+body.theme-sakura {
+  background-color: transparent !important;
+  --bg-window: rgba(255, 252, 253, calc(0.82 * var(--surface-opacity-scale, 1)));
+  --bg-content: transparent;
+  --bg-toolbar: transparent;
+  --bg-panel: rgba(255, 245, 248, 0.55);
+  --bg-input: rgba(255, 255, 255, 0.7);
+  --bg-element: rgba(255, 235, 240, 0.6);
+  --bg-button: rgba(255, 255, 255, 0.45);
+
+  --text-primary: #3d2b30;
+  --text-secondary: #8a6570;
+  --text-muted: #b0939a;
+
+  --accent-color: #d4607a;
+  --accent-color-rgb: 212, 96, 122;
+  --accent-hover: #c04e68;
+  --border-dark: rgba(212, 160, 175, 0.45);
+  --border-light: rgba(255, 255, 255, 0.6);
+  --shadow-color: rgba(140, 60, 80, 0.1);
+
+  --line-soft: rgba(160, 100, 120, 0.1);
+  --line-strong: rgba(160, 100, 120, 0.18);
+  --shadow-xs: 0 2px 8px rgba(180, 100, 120, 0.06);
+  --shadow-sm: 0 8px 20px rgba(180, 100, 120, 0.08);
+  --shadow-md: 0 14px 32px rgba(180, 100, 120, 0.1);
+  --shadow-lg: 0 20px 44px rgba(180, 100, 120, 0.12);
+  --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+
+  --font-main: "Segoe UI", system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-mono: "Cascadia Code", "JetBrains Mono", "Fira Code", monospace;
+
+  --radius-window: 14px;
+  --radius-panel: 16px;
+  --radius-card: 14px;
+  --radius-control: 10px;
+
+  --shell-background: rgba(255, 250, 252, calc(0.88 * var(--surface-opacity-scale, 1)));
+  --shell-border: 1px solid rgba(255, 255, 255, 0.5);
+  --shell-shadow: 0 16px 40px rgba(160, 80, 100, 0.12);
+  --shell-radius: 14px;
+
+  --toolbar-border: 1px solid rgba(212, 96, 122, 0.12);
+
+  --title-font-family: var(--font-main);
+  --title-font-weight: 700;
+  --title-font-size: 17px;
+
+  --input-border: 1px solid rgba(212, 96, 122, 0.2);
+  --input-radius: 10px;
+  --input-shadow: none;
+  --input-focus-shadow: 0 0 0 3px rgba(212, 96, 122, 0.1);
+
+  --button-border: 1px solid rgba(212, 96, 122, 0.15);
+  --button-radius: 10px;
+  --button-shadow: var(--shadow-xs);
+  --button-hover-shadow: 0 4px 14px rgba(212, 96, 122, 0.15);
+  --button-hover-transform: translateY(-1px);
+  --button-active-transform: translateY(0);
+  --button-active-shadow: var(--shadow-xs);
+  --button-active-filled-shadow: 0 6px 16px rgba(212, 96, 122, 0.22);
+
+  --card-border: 1px solid rgba(212, 160, 175, 0.18);
+  --card-radius: 14px;
+  --card-shadow: none;
+  --card-hover-shadow: var(--shadow-sm);
+  --card-hover-transform: translateY(-2px);
+  --card-active-transform: translateY(0);
+  --card-active-shadow: var(--shadow-xs);
+  --card-selected-background: rgba(212, 96, 122, 0.08);
+  --card-selected-border-color: rgba(212, 96, 122, 0.3);
+  --card-selected-shadow: 0 8px 20px rgba(212, 96, 122, 0.12);
+  --card-selected-outline: 1.5px solid rgba(212, 96, 122, 0.2);
+
+  --panel-border: 1px solid rgba(255, 255, 255, 0.45);
+  --panel-radius: 16px;
+  --panel-shadow: 0 8px 20px rgba(160, 80, 100, 0.05);
+  --panel-header-background: rgba(255, 255, 255, 0.12);
+  --panel-divider-color: rgba(160, 100, 120, 0.08);
+
+  --data-panel-border: 1px solid rgba(212, 160, 175, 0.25);
+  --data-panel-shadow: none;
+  --data-panel-hover-background: rgba(255, 240, 244, 0.5);
+
+  --segment-active-background: rgba(255, 255, 255, 0.65);
+  --segment-active-shadow: 0 2px 8px rgba(180, 100, 120, 0.08);
+
+  --tags-border: 1px solid rgba(212, 160, 175, 0.3);
+  --tags-shadow: 0 6px 14px rgba(180, 100, 120, 0.06);
+  --tag-chip-border: 1px solid rgba(212, 96, 122, 0.15);
+  --tag-chip-radius: 8px;
+  --tag-chip-shadow: none;
+  --tag-chip-hover-shadow: 0 2px 8px rgba(212, 96, 122, 0.12);
+
+  --menu-border: 1px solid rgba(212, 160, 175, 0.25);
+  --menu-shadow: var(--shadow-md);
+
+  --scrollbar-size: 6px;
+  --scrollbar-size-thin: 4px;
+  --scrollbar-radius: 999px;
+  --scrollbar-track-background: transparent;
+  --scrollbar-track-border-start: none;
+  --scrollbar-thumb-color: rgba(180, 120, 140, 0.35);
+  --scrollbar-thumb-hover-color: rgba(212, 96, 122, 0.5);
+  --scrollbar-thumb-border: 2px solid transparent;
+  --scrollbar-chat-thumb-border: 2px solid transparent;
+
+  --content-font-family: var(--font-main);
+  --content-line-height: 1.5;
+  --meta-text-transform: none;
+
+  --queue-border: 1px solid rgba(255, 255, 255, 0.4);
+  --queue-shadow: 0 14px 32px rgba(160, 80, 100, 0.1);
+  --queue-count-shadow: 0 4px 10px rgba(180, 100, 120, 0.08);
+
+  --reset-button-border: 1px solid rgba(212, 96, 122, 0.2);
+  --reset-button-shadow: none;
+}
+
+/* --- Decorative: cherry blossom petal pattern on body --- */
+body.theme-sakura {
+  position: relative;
+  isolation: isolate;
+}
+
+body.theme-sakura::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--shell-radius);
+  -webkit-clip-path: inset(0 round var(--shell-radius));
+  clip-path: inset(0 round var(--shell-radius));
+  background-image:
+    radial-gradient(ellipse 3px 4px at 15% 20%, rgba(212, 96, 122, 0.07) 50%, transparent 50%),
+    radial-gradient(ellipse 2.5px 3.5px at 75% 15%, rgba(240, 160, 180, 0.06) 50%, transparent 50%),
+    radial-gradient(ellipse 3px 4px at 45% 85%, rgba(212, 96, 122, 0.05) 50%, transparent 50%),
+    radial-gradient(ellipse 2px 3px at 85% 65%, rgba(240, 160, 180, 0.06) 50%, transparent 50%),
+    radial-gradient(ellipse 2.5px 3.5px at 25% 55%, rgba(212, 96, 122, 0.04) 50%, transparent 50%);
+  background-size: 180px 160px, 220px 200px, 200px 180px, 160px 150px, 240px 220px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* --- Decorative: subtle sakura glow on window --- */
+body.theme-sakura #root {
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+body.theme-sakura #root::after {
+  content: "";
+  position: absolute;
+  top: -60px;
+  right: -40px;
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, rgba(212, 96, 122, 0.06) 0%, transparent 70%);
+  pointer-events: none;
+  border-radius: 50%;
+  z-index: 0;
+}
+
+body.theme-sakura #root > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* --- Decorative: sakura accent line on panels --- */
+.theme-sakura .themed-tag-manager .tag-sidebar {
+  border-top: 2px solid transparent;
+  border-image: linear-gradient(90deg, transparent, rgba(212, 96, 122, 0.3), rgba(240, 160, 180, 0.2), transparent) 1;
+}
+
+/* --- Announcement ticker: sakura style --- */
+.theme-sakura .announcement-ticker {
+  border-bottom: 1px solid rgba(212, 96, 122, 0.1);
+  font-family: var(--font-main);
+}
+
+.theme-sakura .ticker-icon {
+  color: var(--accent-color);
+  border-right-color: rgba(212, 96, 122, 0.1);
+}
+
+.theme-sakura .ticker-tag {
+  border-radius: 6px;
+  font-weight: 700;
+}
+
+.theme-sakura .ticker-link {
+  font-family: var(--font-main);
+}
+
+/* --- Dark Mode --- */
+@media (prefers-color-scheme: dark) {
+  :root.theme-sakura:not(.light-mode),
+  body.theme-sakura:not(.light-mode) {
+    background-color: transparent !important;
+    --bg-window: rgba(30, 22, 26, calc(0.88 * var(--surface-opacity-scale, 1)));
+    --bg-content: transparent;
+    --bg-toolbar: transparent;
+    --bg-panel: rgba(40, 28, 33, 0.55);
+    --bg-input: rgba(255, 255, 255, 0.06);
+    --bg-element: rgba(55, 38, 44, 0.5);
+    --bg-button: rgba(255, 255, 255, 0.04);
+
+    --text-primary: #eddce2;
+    --text-secondary: #b89aa4;
+    --text-muted: #8a6e78;
+
+    --accent-color: #e87088;
+    --accent-color-rgb: 232, 112, 136;
+    --accent-hover: #d85a72;
+
+    --border-dark: rgba(255, 255, 255, 0.08);
+    --shadow-color: rgba(0, 0, 0, 0.3);
+
+    --line-soft: rgba(255, 255, 255, 0.06);
+    --line-strong: rgba(255, 255, 255, 0.1);
+    --shadow-xs: 0 2px 8px rgba(0, 0, 0, 0.18);
+    --shadow-sm: 0 8px 20px rgba(0, 0, 0, 0.22);
+    --shadow-md: 0 14px 32px rgba(0, 0, 0, 0.26);
+    --shadow-lg: 0 20px 44px rgba(0, 0, 0, 0.3);
+    --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+
+    --shell-background: rgba(28, 20, 23, calc(0.9 * var(--surface-opacity-scale, 1)));
+    --shell-border: 1px solid rgba(255, 255, 255, 0.06);
+    --shell-shadow: 0 16px 40px rgba(0, 0, 0, 0.3);
+
+    --toolbar-border: 1px solid rgba(255, 255, 255, 0.05);
+
+    --input-border: 1px solid rgba(255, 255, 255, 0.08);
+    --button-border: 1px solid rgba(255, 255, 255, 0.06);
+
+    --card-border: 1px solid rgba(255, 255, 255, 0.06);
+    --card-selected-background: rgba(232, 112, 136, 0.12);
+    --card-selected-border-color: rgba(232, 112, 136, 0.25);
+    --card-selected-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    --card-selected-outline: 1px solid rgba(232, 112, 136, 0.18);
+
+    --panel-border: 1px solid rgba(255, 255, 255, 0.06);
+    --data-panel-border: 1px solid rgba(255, 255, 255, 0.07);
+    --data-panel-hover-background: rgba(255, 255, 255, 0.04);
+
+    --tags-border: 1px solid rgba(255, 255, 255, 0.06);
+    --tag-chip-border: 1px solid rgba(232, 112, 136, 0.12);
+    --menu-border: 1px solid rgba(255, 255, 255, 0.06);
+    --menu-shadow: var(--shadow-md);
+
+    --queue-border: 1px solid rgba(255, 255, 255, 0.06);
+  }
+}
+
+:root.dark-mode.theme-sakura,
+body.dark-mode.theme-sakura {
+  background-color: transparent !important;
+  --bg-window: rgba(30, 22, 26, calc(0.88 * var(--surface-opacity-scale, 1)));
+  --bg-content: transparent;
+  --bg-toolbar: transparent;
+  --bg-panel: rgba(40, 28, 33, 0.55);
+  --bg-input: rgba(255, 255, 255, 0.06);
+  --bg-element: rgba(55, 38, 44, 0.5);
+  --bg-button: rgba(255, 255, 255, 0.04);
+
+  --text-primary: #eddce2;
+  --text-secondary: #b89aa4;
+  --text-muted: #8a6e78;
+
+  --accent-color: #e87088;
+  --accent-color-rgb: 232, 112, 136;
+  --accent-hover: #d85a72;
+
+  --border-dark: rgba(255, 255, 255, 0.08);
+  --shadow-color: rgba(0, 0, 0, 0.3);
+
+  --line-soft: rgba(255, 255, 255, 0.06);
+  --line-strong: rgba(255, 255, 255, 0.1);
+  --shadow-xs: 0 2px 8px rgba(0, 0, 0, 0.18);
+  --shadow-sm: 0 8px 20px rgba(0, 0, 0, 0.22);
+  --shadow-md: 0 14px 32px rgba(0, 0, 0, 0.26);
+  --shadow-lg: 0 20px 44px rgba(0, 0, 0, 0.3);
+  --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+
+  --shell-background: rgba(28, 20, 23, calc(0.9 * var(--surface-opacity-scale, 1)));
+  --shell-border: 1px solid rgba(255, 255, 255, 0.06);
+  --shell-shadow: 0 16px 40px rgba(0, 0, 0, 0.3);
+
+  --toolbar-border: 1px solid rgba(255, 255, 255, 0.05);
+
+  --input-border: 1px solid rgba(255, 255, 255, 0.08);
+  --button-border: 1px solid rgba(255, 255, 255, 0.06);
+
+  --card-border: 1px solid rgba(255, 255, 255, 0.06);
+  --card-selected-background: rgba(232, 112, 136, 0.12);
+  --card-selected-border-color: rgba(232, 112, 136, 0.25);
+  --card-selected-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  --card-selected-outline: 1px solid rgba(232, 112, 136, 0.18);
+
+  --panel-border: 1px solid rgba(255, 255, 255, 0.06);
+  --data-panel-border: 1px solid rgba(255, 255, 255, 0.07);
+  --data-panel-hover-background: rgba(255, 255, 255, 0.04);
+
+  --tags-border: 1px solid rgba(255, 255, 255, 0.06);
+  --tag-chip-border: 1px solid rgba(232, 112, 136, 0.12);
+  --menu-border: 1px solid rgba(255, 255, 255, 0.06);
+  --menu-shadow: var(--shadow-md);
+
+  --queue-border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Dark mode: swap glow to subtle sakura pink */
+body.dark-mode.theme-sakura #root::after {
+  background: radial-gradient(circle, rgba(232, 112, 136, 0.04) 0%, transparent 70%);
+}
+
+/* Dark mode: fainter petal pattern */
+body.dark-mode.theme-sakura::before {
+  opacity: 0.35;
+}
+
+/* Dark mode: announcement ticker */
+.dark-mode .theme-sakura .announcement-ticker {
+  border-bottom-color: rgba(232, 112, 136, 0.1);
+}
+.dark-mode .theme-sakura .ticker-icon {
+  border-right-color: rgba(255, 255, 255, 0.06);
+}

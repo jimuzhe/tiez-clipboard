@@ -99,32 +99,55 @@ const AnnouncementContent: React.FC<{ data: Announcement }> = ({ data }) => {
     const wrapperRef = useRef<HTMLDivElement | null>(null);
     const trackRef = useRef<HTMLDivElement | null>(null);
     const [isOverflowing, setIsOverflowing] = useState(false);
+    const isOverflowingRef = useRef(false);
 
     useLayoutEffect(() => {
         const wrapper = wrapperRef.current;
         const track = trackRef.current;
         if (!wrapper || !track) return;
 
+        let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
         const update = () => {
             const hasOverflow = track.scrollWidth > wrapper.clientWidth + 4;
-            setIsOverflowing(hasOverflow);
+            const firstItem = track.firstElementChild as HTMLElement | null;
 
             if (hasOverflow) {
-                const scrollDist = track.scrollWidth - wrapper.clientWidth + 12;
+                const itemStyle = firstItem ? window.getComputedStyle(firstItem) : null;
+                const itemMarginRight = itemStyle ? parseFloat(itemStyle.marginRight) || 0 : 0;
+                const itemWidth = firstItem
+                    ? firstItem.getBoundingClientRect().width + itemMarginRight
+                    : track.scrollWidth;
+                const scrollDist = Math.max(0, Math.round(itemWidth));
                 wrapper.style.setProperty('--scroll-dist', `-${scrollDist}px`);
 
-                // Duration proportional to text length: ~60px/s scroll speed, min 8s
-                // Scrolling occupies 70% of animation (5%-75%), so divide by 0.7*60=42
-                const duration = Math.max(8, Math.round(scrollDist / 42));
+                // Keep the ticker moving at roughly 60px/s, with a readable minimum.
+                const duration = Math.max(10, Math.round(scrollDist / 60));
                 wrapper.style.setProperty('--marquee-duration', `${duration}s`);
+            } else {
+                wrapper.style.setProperty('--scroll-dist', '0px');
+            }
+
+            if (hasOverflow !== isOverflowingRef.current) {
+                isOverflowingRef.current = hasOverflow;
+                setIsOverflowing(hasOverflow);
             }
         };
 
+        // Debounced update to avoid animation restart during resize
+        const debouncedUpdate = () => {
+            if (debounceTimer) clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(update, 150);
+        };
+
         update();
-        const ro = new ResizeObserver(update);
+        const ro = new ResizeObserver(debouncedUpdate);
         ro.observe(wrapper);
         ro.observe(track);
-        return () => ro.disconnect();
+        return () => {
+            ro.disconnect();
+            if (debounceTimer) clearTimeout(debounceTimer);
+        };
     }, [data.id, data.title, data.message]);
 
     return (
@@ -134,6 +157,7 @@ const AnnouncementContent: React.FC<{ data: Announcement }> = ({ data }) => {
                 className={`ticker-track ticker-track-single${isOverflowing ? " ticker-track-marquee" : ""}`}
             >
                 <TickerItem data={data} />
+                {isOverflowing && <TickerItem data={data} />}
             </div>
         </div>
     );

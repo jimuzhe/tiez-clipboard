@@ -181,6 +181,9 @@ body.theme-sticky-note {
     --accent-color-rgb: 255, 212, 77;
     --accent-hover: #ffcc33;
 
+    --border-dark: rgba(255, 255, 255, 0.15);
+    --shadow-color: rgba(0, 0, 0, 0.3);
+
     --line-soft: rgba(255, 255, 255, 0.12);
     --line-strong: rgba(255, 255, 255, 0.2);
     --shadow-xs: 0 4px 12px rgba(0, 0, 0, 0.22);
@@ -188,6 +191,15 @@ body.theme-sticky-note {
     --shadow-md: 0 16px 30px rgba(0, 0, 0, 0.34);
     --shadow-lg: 0 24px 50px rgba(0, 0, 0, 0.38);
     --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+
+    --card-selected-background: rgba(255, 212, 77, 0.15);
+    --card-selected-border-color: rgba(255, 212, 77, 0.35);
+    --card-selected-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    --card-selected-outline: 1px solid rgba(255, 212, 77, 0.25);
+
+    --panel-border: 1px solid rgba(255, 255, 255, 0.1);
+    --data-panel-border: 1px solid rgba(255, 255, 255, 0.12);
+    --data-panel-hover-background: rgba(255, 255, 255, 0.06);
   }
 
   .theme-sticky-note:not(.light-mode) .history-item {
@@ -214,6 +226,9 @@ body.dark-mode.theme-sticky-note {
   --accent-color-rgb: 255, 212, 77;
   --accent-hover: #ffcc33;
 
+  --border-dark: rgba(255, 255, 255, 0.15);
+  --shadow-color: rgba(0, 0, 0, 0.3);
+
   --line-soft: rgba(255, 255, 255, 0.12);
   --line-strong: rgba(255, 255, 255, 0.2);
   --shadow-xs: 0 4px 12px rgba(0, 0, 0, 0.22);
@@ -221,6 +236,15 @@ body.dark-mode.theme-sticky-note {
   --shadow-md: 0 16px 30px rgba(0, 0, 0, 0.34);
   --shadow-lg: 0 24px 50px rgba(0, 0, 0, 0.38);
   --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+
+  --card-selected-background: rgba(255, 212, 77, 0.15);
+  --card-selected-border-color: rgba(255, 212, 77, 0.35);
+  --card-selected-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  --card-selected-outline: 1px solid rgba(255, 212, 77, 0.25);
+
+  --panel-border: 1px solid rgba(255, 255, 255, 0.1);
+  --data-panel-border: 1px solid rgba(255, 255, 255, 0.12);
+  --data-panel-hover-background: rgba(255, 255, 255, 0.06);
 }
 
 body.dark-mode.theme-sticky-note .history-item {

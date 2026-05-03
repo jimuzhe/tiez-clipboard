@@ -259,6 +259,10 @@ body.theme-retro {
     --shadow-md: 5px 5px 0 0 var(--shadow-color);
     --shadow-lg: 4px 4px 0 0 var(--shadow-color);
     --shadow-inset: inset 4px 4px 0 rgba(255, 255, 255, 0.02);
+
+    --card-selected-background: rgba(255, 255, 255, 0.06);
+    --data-panel-border: 1px solid #333333;
+    --data-panel-hover-background: #2c2c2c;
   }
 }
 
@@ -284,4 +288,8 @@ body.dark-mode.theme-retro {
   --shadow-md: 5px 5px 0 0 var(--shadow-color);
   --shadow-lg: 4px 4px 0 0 var(--shadow-color);
   --shadow-inset: inset 4px 4px 0 rgba(255, 255, 255, 0.02);
+
+  --card-selected-background: rgba(255, 255, 255, 0.06);
+  --data-panel-border: 1px solid #333333;
+  --data-panel-hover-background: #2c2c2c;
 }

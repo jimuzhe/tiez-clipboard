@@ -369,4 +369,6 @@ body.hide-app-border #root {
   height: 100%;
   border-radius: inherit;
   overflow: hidden;
+  -webkit-clip-path: inset(0 round var(--shell-radius));
+  clip-path: inset(0 round var(--shell-radius));
 }
