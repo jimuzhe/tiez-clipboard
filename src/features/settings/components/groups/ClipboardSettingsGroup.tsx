@@ -309,6 +309,12 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
                                     return;
                                 }
 
+                                if (e.key === 'Backspace' || e.key === 'Delete') {
+                                    props.updateRichPasteHotkey('');
+                                    props.setIsRecordingRich(false);
+                                    return;
+                                }
+
                                 const modifiers = [];
                                 if (e.ctrlKey) modifiers.push('Ctrl');
                                 if (e.shiftKey) modifiers.push('Shift');
@@ -344,6 +350,12 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
                                 e.stopPropagation();
 
                                 if (e.key === 'Escape') {
+                                    props.setIsRecordingSearch(false);
+                                    return;
+                                }
+
+                                if (e.key === 'Backspace' || e.key === 'Delete') {
+                                    props.updateSearchHotkey('');
                                     props.setIsRecordingSearch(false);
                                     return;
                                 }
@@ -481,6 +493,12 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
                                     e.stopPropagation();
 
                                     if (e.key === 'Escape') {
+                                        props.setIsRecordingSequential(false);
+                                        return;
+                                    }
+
+                                    if (e.key === 'Backspace' || e.key === 'Delete') {
+                                        props.updateSequentialHotkey('');
                                         props.setIsRecordingSequential(false);
                                         return;
                                     }
@@ -695,6 +713,12 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
                                 e.stopPropagation();
 
                                 if (e.key === 'Escape') {
+                                    props.setIsRecording(false);
+                                    return;
+                                }
+
+                                if (e.key === 'Backspace' || e.key === 'Delete') {
+                                    props.updateHotkey('');
                                     props.setIsRecording(false);
                                     return;
                                 }

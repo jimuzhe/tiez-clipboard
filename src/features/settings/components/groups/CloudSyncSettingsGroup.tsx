@@ -209,7 +209,7 @@ const CloudSyncSettingsGroup = ({
                             />
                             <input
                                 className="search-input"
-                                style={{ borderRadius: "4px", padding: "8px", width: "180px" }}
+                                style={{ borderRadius: "4px", padding: "4px 8px", width: "70px", textAlign: "right" }}
                                 value={cloudSyncIntervalSec}
                                 onFocus={() => invoke("focus_clipboard_window").catch(console.error)}
                                 onChange={(e) => setCloudSyncIntervalSec(e.target.value)}
@@ -232,7 +232,7 @@ const CloudSyncSettingsGroup = ({
                             />
                             <input
                                 className="search-input"
-                                style={{ borderRadius: "4px", padding: "8px", width: "180px" }}
+                                style={{ borderRadius: "4px", padding: "4px 8px", width: "70px", textAlign: "right" }}
                                 value={cloudSyncSnapshotIntervalMin}
                                 onFocus={() => invoke("focus_clipboard_window").catch(console.error)}
                                 onChange={(e) => setCloudSyncSnapshotIntervalMin(e.target.value)}
@@ -253,7 +253,7 @@ const CloudSyncSettingsGroup = ({
                         </div>
                         <input
                             className="search-input"
-                            style={{ borderRadius: "4px", padding: "8px", width: "180px" }}
+                            style={{ borderRadius: "4px", padding: "4px 8px", width: "140px" }}
                             value={cloudSyncWebdavUrl}
                             onFocus={() => invoke("focus_clipboard_window").catch(console.error)}
                             onChange={(e) => setCloudSyncWebdavUrl(e.target.value)}
@@ -268,7 +268,7 @@ const CloudSyncSettingsGroup = ({
                         </div>
                         <input
                             className="search-input"
-                            style={{ borderRadius: "4px", padding: "8px", width: "180px" }}
+                            style={{ borderRadius: "4px", padding: "4px 8px", width: "140px" }}
                             value={cloudSyncWebdavUsername}
                             onFocus={() => invoke("focus_clipboard_window").catch(console.error)}
                             onChange={(e) => setCloudSyncWebdavUsername(e.target.value)}
@@ -286,7 +286,7 @@ const CloudSyncSettingsGroup = ({
                         <input
                             className="search-input"
                             type="password"
-                            style={{ borderRadius: "4px", padding: "8px", width: "180px" }}
+                            style={{ borderRadius: "4px", padding: "4px 8px", width: "140px" }}
                             value={cloudSyncWebdavPassword}
                             onFocus={() => invoke("focus_clipboard_window").catch(console.error)}
                             onChange={(e) => setCloudSyncWebdavPassword(e.target.value)}
@@ -303,7 +303,7 @@ const CloudSyncSettingsGroup = ({
                         />
                         <input
                             className="search-input"
-                            style={{ borderRadius: "4px", padding: "8px", width: "180px" }}
+                            style={{ borderRadius: "4px", padding: "4px 8px", width: "140px" }}
                             value={cloudSyncWebdavBasePath}
                             onFocus={() => invoke("focus_clipboard_window").catch(console.error)}
                             onChange={(e) => setCloudSyncWebdavBasePath(e.target.value)}

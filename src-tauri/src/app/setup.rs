@@ -713,7 +713,7 @@ fn start_edge_docking_monitor(app_handle: AppHandle) {
 
             let cursor = match window.cursor_position() {
                 Ok(c) => c,
-                Err(_) => continue,
+                Err(_) => tauri::PhysicalPosition::new(-9999.0, -9999.0),
             };
             let cursor_x = cursor.x.round() as i32;
             let cursor_y = cursor.y.round() as i32;
