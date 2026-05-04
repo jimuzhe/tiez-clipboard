@@ -568,8 +568,51 @@ fn start_services(app: &App, s: &StartupSettings, app_handle: AppHandle) {
 #[cfg(target_os = "macos")]
 fn start_edge_docking_monitor(app_handle: AppHandle) {
     std::thread::spawn(move || {
+        // On the first iteration, detect if the window-state plugin restored
+        // the window to a screen edge and set IS_HIDDEN / CURRENT_DOCK so
+        // that hover-to-show works immediately without manual re-docking.
+        let mut startup_checked = false;
         loop {
             std::thread::sleep(std::time::Duration::from_millis(150));
+
+            if !startup_checked {
+                startup_checked = true;
+                if let Some(settings) = app_handle.try_state::<SettingsState>() {
+                    if settings.edge_docking.load(Ordering::Relaxed) {
+                        if let Some(window) = app_handle.get_webview_window("main") {
+                            if let (Ok(pos), Ok(size), Ok(Some(monitor))) = (
+                                window.outer_position().or_else(|_| window.inner_position()),
+                                window.outer_size().or_else(|_| window.inner_size()),
+                                window.current_monitor(),
+                            ) {
+                                let sp = monitor.position();
+                                let ss = monitor.size();
+                                let screen_left = sp.x;
+                                let screen_top = sp.y;
+                                let screen_right = sp.x + ss.width as i32;
+                                let rect_right = pos.x + size.width as i32;
+
+                                // Check if the restored position is at a screen edge
+                                // (window largely off-screen, only a few pixels showing).
+                                let detected_dock = if pos.y < screen_top {
+                                    1 // Top
+                                } else if pos.x < screen_left {
+                                    2 // Left
+                                } else if rect_right > screen_right {
+                                    3 // Right
+                                } else {
+                                    0
+                                };
+
+                                if detected_dock != 0 {
+                                    CURRENT_DOCK.store(detected_dock, Ordering::Relaxed);
+                                    IS_HIDDEN.store(true, Ordering::Relaxed);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
 
             let settings = match app_handle.try_state::<SettingsState>() {
                 Some(s) => s,

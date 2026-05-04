@@ -9,6 +9,7 @@ import {
     supportsSurfaceOpacity
 } from "../../../../shared/config/themes";
 import type { Locale } from "../../../../shared/types";
+import type { SettingsSubpage } from "../../../app/types";
 
 interface LabelWithHintProps {
     label: string;
@@ -43,6 +44,7 @@ interface AppearanceSettingsGroupProps {
     surfaceOpacity: number;
     setSurfaceOpacity: (val: number) => void;
     saveAppSetting: (key: string, val: string) => void;
+    setSettingsSubpage: (val: SettingsSubpage) => void;
 }
 
 const clampProgress = (value: number, min: number, max: number) => {
@@ -85,7 +87,8 @@ const AppearanceSettingsGroup = ({
     setCustomBackgroundOpacity,
     surfaceOpacity,
     setSurfaceOpacity,
-    saveAppSetting
+    saveAppSetting,
+    setSettingsSubpage
 }: AppearanceSettingsGroupProps) => {
     const showCustomBackgroundControls = supportsCustomBackground(theme);
     const showSurfaceOpacityControls = supportsSurfaceOpacity(theme);
@@ -118,6 +121,16 @@ const AppearanceSettingsGroup = ({
                                 </span>
                             </button>
                         ))}
+                        <button
+                            onClick={() => setSettingsSubpage("theme-store")}
+                            className="btn-icon theme-choice-btn"
+                            type="button"
+                            style={{ gridColumn: "span 3", fontSize: "11px", opacity: 0.85 }}
+                        >
+                            <span className="theme-choice-title">
+                                {t("theme_store") || "🎨 主题商店"}
+                            </span>
+                        </button>
                     </div>
                 </div>
 

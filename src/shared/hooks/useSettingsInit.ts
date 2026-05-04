@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { DEFAULT_THEME, normalizeThemeId } from "../config/themes";
+import { DEFAULT_THEME, normalizeThemeId, isStoreTheme } from "../config/themes";
 import type { Locale } from "../types";
 import { isTauriRuntime } from "../lib/tauriRuntime";
+import { fetchAndCacheStoreTheme, injectStoreThemeCSS } from "../../features/theme-store/hooks/useThemeApply";
 
 interface UseSettingsInitOptions {
   setAppSettings: (settings: Record<string, string>) => void;
@@ -50,6 +51,18 @@ export const useSettingsInit = ({
           const loadedTheme = normalizeThemeId(result["app.theme"] || DEFAULT_THEME);
           const loadedColorMode = result["app.color_mode"] || "system";
           console.log("[THEME DEBUG] loadedColorMode:", loadedColorMode);
+
+          // If store theme, inject cached CSS before applying class
+          if (isStoreTheme(loadedTheme)) {
+            const cached = localStorage.getItem(`tiez_store_css_${loadedTheme}`);
+            if (cached) {
+              injectStoreThemeCSS(loadedTheme, cached);
+            }
+            // Re-fetch in background to update cache
+            fetchAndCacheStoreTheme(loadedTheme).then((css) => {
+              if (css) injectStoreThemeCSS(loadedTheme, css);
+            }).catch(() => {});
+          }
 
           setTheme(loadedTheme);
           setColorMode(loadedColorMode);

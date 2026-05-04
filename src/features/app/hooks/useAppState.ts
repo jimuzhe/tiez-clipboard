@@ -5,7 +5,8 @@ import type {
   AppState,
   DefaultAppsMap,
   InstalledAppOption,
-  QuickPasteModifier
+  QuickPasteModifier,
+  SettingsSubpage
 } from "../types";
 import type { AiProfile, AppCleanupPolicy } from "../../settings/types";
 
@@ -13,7 +14,7 @@ const DEFAULT_AI_KEY = import.meta.env.VITE_AI_DEFAULT_API_KEY ?? "";
 
 export const useAppState = (): AppState => {
   const [showSettings, setShowSettings] = useState(false);
-  const [settingsSubpage, setSettingsSubpage] = useState<"home" | "advanced">("home");
+  const [settingsSubpage, setSettingsSubpage] = useState<SettingsSubpage>("home");
   const [showTagManager, setShowTagManager] = useState(false);
   const [tagManagerEnabled, setTagManagerEnabled] = useState(true);
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({

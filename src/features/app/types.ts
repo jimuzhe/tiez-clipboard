@@ -7,7 +7,7 @@ export type StateSetter<T> = Dispatch<SetStateAction<T>>;
 export type InstalledAppOption = { label: string; value: string };
 export type DefaultAppsMap = Record<string, string>;
 export type QuickPasteModifier = "disabled" | "ctrl" | "alt" | "shift" | "win";
-export type SettingsSubpage = "home" | "advanced";
+export type SettingsSubpage = "home" | "advanced" | "theme-store";
 
 export interface AppState {
   showSettings: boolean;
