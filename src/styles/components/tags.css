@@ -12,6 +12,9 @@
     opacity: 1 !important;
     pointer-events: auto !important;
     min-height: 50px !important;
+    max-height: min(280px, 50vh);
+    overflow-y: auto;
+    overflow-x: hidden;
     width: 100%;
     margin-top: 4px;
     padding: 10px 10px 12px;
@@ -21,6 +24,7 @@
     box-shadow: var(--tags-shadow);
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
+    box-sizing: border-box;
 }
 
 .tags-label {
@@ -63,6 +67,108 @@
 .tag-chip:active {
     transform: var(--tag-chip-active-transform);
     box-shadow: var(--tag-chip-active-shadow);
+}
+
+/* Inline tag editor: input + floating suggestion list (same column width) */
+.tag-edit-anchor {
+    position: relative;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: stretch;
+    vertical-align: middle;
+    width: min(128px, 40vw);
+    min-width: 88px;
+    box-sizing: border-box;
+}
+
+.tag-edit-input-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.tag-edit-input-row .tag-input {
+    flex: 1 1 0;
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+}
+
+.tag-edit-input-row .btn-icon {
+    flex-shrink: 0;
+}
+
+.tag-edit-suggestions-popover {
+    position: absolute;
+    left: 0;
+    right: 0;
+    width: 100%;
+    top: calc(100% + 5px);
+    bottom: auto;
+    max-height: min(11rem, 38vh);
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 3px;
+    border-radius: 8px;
+    background: var(--bg-element);
+    border: var(--tags-border);
+    box-shadow: var(--tags-shadow);
+    z-index: 10060;
+    box-sizing: border-box;
+}
+
+.tag-suggest-item {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    margin: 0;
+    padding: 2px 4px;
+    border: none;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--text-primary);
+    font-size: 10px;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+    line-height: 1.2;
+    min-height: 0;
+}
+
+.tag-suggest-pill {
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 9px;
+    font-weight: 700;
+    line-height: 1.25;
+    vertical-align: middle;
+}
+
+.tag-suggest-item:hover {
+    background: var(--bg-hover, rgba(128, 128, 128, 0.14));
+}
+
+.tag-suggest-item--active,
+.tag-suggest-item--active:hover {
+    background: var(--accent-soft, rgba(128, 128, 128, 0.2));
+}
+
+.tag-suggest-item:focus-visible {
+    outline: 2px solid var(--accent-color, #3b82f6);
+    outline-offset: -1px;
+}
+
+.history-item:has(.item-tags-container.tag-edit-active) {
+    z-index: 48;
 }
 
 .hide-scrollbar::-webkit-scrollbar {

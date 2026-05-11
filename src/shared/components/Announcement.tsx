@@ -24,7 +24,10 @@ export const AnnouncementSystem: React.FC<AnnouncementProps> = ({ announcements,
     }, [announcements, activeIndex]);
 
     // Calculate cycle interval based on current announcement text length
-    const currentAnnouncement = announcements[activeIndex];
+    const currentAnnouncement =
+        announcements.length === 0
+            ? undefined
+            : announcements[Math.min(Math.max(0, activeIndex), announcements.length - 1)];
     const textLength = currentAnnouncement
         ? (currentAnnouncement.title + currentAnnouncement.message + (currentAnnouncement.linkText || '')).length
         : 0;
@@ -49,9 +52,11 @@ export const AnnouncementSystem: React.FC<AnnouncementProps> = ({ announcements,
         };
     }, [announcements.length, isPaused, cycleInterval]);
 
-    const current = announcements[activeIndex];
-
     if (announcements.length === 0) return null;
+
+    const safeIndex = Math.min(Math.max(0, activeIndex), announcements.length - 1);
+    const current = announcements[safeIndex];
+    if (!current) return null;
 
     return (
         <div 
@@ -79,8 +84,8 @@ export const AnnouncementSystem: React.FC<AnnouncementProps> = ({ announcements,
             </div>
 
             {announcements.length > 1 && (
-                <div className="ticker-count" title={`${activeIndex + 1}/${announcements.length}`}>
-                    {activeIndex + 1}/{announcements.length}
+                <div className="ticker-count" title={`${safeIndex + 1}/${announcements.length}`}>
+                    {safeIndex + 1}/{announcements.length}
                 </div>
             )}
             

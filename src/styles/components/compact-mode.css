@@ -121,6 +121,13 @@
     overflow: hidden;
 }
 
+/* Allow tag suggestion popover to extend outside the tag strip while editing */
+.history-item.compact .item-tags-container.tag-edit-active {
+    overflow: visible;
+    z-index: 60;
+    opacity: 1;
+}
+
 /* Larger tags styling for better readability */
 .history-item.compact .item-tags-container .tag-chip {
     font-size: var(--clipboard-tag-font-size) !important;

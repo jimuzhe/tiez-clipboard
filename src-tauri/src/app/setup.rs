@@ -566,6 +566,67 @@ fn start_services(app: &App, s: &StartupSettings, app_handle: AppHandle) {
 }
 
 #[cfg(target_os = "macos")]
+fn visibility_ratio_on_monitor(
+    rect_left: i32,
+    rect_top: i32,
+    rect_right: i32,
+    rect_bottom: i32,
+    screen_left: i32,
+    screen_top: i32,
+    screen_right: i32,
+    screen_bottom: i32,
+) -> f64 {
+    let vis_left = rect_left.max(screen_left);
+    let vis_top = rect_top.max(screen_top);
+    let vis_right = rect_right.min(screen_right);
+    let vis_bottom = rect_bottom.min(screen_bottom);
+    let iw = (vis_right.saturating_sub(vis_left)).max(0) as u64;
+    let ih = (vis_bottom.saturating_sub(vis_top)).max(0) as u64;
+    let visible_area = iw.saturating_mul(ih);
+    let ww = (rect_right.saturating_sub(rect_left)).max(1) as u64;
+    let wh = (rect_bottom.saturating_sub(rect_top)).max(1) as u64;
+    let total_area = ww.saturating_mul(wh).max(1);
+    visible_area as f64 / total_area as f64
+}
+
+/// Drop stale edge-hide state when it disagrees with real geometry (resume, monitor layout, startup restore).
+#[cfg(target_os = "macos")]
+fn reconcile_stale_edge_hide(
+    rect_left: i32,
+    rect_top: i32,
+    rect_right: i32,
+    rect_bottom: i32,
+    screen_left: i32,
+    screen_top: i32,
+    screen_right: i32,
+    screen_bottom: i32,
+) {
+    if !IS_HIDDEN.load(Ordering::Relaxed) {
+        return;
+    }
+    let dock = CURRENT_DOCK.load(Ordering::Relaxed);
+    if dock == 0 {
+        IS_HIDDEN.store(false, Ordering::Relaxed);
+        return;
+    }
+    let ratio = visibility_ratio_on_monitor(
+        rect_left,
+        rect_top,
+        rect_right,
+        rect_bottom,
+        screen_left,
+        screen_top,
+        screen_right,
+        screen_bottom,
+    );
+    // Truly tucked windows expose only a thin strip (~1–5% area). Much more visible ⇒ flags are stale.
+    if ratio > 0.18 {
+        IS_HIDDEN.store(false, Ordering::Relaxed);
+        CURRENT_DOCK.store(0, Ordering::Relaxed);
+    }
+}
+
+#[cfg(target_os = "macos")]
 fn start_edge_docking_monitor(app_handle: AppHandle) {
     std::thread::spawn(move || {
         // On the first iteration, detect if the window-state plugin restored
@@ -671,6 +732,42 @@ fn start_edge_docking_monitor(app_handle: AppHandle) {
                 continue;
             }
 
+            let pos = match window.outer_position().or_else(|_| window.inner_position()) {
+                Ok(p) => p,
+                Err(_) => continue,
+            };
+            let size = match window.outer_size().or_else(|_| window.inner_size()) {
+                Ok(s) => s,
+                Err(_) => continue,
+            };
+
+            let rect_left = pos.x;
+            let rect_top = pos.y;
+            let rect_right = pos.x.saturating_add(size.width as i32);
+            let rect_bottom = pos.y.saturating_add(size.height as i32);
+
+            let monitor = match window.current_monitor() {
+                Ok(Some(m)) => m,
+                _ => continue,
+            };
+            let screen_size = monitor.size();
+            let screen_pos = monitor.position();
+            let screen_left = screen_pos.x;
+            let screen_top = screen_pos.y;
+            let screen_right = screen_pos.x + screen_size.width as i32;
+            let screen_bottom = screen_pos.y + screen_size.height as i32;
+
+            reconcile_stale_edge_hide(
+                rect_left,
+                rect_top,
+                rect_right,
+                rect_bottom,
+                screen_left,
+                screen_top,
+                screen_right,
+                screen_bottom,
+            );
+
             let is_window_visible = window.is_visible().unwrap_or(true);
             let is_hidden_by_edge = IS_HIDDEN.load(Ordering::Relaxed);
 
@@ -697,37 +794,12 @@ fn start_edge_docking_monitor(app_handle: AppHandle) {
                 continue;
             }
 
-            let pos = match window.outer_position().or_else(|_| window.inner_position()) {
-                Ok(p) => p,
-                Err(_) => continue,
-            };
-            let size = match window.outer_size().or_else(|_| window.inner_size()) {
-                Ok(s) => s,
-                Err(_) => continue,
-            };
-
-            let rect_left = pos.x;
-            let rect_top = pos.y;
-            let rect_right = pos.x.saturating_add(size.width as i32);
-            let rect_bottom = pos.y.saturating_add(size.height as i32);
-
             let cursor = match window.cursor_position() {
                 Ok(c) => c,
                 Err(_) => tauri::PhysicalPosition::new(-9999.0, -9999.0),
             };
             let cursor_x = cursor.x.round() as i32;
             let cursor_y = cursor.y.round() as i32;
-
-            let monitor = match window.current_monitor() {
-                Ok(Some(m)) => m,
-                _ => continue,
-            };
-            let screen_size = monitor.size();
-            let screen_pos = monitor.position();
-            let screen_left = screen_pos.x;
-            let screen_top = screen_pos.y;
-            let screen_right = screen_pos.x + screen_size.width as i32;
-            let screen_bottom = screen_pos.y + screen_size.height as i32;
 
             let threshold = 5;
             let is_mouse_near_edge = if is_hidden_by_edge {
@@ -949,6 +1021,8 @@ fn setup_tray(app: &App, hide_tray: bool) {
         .on_menu_event(|app, event| {
             if event.id.as_ref() == "show" {
                 if let Some(window) = app.get_webview_window("main") {
+                    IS_HIDDEN.store(false, Ordering::Relaxed);
+                    CURRENT_DOCK.store(0, Ordering::Relaxed);
                     #[cfg(not(target_os = "windows"))]
                     let _ = window.set_focusable(true);
                     let _ = window.show();
@@ -966,6 +1040,8 @@ fn setup_tray(app: &App, hide_tray: bool) {
             } = event
             {
                 if let Some(window) = tray.app_handle().get_webview_window("main") {
+                    IS_HIDDEN.store(false, Ordering::Relaxed);
+                    CURRENT_DOCK.store(0, Ordering::Relaxed);
                     #[cfg(not(target_os = "windows"))]
                     let _ = window.set_focusable(true);
                     let _ = window.show();
@@ -1121,6 +1197,8 @@ pub fn handle_window_event(window: &tauri::Window, event: &tauri::WindowEvent) {
             api.prevent_close();
             let _ = window.app_handle().emit("force-hide-compact-preview", ());
             let _ = window.hide();
+            IS_HIDDEN.store(false, Ordering::Relaxed);
+            CURRENT_DOCK.store(0, Ordering::Relaxed);
             NAVIGATION_ENABLED.store(false, Ordering::SeqCst);
             NAVIGATION_MODE_ACTIVE.store(false, Ordering::SeqCst);
         }

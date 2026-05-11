@@ -15,6 +15,8 @@ export interface ClipboardItemProps {
   isRevealed: boolean;
   isEditingTags: boolean;
   tagInput: string;
+  /** Tags used elsewhere in history; shown as quick-pick when editing tags */
+  tagSuggestions?: string[];
   theme: string;
   language: Locale;
   t: (key: string) => string;
@@ -38,6 +40,10 @@ export interface ClipboardItemProps {
   onToggleTagEditor: (e: MouseEvent) => void;
   onTagInput: (val: string) => void;
   onTagAdd: () => void;
+  /** Pick an existing tag from the suggestion list (typically closes editor after add) */
+  onTagPick?: (tag: string) => void;
+  /** Close tag editor without adding (e.g. Escape) */
+  onTagEditCancel?: () => void;
   onTagDelete: (tag: string) => void;
   onAIAction?: (type: string) => void;
   onAIOptionsToggle?: () => void;

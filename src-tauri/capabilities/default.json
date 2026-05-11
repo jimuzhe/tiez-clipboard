@@ -41,6 +41,7 @@
     "window-state:default",
     "process:allow-restart",
     "updater:allow-check",
-    "updater:allow-download-and-install"
+    "updater:allow-download-and-install",
+    "notification:default"
   ]
 }

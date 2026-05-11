@@ -1,4 +1,6 @@
 import { useCallback } from "react";
+
+const EMPTY_TAG_SUGGESTIONS: string[] = [];
 import type { Dispatch, SetStateAction, MouseEvent, ReactNode } from "react";
 import type { DragControls } from "framer-motion";
 import ClipboardItem from "../../features/clipboard/components/ClipboardItem";
@@ -14,6 +16,7 @@ interface UseClipboardItemRendererOptions {
   isWindowPinned: boolean;
   editingTagsId: number | null;
   tagInput: string;
+  allTags: string[];
   tagColors: Record<string, string>;
   theme: string;
   language: Locale;
@@ -63,6 +66,7 @@ export const useClipboardItemRenderer = ({
   isWindowPinned,
   editingTagsId,
   tagInput,
+  allTags,
   tagColors,
   theme,
   language,
@@ -110,6 +114,7 @@ export const useClipboardItemRenderer = ({
           isRevealed={revealedIds.has(item.id)}
           isEditingTags={isEditingTags}
           tagInput={isEditingTags ? tagInput : ""}
+          tagSuggestions={isEditingTags ? allTags : EMPTY_TAG_SUGGESTIONS}
           tagColors={tagColors}
           theme={theme}
           language={language}
@@ -158,6 +163,17 @@ export const useClipboardItemRenderer = ({
             setTagInput("");
             setEditingTagsId(null);
           }}
+          onTagPick={(picked) => {
+            const next = picked.trim();
+            if (!next || item.tags?.includes(next)) return;
+            handleUpdateTags(item.id, [...(item.tags || []), next]);
+            setTagInput("");
+            setEditingTagsId(null);
+          }}
+          onTagEditCancel={() => {
+            setTagInput("");
+            setEditingTagsId(null);
+          }}
           onTagDelete={(tag) => {
             handleUpdateTags(item.id, item.tags ? item.tags.filter((t) => t !== tag) : []);
           }}
@@ -188,6 +204,7 @@ export const useClipboardItemRenderer = ({
       isWindowPinned,
       editingTagsId,
       tagInput,
+      allTags,
       tagColors,
       theme,
       language,

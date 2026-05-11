@@ -48,6 +48,9 @@ import { useAutoUpdate } from "./shared/hooks/useAutoUpdate";
 import UpdateDialog from "./shared/components/UpdateDialog";
 import type { ClipboardEntry } from "./shared/types";
 import type { QuickPasteHint, VirtualClipboardListHandle } from "./features/clipboard/types";
+
+/** Must match privacy blur checks in `useClipboardItemRenderer` / `ClipboardItem`. */
+const BUILTIN_SENSITIVE_TAG_NAMES = ["sensitive", "密码", "password"] as const;
 import type { QuickPasteModifier } from "./features/app/types";
 import {
   forceHideCompactPreviewWindow,
@@ -480,17 +483,19 @@ const App = () => {
     [hotkey]
   );
 
-  // Compute all tags when tag manager is open OR when search box is focused
+  // Compute all tags when tag manager / tag filter is open, or while editing an item's tags (quick-pick list)
   const allTags = useMemo(() => {
-    if (!effectiveShowTagManager && !showTagFilter) return [];
+    if (!effectiveShowTagManager && !showTagFilter && editingTagsId === null) return [];
 
     const set = new Set<string>();
-    // Scan history for all unique tags  
-    history.forEach(item => {
-      (item.tags || []).forEach(tag => set.add(tag));
+    for (const tag of BUILTIN_SENSITIVE_TAG_NAMES) {
+      set.add(tag);
+    }
+    history.forEach((item) => {
+      (item.tags || []).forEach((tag) => set.add(tag));
     });
     return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [history, effectiveShowTagManager, showTagFilter]);
+  }, [history, effectiveShowTagManager, showTagFilter, editingTagsId]);
 
   useEffect(() => {
     const handleKeydown = (event: KeyboardEvent) => {
@@ -960,6 +965,7 @@ const App = () => {
     isWindowPinned,
     editingTagsId,
     tagInput,
+    allTags,
     tagColors,
     theme,
     language,

@@ -166,6 +166,8 @@ pub fn toggle_window_cmd(app_handle: AppHandle) -> Result<(), String> {
 #[tauri::command]
 pub fn focus_clipboard_window(app_handle: AppHandle) -> Result<(), String> {
     if let Some(window) = app_handle.get_webview_window("main") {
+        IS_HIDDEN.store(false, Ordering::Relaxed);
+        CURRENT_DOCK.store(0, Ordering::Relaxed);
         #[cfg(not(target_os = "windows"))]
         let _ = window.set_focusable(true);
         let _ = window.show();
