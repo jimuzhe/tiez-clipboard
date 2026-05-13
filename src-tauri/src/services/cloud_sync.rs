@@ -87,6 +87,48 @@ pub struct CloudSyncStatus {
     pub received_items: usize,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct CloudSyncContentPrefs {
+    #[serde(default = "default_cloud_sync_pref_true")]
+    text: bool,
+    #[serde(default = "default_cloud_sync_pref_true")]
+    image: bool,
+    #[serde(rename = "file_path", default = "default_cloud_sync_pref_true")]
+    file_path: bool,
+    #[serde(default = "default_cloud_sync_pref_true")]
+    emoji: bool,
+}
+
+const fn default_cloud_sync_pref_true() -> bool {
+    true
+}
+
+impl Default for CloudSyncContentPrefs {
+    fn default() -> Self {
+        Self {
+            text: true,
+            image: true,
+            file_path: true,
+            emoji: true,
+        }
+    }
+}
+
+impl CloudSyncContentPrefs {
+    fn includes_content_type(&self, content_type: &str) -> bool {
+        if !is_cloud_clipboard_content_type(content_type) {
+            return false;
+        }
+        match content_type {
+            "image" => self.image,
+            "file" | "video" => self.file_path,
+            "emoji_sync" => self.emoji,
+            "text" | "code" | "url" | "rich_text" => self.text,
+            _ => false,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 struct CloudSyncConfig {
     enabled: bool,
@@ -102,6 +144,7 @@ struct CloudSyncConfig {
     webdav_username: String,
     webdav_password: String,
     webdav_base_path: String,
+    content_prefs: CloudSyncContentPrefs,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -420,6 +463,14 @@ fn get_config(app: &AppHandle) -> Option<CloudSyncConfig> {
             .unwrap_or_else(|| DEFAULT_WEBDAV_BASE_PATH.to_string()),
     );
 
+    let content_prefs = db_state
+        .settings_repo
+        .get("cloud_sync_content_prefs")
+        .ok()
+        .flatten()
+        .map(|raw| serde_json::from_str::<CloudSyncContentPrefs>(&raw).unwrap_or_default())
+        .unwrap_or_default();
+
     Some(CloudSyncConfig {
         enabled,
         auto_sync,
@@ -442,13 +493,14 @@ fn get_config(app: &AppHandle) -> Option<CloudSyncConfig> {
             webdav_password
         },
         webdav_base_path,
+        content_prefs,
     })
 }
 
-fn is_syncable_content_type(content_type: &str) -> bool {
+fn is_cloud_clipboard_content_type(content_type: &str) -> bool {
     matches!(
         content_type,
-        "text" | "code" | "url" | "rich_text" | "image" | "emoji_sync"
+        "text" | "code" | "url" | "rich_text" | "image" | "file" | "video" | "emoji_sync"
     )
 }
 
@@ -473,6 +525,7 @@ fn is_setting_sync_eligible(key: &str) -> bool {
             | "cloud_sync_webdav_username"
             | "cloud_sync_webdav_password"
             | "cloud_sync_webdav_base_path"
+            | "cloud_sync_content_prefs"
             | "cloud_sync_webdav_local_seq"
             | "cloud_sync_webdav_op_cursor_map"
             | "cloud_sync_webdav_blob_cache"
@@ -729,7 +782,9 @@ fn normalize_item_for_sync(mut item: CloudSyncItem) -> Option<CloudSyncItem> {
 fn compute_sync_content_hash(content_type: &str, content: &str) -> i64 {
     match content_type {
         "image" => crate::database::calc_image_hash(content).unwrap_or(0),
-        "text" | "code" | "url" | "rich_text" => crate::database::calc_text_hash(content) as i64,
+        "text" | "code" | "url" | "rich_text" | "file" | "video" => {
+            crate::database::calc_text_hash(content) as i64
+        }
         _ => 0,
     }
 }
@@ -1065,7 +1120,10 @@ fn get_app_data_dir(app: &AppHandle) -> Option<std::path::PathBuf> {
     Some(guard.clone())
 }
 
-fn collect_local_syncable_items(app: &AppHandle) -> AppResult<Vec<CloudSyncItem>> {
+fn collect_local_syncable_items(
+    app: &AppHandle,
+    prefs: &CloudSyncContentPrefs,
+) -> AppResult<Vec<CloudSyncItem>> {
     let db_state = app
         .try_state::<DbState>()
         .ok_or_else(|| AppError::Internal("DB state unavailable".to_string()))?;
@@ -1084,11 +1142,10 @@ fn collect_local_syncable_items(app: &AppHandle) -> AppResult<Vec<CloudSyncItem>
         }
 
         let fetched = batch.len() as i32;
-        entries.extend(
-            batch
-                .into_iter()
-                .filter(|e| is_syncable_content_type(&e.content_type)),
-        );
+        entries.extend(batch.into_iter().filter(|e| {
+            is_cloud_clipboard_content_type(&e.content_type)
+                && prefs.includes_content_type(&e.content_type)
+        }));
         offset = offset.saturating_add(fetched);
         if fetched < SYNC_FETCH_PAGE_SIZE {
             break;
@@ -1120,19 +1177,26 @@ fn collect_local_syncable_items(app: &AppHandle) -> AppResult<Vec<CloudSyncItem>
         })
         .collect();
 
-    let mut tombstones = collect_local_tombstones(app)?;
+    let mut tombstones = collect_local_tombstones(app, prefs)?;
     items.append(&mut tombstones);
     items.sort_by_key(|e| e.timestamp);
     Ok(items)
 }
 
-fn collect_local_changes(app: &AppHandle, cursor: i64) -> AppResult<Vec<CloudSyncItem>> {
-    let mut items = collect_local_syncable_items(app)?;
+fn collect_local_changes(
+    app: &AppHandle,
+    cursor: i64,
+    prefs: &CloudSyncContentPrefs,
+) -> AppResult<Vec<CloudSyncItem>> {
+    let mut items = collect_local_syncable_items(app, prefs)?;
     items.retain(|e| e.timestamp > cursor);
     Ok(items)
 }
 
-fn collect_local_tombstones(app: &AppHandle) -> AppResult<Vec<CloudSyncItem>> {
+fn collect_local_tombstones(
+    app: &AppHandle,
+    prefs: &CloudSyncContentPrefs,
+) -> AppResult<Vec<CloudSyncItem>> {
     let db_state = app
         .try_state::<DbState>()
         .ok_or_else(|| AppError::Internal("DB state unavailable".to_string()))?;
@@ -1173,6 +1237,10 @@ fn collect_local_tombstones(app: &AppHandle) -> AppResult<Vec<CloudSyncItem>> {
     for row in rows {
         items.push(row.map_err(|e| AppError::Internal(e.to_string()))?);
     }
+    items.retain(|item| {
+        is_cloud_clipboard_content_type(&item.content_type)
+            && prefs.includes_content_type(&item.content_type)
+    });
     Ok(items)
 }
 
@@ -1292,7 +1360,11 @@ fn update_existing_entry_from_sync(
     Ok(changed)
 }
 
-fn apply_remote_changes(app: &AppHandle, remote_items: &[CloudSyncItem]) -> AppResult<usize> {
+fn apply_remote_changes(
+    app: &AppHandle,
+    remote_items: &[CloudSyncItem],
+    prefs: &CloudSyncContentPrefs,
+) -> AppResult<usize> {
     if remote_items.is_empty() {
         return Ok(0);
     }
@@ -1304,6 +1376,9 @@ fn apply_remote_changes(app: &AppHandle, remote_items: &[CloudSyncItem]) -> AppR
     let app_data_dir = get_app_data_dir(app);
     for item in remote_items {
         if item.content_type == "emoji_sync" {
+            if !prefs.emoji {
+                continue;
+            }
             if let Err(e) = merge_remote_emojis(app, &item.content) {
                 println!("Error merging remote emojis: {}", e);
             }
@@ -1311,7 +1386,10 @@ fn apply_remote_changes(app: &AppHandle, remote_items: &[CloudSyncItem]) -> AppR
             continue;
         }
 
-        if !is_syncable_content_type(&item.content_type) {
+        if !is_cloud_clipboard_content_type(&item.content_type) {
+            continue;
+        }
+        if !prefs.includes_content_type(&item.content_type) {
             continue;
         }
 
@@ -2518,7 +2596,7 @@ async fn pull_remote_webdav_ops_from_head(
                 Some(mut batch) if batch.device_id == op_ref.device_id => {
                     enrich_item_blobs_after_pull(app, client, cfg, blobs_path, &mut batch.entries)
                         .await?;
-                    received += apply_remote_changes(app, &batch.entries)?;
+                    received += apply_remote_changes(app, &batch.entries, &cfg.content_prefs)?;
                     last_seq = last_seq.max(batch.seq).max(seq);
                     cursor_map.insert(device_id.clone(), last_seq);
                 }
@@ -2573,7 +2651,7 @@ async fn pull_remote_webdav_snapshots_from_head(
     }
 
     remote_items.sort_by_key(|item| item.timestamp);
-    apply_remote_changes(app, &remote_items)
+    apply_remote_changes(app, &remote_items, &cfg.content_prefs)
 }
 
 async fn pull_remote_settings_snapshot_from_head(
@@ -2723,7 +2801,7 @@ async fn pull_remote_webdav_ops(
                 break;
             }
             enrich_item_blobs_after_pull(app, client, cfg, blobs_path, &mut batch.entries).await?;
-            received += apply_remote_changes(app, &batch.entries)?;
+            received += apply_remote_changes(app, &batch.entries, &cfg.content_prefs)?;
             let next_seq = batch.seq.max(op_ref.seq).max(last_seq);
             cursor_map.insert(op_ref.device_id.clone(), next_seq);
         }
@@ -2733,7 +2811,7 @@ async fn pull_remote_webdav_ops(
 }
 
 async fn sync_once_http(app: &AppHandle, cfg: &CloudSyncConfig) -> AppResult<CloudSyncStatus> {
-    let local_items = collect_local_changes(app, cfg.cursor)?;
+    let local_items = collect_local_changes(app, cfg.cursor, &cfg.content_prefs)?;
     let endpoint = format!(
         "{}/api/v1/clipboard/sync",
         cfg.base_url.trim_end_matches('/')
@@ -2768,7 +2846,7 @@ async fn sync_once_http(app: &AppHandle, cfg: &CloudSyncConfig) -> AppResult<Clo
         .await
         .map_err(|e| AppError::Network(e.to_string()))?;
 
-    let received = apply_remote_changes(app, &body.entries)?;
+    let received = apply_remote_changes(app, &body.entries, &cfg.content_prefs)?;
     if received > 0 {
         let _ = app.emit("clipboard-changed", ());
     }
@@ -2816,7 +2894,7 @@ async fn sync_once_webdav(
         return Ok(disabled_status());
     }
     let now = now_ms();
-    let local_items = collect_local_syncable_items(app)?;
+    let local_items = collect_local_syncable_items(app, &cfg.content_prefs)?;
     let (delta_items, collapsed_index) = collect_local_incremental_items(app, &local_items)?;
     let client = build_http_client()?;
     let paths = ensure_webdav_directories(&client, cfg).await?;
@@ -3266,6 +3344,18 @@ fn check_and_create_emoji_sync_op(app: &AppHandle) -> AppResult<Option<CloudSync
     let db_state = app
         .try_state::<DbState>()
         .ok_or_else(|| AppError::Internal("DB unavailable".to_string()))?;
+
+    let emoji_prefs = db_state
+        .settings_repo
+        .get("cloud_sync_content_prefs")
+        .ok()
+        .flatten()
+        .map(|raw| serde_json::from_str::<CloudSyncContentPrefs>(&raw).unwrap_or_default())
+        .unwrap_or_default();
+    if !emoji_prefs.emoji {
+        return Ok(None);
+    }
+
     let emoji_json = db_state
         .settings_repo
         .get(EMOJI_FAVORITES_SETTING_KEY)

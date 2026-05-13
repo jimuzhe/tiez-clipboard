@@ -2,7 +2,8 @@ import { useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { MutableRefObject } from "react";
 import type { AiProfile, AppCleanupPolicy } from "../../features/settings/types";
-import type { QuickPasteModifier } from "../../features/app/types";
+import type { QuickPasteModifier, CloudSyncContentPrefs } from "../../features/app/types";
+import { DEFAULT_CLOUD_SYNC_CONTENT_PREFS } from "../../features/app/types";
 
 const DEFAULT_AI_KEY = import.meta.env.VITE_AI_DEFAULT_API_KEY ?? "";
 const QUICK_PASTE_MODIFIERS = new Set<QuickPasteModifier>([
@@ -84,6 +85,7 @@ interface UseSettingsPostInitOptions {
   setCloudSyncWebdavUsername: (val: string) => void;
   setCloudSyncWebdavPassword: (val: string) => void;
   setCloudSyncWebdavBasePath: (val: string) => void;
+  setCloudSyncContentPrefs: (val: CloudSyncContentPrefs) => void;
   setFileServerAutoClose: (val: boolean) => void;
   setFileTransferAutoOpen: (val: boolean) => void;
   setFileTransferAutoCopy: (val: boolean) => void;
@@ -165,6 +167,7 @@ export const useSettingsPostInit = ({
   setCloudSyncWebdavUsername,
   setCloudSyncWebdavPassword,
   setCloudSyncWebdavBasePath,
+  setCloudSyncContentPrefs,
   setFileServerAutoClose,
   setFileTransferAutoOpen,
   setFileTransferAutoCopy,
@@ -343,6 +346,23 @@ export const useSettingsPostInit = ({
     setCloudSyncWebdavUsername(settings["cloud_sync_webdav_username"] || "");
     setCloudSyncWebdavPassword(settings["cloud_sync_webdav_password"] || "");
     setCloudSyncWebdavBasePath(settings["cloud_sync_webdav_base_path"] || "tiez-sync");
+
+    try {
+      const raw = settings["cloud_sync_content_prefs"];
+      if (raw !== undefined && String(raw).trim() !== "") {
+        const parsed = JSON.parse(String(raw)) as Record<string, unknown>;
+        setCloudSyncContentPrefs({
+          text: parsed.text !== false,
+          image: parsed.image !== false,
+          file_path: parsed.file_path !== false,
+          emoji: parsed.emoji !== false
+        });
+      } else {
+        setCloudSyncContentPrefs({ ...DEFAULT_CLOUD_SYNC_CONTENT_PREFS });
+      }
+    } catch {
+      setCloudSyncContentPrefs({ ...DEFAULT_CLOUD_SYNC_CONTENT_PREFS });
+    }
     setFileServerAutoClose(settings["file_transfer_auto_close"] === "true");
     setFileTransferAutoOpen(settings["file_transfer_auto_open"] === "true");
     setFileTransferAutoCopy(settings["file_transfer_auto_copy"] === "true");
@@ -482,6 +502,7 @@ export const useSettingsPostInit = ({
     setCloudSyncWebdavUsername,
     setCloudSyncWebdavPassword,
     setCloudSyncWebdavBasePath,
+    setCloudSyncContentPrefs,
     setFileServerAutoClose,
     setFileTransferAutoOpen,
     setFileTransferAutoCopy,

@@ -26,7 +26,7 @@ fn now_ms() -> i64 {
 fn is_syncable_content_type(content_type: &str) -> bool {
     matches!(
         content_type,
-        "text" | "code" | "url" | "rich_text" | "image"
+        "text" | "code" | "url" | "rich_text" | "image" | "file" | "video" | "emoji_sync"
     )
 }
 

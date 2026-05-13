@@ -3,11 +3,13 @@ import { DEFAULT_THEME } from "../../../shared/config/themes";
 import type { ClipboardEntry, Locale } from "../../../shared/types";
 import type {
   AppState,
+  CloudSyncContentPrefs,
   DefaultAppsMap,
   InstalledAppOption,
   QuickPasteModifier,
   SettingsSubpage
 } from "../types";
+import { DEFAULT_CLOUD_SYNC_CONTENT_PREFS } from "../types";
 import type { AiProfile, AppCleanupPolicy } from "../../settings/types";
 
 const DEFAULT_AI_KEY = import.meta.env.VITE_AI_DEFAULT_API_KEY ?? "";
@@ -129,6 +131,8 @@ export const useAppState = (): AppState => {
   const [cloudSyncWebdavUsername, setCloudSyncWebdavUsername] = useState("");
   const [cloudSyncWebdavPassword, setCloudSyncWebdavPassword] = useState("");
   const [cloudSyncWebdavBasePath, setCloudSyncWebdavBasePath] = useState("tiez-sync");
+  const [cloudSyncContentPrefs, setCloudSyncContentPrefs] =
+    useState<CloudSyncContentPrefs>(DEFAULT_CLOUD_SYNC_CONTENT_PREFS);
   const [fileServerEnabled, setFileServerEnabled] = useState(false);
   const [fileServerPort, setFileServerPort] = useState("12345");
   const [localIp, setLocalIp] = useState("");
@@ -372,6 +376,8 @@ export const useAppState = (): AppState => {
     setCloudSyncWebdavPassword,
     cloudSyncWebdavBasePath,
     setCloudSyncWebdavBasePath,
+    cloudSyncContentPrefs,
+    setCloudSyncContentPrefs,
     fileServerEnabled,
     setFileServerEnabled,
     fileServerPort,

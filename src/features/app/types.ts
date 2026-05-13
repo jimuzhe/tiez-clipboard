@@ -9,6 +9,20 @@ export type DefaultAppsMap = Record<string, string>;
 export type QuickPasteModifier = "disabled" | "ctrl" | "alt" | "shift" | "win";
 export type SettingsSubpage = "home" | "advanced" | "theme-store";
 
+export type CloudSyncContentPrefs = {
+  text: boolean;
+  image: boolean;
+  file_path: boolean;
+  emoji: boolean;
+};
+
+export const DEFAULT_CLOUD_SYNC_CONTENT_PREFS: CloudSyncContentPrefs = {
+  text: true,
+  image: true,
+  file_path: true,
+  emoji: true
+};
+
 export interface AppState {
   showSettings: boolean;
   setShowSettings: StateSetter<boolean>;
@@ -207,6 +221,8 @@ export interface AppState {
   setCloudSyncWebdavPassword: StateSetter<string>;
   cloudSyncWebdavBasePath: string;
   setCloudSyncWebdavBasePath: StateSetter<string>;
+  cloudSyncContentPrefs: CloudSyncContentPrefs;
+  setCloudSyncContentPrefs: StateSetter<CloudSyncContentPrefs>;
   fileServerEnabled: boolean;
   setFileServerEnabled: StateSetter<boolean>;
   fileServerPort: string;

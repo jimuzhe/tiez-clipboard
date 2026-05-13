@@ -100,7 +100,8 @@ export const useAppActions = ({
           "cloud_sync_webdav_url",
           "cloud_sync_webdav_username",
           "cloud_sync_webdav_password",
-          "cloud_sync_webdav_base_path"
+          "cloud_sync_webdav_base_path",
+          "cloud_sync_content_prefs"
         ];
         if (key === "cloud_sync_enabled") {
           if (value !== "false") {

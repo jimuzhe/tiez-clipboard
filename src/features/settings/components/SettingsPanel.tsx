@@ -6,7 +6,7 @@ import { getVersion } from "@tauri-apps/api/app";
 import { ChevronRight, HelpCircle } from "lucide-react";
 import { motion } from "framer-motion";
 import type { Locale } from "../../../shared/types";
-import type { DefaultAppsMap, InstalledAppOption, SettingsSubpage } from "../../app/types";
+import type { DefaultAppsMap, InstalledAppOption, SettingsSubpage, CloudSyncContentPrefs } from "../../app/types";
 import type { AiProfile, AiProfileStatusMap, AppCleanupPolicy, EditableAiProfile } from "../types";
 import AppSelectorModal from "./AppSelectorModal";
 // Removed UpdateModal imports
@@ -129,6 +129,8 @@ interface SettingsPanelProps {
     cloudSyncWebdavUsername: string;
     cloudSyncWebdavPassword: string;
     cloudSyncWebdavBasePath: string;
+    cloudSyncContentPrefs: CloudSyncContentPrefs;
+    setCloudSyncContentPrefs: (val: CloudSyncContentPrefs) => void;
 
     fileServerEnabled: boolean;
     fileServerPort: string;
@@ -256,7 +258,7 @@ const SettingsPanel = (props: SettingsPanelProps) => {
         customBackgroundOpacity, setCustomBackgroundOpacity,
         surfaceOpacity, setSurfaceOpacity,
         mqttEnabled, mqttServer, mqttPort, mqttUser, mqttPass, mqttTopic, mqttProtocol, mqttWsPath, mqttNotificationEnabled,
-        cloudSyncEnabled, cloudSyncAuto, cloudSyncIntervalSec, cloudSyncSnapshotIntervalMin, cloudSyncWebdavUrl, cloudSyncWebdavUsername, cloudSyncWebdavPassword, cloudSyncWebdavBasePath,
+        cloudSyncEnabled, cloudSyncAuto, cloudSyncIntervalSec, cloudSyncSnapshotIntervalMin, cloudSyncWebdavUrl, cloudSyncWebdavUsername, cloudSyncWebdavPassword, cloudSyncWebdavBasePath, cloudSyncContentPrefs,
         fileServerEnabled, fileServerPort, localIp, availableIps, setLocalIp, actualPort, fileTransferAutoOpen, showAutoCloseHint, fileServerAutoClose, fileTransferAutoCopy, fileTransferPath,
         installedApps, appSettings, defaultApps, showAppSelector, dataPath,
 
@@ -270,7 +272,7 @@ const SettingsPanel = (props: SettingsPanelProps) => {
         clipboardItemFontSize, setClipboardItemFontSize, clipboardTagFontSize, setClipboardTagFontSize,
         emojiPanelEnabled, setEmojiPanelEnabled, tagManagerEnabled, setTagManagerEnabled,
         setMqttEnabled, saveMqtt, setMqttServer, setMqttPort, setMqttUser, setMqttPass, setMqttTopic, setMqttProtocol, setMqttWsPath, setMqttNotificationEnabled,
-        setCloudSyncEnabled, setCloudSyncAuto, setCloudSyncIntervalSec, setCloudSyncSnapshotIntervalMin, setCloudSyncWebdavUrl, setCloudSyncWebdavUsername, setCloudSyncWebdavPassword, setCloudSyncWebdavBasePath, saveCloudSync,
+        setCloudSyncEnabled, setCloudSyncAuto, setCloudSyncIntervalSec, setCloudSyncSnapshotIntervalMin, setCloudSyncWebdavUrl, setCloudSyncWebdavUsername, setCloudSyncWebdavPassword, setCloudSyncWebdavBasePath, setCloudSyncContentPrefs, saveCloudSync,
         setFileServerEnabled, setFileServerPort, setFileTransferAutoOpen, setShowAutoCloseHint, setFileServerAutoClose, setFileTransferAutoCopy, fetchEffectiveTransferPath,
         setShowAppSelector, handleResetSettings,
         aiEnabled, setAiEnabled, aiTargetLang, setAiTargetLang, aiThinkingBudget, setAiThinkingBudget, saveSetting,
@@ -685,6 +687,8 @@ const SettingsPanel = (props: SettingsPanelProps) => {
                     setCloudSyncWebdavPassword={setCloudSyncWebdavPassword}
                     cloudSyncWebdavBasePath={cloudSyncWebdavBasePath}
                     setCloudSyncWebdavBasePath={setCloudSyncWebdavBasePath}
+                    cloudSyncContentPrefs={cloudSyncContentPrefs}
+                    setCloudSyncContentPrefs={setCloudSyncContentPrefs}
                     saveCloudSync={saveCloudSync}
                     status={cloudSyncStatus}
                     syncingNow={cloudSyncNowRunning}
