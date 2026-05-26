@@ -1521,6 +1521,12 @@ pub fn send_paste_keystroke(method: &str, content: Option<&str>, content_type: O
                 ("wtype", false)   => &["-M", "ctrl", "-k", "v", "-m", "ctrl"],
                 _ => continue,
             };
+            // 如果content不为空，则将content覆盖当前剪切板内容
+            if let Some(text) = content {
+                if let Ok(mut clipboard) = arboard::Clipboard::new() {
+                    let _ = clipboard.set_text(text);
+                }
+            }
             if std::process::Command::new(*tool).args(args).spawn().is_ok() {
                 return;
             }
