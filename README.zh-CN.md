@@ -12,7 +12,7 @@
 
   | STARS | VERSION | LICENSE | PLATFORM |
   | :--- | :--- | :--- | :--- |
-  | [![Stars](https://img.shields.io/github/stars/jimuzhe/tiez-clipboard?label=STARS&style=for-the-badge&color=4CAF50)](https://github.com/jimuzhe/tiez-clipboard/stargazers) | [![Version](https://img.shields.io/github/v/release/jimuzhe/tiez-clipboard?label=VERSION&style=for-the-badge&color=2196F3)](https://github.com/jimuzhe/tiez-clipboard/releases) | [![License](https://img.shields.io/badge/LICENSE-GPL--3.0-FF9800?style=for-the-badge)](https://www.gnu.org/licenses/gpl-3.0) | [![Platform](https://img.shields.io/badge/PLATFORM-WIN%20%2F%20MAC-f44336?style=for-the-badge)](https://github.com/jimuzhe/tiez-clipboard/releases) |
+  | [![Stars](https://img.shields.io/github/stars/jimuzhe/tiez-clipboard?label=STARS&style=for-the-badge&color=4CAF50)](https://github.com/jimuzhe/tiez-clipboard/stargazers) | [![Version](https://img.shields.io/github/v/release/jimuzhe/tiez-clipboard?label=VERSION&style=for-the-badge&color=2196F3)](https://github.com/jimuzhe/tiez-clipboard/releases) | [![License](https://img.shields.io/badge/LICENSE-GPL--3.0-FF9800?style=for-the-badge)](https://www.gnu.org/licenses/gpl-3.0) | [![Platform](https://img.shields.io/badge/PLATFORM-WIN%20%2F%20MAC%20%2F%20LINUX-f44336?style=for-the-badge)](https://github.com/jimuzhe/tiez-clipboard/releases) |
 
   [English](./README.md) | [简体中文](./README.zh-CN.md)
 </div>
@@ -79,9 +79,42 @@
 | :--- | :--- | :--- |
 | **Windows** | Windows 10/11 (x86/x64)<br>*(推荐使用 Win11)* | `.exe` / **`.zip` (便携版)** |
 | **macOS** | Sierra 10.15+ <br>(Apple Silicon / Intel) | `.dmg` |
-| **Linux** | 即将支持 | 敬请期待 |
+| **Linux** | Debian/Ubuntu (x64) | `.deb` / `.AppImage` |
 
 [**前往 Releases 下载最新版本 →**](https://github.com/jimuzhe/tiez-clipboard/releases)
+
+### Linux 安装
+
+#### 方式一：AppImage（适用于所有发行版）
+```bash
+chmod +x TieZ_*.AppImage
+./TieZ_*.AppImage
+```
+
+#### 方式二：Debian/Ubuntu (deb)
+```bash
+sudo dpkg -i TieZ_*.deb
+```
+
+### Linux 卸载
+
+#### 如果通过 AppImage 安装
+直接删除 `.AppImage` 文件即可。如需清理用户数据：
+```bash
+rm ~/.local/share/com.tiez.app -rf
+rm ~/.config/com.tiez.app -rf
+```
+
+#### 如果通过 deb 安装
+```bash
+sudo dpkg -r tie-z
+# 或：sudo apt remove tie-z
+```
+如需清理用户数据：
+```bash
+rm ~/.local/share/com.tiez.app -rf
+rm ~/.config/com.tiez.app -rf
+```
 
 ---
 
