@@ -1504,6 +1504,18 @@ pub fn send_paste_keystroke(method: &str, content: Option<&str>, content_type: O
                 });
         }
 
+        // On Linux, the clipboard is "hosted" by the process that last set it.
+        // If the arboard::Clipboard is dropped before the paste target requests the data,
+        // the X11 window serving the data is destroyed and the paste silently fails.
+        // Keep the clipboard alive for the entire paste sequence.
+        let mut _clipboard_guard: Option<arboard::Clipboard> = None;
+        if let Some(text) = content {
+            if let Ok(mut clipboard) = arboard::Clipboard::new() {
+                let _ = clipboard.set_text(text);
+                _clipboard_guard = Some(clipboard);
+            }
+        }
+
         // On Wayland, native tools first (xdotool only reaches XWayland apps, not native Wayland)
         let tools: &[&str] = if is_wayland {
             &["wtype", "ydotool", "xdotool"]
@@ -1522,9 +1534,14 @@ pub fn send_paste_keystroke(method: &str, content: Option<&str>, content_type: O
                 _ => continue,
             };
             if std::process::Command::new(*tool).args(args).spawn().is_ok() {
+                // Give the paste target time to request clipboard data before
+                // _clipboard_guard is dropped at function exit.
+                std::thread::sleep(std::time::Duration::from_millis(200));
                 return;
             }
         }
+        // Ensure clipboard guard lives until here
+        drop(_clipboard_guard);
         println!("[WARN] No input simulation tool found (install xdotool for X11 or ydotool/wtype for Wayland)");
     }
 }

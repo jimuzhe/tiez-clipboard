@@ -134,7 +134,9 @@
       "icons/icon.ico"
     ],
     "targets": [
-      "nsis"
+      "nsis",
+      "deb",
+      "appimage"
     ],
     "windows": {
       "nsis": {
@@ -149,6 +151,16 @@
         ],
         "displayLanguageSelector": true,
         "startMenuFolder": "TieZ"
+      }
+    },
+    "linux": {
+      "deb": {
+        "depends": [
+          "libgtk-3-0",
+          "libwebkit2gtk-4.1-0",
+          "libayatana-appindicator3-1",
+          "librsvg2-2"
+        ]
       }
     }
   },
