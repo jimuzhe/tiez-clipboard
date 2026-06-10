@@ -84,7 +84,6 @@ pub fn sync_registered_hotkeys(app_handle: &AppHandle) -> AppResult<()> {
     let main_hotkey = settings.main_hotkey.lock().unwrap().clone();
     let sequential_hotkey = settings.sequential_paste_hotkey.lock().unwrap().clone();
     let rich_hotkey = settings.rich_paste_hotkey.lock().unwrap().clone();
-    let search_hotkey = settings.search_hotkey.lock().unwrap().clone();
     let quick_paste_modifier = settings.quick_paste_modifier.lock().unwrap().clone();
 
     if !main_hotkey.is_empty() && !is_win_v_hotkey(&main_hotkey) {
@@ -98,10 +97,6 @@ pub fn sync_registered_hotkeys(app_handle: &AppHandle) -> AppResult<()> {
     }
 
     if let Some(shortcut) = parse_shortcut(&rich_hotkey) {
-        let _ = app_handle.global_shortcut().register(shortcut);
-    }
-
-    if let Some(shortcut) = parse_shortcut(&search_hotkey) {
         let _ = app_handle.global_shortcut().register(shortcut);
     }
 
