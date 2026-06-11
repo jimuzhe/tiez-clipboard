@@ -632,28 +632,20 @@ const App = () => {
     setSettingsLoaded
   });
 
-  useEffect(() => {
-    if (!isTauriRuntime()) return;
-
-    const unlisten = listen("focus-search-input", () => {
-      setShowSettings(false);
-      setShowTagManager(false);
-      setChatMode(false);
-      setShowEmojiPanel(false);
-      setShowSearchBox(true);
-      setSearchIsFocused(true);
-      invoke("activate_window_focus")
-        .catch(console.error)
-        .finally(() => {
-          requestAnimationFrame(() => {
-            searchInputRef.current?.focus();
-          });
+  const focusSearchBox = useCallback(() => {
+    setShowSettings(false);
+    setShowTagManager(false);
+    setChatMode(false);
+    setShowEmojiPanel(false);
+    setShowSearchBox(true);
+    setSearchIsFocused(true);
+    invoke("activate_window_focus")
+      .catch(console.error)
+      .finally(() => {
+        requestAnimationFrame(() => {
+          searchInputRef.current?.focus();
         });
-    });
-
-    return () => {
-      unlisten.then((off) => off());
-    };
+      });
   }, [
     setShowSettings,
     setShowTagManager,
@@ -663,6 +655,21 @@ const App = () => {
     setSearchIsFocused,
     searchInputRef
   ]);
+
+  // Search hotkey is local-only: focus the search box when the panel window already has focus.
+  useEffect(() => {
+    const handleSearchKeydown = (event: KeyboardEvent) => {
+      if (isRecording || isRecordingSequential || isRecordingRich || isRecordingSearch) return;
+      if (!searchHotkey || searchHotkey === t('not_set')) return;
+      if (matchesHotkey(event, searchHotkey)) {
+        event.preventDefault();
+        focusSearchBox();
+      }
+    };
+
+    window.addEventListener('keydown', handleSearchKeydown, true);
+    return () => window.removeEventListener('keydown', handleSearchKeydown, true);
+  }, [searchHotkey, isRecording, isRecordingSequential, isRecordingRich, isRecordingSearch, t, focusSearchBox]);
 
   useEffect(() => {
     if (!emojiPanelEnabled && showEmojiPanel) {

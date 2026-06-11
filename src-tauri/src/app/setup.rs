@@ -1109,16 +1109,6 @@ pub fn handle_global_shortcut(
                 return;
             }
         }
-
-        if let Ok(search_s) = {
-            let val = settings.search_hotkey.lock().unwrap().clone();
-            val.replace("Win", "Super").parse::<Shortcut>()
-        } {
-            if shortcut == &search_s {
-                toggle_window(app);
-                let _ = app.emit("focus-search-input", ());
-            }
-        }
     } else if state == ShortcutState::Released {
         if let Ok(seq_s) = {
             let val = settings.sequential_paste_hotkey.lock().unwrap().clone();
