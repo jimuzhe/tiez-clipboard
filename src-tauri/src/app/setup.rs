@@ -1,7 +1,7 @@
 #[cfg(target_os = "windows")]
 use crate::app::hooks::{keyboard_proc, mouse_proc};
 #[cfg(target_os = "windows")]
-use crate::app::system::tray_subclass_proc;
+use crate::app::system::{register_tray_session_notifications, tray_subclass_proc};
 use crate::app::window_manager::{release_win_keys, restore_last_focus, toggle_window};
 use crate::app_state::{
     AppDataDir, EncryptionQueueState, PasteQueue, SessionHistory, SettingsState,
@@ -1119,6 +1119,7 @@ fn setup_taskbar_listener(app: &App) {
             if let Some(window) = app.get_webview_window("main") {
                 if let Ok(hwnd) = window.hwnd() {
                     let _ = SetWindowSubclass(HWND(hwnd.0), Some(tray_subclass_proc), 1337, 0);
+                    register_tray_session_notifications(HWND(hwnd.0));
                 }
             }
         }
