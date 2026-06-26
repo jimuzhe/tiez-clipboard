@@ -7,6 +7,7 @@ type UseSearchScrollOptions = {
   search: string;
   showSettings: boolean;
   showTagManager: boolean;
+  setShowTagManager: (val: boolean) => void;
   appSettings: Record<string, string>;
 };
 
@@ -16,6 +17,7 @@ export const useSearchScroll = ({
   search,
   showSettings,
   showTagManager,
+  setShowTagManager,
   appSettings
 }: UseSearchScrollOptions) => {
   const scrollTriggerRef = useRef(0);
