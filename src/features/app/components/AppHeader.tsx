@@ -184,6 +184,44 @@ const AppHeader = ({
             style={{ flexShrink: 0 }}
           >
             <div className="search-container window-no-drag">
+              {/* 分类筛选按钮 - 移到搜索输入框上方,避免被 tags-dropdown 遮挡 */}
+              <div
+                className="hide-scrollbar"
+                style={{
+                  display: 'flex',
+                  gap: '6px',
+                  padding: '0 0 8px 0',
+                  overflowX: 'auto',
+                  scrollbarWidth: 'none',
+                  msOverflowStyle: 'none'
+                }}
+                onWheel={(e) => {
+                  if (e.deltaY !== 0) {
+                    e.currentTarget.scrollLeft += e.deltaY;
+                  }
+                }}
+              >
+                {['text', 'image', 'file', 'url', 'code', 'video', 'rich_text'].map(t => (
+                  <button
+                    key={t}
+                    className={`btn-icon ${typeFilter === t ? 'active' : ''}`}
+                    onClick={() => setTypeFilter(typeFilter === t ? null : t)}
+                    style={{
+                      width: 'auto',
+                      padding: '4px 8px',
+                      fontSize: '11px',
+                      borderRadius: '4px',
+                      whiteSpace: 'nowrap',
+                      flexShrink: 0,
+                      opacity: typeFilter === t ? 1 : 0.7
+                    }}
+                    title={getTypeName(t)}
+                  >
+                    {getTypeName(t)}
+                  </button>
+                ))}
+              </div>
+
               <div style={{ position: 'relative' }}>
                 <Search size={14} className="search-icon" />
                 <input
@@ -244,43 +282,6 @@ const AppHeader = ({
                   </div>
                 )}
               </div>
-              <div
-                className="hide-scrollbar"
-                style={{
-                  display: 'flex',
-                  gap: '6px',
-                  padding: '8px 0 0 0',
-                  overflowX: 'auto',
-                  scrollbarWidth: 'none',
-                  msOverflowStyle: 'none'
-                }}
-                onWheel={(e) => {
-                  if (e.deltaY !== 0) {
-                    e.currentTarget.scrollLeft += e.deltaY;
-                  }
-                }}
-              >
-                {['text', 'image', 'file', 'url', 'code', 'video', 'rich_text'].map(t => (
-                  <button
-                    key={t}
-                    className={`btn-icon ${typeFilter === t ? 'active' : ''}`}
-                    onClick={() => setTypeFilter(typeFilter === t ? null : t)}
-                    style={{
-                      width: 'auto',
-                      padding: '4px 8px',
-                      fontSize: '11px',
-                      borderRadius: '4px',
-                      whiteSpace: 'nowrap',
-                      flexShrink: 0,
-                      opacity: typeFilter === t ? 1 : 0.7
-                    }}
-                    title={getTypeName(t)}
-                  >
-                    {getTypeName(t)}
-                  </button>
-                ))}
-              </div>
-
             </div>
           </motion.div>
         )}
