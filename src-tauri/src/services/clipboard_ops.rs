@@ -191,8 +191,6 @@ pub async fn copy_to_clipboard(
     paste_with_format: Option<bool>,
     move_to_top: Option<bool>,
 ) -> AppResult<()> {
-
-
     let mut html_content: Option<String> = None;
 
     // 0. Resolve full content if ID is provided and content is placeholder/truncated
@@ -272,7 +270,19 @@ pub async fn paste_text_directly(app_handle: tauri::AppHandle, content: String) 
     }
 
     handle_window_focus_for_paste(&app_handle, None).await?;
-    send_paste_keystroke("game_mode", Some(&content), Some("text"));
+    #[cfg(target_os = "windows")]
+    let paste_method = "game_mode".to_string();
+
+    #[cfg(not(target_os = "windows"))]
+    let paste_method = app_handle
+        .state::<DbState>()
+        .settings_repo
+        .get("app.paste_method")
+        .ok()
+        .flatten()
+        .unwrap_or_else(|| "shift_insert".to_string());
+
+    send_paste_keystroke(&paste_method, Some(&content), Some("text"));
     hide_window_after_paste(&app_handle).await;
     play_paste_sound_if_enabled(&app_handle);
 
@@ -683,6 +693,10 @@ fn calculate_content_hash(content: &str) -> (u64, u64) {
         .as_secs();
 
     (content_hash, current_time)
+}
+
+fn is_textual_content_type(content_type: Option<&str>) -> bool {
+    matches!(content_type, Some("text" | "code" | "url" | "rich_text"))
 }
 
 pub async fn prepare_clipboard_payload(
@@ -1493,15 +1507,20 @@ pub fn send_paste_keystroke(method: &str, content: Option<&str>, content_type: O
         let display = crate::infrastructure::linux_api::detect_display_server();
         let is_wayland = display == crate::infrastructure::linux_api::DisplayServer::Wayland;
         let shift = method == "shift_insert";
+        let textual_content = is_textual_content_type(content_type);
 
-        // Debug: show which window has focus before we send the keystroke
-        if !is_wayland {
-            let _ = std::process::Command::new("xdotool")
-                .args(["getactivewindow", "getwindowname"])
-                .output()
-                .map(|o| {
-                    let name = String::from_utf8_lossy(&o.stdout).trim().to_string();
-                });
+        // On Linux, the clipboard is "hosted" by the process that last set it.
+        // If the arboard::Clipboard is dropped before the paste target requests the data,
+        // the X11 window serving the data is destroyed and the paste silently fails.
+        // Keep the clipboard alive for the entire paste sequence.
+        let mut _clipboard_guard: Option<arboard::Clipboard> = None;
+        if textual_content {
+            if let Some(text) = content {
+                if let Ok(mut clipboard) = arboard::Clipboard::new() {
+                    let _ = clipboard.set_text(text);
+                    _clipboard_guard = Some(clipboard);
+                }
+            }
         }
 
         // On Wayland, native tools first (xdotool only reaches XWayland apps, not native Wayland)
@@ -1521,10 +1540,19 @@ pub fn send_paste_keystroke(method: &str, content: Option<&str>, content_type: O
                 ("wtype", false)   => &["-M", "ctrl", "-k", "v", "-m", "ctrl"],
                 _ => continue,
             };
-            if std::process::Command::new(*tool).args(args).spawn().is_ok() {
-                return;
+            match std::process::Command::new(*tool).args(args).status() {
+                Ok(status) if status.success() => {
+                    // Give the paste target time to request clipboard data before
+                    // _clipboard_guard is dropped at function exit.
+                    std::thread::sleep(std::time::Duration::from_millis(250));
+                    return;
+                }
+                Ok(_) => {}
+                Err(_) => {}
             }
         }
+        // Ensure clipboard guard lives until here
+        drop(_clipboard_guard);
         println!("[WARN] No input simulation tool found (install xdotool for X11 or ydotool/wtype for Wayland)");
     }
 }
