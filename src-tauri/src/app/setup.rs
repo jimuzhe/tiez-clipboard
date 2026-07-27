@@ -32,6 +32,32 @@ fn is_mouse_button_pressed() -> bool {
     objc2_app_kit::NSEvent::pressedMouseButtons() != 0
 }
 
+#[cfg(target_os = "macos")]
+fn is_shared_vertical_edge(
+    app_handle: &AppHandle,
+    edge_x: i32,
+    window_top: i32,
+    window_bottom: i32,
+    dock: DockPosition,
+) -> bool {
+    let Ok(monitors) = app_handle.available_monitors() else {
+        return false;
+    };
+
+    monitors.iter().any(|monitor| {
+        let position = monitor.position();
+        let size = monitor.size();
+        let borders_edge = match dock {
+            DockPosition::Left => position.x + size.width as i32 == edge_x,
+            DockPosition::Right => position.x == edge_x,
+            _ => false,
+        };
+        let overlaps_window =
+            position.y < window_bottom && position.y + size.height as i32 > window_top;
+        borders_edge && overlaps_window
+    })
+}
+
 pub fn init(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     let app_handle = app.handle().clone();
 
@@ -875,9 +901,25 @@ fn start_edge_docking_monitor(app_handle: AppHandle) {
             let mut dock = DockPosition::None;
             if rect_top <= screen_top + threshold {
                 dock = DockPosition::Top;
-            } else if rect_left <= screen_left + threshold {
+            } else if rect_left <= screen_left + threshold
+                && !is_shared_vertical_edge(
+                    &app_handle,
+                    screen_left,
+                    rect_top,
+                    rect_bottom,
+                    DockPosition::Left,
+                )
+            {
                 dock = DockPosition::Left;
-            } else if rect_right >= screen_right - threshold {
+            } else if rect_right >= screen_right - threshold
+                && !is_shared_vertical_edge(
+                    &app_handle,
+                    screen_right,
+                    rect_top,
+                    rect_bottom,
+                    DockPosition::Right,
+                )
+            {
                 dock = DockPosition::Right;
             }
 
