@@ -45,6 +45,29 @@ pub fn maybe_open_devtools(window: &WebviewWindow) {
 #[cfg(not(feature = "devtools"))]
 pub fn maybe_open_devtools(_window: &WebviewWindow) {}
 
+const EDGE_DOCK_VISIBLE_SIZE: i32 = 3;
+
+fn revealed_side_x(dock: i32, tucked_x: i32, window_width: i32) -> Option<i32> {
+    match dock {
+        2 => Some(tucked_x + window_width - EDGE_DOCK_VISIBLE_SIZE),
+        3 => Some(tucked_x - window_width + EDGE_DOCK_VISIBLE_SIZE),
+        _ => None,
+    }
+}
+
+fn reveal_side_docked_window(window: &WebviewWindow, dock: i32) {
+    let position = window.outer_position().or_else(|_| window.inner_position());
+    let size = window.outer_size().or_else(|_| window.inner_size());
+    let (Ok(position), Ok(size)) = (position, size) else {
+        return;
+    };
+    let Some(x) = revealed_side_x(dock, position.x, size.width as i32) else {
+        return;
+    };
+
+    let _ = window.set_position(tauri::PhysicalPosition::new(x, position.y));
+}
+
 pub fn toggle_window(app_handle: &AppHandle) {
     if let Some(window) = app_handle.get_webview_window("main") {
         let is_visible = window.is_visible().unwrap_or(false);
@@ -79,9 +102,12 @@ pub fn toggle_window(app_handle: &AppHandle) {
             }
         }
 
+        if is_hidden_by_edge {
+            let dock = CURRENT_DOCK.load(Ordering::Relaxed);
+            reveal_side_docked_window(&window, dock);
+        }
         IS_HIDDEN.store(false, Ordering::Relaxed);
         NAVIGATION_ENABLED.store(true, Ordering::SeqCst);
-        let _was_docked = is_hidden_by_edge;
         CURRENT_DOCK.store(0, Ordering::Relaxed);
 
         // Basic toggle: show window
@@ -192,4 +218,24 @@ pub fn release_modifier_keys() {
 
 pub fn is_main_window_focused() -> bool {
     IS_MAIN_WINDOW_FOCUSED.load(Ordering::Relaxed)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::revealed_side_x;
+
+    #[test]
+    fn reveals_left_docked_window_at_its_previous_edge_position() {
+        assert_eq!(revealed_side_x(2, -357, 360), Some(0));
+    }
+
+    #[test]
+    fn reveals_right_docked_window_at_its_previous_edge_position() {
+        assert_eq!(revealed_side_x(3, 1917, 360), Some(1560));
+    }
+
+    #[test]
+    fn ignores_unknown_dock_position() {
+        assert_eq!(revealed_side_x(0, 0, 360), None);
+    }
 }

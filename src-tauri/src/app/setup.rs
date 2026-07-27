@@ -19,6 +19,18 @@ use crate::services::encryption_queue::init_encryption_queue;
 static WINDOW_SIZE_SAVE_PENDING: AtomicBool = AtomicBool::new(false);
 static LAST_WINDOW_SIZE_EVENT_MS: AtomicU64 = AtomicU64::new(0);
 static LAST_WINDOW_SIZE: OnceLock<Mutex<(u32, u32)>> = OnceLock::new();
+#[cfg(target_os = "macos")]
+fn convert_cursor_scale(value: f64, source_scale: f64, target_scale: f64) -> i32 {
+    if source_scale <= 0.0 || target_scale <= 0.0 {
+        return value.round() as i32;
+    }
+    (value / source_scale * target_scale).round() as i32
+}
+
+#[cfg(target_os = "macos")]
+fn is_mouse_button_pressed() -> bool {
+    objc2_app_kit::NSEvent::pressedMouseButtons() != 0
+}
 
 pub fn init(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     let app_handle = app.handle().clone();
@@ -732,6 +744,10 @@ fn start_edge_docking_monitor(app_handle: AppHandle) {
                 continue;
             }
 
+            if is_mouse_button_pressed() {
+                continue;
+            }
+
             let pos = match window.outer_position().or_else(|_| window.inner_position()) {
                 Ok(p) => p,
                 Err(_) => continue,
@@ -798,8 +814,14 @@ fn start_edge_docking_monitor(app_handle: AppHandle) {
                 Ok(c) => c,
                 Err(_) => tauri::PhysicalPosition::new(-9999.0, -9999.0),
             };
-            let cursor_x = cursor.x.round() as i32;
-            let cursor_y = cursor.y.round() as i32;
+            let primary_scale = app_handle
+                .primary_monitor()
+                .ok()
+                .flatten()
+                .map(|primary| primary.scale_factor())
+                .unwrap_or(1.0);
+            let cursor_x = convert_cursor_scale(cursor.x, primary_scale, monitor.scale_factor());
+            let cursor_y = convert_cursor_scale(cursor.y, primary_scale, monitor.scale_factor());
 
             let threshold = 5;
             let is_mouse_near_edge = if is_hidden_by_edge {
@@ -828,10 +850,10 @@ fn start_edge_docking_monitor(app_handle: AppHandle) {
             let is_mouse_in = if is_hidden_by_edge {
                 is_mouse_near_edge
             } else {
-                cursor_x >= rect_left
-                    && cursor_x <= rect_right
-                    && cursor_y >= rect_top
-                    && cursor_y <= rect_bottom
+                cursor_x >= rect_left - threshold
+                    && cursor_x <= rect_right + threshold
+                    && cursor_y >= rect_top - threshold
+                    && cursor_y <= rect_bottom + threshold
             };
 
             let window_center_x = (rect_left + rect_right) / 2;
@@ -1299,6 +1321,17 @@ fn handle_blur(window: &tauri::Window) {
             }
         }
     });
+}
+
+#[cfg(all(test, target_os = "macos"))]
+mod tests {
+    use super::convert_cursor_scale;
+
+    #[test]
+    fn converts_primary_screen_cursor_coordinates_to_secondary_scale() {
+        assert_eq!(convert_cursor_scale(3000.0, 2.0, 1.0), 1500);
+        assert_eq!(convert_cursor_scale(-800.0, 2.0, 1.0), -400);
+    }
 }
 
 #[cfg(target_os = "windows")]
