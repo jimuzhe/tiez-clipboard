@@ -81,6 +81,11 @@ pub fn toggle_window(app: &AppHandle) {
         if is_visible && !is_hidden_by_edge {
             #[cfg(target_os = "windows")]
             WindowExt::release_win_keys();
+            
+            // Clear vibrancy to stop GPU rendering
+            #[cfg(target_os = "windows")]
+            let _ = window_vibrancy::clear_vibrancy(&window);
+            
             let _ = window.set_focusable(false);
             let _ = window.hide();
 
@@ -359,6 +364,31 @@ pub fn toggle_window(app: &AppHandle) {
                         ex_style | WS_EX_NOACTIVATE.0 as isize,
                     );
                 }
+                
+                // Re-apply vibrancy when showing window
+                let settings = app.state::<SettingsState>();
+                let theme = settings.theme.lock().unwrap().clone();
+                let is_dark = match settings.theme.lock().unwrap().as_str() {
+                    "mica" | "acrylic" => {
+                        // Check system theme
+                        matches!(window.theme().unwrap_or(tauri::Theme::Dark), tauri::Theme::Dark)
+                    }
+                    _ => false,
+                };
+                
+                if theme == "mica" {
+                    let _ = window_vibrancy::apply_mica(&window, Some(is_dark));
+                } else if theme == "acrylic" {
+                    let _ = window_vibrancy::apply_acrylic(
+                        &window,
+                        Some(if is_dark {
+                            (30, 30, 30, 40)
+                        } else {
+                            (240, 240, 240, 40)
+                        }),
+                    );
+                }
+                
                 let _ = window.show();
                 if pinned {
                     WindowExt::show_window_no_activate(HWND(hwnd_raw.0));
@@ -420,6 +450,11 @@ pub fn hide_window_cmd(app_handle: AppHandle) -> Result<(), String> {
     if let Some(window) = app_handle.get_webview_window("main") {
         #[cfg(target_os = "windows")]
         WindowExt::release_win_keys();
+        
+        // Clear vibrancy to stop GPU rendering
+        #[cfg(target_os = "windows")]
+        let _ = window_vibrancy::clear_vibrancy(&window);
+        
         let _ = window.set_focusable(false);
         let _ = window.hide();
         NAVIGATION_ENABLED.store(false, Ordering::SeqCst);

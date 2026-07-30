@@ -1217,6 +1217,11 @@ pub fn handle_window_event(window: &tauri::Window, event: &tauri::WindowEvent) {
                 return;
             }
             api.prevent_close();
+            
+            // Clear vibrancy to stop GPU rendering
+            #[cfg(target_os = "windows")]
+            let _ = window_vibrancy::clear_vibrancy(&window);
+            
             let _ = window.hide();
             NAVIGATION_ENABLED.store(false, Ordering::SeqCst);
             NAVIGATION_MODE_ACTIVE.store(false, Ordering::SeqCst);
@@ -1322,6 +1327,10 @@ fn handle_blur(window: &tauri::Window) {
             };
         if !down && matches!(w.is_focused(), Ok(false)) {
             if !IGNORE_BLUR.load(Ordering::Relaxed) && !WINDOW_PINNED.load(Ordering::Relaxed) {
+                // Clear vibrancy to stop GPU rendering
+                #[cfg(target_os = "windows")]
+                let _ = window_vibrancy::clear_vibrancy(&w);
+                
                 let _ = w.hide();
                 NAVIGATION_ENABLED.store(false, Ordering::SeqCst);
                 release_win_keys();
