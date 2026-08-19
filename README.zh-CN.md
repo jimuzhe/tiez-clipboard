@@ -88,8 +88,8 @@
 ## Star History
 
 <div align="center">
-  <a href="https://star-history.com/#jimuzhe/tiez-clipboard&Date">
-    <img src="https://api.star-history.com/svg?repos=jimuzhe/tiez-clipboard&type=Date" alt="Star History Chart" width="800" />
+  <a href="https://star-history.dera.page/#jimuzhe/tiez-clipboard&Date">
+    <img src="https://star-history.dera.page/svg?repos=jimuzhe/tiez-clipboard&type=Date" alt="Star History Chart" width="800" />
   </a>
 </div>
 
