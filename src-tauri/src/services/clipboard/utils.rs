@@ -460,7 +460,10 @@ fn normalize_plain_text_layout(text: &str) -> String {
 }
 
 fn decode_basic_html_entities(text: &str) -> String {
-    text.replace("&nbsp;", " ")
+    static NUMERIC_ENTITY_RE: OnceLock<Regex> = OnceLock::new();
+
+    let decoded_named = text
+        .replace("&nbsp;", " ")
         .replace("&#160;", " ")
         .replace("&amp;", "&")
         .replace("&lt;", "<")
@@ -468,7 +471,26 @@ fn decode_basic_html_entities(text: &str) -> String {
         .replace("&quot;", "\"")
         .replace("&#34;", "\"")
         .replace("&#39;", "'")
-        .replace("&apos;", "'")
+        .replace("&apos;", "'");
+
+    NUMERIC_ENTITY_RE
+        .get_or_init(|| Regex::new(r"(?i)&#(?:x([0-9a-f]+)|([0-9]+));").unwrap())
+        .replace_all(&decoded_named, |captures: &regex::Captures| {
+            let value = captures
+                .get(1)
+                .and_then(|hex| u32::from_str_radix(hex.as_str(), 16).ok())
+                .or_else(|| {
+                    captures
+                        .get(2)
+                        .and_then(|decimal| decimal.as_str().parse::<u32>().ok())
+                });
+
+            value
+                .and_then(char::from_u32)
+                .map(|ch| ch.to_string())
+                .unwrap_or_else(|| captures[0].to_string())
+        })
+        .into_owned()
 }
 
 fn is_office_style_definition_text(text: &str) -> bool {
@@ -1417,6 +1439,34 @@ mod tests {
         let content = derive_rich_text_content("A\tB\nC\tD", Some(html));
 
         assert_eq!(content, "A B\nC D");
+    }
+
+    #[test]
+    fn rich_text_content_decodes_decimal_space_entity() {
+        let html = "<span>First&#32;Second</span>";
+
+        let content = derive_rich_text_content("First Second", Some(html));
+
+        assert_eq!(content, "First Second");
+        assert!(!content.contains("&#32;"));
+    }
+
+    #[test]
+    fn rich_text_content_decodes_hex_and_unicode_numeric_entities() {
+        let html = "<span>A&#x20;B&#20013;</span>";
+
+        let content = derive_rich_text_content("A B中", Some(html));
+
+        assert_eq!(content, "A B中");
+    }
+
+    #[test]
+    fn rich_text_content_keeps_invalid_numeric_entity_literal() {
+        let html = "<span>Value:&#99999999;</span>";
+
+        let content = derive_rich_text_content("Value:&#99999999;", Some(html));
+
+        assert_eq!(content, "Value:&#99999999;");
     }
 
     #[test]
