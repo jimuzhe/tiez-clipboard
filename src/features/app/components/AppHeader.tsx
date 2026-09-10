@@ -206,7 +206,8 @@ const AppHeader = ({
                   onClick={() => { setShowTagFilter(true); setEditingTagsId(null); }}
                   onFocus={() => {
                     invoke("activate_window_focus").catch(console.error);
-                    setShowTagFilter(true);
+                    // 不要在 focus 时自动打开标签下拉：搜索快捷键会程序化 focus，
+                    // 有 tag 时会弹出像空白剪贴记录一样的虚影层。改为仅点击时打开。
                     setSearchIsFocused(true);
                     setEditingTagsId(null);
                   }}
