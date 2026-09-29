@@ -363,6 +363,42 @@ body.hide-app-border #root {
   display: none;
 }
 
+/* WKWebView drops the scroll tile when backdrop-filter or clip-path sits on a scrolling ancestor. */
+#shell-backdrop {
+  display: none;
+}
+
+html.platform-macos #shell-backdrop {
+  display: block;
+  position: fixed;
+  inset: 0;
+  border-radius: var(--shell-radius);
+  pointer-events: none;
+  z-index: 0;
+  background: var(--shell-background);
+  border: var(--shell-border);
+  box-shadow: var(--shell-shadow);
+  /* Any backdrop-filter in this webview makes WKWebView discard the scroll tile. */
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+html.platform-macos #root {
+  z-index: 1;
+  isolation: auto;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+html.platform-macos.theme-sakura #root,
+html.platform-macos body.theme-sakura #root {
+  animation: none;
+}
+
+body.compact-preview #shell-backdrop {
+  display: none !important;
+}
+
 .app-container {
   display: flex;
   flex-direction: column;
@@ -371,4 +407,9 @@ body.hide-app-border #root {
   overflow: hidden;
   -webkit-clip-path: inset(0 round var(--shell-radius));
   clip-path: inset(0 round var(--shell-radius));
+}
+
+html.platform-macos .app-container {
+  -webkit-clip-path: none;
+  clip-path: none;
 }

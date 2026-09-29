@@ -1,4 +1,5 @@
 import { useRef, useEffect, useLayoutEffect, useState, useMemo, memo } from "react";
+import type { MouseEvent as ReactMouseEvent } from "react";
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import type { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { currentMonitor, getCurrentWindow, PhysicalPosition, PhysicalSize } from "@tauri-apps/api/window";
@@ -1490,18 +1491,25 @@ const ClipboardItem = ({
         </div>
     );
 
+    const ItemShell = disableLayout ? "div" : motion.div;
+    const motionOnly = disableLayout
+        ? {}
+        : {
+            layout: true,
+            initial: false,
+            animate: { marginBottom: 0 },
+            exit: { opacity: 0, scale: 0.95 },
+            transition: { duration: 0.1 },
+        };
+
     return (
-        <motion.div
+        <ItemShell
             ref={itemRef}
             id={id}
             data-test-clipboard-item
-            layout={!disableLayout}
-            initial={false}
-            animate={{ marginBottom: 0 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            transition={{ duration: 0.1 }}
+            {...motionOnly}
             className={`history-item ${isSelected ? "selected" : ""} ${compactMode ? "compact" : ""} ${item.is_pinned ? "pinned" : ""} ${className || ''}`}
-            onMouseDown={(e) => {
+            onMouseDown={(e: ReactMouseEvent<HTMLDivElement>) => {
                 const target = e.target as HTMLElement;
                 if (e.button !== 0) return;
 
@@ -1533,7 +1541,7 @@ const ClipboardItem = ({
                 onCopy(false); // Plain text by default
                 onSelect();
             }}
-            onClick={(e) => {
+            onClick={(e: ReactMouseEvent<HTMLDivElement>) => {
                 if (isEditingTags) return;
                 const target = e.target as HTMLElement;
                 if (target.closest('button') || target.closest('input') || target.closest('textarea')) {
@@ -1545,7 +1553,7 @@ const ClipboardItem = ({
                 }
                 // Copy is handled on mousedown so the source app keeps focus.
             }}
-            onContextMenu={(e) => {
+            onContextMenu={(e: ReactMouseEvent<HTMLDivElement>) => {
                 const target = e.target as HTMLElement;
                 if (isEditingTags) {
                     if (target.closest(".tag-edit-anchor")) return;
@@ -1567,7 +1575,7 @@ const ClipboardItem = ({
 
                 onSelect();
             }}
-            onMouseEnter={(e) => {
+            onMouseEnter={(e: ReactMouseEvent<HTMLDivElement>) => {
                 if (!compactPreviewEnabled) return;
                 // Don't show preview if AI options are open to avoid interference
                 if (showAIOptions) return;
@@ -1598,7 +1606,7 @@ const ClipboardItem = ({
                     void showCompactPreview(anchor, requestId);
                 }, 1000); // 1s delay
             }}
-            onMouseMove={(e) => {
+            onMouseMove={(e: ReactMouseEvent<HTMLDivElement>) => {
                 if (!compactPreviewEnabled) return;
                 hoverAnchorRef.current = {
                     clientX: e.clientX,
@@ -1973,7 +1981,7 @@ const ClipboardItem = ({
             </AnimatePresence>
 
             {!overlayTagsInPreview && hasTagsSection && renderTagsContainer()}
-        </motion.div >
+        </ItemShell>
     );
 };
 

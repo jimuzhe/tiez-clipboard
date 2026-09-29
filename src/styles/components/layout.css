@@ -339,3 +339,26 @@ select.search-input option {
   background: var(--card-selected-background);
   transform: scale(1.01);
 }
+
+html.platform-macos .virtual-list-wrapper [data-testid="virtuoso-scroller"] {
+  -webkit-overflow-scrolling: auto !important;
+  overflow-x: hidden;
+}
+
+html.platform-macos .virtual-list-wrapper .history-item,
+html.platform-macos .virtual-list-wrapper .history-item:hover,
+html.platform-macos .virtual-list-wrapper .history-item:active,
+html.platform-macos .virtual-list-wrapper .item-actions,
+html.platform-macos .virtual-list-wrapper .history-item .btn-icon,
+html.platform-macos .virtual-list-wrapper .history-item .btn-icon:hover,
+html.platform-macos .virtual-list-wrapper .history-item .btn-icon:active {
+  transform: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+html.platform-macos .virtual-list-wrapper .history-item,
+html.platform-macos .virtual-list-wrapper .history-item.compact {
+  height: auto;
+  transition-property: background, border-color, box-shadow;
+}
