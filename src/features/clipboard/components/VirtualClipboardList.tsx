@@ -1,14 +1,21 @@
-import React, { useRef, useImperativeHandle, useCallback, useMemo } from 'react';
+import React, { useRef, useImperativeHandle, useCallback, useMemo, useEffect } from 'react';
 import { Virtuoso, VirtuosoHandle } from 'react-virtuoso';
-import type { ListRange } from 'react-virtuoso';
+import type { ListRange, ScrollerProps } from 'react-virtuoso';
 import type { ClipboardEntry } from "../../../shared/types";
 import type { VirtualClipboardListHandle, VirtualClipboardListProps } from "../types";
+import { isMacPlatform } from "../../../shared/lib/platform";
 
 type VirtuosoListContext = {
     header?: React.ReactNode;
     hasMore: boolean;
     isLoading: boolean;
 };
+
+type MacScrollerProps = ScrollerProps & { context?: unknown };
+
+const MAC_LIST = isMacPlatform();
+const FAST_PX_PER_MS = 1.1;
+const LOAD_MORE_REMAINING = 12;
 
 const ListHeader = ({ context }: { context?: VirtuosoListContext }) => {
     const header = context?.header;
@@ -33,6 +40,23 @@ const ListFooter = ({ context }: { context?: VirtuosoListContext }) => {
     );
 };
 
+const MacScroller = React.forwardRef<HTMLDivElement, MacScrollerProps>(function MacScroller(props, ref) {
+    const { style, context, ...rest } = props;
+    void context;
+    return (
+        <div
+            ref={ref}
+            {...rest}
+            data-mac-scroller="auto"
+            style={{
+                ...style,
+                WebkitOverflowScrolling: "auto",
+                overflowX: "hidden",
+            }}
+        />
+    );
+});
+
 const VirtualClipboardList = React.forwardRef<VirtualClipboardListHandle, VirtualClipboardListProps>(
     (props, ref) => {
         const {
@@ -50,6 +74,42 @@ const VirtualClipboardList = React.forwardRef<VirtualClipboardListHandle, Virtua
 
         const virtuosoRef = useRef<VirtuosoHandle>(null);
         const visibleRangeRef = useRef<ListRange | null>(null);
+        const scrollerNodeRef = useRef<HTMLElement | null>(null);
+        const repaintLockRef = useRef(false);
+        const settleTimerRef = useRef<number | null>(null);
+        const lastRepaintRef = useRef(0);
+        const velocityRef = useRef({ top: 0, time: 0, fast: false });
+        const nearEndRef = useRef(false);
+
+        const nudgeRepaint = useCallback(() => {
+            const el = scrollerNodeRef.current;
+            if (!MAC_LIST || !el || repaintLockRef.current) return;
+            if (performance.now() - lastRepaintRef.current < 400) return;
+            const max = Math.max(0, el.scrollHeight - el.clientHeight);
+            if (max <= 0) return;
+            lastRepaintRef.current = performance.now();
+            repaintLockRef.current = true;
+            const top = el.scrollTop;
+            const nudged = top <= 0 ? Math.min(1, max) : top - 1;
+            el.scrollTop = nudged;
+            requestAnimationFrame(() => {
+                el.scrollTop = top;
+                requestAnimationFrame(() => {
+                    repaintLockRef.current = false;
+                });
+            });
+        }, []);
+
+        const loadMoreIfNeeded = useCallback(() => {
+            if (!nearEndRef.current || velocityRef.current.fast) return;
+            if (hasMore && !isLoading && onLoadMore) onLoadMore();
+        }, [hasMore, isLoading, onLoadMore]);
+
+        useEffect(() => {
+            return () => {
+                if (settleTimerRef.current !== null) window.clearTimeout(settleTimerRef.current);
+            };
+        }, []);
         useImperativeHandle(ref, () => ({
             scrollToItem: (index: number) => {
                 virtuosoRef.current?.scrollIntoView({
@@ -103,24 +163,41 @@ const VirtualClipboardList = React.forwardRef<VirtualClipboardListHandle, Virtua
             }
         }, [selectedIndex, isKeyboardMode]);
 
-
-        // Handle scroll events
         const handleScroll = useCallback((scrollTop: number) => {
             onScroll?.(scrollTop);
-        }, [onScroll]);
-
-        // Handle end reached for infinite loading
-        const handleEndReached = useCallback(() => {
-            if (hasMore && !isLoading && onLoadMore) {
-                onLoadMore();
+            if (!MAC_LIST || repaintLockRef.current) return;
+            const now = performance.now();
+            const prev = velocityRef.current;
+            const dt = now - prev.time;
+            if (prev.time > 0 && dt >= 16 && Math.abs(scrollTop - prev.top) / dt >= FAST_PX_PER_MS) {
+                prev.fast = true;
             }
+            prev.top = scrollTop;
+            prev.time = now;
+            if (settleTimerRef.current !== null) window.clearTimeout(settleTimerRef.current);
+            settleTimerRef.current = window.setTimeout(() => {
+                settleTimerRef.current = null;
+                const wasFast = velocityRef.current.fast;
+                velocityRef.current.fast = false;
+                if (wasFast) nudgeRepaint();
+                loadMoreIfNeeded();
+            }, 120);
+        }, [loadMoreIfNeeded, nudgeRepaint, onScroll]);
+
+        const handleEndReached = useCallback(() => {
+            nearEndRef.current = true;
+            if (velocityRef.current.fast) return;
+            if (hasMore && !isLoading && onLoadMore) onLoadMore();
         }, [hasMore, isLoading, onLoadMore]);
 
         const handleRangeChanged = useCallback((range: ListRange) => {
             visibleRangeRef.current = range;
-        }, []);
+            nearEndRef.current = items.length > 0 && items.length - range.endIndex <= LOAD_MORE_REMAINING;
+            if (nearEndRef.current && !velocityRef.current.fast) {
+                if (hasMore && !isLoading && onLoadMore) onLoadMore();
+            }
+        }, [hasMore, isLoading, items.length, onLoadMore]);
 
-        // Memoized item renderer for Virtuoso
         const itemContent = useCallback((index: number, item: ClipboardEntry) => {
             return (
                 <div style={{ paddingBottom: compactMode ? 2 : 4 }}>
@@ -131,7 +208,8 @@ const VirtualClipboardList = React.forwardRef<VirtualClipboardListHandle, Virtua
 
         const components = useMemo(() => ({
             Header: ListHeader,
-            Footer: ListFooter
+            Footer: ListFooter,
+            ...(MAC_LIST ? { Scroller: MacScroller } : {}),
         }), []);
 
         const context = useMemo(() => ({
@@ -145,14 +223,20 @@ const VirtualClipboardList = React.forwardRef<VirtualClipboardListHandle, Virtua
                 <Virtuoso
                     ref={virtuosoRef}
                     data={items}
+                    computeItemKey={(_index, item) => item.id}
                     itemContent={itemContent}
                     components={components}
                     context={context}
                     style={{ height: '100%' }}
+                    scrollerRef={(node) => {
+                        scrollerNodeRef.current = node instanceof HTMLElement ? node : null;
+                    }}
                     onScroll={(e) => handleScroll((e.currentTarget as HTMLElement).scrollTop)}
                     endReached={handleEndReached}
                     rangeChanged={handleRangeChanged}
-                    overscan={200} // Pre-render 200px of content for smoother scrolling
+                    defaultItemHeight={compactMode ? 52 : 108}
+                    overscan={MAC_LIST ? { main: 280, reverse: 200 } : 200}
+                    increaseViewportBy={MAC_LIST ? { top: 240, bottom: 420 } : undefined}
                 />
             </div>
         );
@@ -163,5 +247,3 @@ VirtualClipboardList.displayName = 'VirtualClipboardList';
 
 export { VirtualClipboardList };
 export default VirtualClipboardList;
-
-
