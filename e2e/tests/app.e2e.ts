@@ -188,6 +188,32 @@ test('键盘：方向键选择默认开启，↓↓ 选到第二条，Enter 粘�
   ]);
 });
 
+test('键盘：选中后按 Delete 删除；固定的不删，退格不删', async ({ app, screen, browser }) => {
+  await app.open('/');
+  const isMac = await browser.evaluate(() => /Mac/i.test(navigator.userAgent) || /Mac/i.test(navigator.platform));
+  test.skip(!isMac, 'arrow navigation runs in the native hook outside macOS');
+  const main = screen.getByRole('main');
+  await expect(main.getByText(SAMPLE.chat.text).first()).toBeVisible();
+  await resetCalls(browser);
+  // First entry is pinned: Delete leaves it alone.
+  await browser.keyboard.press('ArrowDown');
+  await sleep(150);
+  await browser.keyboard.press('Delete');
+  await sleep(300);
+  expect(await callsTo(browser, 'delete_clipboard_entry')).toEqual([]);
+  // Second entry: plain Backspace is for the search box, Delete removes it.
+  await browser.keyboard.press('ArrowDown');
+  await sleep(150);
+  await browser.keyboard.press('Backspace');
+  await sleep(300);
+  expect(await callsTo(browser, 'delete_clipboard_entry')).toEqual([]);
+  await browser.keyboard.press('Delete');
+  await expect.poll(() => callsTo(browser, 'delete_clipboard_entry')).toEqual([
+    expect.objectContaining({ args: { id: SAMPLE.chat.id } }),
+  ]);
+  await expect(main.getByText(SAMPLE.chat.text)).toBeHidden();
+});
+
 test('删除：详情栏删除按钮删除当前项，列表中随之消失', async ({ app, screen, browser }) => {
   await app.open('/');
   const main = screen.getByRole('main');

@@ -352,7 +352,7 @@ pub unsafe extern "system" fn keyboard_proc(
             }
         }
 
-        // 5. Global Navigation Keys (Up/Down, Enter, Esc)
+        // 5. Global Navigation Keys (Up/Down, Enter, Delete, Esc)
         if NAVIGATION_ENABLED.load(Ordering::SeqCst) && !IS_RECORDING.load(Ordering::SeqCst) {
             if IS_HIDDEN.load(Ordering::Relaxed) {
                 return CallNextHookEx(None, n_code, w_param, l_param);
@@ -371,13 +371,17 @@ pub unsafe extern "system" fn keyboard_proc(
                 return CallNextHookEx(None, n_code, w_param, l_param);
             }
 
-            let is_navigation_key = vk == 0x26 || vk == 0x28 || vk == 0x0D || is_escape;
-            let is_enter = vk == 0x0D;
+            let is_navigation_key =
+                vk == 0x26 || vk == 0x28 || vk == 0x0D || vk == 0x2E || is_escape;
+            // Enter pastes and Delete removes the selected entry: both only
+            // after Up/Down selected one, so they never reach the app in front
+            // by surprise.
+            let needs_selection = vk == 0x0D || vk == 0x2E;
 
             if is_navigation_key && is_down {
                 // Only Enter requires navigation mode to be active
                 // Escape can always close the window when it's visible
-                if is_enter && !NAVIGATION_MODE_ACTIVE.load(Ordering::Relaxed) {
+                if needs_selection && !NAVIGATION_MODE_ACTIVE.load(Ordering::Relaxed) {
                     return CallNextHookEx(None, n_code, w_param, l_param);
                 }
                 let ctrl_down = (GetAsyncKeyState(VK_CONTROL.0 as i32) as u16 & 0x8000) != 0;
@@ -391,6 +395,7 @@ pub unsafe extern "system" fn keyboard_proc(
                             0x26 => "up",
                             0x28 => "down",
                             0x0D => "enter",
+                            0x2E => "delete",
                             0x1B => "escape",
                             _ => "",
                         };

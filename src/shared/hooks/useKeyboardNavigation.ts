@@ -33,6 +33,8 @@ interface UseKeyboardNavigationOptions {
     tags?: string[]
   ) => Promise<void>;
   setSearch: (val: string) => void;
+  /** Deletes an entry from the keyboard; false if it was refused or failed. */
+  deleteItem: (item: ClipboardEntry) => Promise<boolean>;
 }
 
 export const useKeyboardNavigation = ({
@@ -52,7 +54,8 @@ export const useKeyboardNavigation = ({
   plainPasteHotkey,
   searchInputRef,
   copyToClipboard,
-  setSearch
+  setSearch,
+  deleteItem
 }: UseKeyboardNavigationOptions) => {
   const filteredHistoryRef = useRef(filteredHistory);
   const selectedIndexRef = useRef(selectedIndex);
@@ -142,6 +145,48 @@ export const useKeyboardNavigation = ({
     }
 
     return null;
+  };
+
+  const deleteInFlightRef = useRef(false);
+  const deleteItemRef = useRef(deleteItem);
+  deleteItemRef.current = deleteItem;
+
+  // Delete the selected entry and keep the keyboard selection on the entry
+  // that takes its place (the next one, or the previous one at the end).
+  const deleteSelectedItem = async () => {
+    if (deleteInFlightRef.current) return;
+    const history = filteredHistoryRef.current;
+    const item = resolveSelectedItem(history);
+    if (!item) return;
+    const index = history.findIndex((entry) => entry.id === item.id);
+    const neighbour = history[index + 1] ?? history[index - 1] ?? null;
+
+    deleteInFlightRef.current = true;
+    try {
+      if (!(await deleteItemRef.current(item))) return;
+      const nextIndex = Math.max(0, Math.min(index, history.length - 2));
+      selectedIndexRef.current = nextIndex;
+      selectedItemIdRef.current = neighbour?.id ?? null;
+      selectedItemSnapshotRef.current = neighbour;
+      setSelectedIndex(nextIndex);
+      setSelectedItemId(neighbour?.id ?? null);
+    } finally {
+      deleteInFlightRef.current = false;
+    }
+  };
+
+  // Delete (any platform) or Command+Backspace (macOS, as in Finder). In the
+  // search box only when it can't mean text editing: Delete with the caret at
+  // the end, Command+Backspace with the box empty. Plain Backspace never
+  // deletes an entry: it is how people correct the search.
+  const isDeleteKey = (e: KeyboardEvent, target: HTMLElement) => {
+    const isForwardDelete = e.key === "Delete" && !e.metaKey && !e.ctrlKey && !e.altKey;
+    const isCommandBackspace = isMacPlatform() && e.metaKey && e.key === "Backspace";
+    if (!isForwardDelete && !isCommandBackspace) return false;
+    if (!(target instanceof HTMLInputElement)) return true;
+    const { value, selectionStart, selectionEnd } = target;
+    if (isForwardDelete) return selectionStart === value.length && selectionEnd === value.length;
+    return value.length === 0;
   };
 
   const resetSelectionToTop = () => {
@@ -247,6 +292,15 @@ export const useKeyboardNavigation = ({
             applySelection(0);
           }
         }
+        return;
+      }
+
+      if (isKeyboardModeRef.current && (!isEditable || isSearchInput) && isDeleteKey(e, target)) {
+        // Windows' keyboard hook sends this as a navigation action instead.
+        if (usesNativeNavigation()) return;
+        e.preventDefault();
+        e.stopPropagation();
+        await deleteSelectedItem();
         return;
       }
 
@@ -390,6 +444,9 @@ export const useKeyboardNavigation = ({
         const item = resolveSelectedItem(history);
         if (!item) return;
         await pasteSelectedItem(true, item);
+      } else if (action === "delete") {
+        if (!isNavMode) return;
+        await deleteSelectedItem();
       } else if (action === "escape") {
         setSearch("");
         resetSelectionToTop();

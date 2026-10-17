@@ -120,18 +120,27 @@ export const useClipboardActions = ({
     [pushToast, t]
   );
 
-  const deleteEntry = useCallback(
-    async (e: ReactMouseEvent, id: number) => {
-      e.stopPropagation();
+  const deleteEntryById = useCallback(
+    async (id: number): Promise<boolean> => {
       try {
         await invoke("delete_clipboard_entry", { id });
         setHistory((prev) => prev.filter((item) => item.id !== id));
+        return true;
       } catch (err) {
         const errorMsg = t("delete_failed") + ": " + (err?.toString() || "");
         pushToast(errorMsg, 3000);
+        return false;
       }
     },
     [pushToast, setHistory, t]
+  );
+
+  const deleteEntry = useCallback(
+    async (e: ReactMouseEvent, id: number) => {
+      e.stopPropagation();
+      await deleteEntryById(id);
+    },
+    [deleteEntryById]
   );
 
   const togglePin = useCallback(
@@ -209,6 +218,7 @@ export const useClipboardActions = ({
     copyToClipboard,
     openContent,
     deleteEntry,
+    deleteEntryById,
     togglePin,
     handleUpdateTags,
     handleUpdateNote
