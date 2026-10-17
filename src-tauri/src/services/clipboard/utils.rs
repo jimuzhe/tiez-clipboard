@@ -2313,7 +2313,7 @@ mod tests {
             enabled: true,
             app_name: "WeChat".to_string(),
             app_path: "C:\\Program Files\\Tencent\\WeChat.exe".to_string(),
-            action: "ignore".to_string(),
+            action: "clean".to_string(),
             content_types: vec!["text".to_string(), "url".to_string()],
             cleanup_rules: String::new(),
         };
@@ -2328,6 +2328,31 @@ mod tests {
             &policy,
             "WeChat",
             Some("C:\\Program Files\\Tencent\\WeChat.exe"),
+            "image",
+        ));
+    }
+
+    #[test]
+    fn app_ignore_policy_covers_every_content_type() {
+        // Policies saved by the settings UI carry the text-only default list.
+        let policies = parse_app_cleanup_policies(
+            r#"[{"id":"1","enabled":true,"appName":"WeChat",
+                "appPath":"C:\\Program Files\\Tencent\\WeChat.exe","action":"ignore",
+                "contentTypes":["text","code","url","rich_text"],"cleanupRules":""}]"#,
+        );
+        assert_eq!(policies.len(), 1);
+        let path = Some("C:\\Program Files\\Tencent\\WeChat.exe");
+        for kind in ["text", "code", "url", "rich_text", "image", "file", "video"] {
+            assert!(
+                app_cleanup_policy_matches(&policies[0], "WeChat", path, kind),
+                "ignore policy should match {kind}"
+            );
+        }
+        // A different app is still recorded.
+        assert!(!app_cleanup_policy_matches(
+            &policies[0],
+            "Notepad",
+            Some("C:\\Windows\\notepad.exe"),
             "image",
         ));
     }
@@ -2660,12 +2685,10 @@ pub fn app_cleanup_policy_matches(
     content_type: &str,
 ) -> bool {
     let allowed = if policy.action.eq_ignore_ascii_case("ignore") {
-        // If we are ignoring an app, we should be aggressive in matching unless types are specifically filtered
-        policy.content_types.is_empty()
-            || policy
-                .content_types
-                .iter()
-                .any(|kind| kind.eq_ignore_ascii_case(content_type))
+        // "Don't record this app" covers every kind of content. contentTypes is
+        // not editable in the UI and saved policies default to text kinds only,
+        // so honouring it here let images and files through.
+        true
     } else {
         !policy.content_types.is_empty()
             && policy

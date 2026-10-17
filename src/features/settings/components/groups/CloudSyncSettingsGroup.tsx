@@ -266,7 +266,7 @@ const CloudSyncSettingsGroup = ({
                             value={cloudSyncWebdavPassword}
                             onChange={(e) => setCloudSyncWebdavPassword(e.target.value)}
                             onBlur={() => saveCloudSync("cloud_sync_webdav_password", cloudSyncWebdavPassword)}
-                            placeholder={t("cloud_sync_api_key_placeholder")}
+                            placeholder={t("cloud_sync_webdav_password_placeholder")}
                         />
                     </div>
 

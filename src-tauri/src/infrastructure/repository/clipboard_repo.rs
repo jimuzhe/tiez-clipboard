@@ -540,20 +540,50 @@ impl SqliteClipboardRepository {
         content_type: Option<&str>,
         sort_mode: ClipboardSortMode,
     ) -> Result<Vec<ClipboardEntry>, String> {
-        let raw_rows = {
-            let conn = self.conn.lock().map_err(|e| e.to_string())?;
-            Self::fetch_history_rows(
-                &conn,
-                since_timestamp,
-                limit,
-                offset,
-                content_type,
-                sort_mode,
-            )?
-        };
-        raw_rows
-            .into_iter()
-            .map(|raw| self.decrypt_history_row(raw))
+        // A row this device can't decrypt is skipped (and left untouched in the
+        // database) instead of failing the whole page. The page is topped up
+        // from the following rows so the caller still gets a full page, and
+        // keeps paging, while more rows exist.
+        let wanted = limit.max(0) as usize;
+        let mut entries = Vec::with_capacity(wanted);
+        let mut next_offset = offset;
+        while entries.len() < wanted {
+            let need = (wanted - entries.len()) as i32;
+            let raw_rows = {
+                let conn = self.conn.lock().map_err(|e| e.to_string())?;
+                Self::fetch_history_rows(
+                    &conn,
+                    since_timestamp,
+                    need,
+                    next_offset,
+                    content_type,
+                    sort_mode,
+                )?
+            };
+            let fetched = raw_rows.len();
+            entries.extend(self.decrypt_rows_skipping_unreadable(raw_rows));
+            if fetched < need as usize {
+                break;
+            }
+            next_offset = next_offset.saturating_add(fetched as i32);
+        }
+        Ok(entries)
+    }
+
+    /// Decrypt rows for display, logging and dropping any this device cannot
+    /// decrypt (e.g. ciphertext written under another install's key).
+    fn decrypt_rows_skipping_unreadable(&self, rows: Vec<RawHistoryRow>) -> Vec<ClipboardEntry> {
+        rows.into_iter()
+            .filter_map(|raw| {
+                let id = raw.id;
+                match self.decrypt_history_row(raw) {
+                    Ok(entry) => Some(entry),
+                    Err(e) => {
+                        eprintln!(">>> [HISTORY] skipping entry {id}: {e}");
+                        None
+                    }
+                }
+            })
             .collect()
     }
 
@@ -1369,7 +1399,7 @@ impl ClipboardRepository for SqliteClipboardRepository {
             }
             drop(stmt);
             drop(conn);
-            results.into_iter().map(|raw| self.decrypt_history_row(raw)).collect()
+            Ok(self.decrypt_rows_skipping_unreadable(results))
         }
 
         #[cfg(not(feature = "portable"))]
@@ -1474,8 +1504,7 @@ impl ClipboardRepository for SqliteClipboardRepository {
             let raw_rows = rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())?;
             drop(stmt);
             drop(conn);
-            for raw in raw_rows {
-                let entry = self.decrypt_history_row(raw)?;
+            for entry in self.decrypt_rows_skipping_unreadable(raw_rows) {
                 if seen.insert(entry.id) { results.push(entry); }
             }
 
@@ -1557,16 +1586,27 @@ impl ClipboardRepository for SqliteClipboardRepository {
                         break;
                     }
 
+                    // Taken before unreadable entries are dropped below.
+                    let batch_cursor = batch.last().map(|last| (last.sort_at, last.id));
+
                     // Keychain/decryption work can be noticeably slower than the
                     // SQL read. Do it after releasing the global DB mutex so new
                     // clipboard captures are not blocked by a long search.
-                    for entry in &mut batch {
-                        entry.content = self.maybe_decrypt_text(&entry.content)?;
-                        entry.preview = self.maybe_decrypt_text(&entry.preview)?;
-                        if let Some(html) = entry.html_content.take() {
-                            entry.html_content = Some(self.maybe_decrypt_text(&html)?);
+                    // Entries this device can't decrypt are skipped, not fatal.
+                    batch.retain_mut(|entry| {
+                        let decrypted = (|| -> Result<(), String> {
+                            entry.content = self.maybe_decrypt_text(&entry.content)?;
+                            entry.preview = self.maybe_decrypt_text(&entry.preview)?;
+                            if let Some(html) = entry.html_content.take() {
+                                entry.html_content = Some(self.maybe_decrypt_text(&html)?);
+                            }
+                            Ok(())
+                        })();
+                        if let Err(e) = &decrypted {
+                            eprintln!(">>> [HISTORY] search skipping entry {}: {e}", entry.id);
                         }
-                    }
+                        decrypted.is_ok()
+                    });
 
                     for entry in batch.iter() {
                         if entry_matches_search(entry, &term, tag_only, note_only)
@@ -1583,9 +1623,9 @@ impl ClipboardRepository for SqliteClipboardRepository {
                         break;
                     }
 
-                    if let Some(last) = batch.last() {
-                        cursor_ts = last.sort_at;
-                        cursor_id = last.id;
+                    if let Some((ts, id)) = batch_cursor {
+                        cursor_ts = ts;
+                        cursor_id = id;
                     } else {
                         break;
                     }
@@ -1923,6 +1963,46 @@ mod tests {
         );
         assert_eq!(search_ids(&repo, "needle", 20, false, true), vec![1]);
         assert_eq!(search_ids(&repo, "", 20, false, true), vec![1]);
+    }
+
+    #[test]
+    fn an_undecryptable_row_is_skipped_not_fatal() {
+        // Valid envelope and base64, but not sealed with this device's key.
+        let corrupt = format!("{ENCRYPT_PREFIX}{}", "A".repeat(48));
+        assert!(encryption::decrypt_stored_value(&corrupt).is_err());
+        let repo = search_repository(&format!(
+            "INSERT INTO clipboard_history
+                 (id, content_type, content, source_app, timestamp, sort_at, preview, tags)
+             VALUES
+                 (1, 'text', 'one', 'App', 1, 1, 'one', '[]'),
+                 (2, 'text', 'two', 'App', 2, 2, 'two', '[]'),
+                 (3, 'text', 'three', 'App', 3, 3, 'three', '[]'),
+                 (4, 'text', '{corrupt}', 'App', 4, 4, '{corrupt}', '[\"sensitive\"]'),
+                 (5, 'text', '{corrupt}', 'App', 5, 5, '{corrupt}', '[]'),
+                 (6, 'text', 'six', 'App', 6, 6, 'six', '[]');"
+        ));
+        let ids = |entries: Vec<ClipboardEntry>| entries.into_iter().map(|e| e.id).collect::<Vec<_>>();
+
+        // The page is topped up past skipped rows, so paging still sees more.
+        let first_page = repo
+            .get_history_sorted(3, 0, None, ClipboardSortMode::Activity)
+            .expect("one bad row must not fail the page");
+        assert_eq!(ids(first_page), vec![6, 3, 2]);
+        let all = repo
+            .get_history_sorted(50, 0, None, ClipboardSortMode::Activity)
+            .unwrap();
+        assert_eq!(ids(all), vec![6, 3, 2, 1]);
+        assert_eq!(ids(repo.get_history_since(2, 50, 0, None).unwrap()), vec![6, 3]);
+
+        // Search (plain and encrypted-scan paths) skips them too.
+        assert_eq!(search_ids(&repo, "app", 50, false, false), vec![6, 3, 2, 1]);
+
+        // The unreadable rows are left as they were.
+        let conn = repo.conn.lock().unwrap();
+        let kept: i64 = conn
+            .query_row("SELECT COUNT(*) FROM clipboard_history WHERE content = ?1", [&corrupt], |r| r.get(0))
+            .unwrap();
+        assert_eq!(kept, 2);
     }
 }
 

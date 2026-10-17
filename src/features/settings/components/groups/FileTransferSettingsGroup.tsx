@@ -111,7 +111,7 @@ const FileTransferSettingsGroup = ({
                                         applyFileServerPort(fileServerPort);
                                     }
                                 }}
-                                placeholder="18888"
+                                placeholder="28462"
                             />
                         </div>
                         <div className="setting-item">

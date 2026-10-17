@@ -10,8 +10,7 @@ pub trait TagRepository {
     fn get_all_with_counts(&self) -> Result<HashMap<String, i32>, String>;
     fn create(&self, name: &str) -> Result<(), String>;
     fn rename(&self, old_name: &str, new_name: &str) -> Result<(), String>;
-    fn delete_globally(&self, name: &str, data_dir: Option<&std::path::Path>)
-        -> Result<(), String>;
+    fn delete_globally(&self, name: &str) -> Result<(), String>;
     fn get_entries_by_tag(&self, tag: &str) -> Result<Vec<ClipboardEntry>, String>;
     fn update_entry_tags(&self, id: i64, tags: Vec<String>) -> Result<(), String>;
 }
@@ -187,51 +186,59 @@ impl TagRepository for SqliteTagRepository {
         Ok(())
     }
 
-    fn delete_globally(
-        &self,
-        name: &str,
-        data_dir: Option<&std::path::Path>,
-    ) -> Result<(), String> {
+    fn delete_globally(&self, name: &str) -> Result<(), String> {
         let conn = self.conn.lock().map_err(|e| e.to_string())?;
+        let transaction = conn.unchecked_transaction().map_err(|e| e.to_string())?;
 
-        // Remove from saved_tags
-        let _ = conn.execute("DELETE FROM saved_tags WHERE name = ?", params![name]);
-
-        // Delete all entries that carry this tag
-        let mut stmt = conn
-            .prepare("SELECT entry_id FROM entry_tags WHERE tag = ?")
+        // Remove from saved_tags (also drops its colour).
+        transaction
+            .execute("DELETE FROM saved_tags WHERE name = ?", params![name])
             .map_err(|e| e.to_string())?;
-        let ids: Vec<i64> = stmt
-            .query_map(params![name], |row| row.get(0))
-            .map_err(|e| e.to_string())?
-            .filter_map(Result::ok)
-            .collect();
 
-        // Through the normal delete: it leaves a sync tombstone (without one a
-        // synced device brings the entries back) and also cleans up rich-text
-        // image files. Pinned entries are kept and only lose the tag, as
-        // "clear history" keeps them.
+        // Deleting a tag only takes the tag off its entries; the entries stay.
+        // (It used to delete every unpinned entry carrying the tag.)
+        let ids: Vec<i64> = {
+            let mut stmt = transaction
+                .prepare("SELECT entry_id FROM entry_tags WHERE tag = ?")
+                .map_err(|e| e.to_string())?;
+            let rows = stmt
+                .query_map(params![name], |row| row.get(0))
+                .map_err(|e| e.to_string())?;
+            rows.filter_map(Result::ok).collect()
+        };
+
         let clipboard_repo =
             crate::infrastructure::repository::clipboard_repo::SqliteClipboardRepository::new(self.conn.clone());
-        let transaction = conn.unchecked_transaction().map_err(|e| e.to_string())?;
-        let mut candidates = Vec::new();
+        let removes_sensitive = crate::database::has_sensitive_tag(&[name.to_string()]);
         for id in ids {
-            let pinned: bool = transaction
-                .query_row("SELECT is_pinned FROM clipboard_history WHERE id = ?", [id], |row| row.get(0))
-                .unwrap_or(false);
-            if pinned {
-                transaction
-                    .execute("DELETE FROM entry_tags WHERE entry_id = ?1 AND tag = ?2", params![id, name])
-                    .map_err(|e| e.to_string())?;
-                Self::refresh_entry_tags_json(&transaction, id)?;
-            } else {
-                candidates.extend(clipboard_repo.delete_collecting_files(&transaction, id, data_dir)?);
+            transaction
+                .execute("DELETE FROM entry_tags WHERE entry_id = ?1 AND tag = ?2", params![id, name])
+                .map_err(|e| e.to_string())?;
+            // Also bumps tags_updated_at, so sync carries the removal.
+            Self::refresh_entry_tags_json(&transaction, id)?;
+
+            // Same rule as editing an entry's tags: with no sensitive tag left
+            // the entry is stored in plain text again.
+            if removes_sensitive {
+                let remaining: Vec<String> = {
+                    let mut stmt = transaction
+                        .prepare("SELECT tag FROM entry_tags WHERE entry_id = ?")
+                        .map_err(|e| e.to_string())?;
+                    let rows = stmt
+                        .query_map(params![id], |row| row.get::<_, String>(0))
+                        .map_err(|e| e.to_string())?;
+                    rows.filter_map(Result::ok).collect()
+                };
+                if !crate::database::has_sensitive_tag(&remaining) {
+                    if let Err(e) = clipboard_repo.decrypt_entry_with_conn(&transaction, id) {
+                        // Not decryptable on this device: keep the ciphertext
+                        // rather than failing the whole tag deletion.
+                        eprintln!("[tag_repo] entry {id} stays encrypted after tag delete: {e}");
+                    }
+                }
             }
         }
-        let unused = clipboard_repo.unreferenced_files(&transaction, candidates);
-        transaction.commit().map_err(|e| e.to_string())?;
-        crate::infrastructure::repository::clipboard_repo::remove_attachment_files(unused);
-        Ok(())
+        transaction.commit().map_err(|e| e.to_string())
     }
 
     fn get_entries_by_tag(&self, tag: &str) -> Result<Vec<ClipboardEntry>, String> {
@@ -280,7 +287,15 @@ impl TagRepository for SqliteTagRepository {
 
         let mut history = Vec::new();
         for row in rows {
-            history.push(row.map_err(|e| e.to_string())?);
+            match row {
+                Ok(entry) => history.push(entry),
+                // maybe_decrypt_text's error: this device can't decrypt the
+                // entry. Skip it rather than hide the whole tag's list.
+                Err(rusqlite::Error::ToSqlConversionFailure(e)) => {
+                    eprintln!(">>> [TAGS] skipping unreadable entry: {e}");
+                }
+                Err(e) => return Err(e.to_string()),
+            }
         }
         Ok(history)
     }
@@ -325,5 +340,109 @@ impl TagRepository for SqliteTagRepository {
         )
         .map_err(|e| e.to_string())?;
         conn.commit().map_err(|e| e.to_string())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::infrastructure::repository::migrations::run_migrations;
+
+    fn repo_with(fixture: &str) -> SqliteTagRepository {
+        let conn = Connection::open_in_memory().expect("open database");
+        run_migrations(&conn).expect("migrate database");
+        conn.execute_batch(fixture).expect("insert fixture");
+        // entry_tags mirrors the tags JSON column.
+        let rows: Vec<(i64, String)> = conn
+            .prepare("SELECT id, tags FROM clipboard_history")
+            .unwrap()
+            .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))
+            .unwrap()
+            .collect::<Result<_, _>>()
+            .unwrap();
+        for (id, json) in rows {
+            for tag in serde_json::from_str::<Vec<String>>(&json).unwrap() {
+                conn.execute(
+                    "INSERT INTO entry_tags (entry_id, tag) VALUES (?1, ?2)",
+                    params![id, tag],
+                )
+                .unwrap();
+            }
+        }
+        SqliteTagRepository::new(Arc::new(Mutex::new(conn)))
+    }
+
+    fn tags_of(repo: &SqliteTagRepository, id: i64) -> Vec<String> {
+        let conn = repo.conn.lock().unwrap();
+        let json: String = conn
+            .query_row("SELECT tags FROM clipboard_history WHERE id = ?", [id], |r| r.get(0))
+            .unwrap();
+        serde_json::from_str(&json).unwrap()
+    }
+
+    #[test]
+    fn deleting_a_tag_keeps_its_entries() {
+        let repo = repo_with(
+            r#"INSERT INTO saved_tags (name, color) VALUES ('work', '#f00');
+               INSERT INTO clipboard_history
+                   (id, content_type, content, source_app, timestamp, sort_at, preview, tags, is_pinned)
+               VALUES
+                   (1, 'text', 'unpinned', 'App', 1, 1, 'unpinned', '["other","work"]', 0),
+                   (2, 'text', 'pinned', 'App', 2, 2, 'pinned', '["work"]', 1),
+                   (3, 'image', '/tmp/a.png', 'App', 3, 3, '', '["work"]', 0);"#,
+        );
+
+        repo.delete_globally("work").expect("delete tag");
+
+        let count: i64 = repo
+            .conn
+            .lock()
+            .unwrap()
+            .query_row("SELECT COUNT(*) FROM clipboard_history", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(count, 3, "entries must not be deleted with the tag");
+        assert_eq!(tags_of(&repo, 1), vec!["other".to_string()]);
+        assert!(tags_of(&repo, 2).is_empty());
+        assert!(tags_of(&repo, 3).is_empty());
+        let counts = repo.get_all_with_counts().unwrap();
+        assert!(!counts.contains_key("work"));
+        assert_eq!(counts.get("other"), Some(&1));
+        assert!(!repo.get_colors().unwrap().contains_key("work"));
+    }
+
+    #[test]
+    fn deleting_the_last_sensitive_tag_stores_the_entry_in_plain_text() {
+        let cipher = encryption::encrypt_for_storage("secret").expect("encrypt");
+        let repo = repo_with(&format!(
+            "INSERT INTO clipboard_history
+                 (id, content_type, content, source_app, timestamp, sort_at, preview, tags)
+             VALUES
+                 (1, 'text', '{cipher}', 'App', 1, 1, '{cipher}', '[\"password\"]'),
+                 (2, 'text', '{cipher}', 'App', 2, 2, '{cipher}', '[\"password\",\"sensitive\"]');"
+        ));
+
+        repo.delete_globally("password").expect("delete tag");
+
+        let conn = repo.conn.lock().unwrap();
+        let content = |id: i64| -> String {
+            conn.query_row("SELECT content FROM clipboard_history WHERE id = ?", [id], |r| r.get(0))
+                .unwrap()
+        };
+        assert_eq!(content(1), "secret");
+        assert!(encryption::is_encrypted_value(&content(2)), "still tagged sensitive");
+    }
+
+    #[test]
+    fn entries_by_tag_skip_unreadable_rows() {
+        let corrupt = format!("{}{}", crate::database::ENCRYPT_PREFIX, "A".repeat(48));
+        let repo = repo_with(&format!(
+            "INSERT INTO clipboard_history
+                 (id, content_type, content, source_app, timestamp, sort_at, preview, tags)
+             VALUES
+                 (1, 'text', 'kept', 'App', 1, 1, 'kept', '[\"sensitive\"]'),
+                 (2, 'text', '{corrupt}', 'App', 2, 2, '{corrupt}', '[\"sensitive\"]');"
+        ));
+        let entries = repo.get_entries_by_tag("sensitive").expect("list still loads");
+        assert_eq!(entries.iter().map(|e| e.id).collect::<Vec<_>>(), vec![1]);
     }
 }

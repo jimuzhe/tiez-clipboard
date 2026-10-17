@@ -441,23 +441,21 @@ pub fn rename_tag_globally(
 
 #[tauri::command]
 pub fn delete_tag_from_all(
-    app_handle: tauri::AppHandle,
     state: State<'_, DbState>,
     session: State<'_, SessionHistory>,
-    app_data: State<'_, AppDataDir>,
     tag_name: String,
 ) -> AppResult<()> {
+    // Deleting a tag removes it from entries; the entries themselves stay.
     {
         let mut session_items = session.inner().0.lock().unwrap();
-        session_items.retain(|item| !item.tags.contains(&tag_name));
+        for item in session_items.iter_mut() {
+            item.tags.retain(|tag| tag != &tag_name);
+        }
     }
-    // Session-only images go as soon as their entry does (privacy).
-    crate::services::clipboard::sweep_session_files(&app_handle);
 
-    let data_dir = app_data.0.lock().unwrap();
     state
         .tag_repo
-        .delete_globally(&tag_name, Some(&data_dir))
+        .delete_globally(&tag_name)
         .map_err(AppError::from)
 }
 
