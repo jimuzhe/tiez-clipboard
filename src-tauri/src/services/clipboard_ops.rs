@@ -12,7 +12,7 @@ use crate::services::clipboard::{
     html_has_renderable_rich_body, normalize_plain_text_for_clipboard_paste, parse_cf_html,
     plain_text_from_tabular_html, plain_text_requires_exact_paste, repair_html_fragment,
     rtf_bytes_from_named_formats, sanitize_tabular_html_for_paste,
-    should_attach_rich_image_fallback_on_capture, should_use_rich_image_clipboard_fallback,
+    should_attach_rich_image_fallback_on_capture,
     split_rich_html_and_image_fallback, split_rich_html_and_named_formats,
 };
 use arboard::Clipboard;
@@ -314,35 +314,28 @@ fn append_fallback_image_to_html(html: &str, data_url: &str) -> String {
     out
 }
 
+/// The HTML to paste plus the picture the entry was copied with, if any.
+/// Office and WPS put a bitmap of the selection next to the HTML, and each
+/// target picks the format it can use (WeChat the picture, Word the table).
+/// Pasting both does the same as pasting from the source app, instead of
+/// guessing per target which one to give.
 fn materialize_rich_html_for_paste(
     html: &str,
     fallback_image_payload: Option<&str>,
-    use_image_fallback: bool,
 ) -> (String, Option<Vec<u8>>) {
     let html_with_embedded_images = crate::services::clipboard::embed_local_images(html);
-
-    if !use_image_fallback {
-        return (html_with_embedded_images, None);
-    }
-
     let fallback_bytes = fallback_image_payload.and_then(resolve_rich_image_fallback_bytes);
 
-    if html_has_embedded_data_image(&html_with_embedded_images) {
+    if html_has_embedded_data_image(&html_with_embedded_images)
+        || html_has_renderable_rich_body(&html_with_embedded_images)
+    {
         return (html_with_embedded_images, fallback_bytes);
     }
 
-    if html_has_renderable_rich_body(&html_with_embedded_images) {
-        return (html_with_embedded_images, None);
-    }
-
-    let Some(payload) = fallback_image_payload else {
+    // Nothing to show in the HTML itself: put the picture in it too.
+    let Some(data_url) = fallback_image_payload.and_then(rich_image_payload_to_data_url) else {
         return (html_with_embedded_images, fallback_bytes);
     };
-
-    let Some(data_url) = rich_image_payload_to_data_url(payload) else {
-        return (html_with_embedded_images, fallback_bytes);
-    };
-
     (
         append_fallback_image_to_html(&html_with_embedded_images, &data_url),
         fallback_bytes,
@@ -964,26 +957,9 @@ async fn copy_content_to_system_clipboard(
                     } else {
                         repair_html_fragment(&clean_html)
                     };
-                    #[cfg(target_os = "windows")]
-                    let paste_target = {
-                        let info =
-                            crate::infrastructure::windows_api::window_tracker::get_clipboard_source_app_info();
-                        (info.app_name, info.process_path)
-                    };
-                    #[cfg(not(target_os = "windows"))]
-                    let paste_target = (
-                        crate::global_state::get_last_active_app_name(),
-                        None::<String>,
-                    );
-                    let use_image_fallback = should_use_rich_image_clipboard_fallback(
-                        &paste_target.0,
-                        paste_target.1.as_deref(),
-                        &base_html,
-                    );
                     let (final_html, image_bytes) = materialize_rich_html_for_paste(
                         &base_html,
                         fallback_image_data_url.as_deref(),
-                        use_image_fallback,
                     );
                     let mut paste_html = sanitize_tabular_html_for_paste(&final_html);
                     let mut paste_plain = plain_text_from_tabular_html(&paste_html)
@@ -997,6 +973,10 @@ async fn copy_content_to_system_clipboard(
 
                     #[cfg(target_os = "macos")]
                     {
+                        let paste_target = (
+                            crate::global_state::get_last_active_app_name(),
+                            None::<String>,
+                        );
                         let paste_rtf = if app_likely_word_processor(
                             &paste_target.0,
                             paste_target.1.as_deref(),
@@ -1018,9 +998,8 @@ async fn copy_content_to_system_clipboard(
                     {
                         let wrote_image = image_bytes.is_some();
                         if let Some(bytes) = image_bytes {
-                            let (primary_hash, _secondary_hash) =
-                                copy_image_bytes_to_clipboard(bytes, current_time, None)?;
-                            crate::LAST_APP_SET_HASH_ALT.store(primary_hash, Ordering::SeqCst);
+                            let hash = copy_rich_paste_image(&bytes)?;
+                            crate::LAST_APP_SET_HASH_ALT.store(hash, Ordering::SeqCst);
                         }
                         set_windows_formatted_clipboard(
                             &paste_plain,
@@ -1032,17 +1011,11 @@ async fn copy_content_to_system_clipboard(
 
                     #[cfg(all(not(target_os = "macos"), not(target_os = "windows")))]
                     {
-                        if let Some(bytes) = image_bytes {
-                            let (primary_hash, _secondary_hash) =
-                                copy_image_bytes_to_clipboard(bytes, current_time, None)?;
-                            crate::LAST_APP_SET_HASH_ALT.store(primary_hash, Ordering::SeqCst);
-                        } else {
-                            let mut clipboard =
-                                arboard::Clipboard::new().map_err(AppError::from)?;
-                            clipboard
-                                .set_html(paste_html, Some(paste_plain))
-                                .map_err(AppError::from)?;
-                        }
+                        let _ = image_bytes;
+                        let mut clipboard = arboard::Clipboard::new().map_err(AppError::from)?;
+                        clipboard
+                            .set_html(paste_html, Some(paste_plain))
+                            .map_err(AppError::from)?;
                     }
                 } else {
                     copy_text_with_retry(content).await?;
@@ -1079,6 +1052,40 @@ fn image_extension_for_bytes(bytes: &[u8]) -> &'static str {
     } else {
         "png"
     }
+}
+
+/// Writes the picture of a rich entry as image formats only. Unlike a plain
+/// image paste there is no file next to it: a copied table is not a file, and
+/// chat apps would send one as an attachment.
+#[cfg(target_os = "windows")]
+fn copy_rich_paste_image(bytes: &[u8]) -> AppResult<u64> {
+    let rgba = image::load_from_memory(bytes)
+        .map_err(|e| AppError::Internal(format!("无法打开图片。\n详情：{}", e)))?
+        .to_rgba8();
+    let (width, height) = rgba.dimensions();
+    let png = if image_extension_for_bytes(bytes) == "png" {
+        bytes.to_vec()
+    } else {
+        encode_png_from_rgba(&rgba)?
+    };
+    let raw = rgba.into_raw();
+    let mut hasher = DefaultHasher::new();
+    raw.hash(&mut hasher);
+    let hash = hasher.finish();
+    unsafe {
+        crate::infrastructure::windows_api::win_clipboard::set_clipboard_image_with_formats(
+            crate::infrastructure::windows_api::win_clipboard::ImageData {
+                width: width as usize,
+                height: height as usize,
+                bytes: raw,
+            },
+            None,
+            Some(&png),
+            None,
+        )
+        .map_err(AppError::Internal)?;
+    }
+    Ok(hash)
 }
 
 #[cfg(target_os = "windows")]

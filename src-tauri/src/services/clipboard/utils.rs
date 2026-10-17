@@ -837,23 +837,6 @@ pub fn should_attach_rich_image_fallback_on_capture(
     true
 }
 
-pub fn should_use_rich_image_clipboard_fallback(
-    target_app: &str,
-    target_app_path: Option<&str>,
-    html: &str,
-) -> bool {
-    if app_likely_word_processor(target_app, target_app_path) {
-        return false;
-    }
-    if app_likely_spreadsheet(target_app, target_app_path) {
-        return false;
-    }
-    if html_has_renderable_rich_body(html) {
-        return false;
-    }
-    true
-}
-
 fn source_app_likely_formats_rich_text(source_app: &str, source_app_path: Option<&str>) -> bool {
     let haystack = build_app_haystack(source_app, source_app_path);
 
@@ -1970,27 +1953,8 @@ mod tests {
     }
 
     #[test]
-    fn should_not_use_image_fallback_when_pasting_to_wps() {
-        let html = "<html><body><p>正文内容</p></body></html>";
-        assert!(!super::should_use_rich_image_clipboard_fallback(
-            "WPS Office",
-            None,
-            html
-        ));
-        assert!(super::should_attach_rich_image_fallback_on_capture(
-            "WPS Office",
-            None
-        ));
-    }
-
-    #[test]
-    fn should_not_use_image_fallback_for_excel_tables() {
-        let html = "<table><tr><td>Header</td><td>Value</td></tr></table>";
-        assert!(!super::should_use_rich_image_clipboard_fallback(
-            "Microsoft Excel",
-            None,
-            html
-        ));
+    fn rich_entries_keep_their_capture_picture_marker() {
+        assert!(super::should_attach_rich_image_fallback_on_capture("WPS Office", None));
     }
 
     #[test]
