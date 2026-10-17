@@ -15,6 +15,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+      # Plans, release notes, triage and prototypes live on the private staging
+      # repo's `internal` branch. Fail if any of it lands here.
+      - name: No internal material
+        run: |
+          found=$(git ls-files -- .tiez-internal internal plans release-notes triage prototypes | head -20)
+          if [ -n "$found" ]; then
+            echo "::error::Internal material belongs in the private staging repo (internal branch), not here:"
+            echo "$found"
+            exit 1
+          fi
       - uses: actions/setup-node@v5
         with:
           node-version: 20
