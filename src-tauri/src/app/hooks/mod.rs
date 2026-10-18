@@ -373,9 +373,9 @@ pub unsafe extern "system" fn keyboard_proc(
 
             let is_navigation_key =
                 vk == 0x26 || vk == 0x28 || vk == 0x0D || vk == 0x2E || is_escape;
-            // Enter pastes and Delete removes the selected entry: both only
-            // after Up/Down selected one, so they never reach the app in front
-            // by surprise.
+            // Enter pastes, Shift+Enter copies and Delete removes the selected
+            // entry: all only after Up/Down selected one, so they never reach
+            // the app in front by surprise.
             let needs_selection = vk == 0x0D || vk == 0x2E;
 
             if is_navigation_key && is_down {
@@ -389,11 +389,14 @@ pub unsafe extern "system" fn keyboard_proc(
                 let win_down = (GetAsyncKeyState(VK_LWIN.0 as i32) as u16 & 0x8000 != 0)
                     || (GetAsyncKeyState(VK_RWIN.0 as i32) as u16 & 0x8000 != 0);
 
+                let shift_down = (GetAsyncKeyState(VK_SHIFT.0 as i32) as u16 & 0x8000) != 0;
+
                 if !ctrl_down && !alt_down && !win_down {
                     if let Some(handle) = GLOBAL_APP_HANDLE.get() {
                         let action = match vk {
                             0x26 => "up",
                             0x28 => "down",
+                            0x0D if shift_down => "copy",
                             0x0D => "enter",
                             0x2E => "delete",
                             0x1B => "escape",

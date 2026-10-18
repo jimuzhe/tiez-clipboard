@@ -386,16 +386,20 @@ fn set_windows_formatted_clipboard(
 /// Whether a paste keeps the entry's formatting. An explicit choice wins: a
 /// click keeps the format, a right-click or the plain text hotkey drops it.
 /// Callers with no choice of their own (the sequential paste queue) keep the
-/// format of rich text entries too.
+/// format of rich text entries too. An entry with no text at all (only
+/// pictures) keeps it either way: as plain text it pasted nothing.
 pub(crate) fn resolve_paste_with_format(
     content: &str,
     content_type: &str,
     html_content: Option<&str>,
     paste_with_format: Option<bool>,
 ) -> bool {
-    let Some(_html) = html_content else {
+    let Some(html) = html_content else {
         return false;
     };
+    if content.is_empty() && !html.trim().is_empty() {
+        return true;
+    }
     paste_with_format
         .unwrap_or_else(|| content_type == "rich_text" && !plain_text_requires_exact_paste(content))
 }
@@ -1990,6 +1994,8 @@ fn handle_post_paste_actions(
 }
 
 /// A click pastes with the format; this hotkey is the plain text way (#148).
+/// It pastes the newest copy, not the top of the list: pins sit above newer
+/// entries there, and the hotkey would keep pasting the same pin.
 pub fn paste_latest_plain(app_handle: tauri::AppHandle) {
     paste_latest(app_handle, false);
 }
@@ -2002,14 +2008,14 @@ fn paste_latest(app_handle: tauri::AppHandle, with_format: bool) {
             settings.delete_after_paste.load(Ordering::Relaxed)
         };
 
-        let history = crate::app::commands::history_cmd::get_clipboard_history(
-            app_handle_clone.state::<DbState>(),
-            app_handle_clone.state::<SessionHistory>(),
-            app_handle_clone.state::<crate::app_state::AppDataDir>(),
+        let history = crate::app::commands::history_cmd::history_page(
+            &app_handle_clone.state::<DbState>(),
+            &app_handle_clone.state::<SessionHistory>(),
+            &app_handle_clone.state::<crate::app_state::AppDataDir>(),
             1,
             0, // offset
             None,
-            None,
+            crate::infrastructure::repository::clipboard_repo::ClipboardSortMode::Recent,
         );
 
         if let Ok(items) = history {
@@ -2049,5 +2055,13 @@ mod tests {
         assert!(resolve_paste_with_format("点击跳转百度", "rich_text", HTML, None));
         assert!(!resolve_paste_with_format(" 点击跳转百度", "rich_text", HTML, None));
         assert!(!resolve_paste_with_format("点击跳转百度", "rich_text", None, Some(true)));
+    }
+
+    #[test]
+    fn an_entry_without_text_keeps_its_pictures_as_plain_text() {
+        let pictures = Some("<img src=\"data:image/png;base64,AAAA\">");
+        assert!(resolve_paste_with_format("", "rich_text", pictures, Some(false)));
+        // Whitespace is text the user copied (#97); it pastes as it is.
+        assert!(!resolve_paste_with_format("  ", "rich_text", pictures, Some(false)));
     }
 }

@@ -18,6 +18,7 @@ interface UseKeyboardNavigationOptions {
   setIsKeyboardMode: (val: boolean | ((prev: boolean) => boolean)) => void;
   showSettings: boolean;
   showTagManager: boolean;
+  showEmojiPanel: boolean;
   chatMode: boolean;
   editingTagsId: number | null;
   editingNoteId: number | null;
@@ -32,6 +33,10 @@ interface UseKeyboardNavigationOptions {
     isPinned?: boolean,
     tags?: string[]
   ) => Promise<void>;
+  /** Shift+Enter: copies an entry without pasting; the window stays open. */
+  copyWithoutPaste: (item: ClipboardEntry) => Promise<void>;
+  /** Tab / Shift+Tab: moves to the next / previous category tab. */
+  cycleCategory: (step: 1 | -1) => void;
   setSearch: (val: string) => void;
   /** Deletes an entry from the keyboard; false if it was refused or failed. */
   deleteItem: (item: ClipboardEntry) => Promise<boolean>;
@@ -47,6 +52,7 @@ export const useKeyboardNavigation = ({
   setIsKeyboardMode,
   showSettings,
   showTagManager,
+  showEmojiPanel,
   chatMode,
   editingTagsId,
   editingNoteId,
@@ -54,6 +60,8 @@ export const useKeyboardNavigation = ({
   plainPasteHotkey,
   searchInputRef,
   copyToClipboard,
+  copyWithoutPaste,
+  cycleCategory,
   setSearch,
   deleteItem
 }: UseKeyboardNavigationOptions) => {
@@ -64,6 +72,7 @@ export const useKeyboardNavigation = ({
   const isKeyboardModeRef = useRef(isKeyboardMode);
   const showSettingsRef = useRef(showSettings);
   const showTagManagerRef = useRef(showTagManager);
+  const showEmojiPanelRef = useRef(showEmojiPanel);
   const chatModeRef = useRef(chatMode);
   const editingTagsIdRef = useRef(editingTagsId);
   const editingNoteIdRef = useRef(editingNoteId);
@@ -77,6 +86,7 @@ export const useKeyboardNavigation = ({
   isKeyboardModeRef.current = isKeyboardMode;
   showSettingsRef.current = showSettings;
   showTagManagerRef.current = showTagManager;
+  showEmojiPanelRef.current = showEmojiPanel;
   chatModeRef.current = chatMode;
   editingTagsIdRef.current = editingTagsId;
   editingNoteIdRef.current = editingNoteId;
@@ -189,6 +199,36 @@ export const useKeyboardNavigation = ({
     return value.length === 0;
   };
 
+  const copyInFlightRef = useRef(false);
+  const copyWithoutPasteRef = useRef(copyWithoutPaste);
+  copyWithoutPasteRef.current = copyWithoutPaste;
+  const cycleCategoryRef = useRef(cycleCategory);
+  cycleCategoryRef.current = cycleCategory;
+
+  // Shift+Enter: copy the selected entry and leave the window and the
+  // selection as they are.
+  const copySelectedItem = async () => {
+    if (copyInFlightRef.current) return;
+    const item = resolveSelectedItem(filteredHistoryRef.current);
+    if (!item) return;
+    copyInFlightRef.current = true;
+    try {
+      await copyWithoutPasteRef.current(item);
+    } finally {
+      copyInFlightRef.current = false;
+    }
+  };
+
+  // Tab cycles the category tabs from the search box or from no field at all.
+  // Other fields, and any open dialog or menu, keep their normal Tab focus.
+  const isCategoryTab = (e: KeyboardEvent, target: HTMLElement, isEditable: boolean) => {
+    if (e.key !== "Tab" || e.ctrlKey || e.altKey || e.metaKey) return false;
+    if (showEmojiPanelRef.current) return false;
+    if (isEditable && !target.classList.contains("search-input")) return false;
+    if (document.querySelector("[aria-modal='true']")) return false;
+    return !target.closest("[role='dialog'], [role='menu'], [role='listbox']");
+  };
+
   const resetSelectionToTop = () => {
     const history = filteredHistoryRef.current;
     const firstId = history[0]?.id ?? null;
@@ -275,6 +315,15 @@ export const useKeyboardNavigation = ({
       const isAnyInput = tagName === "INPUT" || tagName === "TEXTAREA";
       const isEditable = isAnyInput || target.isContentEditable === true;
 
+      if (isCategoryTab(e, target, isEditable)) {
+        e.preventDefault();
+        e.stopPropagation();
+        cycleCategoryRef.current(e.shiftKey ? -1 : 1);
+        // The list changes under the selection: start again from the top.
+        resetSelectionToTop();
+        return;
+      }
+
       if (e.key === "Escape") {
         e.preventDefault();
         if (isEditable) {
@@ -346,6 +395,18 @@ export const useKeyboardNavigation = ({
       }
 
       const matchesPlainHotkey = matchesHotkey(e, plainPasteHotkeyRef.current);
+      const isCopyEnter =
+        e.key === "Enter" && e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey &&
+        !matchesPlainHotkey && isKeyboardModeRef.current;
+      if (isCopyEnter) {
+        e.preventDefault();
+        e.stopPropagation();
+        // Windows' keyboard hook sends this as a "copy" navigation action.
+        if (usesNativeNavigation() || e.repeat) return;
+        await copySelectedItem();
+        return;
+      }
+
       const shouldHandleEnter = e.key === "Enter" && isKeyboardModeRef.current;
       if (shouldHandleEnter || matchesPlainHotkey) {
         if (shouldHandleEnter && !matchesPlainHotkey && usesNativeNavigation()) {
@@ -444,6 +505,22 @@ export const useKeyboardNavigation = ({
         const item = resolveSelectedItem(history);
         if (!item) return;
         await pasteSelectedItem(true, item);
+      } else if (action === "plain") {
+        // The plain text hotkey, sent by the backend because a registered
+        // hotkey never reaches this keydown handler.
+        if (!isNavMode) return;
+        const item = resolveSelectedItem(history);
+        if (!item) return;
+        await pasteSelectedItem(false, item);
+      } else if (action === "copy") {
+        if (!isNavMode) return;
+        const now = performance.now();
+        const lastNavigationKey = lastNavigationKeyRef.current;
+        if (lastNavigationKey.key === action && now - lastNavigationKey.time < 350) {
+          return;
+        }
+        lastNavigationKeyRef.current = { key: action, time: now };
+        await copySelectedItem();
       } else if (action === "delete") {
         if (!isNavMode) return;
         await deleteSelectedItem();

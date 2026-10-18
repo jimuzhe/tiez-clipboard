@@ -19,6 +19,12 @@ interface UseClipboardActionsOptions {
   virtualListRef: RefObject<VirtualClipboardListHandle | null>;
 }
 
+// Files and media are read by id on the backend; sending their content is waste.
+const invokeContentFor = (id: number, content: string, contentType: string) =>
+  id !== 0 && (contentType === "image" || contentType === "video" || contentType === "file")
+    ? ""
+    : content;
+
 export const useClipboardActions = ({
   t,
   pushToast,
@@ -44,11 +50,7 @@ export const useClipboardActions = ({
           document.activeElement.blur();
         }
 
-        const invokeContent =
-          id !== 0 &&
-          (contentType === "image" || contentType === "video" || contentType === "file")
-            ? ""
-            : content;
+        const invokeContent = invokeContentFor(id, content, contentType);
 
         if (clickCopyOnly) {
           await invoke("copy_to_clipboard", {
@@ -102,6 +104,28 @@ export const useClipboardActions = ({
       }
     },
     [clickCopyOnly, deleteAfterPaste, isWindowPinned, moveToTopAfterPaste, pushToast, setHistory, setSearch, t]
+  );
+
+  // Shift+Enter: put the entry on the clipboard and keep the window open, so
+  // the user can go on browsing (unlike 「点击只复制」, which hides it).
+  const copyWithoutPaste = useCallback(
+    async ({ id, content, content_type }: ClipboardEntry) => {
+      try {
+        await invoke("copy_to_clipboard", {
+          content: invokeContentFor(id, content, content_type),
+          contentType: content_type,
+          paste: false,
+          id,
+          deleteAfterUse: false,
+          pasteWithFormat: true,
+          moveToTop: false
+        });
+        pushToast(t("copied_to_clipboard"), 1500);
+      } catch (err) {
+        pushToast(t("copy_failed") + (err?.toString() || ""), 3000);
+      }
+    },
+    [pushToast, t]
   );
 
   const openContent = useCallback(
@@ -216,6 +240,7 @@ export const useClipboardActions = ({
 
   return {
     copyToClipboard,
+    copyWithoutPaste,
     openContent,
     deleteEntry,
     deleteEntryById,

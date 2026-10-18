@@ -825,6 +825,16 @@ mod tests {
                 "normal-used"
             ]
         );
+        // The plain text paste hotkey: newest copy first, pins have no say.
+        assert_eq!(
+            contents_for(ClipboardSortMode::Recent),
+            [
+                "normal-created",
+                "normal-used",
+                "pinned-activity",
+                "pinned-manual"
+            ]
+        );
     }
 
     #[test]

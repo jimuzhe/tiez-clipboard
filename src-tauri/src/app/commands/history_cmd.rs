@@ -141,6 +141,19 @@ pub fn get_clipboard_history(
     sort_mode: Option<String>,
 ) -> AppResult<Vec<ClipboardEntry>> {
     let sort_mode = ClipboardSortMode::from_setting(sort_mode.as_deref());
+    history_page(&state, &session, &app_data, limit, offset, content_type, sort_mode)
+}
+
+/// One page of history (database and session entries merged) in `sort_mode`.
+pub fn history_page(
+    state: &DbState,
+    session: &SessionHistory,
+    app_data: &AppDataDir,
+    limit: i32,
+    offset: i32,
+    content_type: Option<String>,
+    sort_mode: ClipboardSortMode,
+) -> AppResult<Vec<ClipboardEntry>> {
     let data_dir = app_data.0.lock().map(|d| d.clone()).unwrap_or_default();
 
     let limit = limit.clamp(0, 1000);
@@ -149,7 +162,7 @@ pub fn get_clipboard_history(
         return Ok(Vec::new());
     }
     // With session entries present, merge the sorted prefix before slicing.
-    let session_items = session.inner().0.lock().unwrap();
+    let session_items = session.0.lock().unwrap();
     let session_count = session_items.len() as i32;
     let db_offset = if session_count == 0 { offset } else { 0 };
     let db_limit = limit.saturating_add(offset - db_offset);
@@ -257,6 +270,22 @@ mod merged_page_tests {
         let session = [entry(-1, 20, &[])];
         let database = [entry(12, 30, &["tag"]), entry(13, 10, &[])];
         assert_eq!(merged_history_page(session.iter(), &database, 0, 10, ClipboardSortMode::Manual).len(), 3);
+    }
+
+    #[test]
+    fn recent_picks_the_newest_copy_even_below_pins() {
+        let mut pin = entry(5, 10, &[]);
+        pin.is_pinned = true;
+        pin.pinned_order = 1;
+        let database = [pin.clone(), entry(6, 20, &[])];
+        let session = [entry(-1, 15, &[])];
+        let top = |db: &[ClipboardEntry]| {
+            merged_history_page(session.iter(), db, 0, 1, ClipboardSortMode::Recent)[0].id
+        };
+        assert_eq!(top(&database), 6);
+        // A pin copied again is the newest copy, so it is the one pasted.
+        pin.sort_at = 30;
+        assert_eq!(top(&[pin, entry(6, 20, &[])]), 5);
     }
 
     #[test]

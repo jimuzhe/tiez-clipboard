@@ -9,6 +9,8 @@ interface UseNavigationSyncOptions {
   showTagManager: boolean;
   chatMode: boolean;
   showEmojiPanel: boolean;
+  /** A note or tag is being edited in the list or the detail pane. */
+  editingInline: boolean;
 }
 
 const blurStaleActionFocus = () => {
@@ -37,12 +39,17 @@ export const useNavigationSync = ({
   showSettings,
   showTagManager,
   chatMode,
-  showEmojiPanel
+  showEmojiPanel,
+  editingInline
 }: UseNavigationSyncOptions) => {
   const syncNavigationEnabled = useCallback(() => {
     if (!isTauriRuntime()) return;
 
-    const shouldDisableNavigation = showSettings || showTagManager || chatMode || showEmojiPanel;
+    // Editing also turns it off: Windows' keyboard hook took Up/Down, Enter
+    // and Esc from the text box, and Esc hid the window instead of
+    // cancelling the edit.
+    const shouldDisableNavigation =
+      showSettings || showTagManager || chatMode || showEmojiPanel || editingInline;
     if (shouldDisableNavigation) {
       invoke("set_navigation_enabled", { enabled: false }).catch(console.error);
       return;
@@ -57,7 +64,7 @@ export const useNavigationSync = ({
       .catch(() => {
         invoke("set_navigation_enabled", { enabled: false }).catch(console.error);
       });
-  }, [showSettings, showTagManager, chatMode, showEmojiPanel]);
+  }, [showSettings, showTagManager, chatMode, showEmojiPanel, editingInline]);
 
   useEffect(() => {
     if (!isTauriRuntime()) return;
@@ -66,7 +73,7 @@ export const useNavigationSync = ({
       if (!isTauriRuntime()) return;
       clearRestoredActionFocus();
       const shouldDisableNavigation =
-        showSettings || showTagManager || chatMode || showEmojiPanel;
+        showSettings || showTagManager || chatMode || showEmojiPanel || editingInline;
       if (shouldDisableNavigation) {
         invoke("set_navigation_enabled", { enabled: false }).catch(console.error);
         return;
@@ -92,5 +99,5 @@ export const useNavigationSync = ({
       unlistenClipboardShown.then((unlisten) => unlisten()).catch(() => {});
       unlistenHide.then((unlisten) => unlisten()).catch(() => {});
     };
-  }, [syncNavigationEnabled, showSettings, showTagManager, chatMode, showEmojiPanel]);
+  }, [syncNavigationEnabled, showSettings, showTagManager, chatMode, showEmojiPanel, editingInline]);
 };

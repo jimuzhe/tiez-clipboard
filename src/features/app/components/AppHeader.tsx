@@ -18,6 +18,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { getTagColor } from "../../../shared/lib/utils";
 import { isMacPlatform } from "../../../shared/lib/platform";
+import { TYPE_FILTERS } from "../../../shared/lib/typeFilters";
 import type { ClipboardSortMode } from "../types";
 
 interface AppHeaderProps {
@@ -148,6 +149,18 @@ const AppHeader = ({
   useEffect(() => {
     if (!searchVisible) setSortMenuOpen(false);
   }, [searchVisible]);
+
+  // Tab can move to a category scrolled out of the row; bring it into view.
+  const typeFiltersRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const row = typeFiltersRef.current;
+    const active = row?.querySelector<HTMLElement>(".btn-icon.active");
+    if (!row || !active) return;
+    const rowBox = row.getBoundingClientRect();
+    const box = active.getBoundingClientRect();
+    if (box.left < rowBox.left) row.scrollLeft -= rowBox.left - box.left;
+    else if (box.right > rowBox.right) row.scrollLeft += box.right - rowBox.right;
+  }, [typeFilter]);
 
   const headerTitle = showEmojiPanel
     ? t('emoji_panel')
@@ -400,6 +413,7 @@ const AppHeader = ({
                   )}
                 </div>
                 <div
+                  ref={typeFiltersRef}
                   className="search-type-filters hide-scrollbar"
                   onWheel={(e) => {
                     e.stopPropagation();
@@ -408,7 +422,7 @@ const AppHeader = ({
                     }
                   }}
                 >
-                  {[null, 'text', 'image', 'file', 'url', 'code', 'video', 'rich_text'].map(type => (
+                  {TYPE_FILTERS.map(type => (
                     <button
                       key={type ?? 'all'}
                       className={`btn-icon ${typeFilter === type ? 'active' : ''}`}

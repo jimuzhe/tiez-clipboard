@@ -26,6 +26,9 @@ pub enum ClipboardSortMode {
     LastUsed,
     Usage,
     Manual,
+    /// Newest copy first, pinned or not. Not a list setting: the plain text
+    /// paste hotkey uses it so a pin at the top of the list never wins.
+    Recent,
 }
 
 impl ClipboardSortMode {
@@ -57,10 +60,14 @@ impl ClipboardSortMode {
             Self::Manual => {
                 " ORDER BY is_pinned DESC, CASE WHEN is_pinned = 1 THEN pinned_order ELSE 0 END DESC, sort_at DESC, id DESC LIMIT ? OFFSET ?"
             }
+            Self::Recent => " ORDER BY sort_at DESC, id DESC LIMIT ? OFFSET ?",
         }
     }
 
     pub fn compare(self, a: &ClipboardEntry, b: &ClipboardEntry) -> std::cmp::Ordering {
+        if self == Self::Recent {
+            return b.sort_at.cmp(&a.sort_at).then_with(|| b.id.cmp(&a.id));
+        }
         let pinned_comparison = b.is_pinned.cmp(&a.is_pinned);
         if pinned_comparison != std::cmp::Ordering::Equal {
             return pinned_comparison;
@@ -90,7 +97,7 @@ impl ClipboardSortMode {
             }
             Self::LastUsed => b.last_used_at.cmp(&a.last_used_at),
             Self::Usage => b.use_count.cmp(&a.use_count),
-            Self::Manual => b.sort_at.cmp(&a.sort_at),
+            Self::Manual | Self::Recent => b.sort_at.cmp(&a.sort_at),
         };
 
         by_selected_mode

@@ -1903,6 +1903,15 @@ fn setup_taskbar_listener(_app: &App) {
     crate::app::system::start_system_event_window();
 }
 
+fn plain_paste_goes_to_selection(app: &AppHandle) -> bool {
+    NAVIGATION_MODE_ACTIVE.load(Ordering::SeqCst)
+        && !IS_HIDDEN.load(Ordering::SeqCst)
+        && app
+            .get_webview_window("main")
+            .and_then(|window| window.is_visible().ok())
+            .unwrap_or(false)
+}
+
 pub fn handle_global_shortcut(
     app: &AppHandle,
     shortcut: &tauri_plugin_global_shortcut::Shortcut,
@@ -1940,7 +1949,14 @@ pub fn handle_global_shortcut(
             val.replace("Win", "Super").parse::<Shortcut>()
         } {
             if shortcut == &plain_s {
-                crate::services::clipboard_ops::paste_latest_plain(app.clone());
+                // A registered hotkey never reaches the window, so with an
+                // entry picked by Up/Down the window pastes that one;
+                // otherwise the newest entry is pasted.
+                if plain_paste_goes_to_selection(app) {
+                    let _ = app.emit("navigation-action", "plain");
+                } else {
+                    crate::services::clipboard_ops::paste_latest_plain(app.clone());
+                }
                 return;
             }
         }
