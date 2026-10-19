@@ -535,7 +535,8 @@ pub fn set_sound_enabled(
         .set("app.sound_enabled", &enabled.to_string())
         .map_err(AppError::from)?;
     if enabled {
-        crate::services::ui_sound::preload_ui_sounds();
+        let volume = state.sound_volume.lock().map(|v| *v).unwrap_or(1.0);
+        crate::services::ui_sound::preload_ui_sounds(volume);
     }
     Ok(())
 }

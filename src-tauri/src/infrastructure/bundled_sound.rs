@@ -1,12 +1,13 @@
 //! Clipboard sounds (Kenney, CC0; see resources/sounds/README.md) embedded as
-//! WAV. macOS plays them through NSSound; elsewhere this module plays them.
+//! WAV. macOS plays them through System Sound Services; elsewhere this module
+//! plays them.
 //!
 //! Uses `PlaySoundW` (no rodio/cpal) to keep the Windows binary small.
 
 pub(crate) static COPY_SOUND: &[u8] = include_bytes!("../../resources/sounds/copy.wav");
 pub(crate) static PASTE_SOUND: &[u8] = include_bytes!("../../resources/sounds/paste.wav");
 
-#[cfg(target_os = "windows")]
+#[cfg(any(target_os = "windows", target_os = "macos"))]
 use std::io::Cursor;
 
 #[cfg(not(target_os = "macos"))]
@@ -57,8 +58,8 @@ fn play_wav_on_windows(wav: &'static [u8], volume: f32) {
     });
 }
 
-#[cfg(target_os = "windows")]
-fn scale_wav_volume(wav: &[u8], volume: f32) -> Result<Vec<u8>, hound::Error> {
+#[cfg(any(target_os = "windows", target_os = "macos"))]
+pub(crate) fn scale_wav_volume(wav: &[u8], volume: f32) -> Result<Vec<u8>, hound::Error> {
     let mut reader = hound::WavReader::new(Cursor::new(wav))?;
     let spec = reader.spec();
     let mut out = Vec::new();
