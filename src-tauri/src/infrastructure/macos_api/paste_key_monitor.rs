@@ -33,7 +33,7 @@ const K_CG_HEAD_INSERT_EVENT_TAP: CGEventTapPlacement = 0;
 const K_CG_HID_EVENT_TAP: CGEventTapLocation = 0;
 const K_CG_EVENT_FLAG_MASK_COMMAND: CGEventFlags = 1 << 20;
 const K_CG_KEYBOARD_EVENT_KEYCODE: CGEventField = 9;
-const K_CG_KEYBOARD_EVENT_AUTOREPEAT: CGEventField = 11;
+const K_CG_KEYBOARD_EVENT_AUTOREPEAT: CGEventField = 8;
 
 static SUPPRESS_CMDV_SOUND_UNTIL_MS: AtomicU64 = AtomicU64::new(0);
 static MONITOR_STARTED: OnceLock<()> = OnceLock::new();
@@ -232,4 +232,45 @@ pub fn start_paste_key_monitor() {
             }
         })
         .ok();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use objc2::rc::Retained;
+    use objc2_app_kit::{NSEvent, NSEventModifierFlags, NSEventType};
+    use objc2_foundation::{NSPoint, NSString};
+
+    /// Autorepeat and keycode of a ⌘V key-down built by AppKit, read the way
+    /// the tap callback reads them.
+    fn cmd_v_fields(is_repeat: bool) -> (i64, u16) {
+        let v = NSString::from_str("v");
+        let event = NSEvent::keyEventWithType_location_modifierFlags_timestamp_windowNumber_context_characters_charactersIgnoringModifiers_isARepeat_keyCode(
+            NSEventType::KeyDown,
+            NSPoint::new(0.0, 0.0),
+            NSEventModifierFlags::Command,
+            0.0,
+            0,
+            None,
+            &v,
+            &v,
+            is_repeat,
+            V_KEY_CODE,
+        )
+        .expect("AppKit builds the key event");
+        let cg_event = event.CGEvent().expect("the key event has a CGEvent");
+        let cg_event = Retained::as_ptr(&cg_event) as CGEventRef;
+        unsafe {
+            (
+                CGEventGetIntegerValueField(cg_event, K_CG_KEYBOARD_EVENT_AUTOREPEAT),
+                CGEventGetIntegerValueField(cg_event, K_CG_KEYBOARD_EVENT_KEYCODE) as u16,
+            )
+        }
+    }
+
+    #[test]
+    fn tells_a_held_cmd_v_from_a_new_press() {
+        assert_eq!(cmd_v_fields(false), (0, V_KEY_CODE));
+        assert_eq!(cmd_v_fields(true), (1, V_KEY_CODE));
+    }
 }
