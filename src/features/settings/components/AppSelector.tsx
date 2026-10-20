@@ -3,6 +3,8 @@ import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Search } from "lucide-react";
 import type { InstalledAppOption } from "../../app/types";
+import { isMacPlatform } from "../../../shared/lib/platform";
+import { getSourceAppIcon, peekSourceAppIcon } from "../../../shared/lib/sourceAppIcon";
 
 interface AppSelectorProps {
     type: string | null;
@@ -20,6 +22,45 @@ interface FlattenedAppItem {
 
 const normalizeAppValue = (value: string) => value.trim().replace(/\//g, "\\").toLowerCase();
 
+// Loads once the row scrolls into view: the list holds every installed app.
+const AppOptionIcon = ({ path }: { path: string }) => {
+    const [icon, setIcon] = useState(() => peekSourceAppIcon(path));
+    const ref = useRef<HTMLSpanElement | null>(null);
+
+    useEffect(() => {
+        if (icon !== undefined) return;
+        let cancelled = false;
+        const load = () => {
+            void getSourceAppIcon(path).then((value) => {
+                if (!cancelled) setIcon(value);
+            });
+        };
+        const node = ref.current;
+        if (!node || typeof IntersectionObserver === "undefined") {
+            load();
+            return () => {
+                cancelled = true;
+            };
+        }
+        const observer = new IntersectionObserver((entries) => {
+            if (!entries.some((entry) => entry.isIntersecting)) return;
+            observer.disconnect();
+            load();
+        });
+        observer.observe(node);
+        return () => {
+            cancelled = true;
+            observer.disconnect();
+        };
+    }, [path, icon]);
+
+    return (
+        <span ref={ref} className="app-selector-option-icon" aria-hidden="true">
+            {icon ? <img src={icon} alt="" /> : null}
+        </span>
+    );
+};
+
 const AppSelector = ({
     type,
     installedApps,
@@ -33,6 +74,7 @@ const AppSelector = ({
     const inputRef = useRef<HTMLInputElement | null>(null);
     const itemRefs = useRef<Array<HTMLButtonElement | null>>([]);
     const listboxId = useId();
+    const isMac = useMemo(() => isMacPlatform(), []);
 
     useEffect(() => {
         let cancelled = false;
@@ -87,7 +129,7 @@ const AppSelector = ({
                     try {
                         const associated = await invoke<{ name: string; path: string }[]>(
                             "get_associated_apps",
-                            { extension }
+                            { extension, contentType: type }
                         );
                         associatedApps = associated.map((app) => ({
                             label: app.name,
@@ -101,7 +143,10 @@ const AppSelector = ({
                 const associatedValues = new Set(
                     associatedApps.map((app) => normalizeAppValue(app.value))
                 );
-                const localMatches = installedApps.filter((app) => {
+                // macOS reports the apps that open the type; guessing from
+                // names only fills in when it reports none.
+                const guessByName = !isMac || associatedApps.length === 0;
+                const localMatches = !guessByName ? [] : installedApps.filter((app) => {
                     const label = app.label.toLowerCase();
                     return keywords.some((keyword) => label.includes(keyword))
                         && !associatedValues.has(normalizeAppValue(app.value));
@@ -129,7 +174,7 @@ const AppSelector = ({
         return () => {
             cancelled = true;
         };
-    }, [type, installedApps]);
+    }, [type, installedApps, isMac]);
 
     useEffect(() => {
         setQuery("");
@@ -268,11 +313,12 @@ const AppSelector = ({
                             aria-selected={selected}
                             tabIndex={-1}
                             title={app.value}
-                            className={`app-selector-option${selected ? " is-selected" : ""}`}
+                            className={`app-selector-option${isMac ? " has-icon" : ""}${selected ? " is-selected" : ""}`}
                             onMouseEnter={() => setSelectedIndex(index)}
                             onMouseDown={(event) => event.preventDefault()}
                             onClick={() => handleSelect(app)}
                         >
+                            {isMac && <AppOptionIcon path={app.value} />}
                             {app.label}
                         </button>
                     );

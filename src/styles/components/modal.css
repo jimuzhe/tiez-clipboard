@@ -380,6 +380,27 @@ body:has(.modal-overlay) #root {
   text-align: left;
 }
 
+/* macOS shows each app's icon. */
+.app-selector-option.has-icon {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+.app-selector-option-icon {
+  flex: none;
+  width: 20px;
+  height: 20px;
+}
+
+.app-selector-option-icon img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
 .app-selector-option.is-selected {
   background: var(--menu-item-hover-background);
   color: var(--menu-item-hover-color);
