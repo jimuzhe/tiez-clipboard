@@ -81,7 +81,9 @@
 | :--- | :--- | :--- |
 | **macOS** | macOS 10.15+ <br>(Apple Silicon / Intel) | `.dmg` / `.app` |
 
-[**前往 Releases 下载最新版本 →**](https://github.com/jimuzhe/tiez-clipboard/releases)
+[**下载 TieZ →**](https://tiez.name666.top/zh/)
+
+测试版在 [Releases](https://github.com/jimuzhe/tiez-clipboard/releases) 页面。
 
 ---
 
