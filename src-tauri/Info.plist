@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Merged into the bundle's Info.plist by Tauri. The app has no macOS
+	     localizations of its own; without this, macOS gave English names for
+	     other apps ("Preview", not "预览") in the Open With picker. -->
+	<key>CFBundleAllowMixedLocalizations</key>
+	<true/>
+</dict>
+</plist>
