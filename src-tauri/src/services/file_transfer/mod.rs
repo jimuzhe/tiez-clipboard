@@ -191,7 +191,7 @@ pub fn get_local_ip_addr(app_handle: AppHandle) -> String {
         return ips[0].clone();
     }
 
-    local_ip_address::local_ip()
+    crate::infrastructure::net_interfaces::local_ip()
         .map(|ip| ip.to_string())
         .unwrap_or("127.0.0.1".to_string())
 }
