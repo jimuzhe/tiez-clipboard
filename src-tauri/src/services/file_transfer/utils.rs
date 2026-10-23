@@ -1,6 +1,6 @@
 use crate::services::file_transfer::models::ServerActivityState;
 use base64::{engine::general_purpose, Engine as _};
-use local_ip_address::list_afinet_netifas;
+use crate::infrastructure::net_interfaces::list_afinet_netifas;
 use std::time::SystemTime;
 use tauri::{AppHandle, Manager};
 
@@ -65,7 +65,7 @@ fn get_interface_label(name: &str, ip: &str, is_virtual: bool) -> String {
 
 #[tauri::command]
 pub fn get_available_network_interfaces() -> Vec<NetworkInterfaceInfo> {
-    if let Ok(ifas) = list_afinet_netifas() {
+    if let Some(ifas) = list_afinet_netifas() {
         let mut list = Vec::new();
         for (name, ip) in ifas {
             let ip_str = ip.to_string();

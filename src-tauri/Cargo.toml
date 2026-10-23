@@ -74,6 +74,7 @@ encoding_rs = "0.8"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 block2 = "0.6"
+libc = "0.2"
 objc2 = "0.6.3"
 objc2-foundation = { version = "0.3.2", features = ["block2", "NSData", "NSDictionary", "NSError", "NSNotification", "NSObject", "NSOperation", "NSString", "NSArray", "NSURL", "NSGeometry"] }
 objc2-app-kit = { version = "0.3.2", features = ["NSBitmapImageRep", "NSImage", "NSImageRep", "NSWorkspace", "NSPasteboard", "NSPasteboardItem", "NSRunningApplication", "NSWindow", "NSPanel", "NSApplication", "NSSound", "NSEvent", "NSDragging", "NSDraggingItem", "NSDraggingSession", "NSView", "NSResponder", "NSGraphicsContext"] }
