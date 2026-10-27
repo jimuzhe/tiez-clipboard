@@ -492,15 +492,50 @@ fn normalize_plain_text_layout(text: &str) -> String {
 }
 
 fn decode_basic_html_entities(text: &str) -> String {
-    text.replace("&nbsp;", " ")
-        .replace("&#160;", " ")
-        .replace("&amp;", "&")
-        .replace("&lt;", "<")
-        .replace("&gt;", ">")
-        .replace("&quot;", "\"")
-        .replace("&#34;", "\"")
-        .replace("&#39;", "'")
-        .replace("&apos;", "'")
+    static HTML_ENTITY_RE: OnceLock<Regex> = OnceLock::new();
+
+    // Decode exactly one HTML entity layer. Chained replacements would turn
+    // visible text such as "&#32;" (represented by HTML as "&amp;#32;") into a
+    // space by decoding the newly-created entity a second time.
+    HTML_ENTITY_RE
+        .get_or_init(|| {
+            Regex::new(r"(?i)&(?:nbsp|amp|lt|gt|quot|apos|#x[0-9a-f]+|#[0-9]+);").unwrap()
+        })
+        .replace_all(text, |captures: &regex::Captures| {
+            let entity = captures.get(0).map(|m| m.as_str()).unwrap_or_default();
+            let lower = entity.to_ascii_lowercase();
+
+            match lower.as_str() {
+                "&nbsp;" => "\u{a0}".to_string(),
+                "&amp;" => "&".to_string(),
+                "&lt;" => "<".to_string(),
+                "&gt;" => ">".to_string(),
+                "&quot;" => "\"".to_string(),
+                "&apos;" => "'".to_string(),
+                _ => {
+                    let digits = lower
+                        .strip_prefix("&#x")
+                        .and_then(|value| value.strip_suffix(';'));
+                    let value = if let Some(hex) = digits {
+                        u32::from_str_radix(hex, 16).ok()
+                    } else {
+                        lower
+                            .strip_prefix("&#")
+                            .and_then(|value| value.strip_suffix(';'))
+                            .and_then(|decimal| decimal.parse::<u32>().ok())
+                    };
+
+                    match value {
+                        Some(160) => "\u{a0}".to_string(),
+                        Some(value) => char::from_u32(value)
+                            .map(|ch| ch.to_string())
+                            .unwrap_or_else(|| entity.to_string()),
+                        None => entity.to_string(),
+                    }
+                }
+            }
+        })
+        .into_owned()
 }
 
 fn is_office_style_definition_text(text: &str) -> bool {
@@ -728,35 +763,150 @@ fn sanitize_rich_text_plain_text(text: &str) -> String {
 }
 
 fn extract_plain_text_from_htmlish(text: &str) -> String {
-    static BREAK_TAG_RE: OnceLock<Regex> = OnceLock::new();
     static TAG_RE: OnceLock<Regex> = OnceLock::new();
+    static HTML_SOURCE_WHITESPACE_RE: OnceLock<Regex> = OnceLock::new();
 
     let repaired = strip_office_preview_noise(text);
     if repaired.is_empty() {
         return String::new();
     }
-    let with_breaks = BREAK_TAG_RE
-        .get_or_init(|| {
-            Regex::new(
-                r"(?is)</?(?:br|p|div|li|tr|td|th|table|h[1-6]|section|article|ul|ol)\b[^>]*>",
-            )
-            .unwrap()
-        })
-        .replace_all(&repaired, "\n");
-    let without_tags = TAG_RE
-        .get_or_init(|| Regex::new(r"(?is)<[^>]+>").unwrap())
-        .replace_all(with_breaks.as_ref(), " ");
-    let collapsed = normalize_plain_text_layout(&decode_basic_html_entities(without_tags.as_ref()));
+    if is_whitespace_only(&repaired) {
+        return normalize_clipboard_line_endings(&repaired);
+    }
+
+    // Check joined text nodes too: inline tags can split a literal marker in the
+    // source even though it becomes contiguous after tag removal.
+    let tag_re = TAG_RE.get_or_init(|| Regex::new(r"(?is)<[^>]+>").unwrap());
+    let decoded_source = decode_basic_html_entities(&tag_re.replace_all(&repaired, ""));
+    let mut prefix = "\u{f0000}".to_string();
+    while repaired.contains(&prefix) || decoded_source.contains(&prefix) {
+        prefix.push('\u{f0000}');
+    }
+    let explicit_line_break = format!("{prefix}B;");
+    let preserved_space = format!("{prefix}S;");
+    let preserved_tab = format!("{prefix}T;");
+
+    let mut with_breaks = String::with_capacity(repaired.len());
+    let mut cursor = 0;
+    let mut in_preformatted_block = false;
+
+    let append_text = |output: &mut String, fragment: &str, preserve_breaks: bool| {
+        // Decode each source text node once, before whitespace handling.
+        let decoded = decode_basic_html_entities(fragment);
+        let fragment = decoded.as_str();
+        if preserve_breaks {
+            let normalized = fragment.replace("\r\n", "\n").replace('\r', "\n");
+            for ch in normalized.chars() {
+                match ch {
+                    '\n' => output.push_str(&explicit_line_break),
+                    ' ' | '\u{a0}' => output.push_str(&preserved_space),
+                    '\t' => output.push_str(&preserved_tab),
+                    _ => output.push(ch),
+                }
+            }
+            return;
+        }
+
+        // Newlines used to format the HTML source are ordinary collapsible HTML
+        // whitespace, not visible line breaks. Only BRs, block boundaries and
+        // newlines inside PRE carry line-break semantics.
+        let protected = fragment.replace('\u{a0}', &preserved_space);
+        let collapsed = HTML_SOURCE_WHITESPACE_RE
+            .get_or_init(|| Regex::new(r"\s+").unwrap())
+            .replace_all(&protected, " ");
+        let text = if output.is_empty()
+            || output.ends_with('\n')
+            || output.ends_with(&explicit_line_break)
+        {
+            collapsed.trim_start_matches(' ')
+        } else {
+            collapsed.as_ref()
+        };
+        output.push_str(text);
+    };
+
+    let push_structural_break = |output: &mut String| {
+        while output.ends_with(' ') || output.ends_with('\t') {
+            output.pop();
+        }
+        if !output.is_empty() && !output.ends_with('\n') && !output.ends_with(&explicit_line_break)
+        {
+            output.push('\n');
+        }
+    };
+
+    for tag_match in tag_re.find_iter(&repaired) {
+        append_text(
+            &mut with_breaks,
+            &repaired[cursor..tag_match.start()],
+            in_preformatted_block,
+        );
+        cursor = tag_match.end();
+
+        let raw_tag = tag_match.as_str();
+        let tag_body = raw_tag
+            .trim_start_matches('<')
+            .trim_start()
+            .trim_start_matches('/');
+        let tag_name = tag_body
+            .chars()
+            .take_while(|ch| ch.is_ascii_alphanumeric())
+            .collect::<String>()
+            .to_ascii_lowercase();
+        let is_closing = raw_tag
+            .trim_start_matches('<')
+            .trim_start()
+            .starts_with('/');
+
+        match tag_name.as_str() {
+            // Keep explicit BRs separate from structural boundaries while the
+            // layout normalizer collapses formatting-only blank lines. Restoring
+            // these markers afterwards preserves the exact number of explicit
+            // line breaks from the copied content.
+            "br" if !is_closing => with_breaks.push_str(&explicit_line_break),
+            // Cells are separated horizontally; the row closing tag supplies the
+            // line break. normalize_plain_text_layout later turns tabs into spaces.
+            "td" | "th" if is_closing => {
+                while with_breaks.ends_with(' ') {
+                    with_breaks.pop();
+                }
+                if !with_breaks.is_empty()
+                    && !with_breaks.ends_with('\n')
+                    && !with_breaks.ends_with('\t')
+                {
+                    with_breaks.push('\t');
+                }
+            }
+            "tr" if is_closing => push_structural_break(&mut with_breaks),
+            "p" | "div" | "li" | "table" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6" | "section"
+            | "article" | "ul" | "ol" | "blockquote" | "pre" => {
+                // A block boundary is one logical break. Treating both the opening
+                // and closing tag as an unconditional newline produced \n\n between
+                // every pair of sibling blocks and at nested block boundaries.
+                push_structural_break(&mut with_breaks);
+            }
+            _ => {}
+        }
+
+        if tag_name == "pre" {
+            in_preformatted_block = !is_closing;
+        }
+    }
+    append_text(&mut with_breaks, &repaired[cursor..], in_preformatted_block);
+
+    let collapsed = normalize_plain_text_layout(&with_breaks);
     let cleaned = strip_leading_office_metadata_text(&collapsed);
     if cleaned.is_empty() {
         return String::new();
     }
     if is_office_style_definition_text(&collapse_preview_whitespace(&cleaned)) {
         String::new()
-    } else if is_whitespace_only(&cleaned) {
-        cleaned
     } else {
-        cleaned.trim().to_string()
+        cleaned
+            .trim_matches([' ', '\t', '\n'])
+            .replace(&explicit_line_break, "\n")
+            .replace(&preserved_space, " ")
+            .replace(&preserved_tab, "\t")
     }
 }
 
@@ -1432,11 +1582,28 @@ pub fn plain_text_requires_exact_paste(text: &str) -> bool {
     is_whitespace_only(&normalized) || has_edge_whitespace(normalized.trim_matches('\n'))
 }
 
-/// Paste `text` exactly instead of its HTML. Never for a table: the HTML has
-/// the cells (an empty last cell leaves a tab at the end of the text), and
-/// swapping it for plain text dropped the formatting.
+/// Replace HTML only when it cannot represent the text's edge whitespace.
+/// PRE and non-breaking spaces already preserve it; replacing those fragments
+/// would discard their formatting. Tables keep their cells, including empty ones.
 pub fn rich_paste_needs_exact_text(text: &str, html: &str) -> bool {
-    !html.to_ascii_lowercase().contains("<tr") && plain_text_requires_exact_paste(text)
+    !html.to_ascii_lowercase().contains("<tr")
+        && plain_text_requires_exact_paste(text)
+        && normalize_clipboard_line_endings(text) != extract_plain_text_from_htmlish(html)
+}
+
+/// The text and HTML flavors of a formatted paste must be prepared together.
+/// Keep the original HTML when it already expresses the captured whitespace.
+pub fn prepare_formatted_text_for_paste(content: &str, html: &str) -> (String, String) {
+    let mut paste_html = sanitize_tabular_html_for_paste(html);
+    let paste_plain = if rich_paste_needs_exact_text(content, &paste_html) {
+        paste_html = sanitize_tabular_html_for_paste(&build_exact_paste_html(content));
+        normalize_plain_text_for_clipboard_paste(content)
+    } else {
+        plain_text_from_tabular_html(&paste_html)
+            .filter(|value| !value.is_empty())
+            .unwrap_or_else(|| normalize_plain_text_for_clipboard_paste(content))
+    };
+    (paste_plain, paste_html)
 }
 
 fn escape_html_for_paste(text: &str) -> String {
@@ -1914,6 +2081,52 @@ mod tests {
     }
 
     #[test]
+    fn formatted_paste_keeps_html_that_already_preserves_whitespace() {
+        for (html, expected) in [
+            (
+                "<div><p>First</p></div><div><p>Second</p></div>",
+                "First\nSecond",
+            ),
+            (
+                "<div style=\"color:red\"><b>&nbsp;&#160;&#xA0;Indented</b></div>",
+                "   Indented",
+            ),
+            (
+                "<pre style=\"color:red\"><b>&#32;&#32;A&#9;B&#10;&#10;C</b></pre>",
+                "  A\tB\n\nC",
+            ),
+            ("<pre>  A\r\n\tB\n\n</pre>", "  A\n\tB\n\n"),
+            ("<div>&nbsp;&nbsp;</div>", "  "),
+            ("<pre>\n</pre>", "\n"),
+        ] {
+            let content = derive_rich_text_content("", Some(html));
+            assert_eq!(content, expected, "{html}");
+            let (plain, formatted) = super::prepare_formatted_text_for_paste(&content, html);
+            assert_eq!(formatted, html, "{html}");
+            assert_eq!(plain, super::normalize_plain_text_for_clipboard_paste(expected));
+        }
+    }
+
+    #[test]
+    fn formatted_paste_still_protects_whitespace_missing_from_html() {
+        for content in ["  code", "code  ", "\tcode", "   ", "\n"] {
+            let html = "<span>code</span>";
+            let (plain, formatted) = super::prepare_formatted_text_for_paste(content, html);
+            assert_eq!(plain, super::normalize_plain_text_for_clipboard_paste(content));
+            assert!(formatted.contains("white-space:pre-wrap"), "{content:?}");
+            assert!(formatted.contains(&format!(">{content}</span>")), "{content:?}");
+        }
+    }
+
+    #[test]
+    fn formatted_paste_keeps_table_cells_and_plain_text_pairing() {
+        let html = "<table><tr><td style=\"color:red\">A</td><td></td></tr></table>";
+        let (plain, formatted) = super::prepare_formatted_text_for_paste("A\t\r\n", html);
+        assert_eq!(formatted, html);
+        assert_eq!(plain, "A\t");
+    }
+
+    #[test]
     fn visible_whitespace_preview_renders_spaces_and_tabs() {
         assert_eq!(visible_whitespace_preview(" a\tb "), "·a→b·");
     }
@@ -1936,6 +2149,178 @@ mod tests {
         let preview = build_entry_preview("rich_text", html, Some(html));
 
         assert_eq!(preview, "顶顶顶顶");
+    }
+
+    #[test]
+    fn rich_text_content_does_not_double_break_between_paragraphs() {
+        let html = "<p>First</p><p>Second</p>";
+
+        let content = derive_rich_text_content("", Some(html));
+
+        assert_eq!(content, "First\nSecond");
+    }
+
+    #[test]
+    fn rich_text_content_collapses_nested_block_boundaries() {
+        let html = "<div><p>First</p></div><div><p>Second</p></div>";
+
+        let content = derive_rich_text_content("", Some(html));
+
+        assert_eq!(content, "First\nSecond");
+    }
+
+    #[test]
+    fn rich_text_content_ignores_html_source_formatting_newlines() {
+        let html = "<div>\n  <p>First</p>\n  <p>Second</p>\n</div>";
+
+        let content = derive_rich_text_content("", Some(html));
+
+        assert_eq!(content, "First\nSecond");
+    }
+
+    #[test]
+    fn rich_text_content_preserves_explicit_blank_line() {
+        let html = "<p>First</p><p><br></p><p>Second</p>";
+
+        let content = derive_rich_text_content("", Some(html));
+
+        assert_eq!(content, "First\n\nSecond");
+    }
+
+    #[test]
+    fn rich_text_content_preserves_multiple_explicit_line_breaks() {
+        let html = "<p>First<br><br><br>Second</p>";
+
+        let content = derive_rich_text_content("", Some(html));
+
+        assert_eq!(content, "First\n\n\nSecond");
+    }
+
+    #[test]
+    fn rich_text_content_preserves_multiple_preformatted_line_breaks() {
+        let html = "<pre>First\n\n\nSecond</pre>";
+
+        let content = derive_rich_text_content("", Some(html));
+
+        assert_eq!(content, "First\n\n\nSecond");
+    }
+
+    #[test]
+    fn rich_text_content_preserves_preformatted_spaces_and_tabs_without_plain_text() {
+        let html = "<pre>    First\n\tSecond</pre>";
+
+        let content = derive_rich_text_content("", Some(html));
+
+        assert_eq!(content, "    First\n\tSecond");
+    }
+
+    #[test]
+    fn rich_text_content_preserves_non_breaking_space_indentation() {
+        let html = "<div>&nbsp;&#160;&#xA0;Indented</div>";
+
+        let content = derive_rich_text_content("", Some(html));
+
+        assert_eq!(content, "   Indented");
+    }
+
+    #[test]
+    fn rich_text_content_separates_html_table_cells_without_blank_rows() {
+        let html = concat!(
+            "<table>",
+            "<tr><td>A</td><td>B</td></tr>",
+            "<tr><td>C</td><td>D</td></tr>",
+            "</table>"
+        );
+
+        let content = derive_rich_text_content("", Some(html));
+
+        assert_eq!(content, "A B\nC D");
+    }
+
+    #[test]
+    fn rich_text_content_decodes_decimal_space_entity() {
+        let html = "<span>First&#32;Second</span>";
+
+        let content = derive_rich_text_content("", Some(html));
+
+        assert_eq!(content, "First Second");
+        assert!(!content.contains("&#32;"));
+    }
+
+    #[test]
+    fn rich_text_content_decodes_hex_and_unicode_numeric_entities() {
+        let html = "<span>A&#x20;B&#20013;</span>";
+
+        let content = derive_rich_text_content("", Some(html));
+
+        assert_eq!(content, "A B中");
+    }
+
+    #[test]
+    fn rich_text_content_does_not_double_decode_visible_numeric_entities() {
+        let html = "<span>&amp;#32; &amp;#x20;</span>";
+
+        let content = derive_rich_text_content("", Some(html));
+
+        assert_eq!(content, "&#32; &#x20;");
+    }
+
+    #[test]
+    fn rich_text_content_keeps_invalid_numeric_entity_literal() {
+        let html = "<span>Value:&#99999999;</span>";
+
+        let content = derive_rich_text_content("", Some(html));
+
+        assert_eq!(content, "Value:&#99999999;");
+    }
+
+    #[test]
+    fn html_only_entities_keep_preformatted_layout_and_decode_once() {
+        for (html, expected) in [
+            ("<pre>&#32;&#x20;A&#9;B&#10;  C</pre>", "  A\tB\n  C"),
+            ("<pre>&#32;&#32;A&#9;B&#10;&#10;C</pre>", "  A\tB\n\nC"),
+            ("<div>&amp;nbsp; &amp;#160; &amp;lt;</div>", "&nbsp; &#160; &lt;"),
+            ("<div>&#38;#32; &#x26;lt;</div>", "&#32; &lt;"),
+            ("<div>&lt;b&gt;A&lt;/b&gt;</div>", "<b>A</b>"),
+            ("<pre>  A\r\n\tB\n\n</pre>", "  A\n\tB\n\n"),
+            ("<div>\u{a0}\u{a0}A</div>", "  A"),
+            ("<div>&#xD800; &#1114112; &unknown;</div>", "&#xD800; &#1114112; &unknown;"),
+            ("<span>A</span><span>B</span>", "AB"),
+            ("<span>\u{f0000}&#983041;&#983042;</span>", "\u{f0000}\u{f0001}\u{f0002}"),
+        ] {
+            assert_eq!(derive_rich_text_content("", Some(html)), expected, "{html}");
+            assert_eq!(derive_rich_text_content(html, None), expected, "{html}");
+        }
+    }
+
+    #[test]
+    fn rich_text_content_keeps_plain_layout_when_html_differs() {
+        for plain in ["  A\t\n\nB  ", " \t\r\n", "First&#32;Second"] {
+            assert_eq!(
+                derive_rich_text_content(plain, Some("<p>different</p>")),
+                plain.replace("\r\n", "\n")
+            );
+        }
+    }
+
+    #[test]
+    fn html_only_entities_handle_uppercase_overflow_and_escaped_layers() {
+        for (html, expected) in [
+            ("<span>&#X4E2D;&#x1F600;</span>", "中😀"),
+            ("<span>&amp;amp; &amp;#39;</span>", "&amp; &#39;"),
+            ("<span>&#4294967296; &#xFFFFFFFFF;</span>", "&#4294967296; &#xFFFFFFFFF;"),
+        ] {
+            assert_eq!(derive_rich_text_content("", Some(html)), expected, "{html}");
+            assert_eq!(derive_rich_text_content(html, None), expected, "{html}");
+        }
+    }
+
+    #[test]
+    fn html_only_layout_markers_cannot_be_formed_by_joining_inline_nodes() {
+        let html = "<span>\u{f0000}</span><span>&#983040;B;</span>";
+        let expected = "\u{f0000}\u{f0000}B;";
+        assert_eq!(derive_rich_text_content("", Some(html)), expected);
+        assert_eq!(derive_rich_text_content(html, None), expected);
     }
 
     #[test]

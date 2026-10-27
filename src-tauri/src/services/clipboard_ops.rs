@@ -6,13 +6,12 @@ use crate::infrastructure::repository::clipboard_repo::ClipboardRepository;
 use crate::infrastructure::repository::settings_repo::SettingsRepository;
 use crate::services::clipboard::{
     app_likely_word_processor, attach_rich_image_fallback, attach_rich_named_formats,
-    build_clipboard_text_fingerprint, build_exact_paste_html,
-    capture_preserved_named_formats_from_clipboard, clipboard_image_fallback_data_url,
+    build_clipboard_text_fingerprint, capture_preserved_named_formats_from_clipboard,
+    clipboard_image_fallback_data_url,
     derive_rich_text_content, extract_animated_image_data_url_from_html,
     html_has_renderable_rich_body, normalize_plain_text_for_clipboard_paste, parse_cf_html,
-    plain_text_from_tabular_html, repair_html_fragment, rich_paste_needs_exact_text,
-    rtf_bytes_from_named_formats, sanitize_tabular_html_for_paste,
-    should_attach_rich_image_fallback_on_capture,
+    prepare_formatted_text_for_paste, repair_html_fragment, rich_paste_needs_exact_text,
+    rtf_bytes_from_named_formats, should_attach_rich_image_fallback_on_capture,
     split_rich_html_and_image_fallback, split_rich_html_and_named_formats,
 };
 use arboard::Clipboard;
@@ -1000,15 +999,8 @@ async fn copy_content_to_system_clipboard(
                         &base_html,
                         fallback_image_data_url.as_deref(),
                     );
-                    let mut paste_html = sanitize_tabular_html_for_paste(&final_html);
-                    let mut paste_plain = plain_text_from_tabular_html(&paste_html)
-                        .filter(|value| !value.is_empty())
-                        .unwrap_or_else(|| normalize_plain_text_for_clipboard_paste(content));
-                    if rich_paste_needs_exact_text(content, &paste_html) {
-                        paste_plain = normalize_plain_text_for_clipboard_paste(content);
-                        paste_html =
-                            sanitize_tabular_html_for_paste(&build_exact_paste_html(content));
-                    }
+                    let (paste_plain, paste_html) =
+                        prepare_formatted_text_for_paste(content, &final_html);
 
                     #[cfg(target_os = "macos")]
                     {
@@ -2090,6 +2082,22 @@ mod tests {
     fn an_explicit_choice_wins() {
         assert!(!resolve_paste_with_format("点击跳转百度", "rich_text", HTML, Some(false)));
         assert!(resolve_paste_with_format("点击跳转百度", "rich_text", HTML, Some(true)));
+    }
+
+    #[test]
+    fn html_only_regression_cases_keep_explicit_left_and_right_click_choices() {
+        for html in [
+            "<div><p>First</p></div><div><p>Second</p></div>",
+            "<div style=\"color:red\"><b>&nbsp;&#160;&#xA0;Indented</b></div>",
+            "<pre style=\"color:red\"><b>&#32;&#32;A&#9;B</b></pre>",
+        ] {
+            let content = super::derive_rich_text_content("", Some(html));
+            assert!(resolve_paste_with_format(&content, "rich_text", Some(html), Some(true)));
+            assert!(!resolve_paste_with_format(&content, "rich_text", Some(html), Some(false)));
+            assert!(resolve_paste_with_format(&content, "rich_text", Some(html), None));
+            let (_, formatted) = super::prepare_formatted_text_for_paste(&content, html);
+            assert_eq!(formatted, html);
+        }
     }
 
     #[test]
