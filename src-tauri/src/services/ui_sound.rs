@@ -48,10 +48,15 @@ pub fn play_ui_sound_at_volume(kind: &str, volume: f64) {
 }
 
 /// Preload native sound assets when sound effects are enabled.
-pub fn preload_ui_sounds() {
+pub fn preload_ui_sounds(volume: f64) {
     #[cfg(target_os = "macos")]
     {
-        crate::infrastructure::macos_api::sound::preload_clipboard_sounds();
+        crate::infrastructure::macos_api::sound::preload_clipboard_sounds(volume);
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = volume;
     }
 }
 

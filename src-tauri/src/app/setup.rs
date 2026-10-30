@@ -1198,7 +1198,7 @@ fn start_services(app: &App, s: &StartupSettings, app_handle: AppHandle) {
     crate::infrastructure::macos_api::paste_key_monitor::start_paste_key_monitor();
     crate::services::clipboard::start_clipboard_monitor(app_handle.clone());
     if s.sound_enabled {
-        crate::services::ui_sound::preload_ui_sounds();
+        crate::services::ui_sound::preload_ui_sounds(s.sound_volume);
     }
     crate::services::mqtt_sub::start_mqtt_client(app_handle.clone());
     crate::services::cloud_sync::start_cloud_sync_client(app_handle.clone());

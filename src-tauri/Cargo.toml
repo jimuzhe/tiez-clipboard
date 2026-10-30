@@ -79,6 +79,7 @@ objc2-foundation = { version = "0.3.2", features = ["block2", "NSData", "NSDicti
 objc2-app-kit = { version = "0.3.2", features = ["NSBitmapImageRep", "NSImage", "NSImageRep", "NSWorkspace", "NSPasteboard", "NSPasteboardItem", "NSRunningApplication", "NSWindow", "NSPanel", "NSApplication", "NSSound", "NSEvent", "NSDragging", "NSDraggingItem", "NSDraggingSession", "NSView", "NSResponder", "NSGraphicsContext"] }
 tauri-nspanel = { git = "https://github.com/ahkohd/tauri-nspanel", branch = "v2.1" }
 security-framework = "2"
+hound = { version = "3.5", default-features = false }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 hound = { version = "3.5", default-features = false }
