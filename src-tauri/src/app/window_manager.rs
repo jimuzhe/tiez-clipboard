@@ -370,6 +370,11 @@ pub(crate) fn layout_scale(_scale_factor: f64) -> f64 {
     1.0
 }
 
+#[cfg(target_os = "macos")]
+pub(super) fn cursor_position_in_layout(cursor: (f64, f64), primary_scale: f64) -> (f64, f64) {
+    (cursor.0 / primary_scale, cursor.1 / primary_scale)
+}
+
 /// The cursor in layout units (see `layout_scale`).
 pub(crate) fn global_cursor_layout(window: &WebviewWindow) -> Option<(f64, f64)> {
     #[cfg(windows)]
@@ -391,7 +396,7 @@ pub(crate) fn global_cursor_layout(window: &WebviewWindow) -> Option<(f64, f64)>
             .ok()
             .flatten()
             .map_or(1.0, |monitor| monitor.scale_factor());
-        Some((cursor.x / scale, cursor.y / scale))
+        Some(cursor_position_in_layout((cursor.x, cursor.y), scale))
     }
     #[cfg(not(any(windows, target_os = "macos")))]
     {
