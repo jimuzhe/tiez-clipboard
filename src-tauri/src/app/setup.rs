@@ -1295,6 +1295,17 @@ struct LayoutRect {
     bottom: f64,
 }
 
+impl LayoutRect {
+    fn from_physical(position: (i32, i32), size: (u32, u32), scale: f64) -> Self {
+        Self {
+            left: position.0 as f64 / scale,
+            top: position.1 as f64 / scale,
+            right: (position.0 as f64 + size.0 as f64) / scale,
+            bottom: (position.1 as f64 + size.1 as f64) / scale,
+        }
+    }
+}
+
 fn layout_scale(monitor: &tauri::Monitor) -> f64 {
     if cfg!(target_os = "macos") {
         monitor.scale_factor()
@@ -1307,12 +1318,7 @@ fn layout_rect(monitor: &tauri::Monitor) -> LayoutRect {
     let scale = layout_scale(monitor);
     let pos = monitor.position();
     let size = monitor.size();
-    LayoutRect {
-        left: pos.x as f64 / scale,
-        top: pos.y as f64 / scale,
-        right: (pos.x as f64 + size.width as f64) / scale,
-        bottom: (pos.y as f64 + size.height as f64) / scale,
-    }
+    LayoutRect::from_physical((pos.x, pos.y), (size.width, size.height), scale)
 }
 
 /// Whether another screen borders `screen` along the `dock` edge (1 top,
@@ -1392,6 +1398,74 @@ mod edge_tests {
         let screens = [main, above];
         assert!(edge_borders_screen(main, &screens, 1, 600.0, 1000.0));
         assert!(!edge_borders_screen(main, &screens, 1, 0.0, 150.0));
+    }
+
+    #[test]
+    fn shared_edges_use_each_screens_scale_and_negative_origin() {
+        let main = LayoutRect::from_physical((0, 0), (2880, 1800), 2.0);
+        let right = LayoutRect::from_physical((1440, 100), (1920, 1080), 1.0);
+        let left = LayoutRect::from_physical((-1920, -200), (1920, 1080), 1.0);
+        let screens = [main, right, left];
+        assert!(edge_borders_screen(main, &screens, 3, 200.0, 700.0));
+        assert!(edge_borders_screen(right, &screens, 2, 200.0, 700.0));
+        assert!(edge_borders_screen(main, &screens, 2, 200.0, 700.0));
+        assert!(edge_borders_screen(left, &screens, 3, 200.0, 700.0));
+        // The offset neighbour doesn't cover the entire edge.
+        assert!(!edge_borders_screen(main, &screens, 3, 0.0, 100.0));
+        assert!(!edge_borders_screen(left, &screens, 3, -200.0, 0.0));
+    }
+
+    #[test]
+    fn corner_contact_and_a_gap_do_not_block_docking() {
+        let main = rect(0.0, 0.0, 1440.0, 900.0);
+        let corner = rect(1440.0, 900.0, 1920.0, 1080.0);
+        let separated = rect(1443.0, 0.0, 1920.0, 1080.0);
+        assert!(!edge_borders_screen(main, &[main, corner], 3, 100.0, 900.0));
+        assert!(!edge_borders_screen(main, &[main, separated], 3, 100.0, 700.0));
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn edge_docking_paused(minimized: bool, pressed_mouse_buttons: usize) -> bool {
+    minimized || pressed_mouse_buttons != 0
+}
+
+#[cfg(target_os = "macos")]
+fn cursor_in_monitor_pixels(cursor: (f64, f64), monitor_scale: f64) -> (i32, i32) {
+    (
+        (cursor.0 * monitor_scale).round() as i32,
+        (cursor.1 * monitor_scale).round() as i32,
+    )
+}
+
+#[cfg(all(test, target_os = "macos"))]
+mod macos_edge_tests {
+    use super::{cursor_in_monitor_pixels, edge_docking_paused};
+    use crate::app::window_manager::cursor_position_in_layout;
+
+    #[test]
+    fn dragging_pauses_until_all_mouse_buttons_are_released() {
+        // NSEvent returns a bitmask, including right/middle and extra buttons.
+        for buttons in [1, 2, 4, 8, 3, 5] {
+            assert!(edge_docking_paused(false, buttons));
+        }
+        assert!(!edge_docking_paused(false, 0));
+        assert!(edge_docking_paused(true, 0));
+    }
+
+    #[test]
+    fn cursor_and_window_use_the_target_screens_pixels() {
+        // tao reports cursor pixels at the primary screen's scale.
+        for (raw, primary_scale, monitor_scale, expected) in [
+            ((4000.0, 600.0), 2.0, 1.0, (2000, 300)),
+            ((1000.0, 300.0), 1.0, 2.0, (2000, 600)),
+            ((-1600.0, -400.0), 2.0, 1.0, (-800, -200)),
+            ((3000.0, 600.0), 2.0, 2.0, (3000, 600)),
+            ((1500.25, -100.25), 1.0, 2.0, (3001, -201)),
+        ] {
+            let layout = cursor_position_in_layout(raw, primary_scale);
+            assert_eq!(cursor_in_monitor_pixels(layout, monitor_scale), expected);
+        }
     }
 }
 
@@ -1505,7 +1579,12 @@ fn start_edge_docking_monitor(app_handle: AppHandle) {
                 continue;
             };
 
-            if window.is_minimized().unwrap_or(false) {
+            // Don't reconcile, move or reveal the window during a drag. Polling
+            // resumes after release, using the final position and monitor.
+            if edge_docking_paused(
+                window.is_minimized().unwrap_or(false),
+                objc2_app_kit::NSEvent::pressedMouseButtons(),
+            ) {
                 continue;
             }
 
@@ -1578,7 +1657,7 @@ fn start_edge_docking_monitor(app_handle: AppHandle) {
             // scales the raw cursor by the primary screen's factor instead.
             let monitor_scale = monitor.scale_factor();
             let (cursor_x, cursor_y) = crate::app::window_manager::global_cursor_layout(&window)
-                .map(|(x, y)| ((x * monitor_scale).round() as i32, (y * monitor_scale).round() as i32))
+                .map(|cursor| cursor_in_monitor_pixels(cursor, monitor_scale))
                 .unwrap_or((-9999, -9999));
 
             let threshold = 5;
