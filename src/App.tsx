@@ -1433,7 +1433,7 @@ const App = () => {
         message={confirmDialog.message}
         theme={theme}
         danger={confirmDialog.danger}
-        confirmLabel={t('confirm')}
+        confirmLabel={confirmDialog.confirmLabel ?? t('confirm')}
         cancelLabel={t('cancel')}
         onClose={closeConfirm}
         onConfirm={confirmDialog.onConfirm}

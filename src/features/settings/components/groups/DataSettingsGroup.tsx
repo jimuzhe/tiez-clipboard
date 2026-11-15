@@ -443,22 +443,19 @@ const DataSettingsGroup = ({
                                                     const newPath = selected as string;
                                                     const confirmed = await ask(
                                                         t("data_move_confirm").replace("{path}", newPath),
-                                                        { title: t("change_data_path"), kind: "warning", okLabel: t("confirm"), cancelLabel: t("cancel") }
+                                                        { title: t("change_data_path"), kind: "warning", okLabel: t("data_move_action"), cancelLabel: t("cancel") }
                                                     );
                                                     if (!confirmed) return;
 
                                                     try {
                                                         await invoke("set_data_path", { newPath });
-                                                        await message(
-                                                            t("data_move_success"),
-                                                            { title: t("notice"), kind: "info" }
-                                                        );
+                                                        // The dialog before this already said the app restarts.
                                                         await invoke("relaunch");
                                                     } catch (error: unknown) {
                                                         console.error(error);
                                                         await message(
                                                             t("data_move_failed").replace("{e}", formatError(error, t)),
-                                                            { title: t("error"), kind: "error" }
+                                                            { title: t("change_data_path"), kind: "error" }
                                                         );
                                                     }
                                                 }, "settings:change-data-path");

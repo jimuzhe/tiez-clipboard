@@ -472,7 +472,7 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
                                             if (changed) {
                                                 const confirmed = await withNativeDialog(() => ask(
                                                     props.t('restart_explorer_confirm'),
-                                                    { title: props.t('restart_explorer_title'), kind: 'warning' }
+                                                    { title: props.t('restart_explorer_title'), kind: 'warning', okLabel: props.t('restart_explorer_action'), cancelLabel: props.t('cancel') }
                                                 ), "settings:restart-explorer");
                                                 if (confirmed) {
                                                     await invoke("restart_explorer");
@@ -676,7 +676,9 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
                                                     props.t('game_mode_admin_required'),
                                                     {
                                                         title: props.t('admin_required'),
-                                                        kind: 'warning'
+                                                        kind: 'warning',
+                                                        okLabel: props.t('restart_as_admin'),
+                                                        cancelLabel: props.t('cancel')
                                                     }
                                                 ), "settings:game-mode-admin");
 

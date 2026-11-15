@@ -280,7 +280,6 @@ export const translations = {
         background_opacity: "背景透明度",
         surface_opacity: "面板透明度",
         error: "错误",
-        notice: "提示",
 
         // Settings - MQTT
         mqtt_tutorial_hint: "不知道怎么填？查看教程。",
@@ -415,8 +414,7 @@ export const translations = {
         change_data_path: "更换位置",
         data_path_portable_hint: "便携版的数据保存在程序旁的 data 文件夹，不能更换位置。",
         data_move_confirm: "数据将移到：{path}\n完成后应用会重启。",
-        data_move_success: "数据已迁移",
-        data_move_failed: "数据迁移失败: {e}",
+        data_move_failed: "数据位置移动失败：{e}",
         secure_transfer: "加密迁移",
         settings_about: "关于",
         pane_divider_hint: "拖动调整宽度，双击恢复默认",
@@ -593,6 +591,10 @@ export const translations = {
         type_message: "输入消息",
         clear_confirm_title: "清空记录",
         clear_confirm_message: "固定和带标签的记录会保留。\n其余记录将被清空。",
+        clear_confirm_action: "清空",
+        reset_confirm_action: "重置",
+        restart_explorer_action: "重启资源管理器",
+        data_move_action: "移动并重启",
 
         // Errors
         copy_failed: "复制失败：",
@@ -961,6 +963,10 @@ export const translations = {
         emoji_empty: "No emoji yet",
         clear_confirm_title: "Clear History",
         clear_confirm_message: "Pinned and tagged items are kept; everything else will be removed.",
+        clear_confirm_action: "Clear",
+        reset_confirm_action: "Reset",
+        restart_explorer_action: "Restart Explorer",
+        data_move_action: "Move and Restart",
 
         // Settings - Headers
         general_settings: "General Settings",
@@ -1214,7 +1220,6 @@ export const translations = {
         background_opacity: "Background Opacity",
         surface_opacity: "Surface Opacity",
         error: "Error",
-        notice: "Notice",
 
         // Settings - MQTT
         mqtt_tutorial_hint: "Need help?",
@@ -1349,8 +1354,7 @@ export const translations = {
         change_data_path: "Change Data Path",
         data_path_portable_hint: "The portable version keeps its data in the data folder next to the app, so its location can't be changed.",
         data_move_confirm: "Data will move to {path}, then the app will restart.",
-        data_move_success: "Data moved successfully.",
-        data_move_failed: "Data move failed: {e}",
+        data_move_failed: "Couldn't move the data folder: {e}",
         secure_transfer: "Password-protected text transfer",
         settings_about: "About",
         pane_divider_hint: "Drag to resize, double-click to reset",
@@ -2139,7 +2143,6 @@ export const translations = {
         background_opacity: "背景透明度",
         surface_opacity: "面板透明度",
         error: "錯誤",
-        notice: "提示",
 
         // Settings - MQTT
         mqtt_tutorial_hint: "不知道怎麼填？查看教程。",
@@ -2273,8 +2276,7 @@ export const translations = {
         change_data_path: "更換位置",
         data_path_portable_hint: "可攜版的資料保存在程式旁的 data 資料夾，不能更換位置。",
         data_move_confirm: "資料將移到：{path}\n完成後應用會重啟。",
-        data_move_success: "資料已遷移",
-        data_move_failed: "資料遷移失敗: {e}",
+        data_move_failed: "資料位置移動失敗：{e}",
         secure_transfer: "加密遷移",
         settings_about: "關於",
         pane_divider_hint: "拖曳調整寬度，按兩下恢復預設",
@@ -2451,6 +2453,10 @@ export const translations = {
         type_message: "輸入訊息",
         clear_confirm_title: "清空紀錄",
         clear_confirm_message: "固定和帶標籤的紀錄會保留。\n其餘紀錄將被清空。",
+        clear_confirm_action: "清空",
+        reset_confirm_action: "重設",
+        restart_explorer_action: "重新啟動檔案總管",
+        data_move_action: "移動並重新啟動",
 
         // Errors
         copy_failed: "複製失敗：",
