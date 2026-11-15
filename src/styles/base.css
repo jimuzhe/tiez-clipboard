@@ -227,6 +227,10 @@
   /* Control geometry shared by every settings page. */
   --range-track-height: 4px;
   --range-thumb-size: 14px;
+  /* Height of the clickable band around the track (WCAG 2.5.8 target size). */
+  --range-hit-height: 24px;
+  /* Keep in step with --range-track-border; the thumb offset subtracts it. */
+  --range-track-border-width: 0px;
   --range-track-border: none;
   --range-track-radius: var(--radius-pill);
   --range-track-shadow: none;
