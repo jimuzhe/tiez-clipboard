@@ -26,6 +26,7 @@ import { useClipboardActions } from "./shared/hooks/useClipboardActions";
 import { useWindowPinnedListener } from "./shared/hooks/useWindowPinnedListener";
 import { useCustomBackground } from "./shared/hooks/useCustomBackground";
 import { useToastListener } from "./shared/hooks/useToastListener";
+import { useTrayMenuEvents } from "./shared/hooks/useTrayMenuEvents";
 import { useAppBootstrap } from "./shared/hooks/useAppBootstrap";
 import { useAppActions } from "./shared/hooks/useAppActions";
 import { useNavigationSync } from "./shared/hooks/useNavigationSync";
@@ -910,6 +911,15 @@ const App = () => {
 
 
   useToastListener({ pushToast });
+
+  // Tray menu "Settings…": the window is already open, show the settings page.
+  const openSettingsFromTray = useCallback(() => {
+    setChatMode(false);
+    setShowTagManager(false);
+    setShowEmojiPanel(false);
+    setShowSettings(true);
+  }, [setChatMode, setShowTagManager, setShowEmojiPanel, setShowSettings]);
+  useTrayMenuEvents({ t, pushToast, openSettings: openSettingsFromTray });
 
   useSettingsPanelReset({ showSettings, setCollapsedGroups, setSettingsSubpage });
 

@@ -123,6 +123,7 @@ pub fn set_deduplication(
 
 #[tauri::command]
 pub fn save_setting(
+    app_handle: AppHandle,
     db_state: State<'_, DbState>,
     settings_state: State<'_, crate::app_state::SettingsState>,
     key: String,
@@ -230,7 +231,13 @@ pub fn save_setting(
     db_state
         .settings_repo
         .set(&key, &value)
-        .map_err(AppError::from)
+        .map_err(AppError::from)?;
+
+    // The tray menu's labels follow the app language.
+    if key == "app.language" {
+        crate::app::tray::refresh(&app_handle);
+    }
+    Ok(())
 }
 
 #[tauri::command]

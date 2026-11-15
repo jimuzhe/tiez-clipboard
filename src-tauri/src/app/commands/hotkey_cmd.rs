@@ -179,7 +179,10 @@ pub fn register_hotkey(app_handle: AppHandle, hotkey: String) -> AppResult<()> {
         *guard = hotkey.clone();
     }
 
-    sync_registered_hotkeys(&app_handle)
+    let result = sync_registered_hotkeys(&app_handle);
+    // "Open TieZ" in the tray menu shows this hotkey.
+    crate::app::tray::refresh(&app_handle);
+    result
 }
 
 /// Shift alone (or no modifier) plus a key that types text: registered
