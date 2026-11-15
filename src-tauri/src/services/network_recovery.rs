@@ -29,13 +29,13 @@ struct NetworkSnapshot {
 }
 
 fn network_snapshot() -> Option<NetworkSnapshot> {
-    let mut interfaces = local_ip_address::list_afinet_netifas().ok()?;
+    let mut interfaces = crate::infrastructure::net_interfaces::list_afinet_netifas()?;
     interfaces.retain(|(_, ip)| !ip.is_loopback() && !ip.is_unspecified());
     interfaces.sort();
     interfaces.dedup();
     Some(NetworkSnapshot {
         interfaces,
-        default_address: local_ip_address::local_ip().ok(),
+        default_address: crate::infrastructure::net_interfaces::local_ip(),
     })
 }
 
