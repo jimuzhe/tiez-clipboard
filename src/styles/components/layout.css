@@ -591,6 +591,8 @@ select.search-input option {
 .main-content.settings-mode:has(.advanced-workbench),
 .main-content.settings-mode:has(.settings-wide),
 .main-content.tag-manager-mode {
+  /* The sidebar runs from the header to the window's bottom edge. */
+  padding-top: 0;
   padding-bottom: 0;
 }
 
