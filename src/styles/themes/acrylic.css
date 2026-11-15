@@ -299,3 +299,55 @@ body.dark-mode.compact-preview.theme-acrylic #root {
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
+
+/* macOS 26+: the window is one piece of Liquid Glass, like Spotlight. The
+   glass draws its own edge, so the shell adds no border, shadow or second
+   blur, and rows sit on the glass without a tile; hover and selection are a
+   soft fill. Corners match a standard window on this macOS (16pt on 26/27,
+   measured natively into --macos-window-radius). Earlier macOS keeps the
+   frosted cards above. Specific enough to beat the macOS and dark mode
+   token blocks above. */
+html.platform-macos.macos-liquid-glass.theme-acrylic,
+html.platform-macos.macos-liquid-glass body.macos-liquid-glass.theme-acrylic {
+  --shell-border: none;
+  --shell-shadow: none;
+  --shell-backdrop-filter: none;
+  --shell-radius: var(--macos-window-radius, 16px);
+  /* The glass already frosts and adapts to what is behind it; a wash on top
+     only fogs it, so the default stays light. 「面板透明度」 covers the whole
+     way from bare glass to nearly solid: none at 0, 5% at the default 50,
+     25% at 75, 80% at 100. The curve is steep on purpose: the first half
+     stays close to bare glass, the second half is where the panel fills in. */
+  --acrylic-tint-alpha: clamp(
+    0,
+    calc(0.05 * var(--surface-opacity-scale) * var(--surface-opacity-scale) * var(--surface-opacity-scale) * var(--surface-opacity-scale)),
+    0.8
+  );
+  --layout-item-background: transparent;
+  --card-border: 1px solid transparent;
+  --card-selected-outline: none;
+  --card-selected-border-color: transparent;
+  --card-selected-background: rgba(var(--neutral-rgb), 0.18);
+  --glass-row-hover-background: rgba(var(--neutral-rgb), 0.1);
+}
+
+/* Light mode painted panels, buttons and fields in 24–58% white, which turns
+   the glass milky. On Liquid Glass they are thin fills that keep shape but
+   let the glass show; dark mode's fills are already this light. */
+html.platform-macos.macos-liquid-glass body.macos-liquid-glass.theme-acrylic.light-mode {
+  --bg-panel: rgba(255, 255, 255, 0.1);
+  --bg-element: rgba(255, 255, 255, 0.08);
+  --bg-button: rgba(255, 255, 255, 0.22);
+  --bg-input: rgba(255, 255, 255, 0.3);
+}
+
+html.macos-liquid-glass body.theme-acrylic .history-item {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+html.macos-liquid-glass body.theme-acrylic .history-item:hover:not(.selected, .keyboard-owns-list *, .list-pointer-selects *) {
+  outline: none;
+  border-color: transparent;
+  background: var(--glass-row-hover-background);
+}

@@ -11,6 +11,12 @@ pub struct PlatformInfo {
     pub platform: String,
     pub is_windows_10: bool,
     pub is_windows_11: bool,
+    /// macOS 26 or newer: the 磨砂 theme sits on Liquid Glass, not a
+    /// visual effect material (window_manager::apply_macos_window_material).
+    pub has_liquid_glass: bool,
+    /// Corner radius of a standard window on this macOS, in points (0 off
+    /// macOS); the Liquid Glass shell copies it.
+    pub window_corner_radius: f64,
 }
 
 #[tauri::command]
@@ -24,6 +30,8 @@ pub fn get_platform_info() -> PlatformInfo {
             platform: "windows".to_string(),
             is_windows_10,
             is_windows_11,
+            has_liquid_glass: false,
+            window_corner_radius: 0.0,
         }
     }
 
@@ -33,6 +41,8 @@ pub fn get_platform_info() -> PlatformInfo {
             platform: "macos".to_string(),
             is_windows_10: false,
             is_windows_11: false,
+            has_liquid_glass: crate::app::window_manager::macos_has_liquid_glass(),
+            window_corner_radius: crate::app::window_manager::macos_window_corner_radius(),
         }
     }
 
@@ -42,6 +52,8 @@ pub fn get_platform_info() -> PlatformInfo {
             platform: std::env::consts::OS.to_string(),
             is_windows_10: false,
             is_windows_11: false,
+            has_liquid_glass: false,
+            window_corner_radius: 0.0,
         }
     }
 }
