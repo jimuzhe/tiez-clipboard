@@ -79,7 +79,9 @@ Eight built-in themes; four of them:
 | :--- | :--- | :--- |
 | **macOS** | macOS 10.15+ <br>(Apple Silicon / Intel) | `.dmg` / `.app` |
 
-[**Download the Latest Release →**](https://github.com/jimuzhe/tiez-clipboard/releases)
+[**Download TieZ →**](https://tiez.name666.top/)
+
+Beta builds are on [Releases](https://github.com/jimuzhe/tiez-clipboard/releases).
 
 ---
 
