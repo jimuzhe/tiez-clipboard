@@ -49,6 +49,11 @@
   --traffic-yellow: #ffbd2e;
   --traffic-green: #27c93f;
   --traffic-glyph: rgba(0, 0, 0, 0.5);
+  /* The hide button follows macOS window buttons: 12pt before macOS 26,
+     14pt from macOS 26 (html.macos-liquid-glass, below). Gray while the
+     window is behind others. */
+  --traffic-size: 12px;
+  --traffic-inactive: color-mix(in srgb, var(--text-primary) 18%, transparent);
 
   /* File-type icons in file transfer. */
   --file-tint-pdf: #e05252;
@@ -557,4 +562,9 @@ body /* design-ok: the window behind the shell stays transparent under any theme
     --duration-base: 0ms;
     --duration-slow: 0ms;
   }
+}
+
+/* macOS 26 and later draw larger window buttons (14pt, measured with AppKit). */
+html.macos-liquid-glass {
+  --traffic-size: 14px;
 }
