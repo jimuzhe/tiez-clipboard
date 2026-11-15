@@ -2156,7 +2156,8 @@ fn setup_taskbar_listener(_app: &App) {
 }
 
 fn plain_paste_goes_to_selection(app: &AppHandle) -> bool {
-    NAVIGATION_MODE_ACTIVE.load(Ordering::SeqCst)
+    (NAVIGATION_MODE_ACTIVE.load(Ordering::SeqCst)
+        || crate::global_state::SEARCH_TOP_HIT_ACTIVE.load(Ordering::SeqCst))
         && !IS_HIDDEN.load(Ordering::SeqCst)
         && app
             .get_webview_window("main")
@@ -2202,8 +2203,9 @@ pub fn handle_global_shortcut(
         } {
             if shortcut == &plain_s {
                 // A registered hotkey never reaches the window, so with an
-                // entry picked by Up/Down the window pastes that one;
-                // otherwise the newest entry is pasted.
+                // entry picked by Up/Down (or the first search result shown
+                // as selected) the window pastes that one; otherwise the
+                // newest entry is pasted.
                 if plain_paste_goes_to_selection(app) {
                     let _ = app.emit("navigation-action", "plain");
                 } else {

@@ -1373,6 +1373,7 @@ const App = () => {
             t={t}
             theme={theme}
             privacyProtection={privacyProtection}
+            primaryPasteKeepsFormat={pasteKeepsFormat(clickPasteMode, true)}
             showSettings={showSettings}
             showTagManager={effectiveShowTagManager}
             tagManagerEnabled={tagManagerEnabled}
