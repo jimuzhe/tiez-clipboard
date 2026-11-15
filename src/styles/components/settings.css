@@ -1889,6 +1889,17 @@ html.platform-macos .advanced-rule-list:focus-within::-webkit-scrollbar-thumb:ho
   box-shadow: var(--range-thumb-active-shadow);
 }
 
+/* The input is only as tall as the visible track, so a click beside the thumb
+   used to miss. The transparent runnable track spans the thumb's height
+   instead; the engine centres it on the input, so the thumb needs no offset. */
+.settings-view .setting-range-control input[type="range"]::-webkit-slider-runnable-track {
+  height: var(--range-thumb-size);
+}
+
+.settings-view .setting-range-control input[type="range"]::-webkit-slider-thumb {
+  margin-top: 0;
+}
+
 .settings-view input[type="range"]::-moz-range-track {
   height: var(--range-track-height);
   background: var(--range-track-background);
