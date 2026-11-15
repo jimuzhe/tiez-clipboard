@@ -149,7 +149,8 @@ pub fn get_system_default_app(contentType: String) -> String {
     }
     #[cfg(target_os = "macos")]
     {
-        return crate::infrastructure::macos_api::apps::get_system_default_app(&ext);
+        let ext = macos_open_with_key(&ext, Some(&contentType));
+        return crate::infrastructure::macos_api::apps::get_system_default_app(ext);
     }
     #[cfg(all(not(target_os = "windows"), not(target_os = "macos")))]
     {
@@ -158,10 +159,26 @@ pub fn get_system_default_app(contentType: String) -> String {
     }
 }
 
+/// Link entries open in the browser, so on macOS their apps are the
+/// browsers rather than everything that opens .html files.
+#[cfg(target_os = "macos")]
+fn macos_open_with_key<'a>(extension: &'a str, content_type: Option<&str>) -> &'a str {
+    if content_type.is_some_and(|t| t.eq_ignore_ascii_case("url")) {
+        crate::infrastructure::macos_api::apps::WEB_LINK
+    } else {
+        extension
+    }
+}
+
+/// `content_type`: the entry type the apps are for (macOS uses it for links).
 #[tauri::command]
-pub async fn get_associated_apps(extension: String) -> Vec<serde_json::Value> {
+pub async fn get_associated_apps(
+    extension: String,
+    content_type: Option<String>,
+) -> Vec<serde_json::Value> {
     #[cfg(target_os = "windows")]
     {
+        let _ = content_type;
         match crate::infrastructure::windows_api::apps::get_associated_apps(extension).await {
             Ok(apps) => apps
                 .into_iter()
@@ -172,11 +189,12 @@ pub async fn get_associated_apps(extension: String) -> Vec<serde_json::Value> {
     }
     #[cfg(target_os = "macos")]
     {
-        crate::infrastructure::macos_api::apps::get_associated_apps(&extension)
+        let key = macos_open_with_key(&extension, content_type.as_deref());
+        crate::infrastructure::macos_api::apps::get_associated_apps(key)
     }
     #[cfg(all(not(target_os = "windows"), not(target_os = "macos")))]
     {
-        let _ = extension;
+        let _ = (extension, content_type);
         Vec::new()
     }
 }

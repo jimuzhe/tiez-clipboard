@@ -4,6 +4,12 @@ import AppSelector from "./AppSelector";
 import AppModal from "../../../shared/components/AppModal";
 import type { InstalledAppOption } from "../../app/types";
 import { withNativeDialog } from "../../../shared/lib/focus";
+import { isMacPlatform } from "../../../shared/lib/platform";
+
+// macOS apps are .app bundles in /Applications; the Windows kinds can't be picked there.
+const browseOptions = () => isMacPlatform()
+    ? { defaultPath: "/Applications", filters: [{ name: "Applications", extensions: ["app"] }] }
+    : { filters: [{ name: "Applications", extensions: ["exe", "cmd", "bat", "lnk"] }] };
 
 interface AppSelectorModalProps {
     show: string | null;
@@ -67,10 +73,7 @@ const AppSelectorModal = ({ show, installedApps, theme, colorMode, t, onClose, o
                     try {
                         const selected = await withNativeDialog(() => open({
                             multiple: false,
-                            filters: [{
-                                name: "Applications",
-                                extensions: ["exe", "cmd", "bat", "lnk"]
-                            }]
+                            ...browseOptions()
                         }), "settings:choose-application");
                         if (selected && show) {
                             onSave(show, selected as string);
