@@ -7,9 +7,10 @@ import type { Announcement } from "../types";
 interface AnnouncementProps {
     announcements: Announcement[];
     onDismiss: (id: string, forever?: boolean) => void;
+    closeLabel: string;
 }
 
-export const AnnouncementSystem: React.FC<AnnouncementProps> = ({ announcements, onDismiss }) => {
+export const AnnouncementSystem: React.FC<AnnouncementProps> = ({ announcements, onDismiss, closeLabel }) => {
     const [activeIndex, setActiveIndex] = useState(0);
     const [isPaused, setIsPaused] = useState(false);
 
@@ -92,7 +93,8 @@ export const AnnouncementSystem: React.FC<AnnouncementProps> = ({ announcements,
             <div
                 className="ticker-fixed-close"
                 onClick={() => onDismiss(current.id)}
-                title="Dismiss"
+                title={closeLabel}
+                aria-label={closeLabel}
             >
                 <X size={16} />
             </div>

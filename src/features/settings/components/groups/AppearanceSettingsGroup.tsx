@@ -12,7 +12,8 @@ import {
     normalizeThemeId,
     supportsCustomBackground,
     supportsNativePalette,
-    supportsSurfaceOpacity
+    supportsSurfaceOpacity,
+    MACOS_THEME_ID
 } from "../../../../shared/config/themes";
 import { isWindowsPlatform } from "../../../../shared/lib/platform";
 import type { Locale } from "../../../../shared/types";
@@ -124,9 +125,11 @@ const AppearanceSettingsGroup = ({
     const showCustomBackgroundControls = selectedInstalledTheme
         ? selectedInstalledTheme.supportsCustomBackground
         : supportsCustomBackground(theme);
+    // The 系统 theme has no see-through window material: there the setting only
+    // decides how much of a background image shows, so it needs one to act on.
     const showSurfaceOpacityControls = selectedInstalledTheme
         ? selectedInstalledTheme.supportsSurfaceOpacity
-        : supportsSurfaceOpacity(theme);
+        : supportsSurfaceOpacity(theme) && (theme !== MACOS_THEME_ID || Boolean(customBackground));
 
     useEffect(() => {
         let disposed = false;

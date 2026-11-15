@@ -1330,6 +1330,7 @@ const App = () => {
       />
 
       <AnnouncementSystem
+        closeLabel={t('close')}
         announcements={announcements}
         onDismiss={dismissAnnouncement}
       />
