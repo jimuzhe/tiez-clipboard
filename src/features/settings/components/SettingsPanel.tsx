@@ -1,5 +1,6 @@
 
 import { memo, useState, useEffect, useCallback, useRef, type ReactNode } from "react";
+import type { ClickPasteMode } from "../../../shared/lib/clickPaste";
 import { invoke } from "@tauri-apps/api/core";
 import { emit, listen } from "@tauri-apps/api/event";
 import { getVersion } from "@tauri-apps/api/app";
@@ -84,6 +85,7 @@ interface SettingsPanelProps {
     deleteAfterPaste: boolean;
     moveToTopAfterPaste: boolean;
     clickCopyOnly: boolean;
+    clickPasteMode: ClickPasteMode;
     pasteMethod: string;
     setPasteMethod: (val: string) => void;
     registryWinVEnabled: boolean;
@@ -213,6 +215,7 @@ interface SettingsPanelProps {
     setDeleteAfterPaste: (val: boolean) => void;
     setMoveToTopAfterPaste: (val: boolean) => void;
     setClickCopyOnly: (val: boolean) => void;
+    setClickPasteMode: (val: ClickPasteMode) => void;
     saveAppSetting: (key: string, val: string) => void;
     setSequentialModeState: (val: boolean) => void;
     setIsRecordingSequential: (val: boolean) => void;
@@ -321,7 +324,7 @@ const NAV_GROUPS: { labelKey: string; ids: string[] }[] = [
 const SettingsPanel = (props: SettingsPanelProps) => {
     const {
         t, theme, nativePalette, nativeCustomColor, setNativePalette, language, colorMode, showAppBorder, setShowAppBorder, showSourceAppIcon, setShowSourceAppIcon, hideUnselectedItemActions, setHideUnselectedItemActions,
-        collapsedGroups, settingsSubpage, autoStart, elevatedAutostart, silentStart, persistent, persistentLimitEnabled, persistentLimit, deduplicate, captureFiles, captureRichText, richTextSnapshotPreview, deleteAfterPaste, moveToTopAfterPaste, clickCopyOnly, pasteMethod, setPasteMethod, registryWinVEnabled, setRegistryWinVEnabled,
+        collapsedGroups, settingsSubpage, autoStart, elevatedAutostart, silentStart, persistent, persistentLimitEnabled, persistentLimit, deduplicate, captureFiles, captureRichText, richTextSnapshotPreview, deleteAfterPaste, moveToTopAfterPaste, clickCopyOnly, clickPasteMode, pasteMethod, setPasteMethod, registryWinVEnabled, setRegistryWinVEnabled,
         sequentialMode, sequentialHotkey, isRecordingSequential,
         plainPasteHotkey, isRecordingPlain, searchHotkey, isRecordingSearch, quickPasteModifier, setQuickPasteModifier,
         privacyProtection, privacyProtectionKinds, setPrivacyProtectionKinds, privacyProtectionCustomRules, setPrivacyProtectionCustomRules, sensitiveMaskPrefixVisible, setSensitiveMaskPrefixVisible, sensitiveMaskSuffixVisible, setSensitiveMaskSuffixVisible, sensitiveMaskEmailDomain, setSensitiveMaskEmailDomain, cleanupRules, setCleanupRules, appCleanupPolicies, setAppCleanupPolicies, setShowSearchBox, searchBoxPinned, setSearchBoxPinned, scrollTopButtonEnabled, setScrollTopButtonEnabled, arrowKeySelection, setArrowKeySelection,
@@ -340,7 +343,7 @@ const SettingsPanel = (props: SettingsPanelProps) => {
         fileServerEnabled, fileServerPort, localIp, availableIps, setLocalIp, actualPort, fileTransferAccessToken, fileTransferLanKey, fileTransferAutoOpen, showAutoCloseHint, fileServerAutoClose, fileTransferAutoCopy, fileTransferPath,
         installedApps, appSettings, defaultApps, showAppSelector, dataPath,
 
-        toggleGroup, setSettingsSubpage, setAutoStart, setElevatedAutostart, setSilentStart, setPersistent, setPersistentLimitEnabled, setPersistentLimit, setDeduplicate, setCaptureFiles, setCaptureRichText, setRichTextSnapshotPreview, setDeleteAfterPaste, setMoveToTopAfterPaste, setClickCopyOnly, saveAppSetting,
+        toggleGroup, setSettingsSubpage, setAutoStart, setElevatedAutostart, setSilentStart, setPersistent, setPersistentLimitEnabled, setPersistentLimit, setDeduplicate, setCaptureFiles, setCaptureRichText, setRichTextSnapshotPreview, setDeleteAfterPaste, setMoveToTopAfterPaste, setClickCopyOnly, setClickPasteMode, saveAppSetting,
         setSequentialModeState, setIsRecordingSequential, updateSequentialHotkey,
         setIsRecordingPlain, updatePlainPasteHotkey,
         setIsRecordingSearch, updateSearchHotkey,
@@ -625,8 +628,10 @@ const SettingsPanel = (props: SettingsPanelProps) => {
                     setDeleteAfterPaste={setDeleteAfterPaste}
                     moveToTopAfterPaste={moveToTopAfterPaste}
                     clickCopyOnly={clickCopyOnly}
+                    clickPasteMode={clickPasteMode}
                     setMoveToTopAfterPaste={setMoveToTopAfterPaste}
                     setClickCopyOnly={setClickCopyOnly}
+                    setClickPasteMode={setClickPasteMode}
                     pasteMethod={pasteMethod}
                     setPasteMethod={setPasteMethod}
                     registryWinVEnabled={registryWinVEnabled}

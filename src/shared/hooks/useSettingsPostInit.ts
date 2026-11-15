@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { normalizeClickPasteMode, type ClickPasteMode } from "../lib/clickPaste";
 import { invoke } from "@tauri-apps/api/core";
 import type { MutableRefObject } from "react";
 import type { AiProfile, AppCleanupPolicy } from "../../features/settings/types";
@@ -83,6 +84,7 @@ interface UseSettingsPostInitOptions {
   setDeleteAfterPaste: (val: boolean) => void;
   setMoveToTopAfterPaste: (val: boolean) => void;
   setClickCopyOnly: (val: boolean) => void;
+  setClickPasteMode: (val: ClickPasteMode) => void;
   setHideTrayIcon: (val: boolean) => void;
   setHideDockIcon: (val: boolean) => void;
   setEdgeDocking: (val: boolean) => void;
@@ -176,6 +178,7 @@ export const useSettingsPostInit = ({
   setDeleteAfterPaste,
   setMoveToTopAfterPaste,
   setClickCopyOnly,
+  setClickPasteMode,
   setHideTrayIcon,
   setHideDockIcon,
   setEdgeDocking,
@@ -363,6 +366,7 @@ export const useSettingsPostInit = ({
     setDeleteAfterPaste(settings["app.delete_after_paste"] === "true");
     setMoveToTopAfterPaste(settings["app.move_to_top_after_paste"] === "true");
     setClickCopyOnly(settings["app.click_copy_only"] === "true");
+    setClickPasteMode(normalizeClickPasteMode(settings["app.click_paste_mode"]));
     setHideTrayIcon(settings["app.hide_tray_icon"] === "true");
     setHideDockIcon(settings["app.hide_dock_icon"] === "true");
     const edgeDockingEnabled = settings["app.edge_docking"] === "true";
@@ -563,6 +567,7 @@ export const useSettingsPostInit = ({
     setDeleteAfterPaste,
     setMoveToTopAfterPaste,
     setClickCopyOnly,
+    setClickPasteMode,
     setHideTrayIcon,
     setHideDockIcon,
     setEdgeDocking,
