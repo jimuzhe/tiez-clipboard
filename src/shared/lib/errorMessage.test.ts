@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { errorToText, formatError, localizeErrorTags, tidyMessage } from "./errorMessage";
+import { errorToText, failureText, formatError, localizeErrorTags, tidyMessage } from "./errorMessage";
 
 const t = (key: string) => ({ error_kind_io: "文件错误", error_kind_internal: "内部错误" } as Record<string, string>)[key] ?? key;
 
@@ -40,5 +40,25 @@ describe("errorToText", () => {
 
   test("tidyMessage collapses whitespace", () => {
     expect(tidyMessage("a\n\n   b\tc")).toBe("a b c");
+  });
+});
+
+describe("failureText", () => {
+  test("joins what failed and why, without the backend tag", () => {
+    expect(failureText("打开失败: ", "[io] gone")).toBe("打开失败：gone");
+    expect(failureText("Open failed: ", "[io] gone")).toBe("Open failed: gone");
+  });
+
+  test("does not say the same thing twice", () => {
+    expect(failureText("快捷键设置失败：", "[internal] 快捷键设置失败，请换一组按键。")).toBe("快捷键设置失败，请换一组按键。");
+  });
+
+  test("a label that is a full sentence loses its full stop before the reason", () => {
+    expect(failureText("取消固定失败，请重试。", "[db] busy")).toBe("取消固定失败，请重试：busy");
+  });
+
+  test("no reason leaves just the label", () => {
+    expect(failureText("复制失败：", undefined)).toBe("复制失败");
+    expect(failureText("取消固定失败，请重试。", "")).toBe("取消固定失败，请重试。");
   });
 });

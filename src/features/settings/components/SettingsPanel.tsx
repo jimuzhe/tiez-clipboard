@@ -20,7 +20,8 @@ import {
     type LucideIcon
 } from "lucide-react";
 import type { Locale } from "../../../shared/types";
-import { formatError } from "../../../shared/lib/errorMessage";
+import { failureText, formatError } from "../../../shared/lib/errorMessage";
+import { syncErrorText } from "../../../shared/lib/syncError";
 import type { DefaultAppsMap, InstalledAppOption, SettingsSubpage, CloudSyncContentPrefs } from "../../app/types";
 import type { AiProfile, AiProfileStatusMap, AppCleanupPolicy, EditableAiProfile } from "../types";
 import { resolveTaskProfile } from "../aiPresets";
@@ -438,7 +439,7 @@ const SettingsPanel = (props: SettingsPanelProps) => {
             setCloudSyncStatus(status);
         } catch (err) {
             console.error("Cloud sync now failed:", err);
-            void emit("toast", `${t("sync_now_failed")}${String(err)}`);
+            void emit("toast", failureText(t("sync_now_failed"), syncErrorText(err, t)));
         } finally {
             setCloudSyncNowRunning(false);
         }

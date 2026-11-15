@@ -1,4 +1,5 @@
 import { useCallback, useEffect } from "react";
+import { failureText } from "../lib/errorMessage";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { isTauriRuntime } from "../lib/tauriRuntime";
@@ -113,7 +114,7 @@ export const useHotkeyConfig = ({
       saveAppSetting("hotkey", newHotkey);
       await invoke("register_hotkey", { hotkey: newHotkey }).catch((err) => {
         if (newHotkey) {
-          const errorMsg = t("hotkey_register_failed") + (err?.toString() || "");
+          const errorMsg = failureText(t("hotkey_register_failed"), err);
           pushToast(errorMsg, 3000);
         }
       });
@@ -152,7 +153,7 @@ export const useHotkeyConfig = ({
       saveAppSetting("sequential_hotkey", newHotkey);
       await invoke("set_sequential_hotkey", { hotkey: newHotkey }).catch((err) => {
         console.error(err);
-        if (newHotkey) pushToast(t("hotkey_register_failed") + String(err), 3000);
+        if (newHotkey) pushToast(failureText(t("hotkey_register_failed"), err), 3000);
       });
       setIsRecordingSequential(false);
     },
@@ -197,7 +198,7 @@ export const useHotkeyConfig = ({
       saveAppSetting("plain_paste_hotkey", newHotkey);
       await invoke("set_plain_paste_hotkey", { hotkey: newHotkey }).catch((err) => {
         console.error(err);
-        if (newHotkey) pushToast(t("hotkey_register_failed") + String(err), 3000);
+        if (newHotkey) pushToast(failureText(t("hotkey_register_failed"), err), 3000);
       });
       setIsRecordingPlain(false);
     },
@@ -242,7 +243,7 @@ export const useHotkeyConfig = ({
       saveAppSetting("search_hotkey", newHotkey);
       await invoke("set_search_hotkey", { hotkey: newHotkey }).catch((err) => {
         console.error(err);
-        if (newHotkey) pushToast(t("hotkey_register_failed") + String(err), 3000);
+        if (newHotkey) pushToast(failureText(t("hotkey_register_failed"), err), 3000);
       });
       setIsRecordingSearch(false);
     },
