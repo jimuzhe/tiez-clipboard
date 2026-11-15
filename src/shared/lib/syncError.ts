@@ -25,10 +25,13 @@ const STATUS_KEYS: Record<string, string> = {
 /** Text for the "last error" line and the "sync now" toast. */
 export const syncErrorText = (err: unknown, t: Translate): string => {
   const raw = formatError(err, t);
+  // Unrecognised: the message without its backend tag. A message that is only
+  // a tag ("[network]") would leave nothing, so then the translated kind.
+  const asIs = () => failureText("", err) || raw.replace(/\s*[:：]\s*$/, "");
   const status = STATUS_RE.exec(raw)?.[1];
   const key = status ? STATUS_KEYS[status] : UNREACHABLE_RE.test(raw) ? "sync_error_unreachable" : undefined;
-  if (!key) return failureText("", err);
+  if (!key) return asIs();
   const text = t(key);
-  if (text === key) return failureText("", err);
+  if (text === key) return asIs();
   return status ? `${text} (HTTP ${status})` : text;
 };

@@ -36,4 +36,8 @@ describe("syncErrorText", () => {
   test("anything else is shown as it is, without the backend tag", () => {
     expect(syncErrorText("[internal] status lock poisoned", t)).toBe("status lock poisoned");
   });
+
+  test("a bare backend tag is never shown as an empty line", () => {
+    expect(syncErrorText("[network]", t)).toBe("网络错误");
+  });
 });
