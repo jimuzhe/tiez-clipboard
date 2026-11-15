@@ -308,3 +308,14 @@ body.dark-mode.compact-preview.theme-macos #root {
 .theme-macos .history-item.selected {
   box-shadow: none;
 }
+
+/* Two-pane pages (settings, copy rules, tag manager): the sidebar sits a step
+   back from the page it leads to, as in Finder and System Settings. The shared
+   default lightens it with the panel colour, which on this theme made the
+   sidebar the brightest surface in the window, brighter than the page beside
+   it. A faint tint of the text colour recedes instead: a little darker than
+   the page in light mode, a little lighter in dark mode. */
+:root.theme-macos,
+body.theme-macos {
+  --pane-sidebar-background: color-mix(in srgb, var(--text-primary) 4%, transparent);
+}

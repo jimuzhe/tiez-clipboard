@@ -9,7 +9,7 @@
   --st-label-size: var(--font-size-md);
   --st-label-weight: 500;
   --st-desc-size: var(--font-size-sm);
-  --st-nav-size: var(--font-size-base);
+  --st-nav-size: var(--font-size-md);
   --st-control-size: var(--font-size-base);
 
   /* 4px spacing scale. */
@@ -2337,15 +2337,18 @@ html.platform-macos .advanced-rule-list:focus-within::-webkit-scrollbar-thumb:ho
   min-height: 0;
 }
 
-/* Sidebar: grouped, icon-led list that scrolls on its own. */
+/* Sidebar: grouped, icon-led list that scrolls on its own. It grows a little
+   with the window (until the divider is dragged), so on a wide window it is
+   not a thin strip beside a large page. */
 .settings-nav {
-  flex: 0 0 var(--settings-nav-width, var(--pane-sidebar-width));
-  width: var(--settings-nav-width, var(--pane-sidebar-width));
+  --settings-nav-auto-width: clamp(184px, 22%, 248px);
+  flex: 0 0 var(--settings-nav-width, var(--settings-nav-auto-width));
+  width: var(--settings-nav-width, var(--settings-nav-auto-width));
   display: flex;
   flex-direction: column;
-  gap: var(--st-space-3);
+  gap: var(--st-space-4);
   min-height: 0;
-  padding: var(--st-space-3) var(--st-space-2);
+  padding: var(--st-space-4) 10px var(--st-space-3);
   overflow-y: auto;
   overscroll-behavior: contain;
   background: var(--pane-sidebar-background);
@@ -2359,10 +2362,10 @@ html.platform-macos .advanced-rule-list:focus-within::-webkit-scrollbar-thumb:ho
 }
 
 .settings-nav-group-label {
-  padding: 0 10px var(--st-space-1);
+  padding: 0 10px 6px;
   color: var(--text-muted);
   font-size: var(--font-size-xs);
-  font-weight: 500;
+  font-weight: 600;
   line-height: 16px;
   letter-spacing: 0.02em;
 }
@@ -2378,8 +2381,10 @@ html.platform-macos .advanced-rule-list:focus-within::-webkit-scrollbar-thumb:ho
   align-items: center;
   gap: 10px;
   width: 100%;
-  height: var(--pane-item-height);
-  min-height: var(--pane-item-height);
+  /* The page beside it sets labels in 14px/500; the list that leads to those
+     pages must not read lighter than them. */
+  height: 34px;
+  min-height: 34px;
   padding: 0 10px;
   border: none;
   border-radius: var(--st-control-radius);
@@ -2395,9 +2400,10 @@ html.platform-macos .advanced-rule-list:focus-within::-webkit-scrollbar-thumb:ho
 }
 
 .settings-nav-icon {
-  flex: 0 0 16px;
-  color: var(--text-secondary);
-  transition: color var(--duration-fast) ease;
+  flex: 0 0 18px;
+  color: var(--text-primary);
+  opacity: 0.72;
+  transition: color var(--duration-fast) ease, opacity var(--duration-fast) ease;
 }
 
 .settings-nav-label {
@@ -2424,6 +2430,7 @@ html.platform-macos .advanced-rule-list:focus-within::-webkit-scrollbar-thumb:ho
 
 .settings-nav-item.active .settings-nav-icon {
   color: var(--accent-color);
+  opacity: 1;
 }
 
 .settings-view .settings-nav-item:focus-visible {
@@ -2431,13 +2438,15 @@ html.platform-macos .advanced-rule-list:focus-within::-webkit-scrollbar-thumb:ho
   outline-offset: -2px;
 }
 
-/* Content pane: scrolls independently; a readable column, not a stretched form. */
+/* Content pane: scrolls independently; a readable column, not a stretched
+   form. The column starts next to the sidebar rather than in the middle of
+   the pane: centred, a wide window left it floating between two empty bands. */
 .settings-wide-content {
   flex: 1;
   min-width: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: var(--st-space-5) clamp(16px, 4%, 40px) 40px;
+  padding: var(--st-space-5) clamp(24px, 6%, 64px) 40px;
   /* Container queries inside groups measure this pane, not the whole view. */
   container-type: inline-size;
   container-name: settings;
@@ -2445,8 +2454,8 @@ html.platform-macos .advanced-rule-list:focus-within::-webkit-scrollbar-thumb:ho
 }
 
 .settings-wide-inner {
-  max-width: 640px;
-  margin: 0 auto;
+  max-width: 680px;
+  margin: 0;
 }
 
 /* In the sidebar layout the selected group is the page itself: no card,

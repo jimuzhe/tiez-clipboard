@@ -948,7 +948,7 @@ const SettingsPanel = (props: SettingsPanelProps) => {
                 aria-current={active ? "page" : undefined}
                 onClick={onClick}
             >
-                <Icon className="settings-nav-icon" size={16} strokeWidth={1.75} aria-hidden="true" />
+                <Icon className="settings-nav-icon" size={18} strokeWidth={1.75} aria-hidden="true" />
                 <span className="settings-nav-label">{label}</span>
                 {trailing}
             </button>
