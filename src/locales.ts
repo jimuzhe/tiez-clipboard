@@ -528,6 +528,9 @@ export const translations = {
         no_records: "没找到记录，换个关键词试试。",
         empty_title: "剪贴板已准备就绪",
         empty_desc: "复制一些内容，就会出现在这里。",
+        empty_hotkey_hint: "之后按 {hotkey} 打开这里，回车粘贴。",
+        no_records_of_type: "没有这个类型的记录。",
+        clear_filter: "清除筛选",
 
         // Item Actions
         copy: "复制",
@@ -1459,6 +1462,9 @@ export const translations = {
         no_records: "No records found",
         empty_title: "Clipboard is ready",
         empty_desc: "Copy something and it will appear here",
+        empty_hotkey_hint: "Then press {hotkey} to open this panel, and Enter to paste.",
+        no_records_of_type: "No items of this type.",
+        clear_filter: "Clear Filter",
 
         // Item Actions
         copy: "Copy",
@@ -2380,6 +2386,9 @@ export const translations = {
         no_records: "沒找到紀錄，換個關鍵詞試試。",
         empty_title: "剪貼簿已準備就緒",
         empty_desc: "複製一些內容，就會出現在這裡。",
+        empty_hotkey_hint: "之後按 {hotkey} 開啟這裡，按 Enter 貼上。",
+        no_records_of_type: "沒有這個類型的記錄。",
+        clear_filter: "清除篩選",
 
         // Item Actions
         copy: "複製",

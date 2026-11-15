@@ -62,6 +62,7 @@ import {
   warmupCompactPreviewWindow
 } from "./features/clipboard/lib/compactPreviewControls";
 import { isMacPlatform } from "./shared/lib/platform";
+import { getHotkeyDisplayTokens } from "./shared/lib/hotkeyDisplay";
 import { isTauriRuntime } from "./shared/lib/tauriRuntime";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import ClipboardDetailPane from "./features/clipboard/components/ClipboardDetailPane";
@@ -1179,6 +1180,14 @@ const App = () => {
     setShowSearchBox(true);
   }, [setTypeFilter, setShowSearchBox]);
 
+  const clearTypeFilter = useCallback(() => setTypeFilter(null), [setTypeFilter]);
+  // Shown in the empty list, so a first-time user learns how to come back.
+  const openHotkeyLabel = useMemo(() => {
+    if (!hotkey || hotkey === t('not_set')) return "";
+    const mac = isMacPlatform();
+    return getHotkeyDisplayTokens(hotkey, { preferMacSymbols: mac }).map((token) => token.label).join(mac ? "" : " + ");
+  }, [hotkey, t]);
+
   const { selectItemByIndex } = useKeyboardNavigation({
     filteredHistory: navigableHistory,
     selectedIndex,
@@ -1362,6 +1371,9 @@ const App = () => {
             saveSetting={saveSetting}
             filteredHistory={filteredHistory}
             search={search}
+            typeFiltered={typeFilter !== null}
+            onClearTypeFilter={clearTypeFilter}
+            openHotkeyLabel={openHotkeyLabel}
             pinnedItems={pinnedItems}
             unpinnedItems={unpinnedItems}
             compactMode={compactMode}
