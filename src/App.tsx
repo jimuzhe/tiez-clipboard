@@ -68,6 +68,7 @@ import ClipboardDetailPane from "./features/clipboard/components/ClipboardDetail
 import { useSplitView } from "./features/app/hooks/useSplitView";
 import { notePointerPick } from "./shared/lib/pointerPick";
 import { useDetailPaneActions } from "./features/app/hooks/useDetailPaneActions";
+import { useRevealReset } from "./features/app/hooks/useRevealReset";
 import { usePaneWidth } from "./shared/hooks/usePaneWidth";
 import PaneDivider from "./shared/components/PaneDivider";
 import { quickPasteOrder } from "./shared/lib/quickPasteOrder";
@@ -890,6 +891,8 @@ const App = () => {
       unlistenShow.then((off) => off()).catch(() => {});
     };
   }, [setTypeFilter]);
+
+  useRevealReset(setRevealedIds);
 
   useCustomBackground({ customBackground, customBackgroundOpacity, theme });
 

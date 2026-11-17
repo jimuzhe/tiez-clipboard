@@ -538,6 +538,7 @@ fn toggle_window_windows(app: &AppHandle) {
             WindowExt::release_modifier_keys();
             let _ = window.set_focusable(false);
             let _ = window.hide();
+            notify_main_window_hidden(app);
 
             let _ = restore_previous_app_focus(app.clone());
 
@@ -796,6 +797,7 @@ fn toggle_window_macos(app_handle: &AppHandle) {
             if !crate::infrastructure::macos_api::window::hide_clipboard_panel(app_handle) {
                 let _ = window.hide();
             }
+            notify_main_window_hidden(app_handle);
             let _ = restore_previous_app_focus(app_handle.clone());
 
             IS_HIDDEN.store(false, Ordering::Relaxed);
@@ -926,6 +928,13 @@ pub fn activate_app_focus(app_handle: AppHandle) -> Result<(), String> {
     activate_window_focus(app_handle)
 }
 
+/// Sent whenever the main window is hidden. The list hides revealed
+/// sensitive entries again, so the next opening never starts with a secret
+/// on screen.
+pub fn notify_main_window_hidden(app: &AppHandle) {
+    let _ = app.emit("clipboard-hidden", ());
+}
+
 fn hide_window(app_handle: AppHandle, restore_focus: bool) -> Result<(), String> {
     if let Some(window) = app_handle.get_webview_window("main") {
         let _ = app_handle.emit("force-hide-compact-preview", ());
@@ -948,6 +957,7 @@ fn hide_window(app_handle: AppHandle, restore_focus: bool) -> Result<(), String>
         }
         #[cfg(not(target_os = "macos"))]
         let _ = window.hide();
+        notify_main_window_hidden(&app_handle);
         NAVIGATION_ENABLED.store(false, Ordering::SeqCst);
         NAVIGATION_MODE_ACTIVE.store(false, Ordering::SeqCst);
         crate::app::light_mode::on_window_hidden();
