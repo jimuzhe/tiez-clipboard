@@ -2039,6 +2039,7 @@ const ClipboardItem = ({
 
                 const fullEntry = fullDragEntryRef.current?.id === item.id ? fullDragEntryRef.current : null;
                 const dragged = fullEntry ?? item;
+                const ghostHiddenLabel = isSensitiveHidden ? hiddenDragLabel(item, sensitivePreview, t) : undefined;
 
                 // A system drag instead of the web view's, which hands other
                 // apps no file for a file entry and dims its preview on macOS
@@ -2549,7 +2550,7 @@ const ClipboardItem = ({
                                 >
                                     <ExternalLink size={12} />
                                 </button>
-                                {item.content_type === 'image' && (
+                                {item.content_type === 'image' && !isSensitiveHidden && (
                                     <button
                                         className="btn-icon"
                                         onClick={(e) => {
