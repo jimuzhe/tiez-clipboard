@@ -845,6 +845,8 @@ const ClipboardItem = ({
         item.timestamp
     );
     const [videoCoverFailed, setVideoCoverFailed] = useState(false);
+    // A hidden sensitive file or video shows a bare card instead of its own.
+    const hidesFileCard = isSensitiveHidden && (item.content_type === "file" || item.content_type === "video");
     // Large GIF/WebP rows show a still first frame (see get_image_thumbnail)
     // and play only while hovered; the detail pane always plays them.
     const [playAnimation, setPlayAnimation] = useState(false);
@@ -2638,7 +2640,7 @@ const ClipboardItem = ({
                 )
             }
             <div className={`content-preview-shell${overlayMetaInPreview ? ' has-overlay-meta' : ''}`}>
-                <div data-content-type={item.content_type} className={`content-preview ${item.content_type === 'rich_text' ? 'rich-text' : ''} ${item.content_type === 'file' ? 'file-preview' : ''} ${isSensitiveHidden ? 'sensitive-blur' : ''}`}>
+                <div data-content-type={item.content_type} className={`content-preview ${item.content_type === 'rich_text' ? 'rich-text' : ''} ${hidesFileCard || item.content_type === 'file' ? 'file-preview' : ''} ${isSensitiveHidden ? 'sensitive-blur' : ''}`}>
                 {item.content_type === "image" ? (
                     <div
                         className="image-preview-frame"
@@ -2670,6 +2672,16 @@ const ClipboardItem = ({
                                 SENSITIVE
                             </div>
                         )}
+                    </div>
+                ) : hidesFileCard ? (
+                    // No name, folder, path tooltip or cover until revealed.
+                    <div className="file-thumbnail-card">
+                        <div className="file-icon-wrapper">
+                            {item.content_type === "video" ? <Video size={24} /> : <File size={24} />}
+                        </div>
+                        <div className="file-info-wrapper">
+                            <div className="file-name">SENSITIVE</div>
+                        </div>
                     </div>
                 ) : item.content_type === "video" ? (
                     <div className="video-thumbnail-card">
