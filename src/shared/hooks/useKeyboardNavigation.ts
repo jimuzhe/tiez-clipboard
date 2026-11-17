@@ -7,6 +7,7 @@ import { matchesHotkey } from "./useHotkeyMatching";
 import { isMacPlatform } from "../lib/platform";
 import { isTauriRuntime } from "../lib/tauriRuntime";
 import { notePointerPick } from "../lib/pointerPick";
+import { hasOpenModal, isListCovered, isOtherTextField } from "../lib/listKeys";
 import type { ClipboardEntry } from "../types";
 
 interface UseKeyboardNavigationOptions {
@@ -113,6 +114,19 @@ export const useKeyboardNavigation = ({
   // Native HID navigation is only needed on Windows (and legacy Mac non-key panels).
   const usesNativeNavigation = () =>
     isTauriRuntime() && arrowKeySelectionRef.current && !isMacPlatform();
+
+  // Something on top of the list (a panel, an editor, a dialog, or a text
+  // field other than the search box) owns Up/Down, Enter and Delete.
+  const listIsCovered = (textFieldFocused: boolean) =>
+    isListCovered({
+      showSettings: showSettingsRef.current,
+      showTagManager: showTagManagerRef.current,
+      chatMode: chatModeRef.current,
+      showEmojiPanel: showEmojiPanelRef.current,
+      editingInline: editingTagsIdRef.current !== null || editingNoteIdRef.current !== null,
+      dialogOpen: hasOpenModal(),
+      textFieldFocused
+    });
 
   const applySelection = (index: number, enableKeyboard = true) => {
     const history = filteredHistoryRef.current;
@@ -231,8 +245,8 @@ export const useKeyboardNavigation = ({
   const isCategoryTab = (e: KeyboardEvent, target: HTMLElement, isEditable: boolean) => {
     if (e.key !== "Tab" || e.ctrlKey || e.altKey || e.metaKey) return false;
     if (showEmojiPanelRef.current) return false;
-    if (isEditable && !target.classList.contains("search-input")) return false;
-    if (document.querySelector("[aria-modal='true']")) return false;
+    if (isEditable && target !== searchInputRef.current) return false;
+    if (hasOpenModal()) return false;
     return !target.closest("[role='dialog'], [role='menu'], [role='listbox']");
   };
 
@@ -318,7 +332,9 @@ export const useKeyboardNavigation = ({
 
       const target = e.target as HTMLElement;
       const tagName = target.tagName;
-      const isSearchInput = target.classList.contains("search-input");
+      // Only the search box itself: other fields share its look and class
+      // (e.g. the AI follow-up answer) but keep their keys.
+      const isSearchInput = target === searchInputRef.current;
       const isAnyInput = tagName === "INPUT" || tagName === "TEXTAREA";
       const isEditable = isAnyInput || target.isContentEditable === true;
 
@@ -353,6 +369,11 @@ export const useKeyboardNavigation = ({
         }
         return;
       }
+
+      // The emoji panel or a dialog covers the list: its keys must not move,
+      // paste or delete hidden entries. Enter presses the dialog's button.
+      // Other text fields are handled below by their target.
+      if (listIsCovered(false)) return;
 
       if (isKeyboardModeRef.current && (!isEditable || isSearchInput) && isDeleteKey(e, target)) {
         // Windows' keyboard hook sends this as a navigation action instead.
@@ -466,7 +487,9 @@ export const useKeyboardNavigation = ({
       }
       if (!windowLooksOpen) return;
 
-      if (showSettingsRef.current || showTagManagerRef.current || chatModeRef.current || editingTagsIdRef.current !== null || editingNoteIdRef.current !== null) {
+      // Same rule as the keydown path. Normally the hook is off in these
+      // cases (useNavigationSync); this covers events already on their way.
+      if (listIsCovered(isOtherTextField(document.activeElement, searchInputRef.current))) {
         return;
       }
 
@@ -541,7 +564,7 @@ export const useKeyboardNavigation = ({
     });
 
     return () => { unlisten.then(f => f()); };
-  }, [setIsKeyboardMode, setSearch, setSelectedIndex, setSelectedItemId]);
+  }, [searchInputRef, setIsKeyboardMode, setSearch, setSelectedIndex, setSelectedItemId]);
 
   const selectItemByIndex = (index: number) => {
     // Remember the clicked paste target without leaving a persistent highlight.

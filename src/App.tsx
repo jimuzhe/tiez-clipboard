@@ -1016,7 +1016,9 @@ const App = () => {
     showTagManager: effectiveShowTagManager,
     chatMode,
     showEmojiPanel: effectiveShowEmojiPanel,
-    editingInline: editingTagsId !== null || editingNoteId !== null
+    editingInline: editingTagsId !== null || editingNoteId !== null,
+    dialogOpen: confirmDialog.show || isUpdateOpen,
+    searchInputRef
   });
 
   const { copyToClipboard, copyWithoutPaste, openContent, deleteEntry, deleteEntryById, togglePin, handleUpdateTags, handleUpdateNote } =
