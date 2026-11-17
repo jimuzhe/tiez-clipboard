@@ -79,7 +79,7 @@ import {
 import { openPinStickerWindow } from "../lib/pinStickerControls";
 import { activateForInput } from "../../../shared/lib/focus";
 import { getNotePlaceholder, isMacPlatform, isWindowsPlatform } from "../../../shared/lib/platform";
-import { setupDragDataTransfer, createDragGhostBadge, shouldHideAfterExternalDrop, isShortenedForList, nativeDragPayload } from "../lib/dragDrop";
+import { setupDragDataTransfer, createDragGhostBadge, hiddenDragLabel, shouldHideAfterExternalDrop, isShortenedForList, nativeDragPayload } from "../lib/dragDrop";
 
 const COMPACT_PREVIEW_LABEL = "compact-preview";
 const COMPACT_PREVIEW_HOVER_DELAY_MS = 320;
@@ -2049,7 +2049,7 @@ const ClipboardItem = ({
                     e.preventDefault();
                     // macOS takes the preview in points (2x for Retina), Windows in pixels.
                     const scale = mac ? 2 : window.devicePixelRatio || 1;
-                    const badge = createDragGhostBadge(dragged, filePaths, theme, t, scale);
+                    const badge = createDragGhostBadge(dragged, filePaths, theme, t, scale, ghostHiddenLabel);
                     const request = {
                         ...nativePayload,
                         preview: badge.toDataURL("image/png").split(",")[1] ?? "",
@@ -2080,7 +2080,7 @@ const ClipboardItem = ({
 
                 // Set custom drag preview badge
                 try {
-                    const badge = createDragGhostBadge(item, filePaths, theme, t);
+                    const badge = createDragGhostBadge(item, filePaths, theme, t, 1, ghostHiddenLabel);
                     badge.style.left = `${Math.max(0, e.clientX - 24)}px`;
                     badge.style.top = `${Math.max(0, e.clientY - 20)}px`;
                     dragGhostRef.current?.remove();
@@ -2437,7 +2437,7 @@ const ClipboardItem = ({
                                                 <span>{t('open')}</span>
                                             </button>
 
-                                            {item.content_type === 'image' && (
+                                            {item.content_type === 'image' && !isSensitiveHidden && (
                                                 <button
                                                     type="button"
                                                     role="menuitem"

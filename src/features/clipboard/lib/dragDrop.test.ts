@@ -1,5 +1,5 @@
 import { test, expect } from "vitest";
-import { nativeDragPayload, shouldHideAfterExternalDrop } from "./dragDrop";
+import { hiddenDragLabel, nativeDragPayload, shouldHideAfterExternalDrop } from "./dragDrop";
 import type { ClipboardEntry } from "../../../shared/types";
 
 test("accepted external drops hide an unpinned window", () => {
@@ -33,4 +33,16 @@ test("text entries carry their text, plus HTML or a link where they have one", (
   expect(nativeDragPayload(entry("code", "a < b"), [])?.html).toBe("<pre><code>a &lt; b</code></pre>");
   expect(nativeDragPayload(entry("rich_text", "Bold", "<b>Bold</b>"), [])?.html).toBe("<b>Bold</b>");
   expect(nativeDragPayload(entry("text", ""), [])).toBeNull();
+});
+
+test("a hidden sensitive entry drags under its masked label, never its content", () => {
+  const t = (key: string) => `t:${key}`;
+  const entry = (content_type: string, content: string) =>
+    ({ id: 1, content, content_type, source_app: "", timestamp: 0, preview: content, is_pinned: false }) as ClipboardEntry;
+
+  expect(hiddenDragLabel(entry("text", "hunter2-secret"), "hun*******ret", t)).toBe("hun*******ret");
+  expect(hiddenDragLabel(entry("text", "x"), "", t)).toBe("SENSITIVE");
+  expect(hiddenDragLabel(entry("file", "/Users/me/Taxes/2025.pdf"), "/Us***pdf", t)).toBe("SENSITIVE");
+  expect(hiddenDragLabel(entry("video", "/Users/me/private.mov"), "/Us***mov", t)).toBe("SENSITIVE");
+  expect(hiddenDragLabel(entry("image", "/tmp/a.png"), "/tm***png", t)).toBe("t:image");
 });
