@@ -234,6 +234,13 @@ body.theme-retro {
   display: none;
 }
 
+/* The rocker's frame stays dark when it is on; only "ON" turns the accent
+   colour. The shared switch paints its track in the accent when checked,
+   which here showed as a blue ring around the paddles. */
+.theme-retro .switch input:checked + .toggle {
+  background: var(--border-dark);
+}
+
 .theme-retro .toggle > .left,
 .theme-retro .toggle > .right {
   display: flex;
