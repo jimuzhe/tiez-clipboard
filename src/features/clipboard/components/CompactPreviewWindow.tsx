@@ -262,13 +262,17 @@ const CompactPreviewWindow = () => {
 
         void (async () => {
             try {
-                await Promise.allSettled([
+                // Listen first: an update sent before the listener exists is
+                // dropped. The list re-sends it once we announce ready below.
+                const windowSetup = Promise.allSettled([
                     getCurrentWindow().setFocusable(false),
                     getCurrentWindow().setIgnoreCursorEvents(true)
                 ]);
-                if (disposed) return;
 
                 stopUpdate = await listen<PreviewPayload>("compact-preview-update", (event) => {
+                    // A disposed listener (StrictMode remount) must not mark
+                    // the request as seen, or the live one skips it as a repeat.
+                    if (disposed) return;
                     const next = event.payload;
                     if (latestRequestIdRef.current === next.requestId) {
                         requestResizeRef.current?.();
@@ -291,8 +295,6 @@ const CompactPreviewWindow = () => {
                         hasHtml: !!next.htmlContent,
                         sourceApp: next.sourceApp
                     });
-
-                    if (disposed) return;
                     const peeked =
                         next.sourceAppIcon ||
                         peekSourceAppIcon(next.sourceAppPath) ||
@@ -331,6 +333,7 @@ const CompactPreviewWindow = () => {
                     return;
                 }
 
+                await windowSetup;
                 if (!disposed) {
                     await emitTo("main", "compact-preview-ready", true);
                     compactPreviewLog("compact preview listeners ready");
