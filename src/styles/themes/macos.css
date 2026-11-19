@@ -341,3 +341,65 @@ body.has-custom-bg.dark-mode.theme-macos {
   --bg-toolbar: rgba(30, 30, 30, clamp(0, var(--surface-opacity-scale), 1));
   --layout-item-background: rgba(255, 255, 255, clamp(0, calc(0.06 * var(--surface-opacity-scale)), 0.12));
 }
+
+/* Lighter controls: every control used to carry a border and a fill, so the
+   frames outweighed the content they frame. Buttons are bare icons until
+   hovered, states are a tint, and the row's small text is lighter. */
+
+body.theme-macos {
+  --button-radius: 6px;
+  /* No rule between a row's header line and its text; spacing separates them. */
+  --layout-meta-border-bottom: none;
+}
+
+/* Toolbar and row buttons are bare icons; a fill appears on hover. */
+body.theme-macos .header-actions .btn-icon,
+body.theme-macos .item-actions .btn-icon {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+body.theme-macos .header-actions .btn-icon:hover,
+body.theme-macos .item-actions .btn-icon:hover {
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+  border-color: transparent;
+}
+
+/* "On" (window kept open, pinned, tagged, has a note) is a tint, not a solid
+   block: it marks a state, it is not the main thing on the row. */
+body.theme-macos .header-actions .btn-icon.active,
+body.theme-macos .item-actions .btn-icon.active {
+  background: rgba(var(--accent-color-rgb), 0.14);
+  border-color: transparent;
+  box-shadow: none;
+  color: var(--accent-color);
+}
+
+/* Icon line weight follows the regular-weight text beside it. */
+body.theme-macos .header-actions .btn-icon svg,
+body.theme-macos .item-actions .btn-icon svg {
+  stroke-width: 1.75;
+}
+
+body.theme-macos .item-actions .btn-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Filter chips: a fill is enough to read as a chip. */
+body.theme-macos .search-type-filters .btn-icon {
+  border-color: transparent;
+}
+
+/* More chips than fit: fade the edge instead of cutting a label in half. */
+body.theme-macos .search-type-filters {
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+}
+
+/* The smallest text on the row should not also be the heaviest. */
+body.theme-macos .item-compact-time {
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+}
