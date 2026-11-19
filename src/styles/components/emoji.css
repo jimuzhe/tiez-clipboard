@@ -219,6 +219,15 @@ html.platform-macos .emoji-fav-container::-webkit-scrollbar {
   border-radius: var(--button-radius);
 }
 
+/* A favorite that can't be shown keeps its card until the user removes it. */
+.emoji-fav-unreadable {
+  flex-direction: column;
+  gap: 4px;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  cursor: default;
+}
+
 .emoji-fav-preview img {
   max-width: 100%;
   max-height: 100%;

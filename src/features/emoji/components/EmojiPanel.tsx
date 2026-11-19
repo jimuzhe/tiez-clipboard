@@ -5,7 +5,7 @@ import { emit } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { open } from "@tauri-apps/plugin-dialog";
 import { withNativeDialog } from "../../../shared/lib/focus";
-import { Plus, X } from "lucide-react";
+import { ImageOff, Plus, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Locale } from "../../../shared/types";
 import { getEmojiName } from "../lib/emojiNames";
@@ -347,6 +347,10 @@ let loadedEmojiGroups: EmojiGroup[] | null = null;
 const EmojiPanel = ({ t, language = "zh", favorites, setFavorites, activeTab, setActiveTab, saveSetting }: EmojiPanelProps) => {
   const [isDragging, setIsDragging] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  // Favorites the web view could not show (an unsupported format, a file that
+  // went missing). They stay in the list with a notice; only the user removes
+  // them. Removing deletes the saved copy, so it must never happen on its own.
+  const [unreadableFavorites, setUnreadableFavorites] = useState<ReadonlySet<string>>(() => new Set());
   const [emojiGroups, setEmojiGroups] = useState<EmojiGroup[]>(() => loadedEmojiGroups ?? FALLBACK_GROUPS);
 
   const flatEmoji = useMemo(() => emojiGroups.flatMap((g) => g.emojis), [emojiGroups]);
@@ -800,22 +804,28 @@ const EmojiPanel = ({ t, language = "zh", favorites, setFavorites, activeTab, se
                       >
                         <X size={14} />
                       </button>
-                      <button
-                        className="emoji-fav-preview"
-                        title={name}
-                        onClick={() => handleSend(path, "image")}
-                      >
-                        <img
-                          src={convertFileSrc(path)}
-                          alt={name}
-                          loading="lazy"
-                          decoding="async"
-                          onError={(e) => {
-                            e.currentTarget.onerror = null;
-                            removeFavoritePath(path);
-                          }}
-                        />
-                      </button>
+                      {unreadableFavorites.has(path) ? (
+                        <div className="emoji-fav-preview emoji-fav-unreadable" title={name}>
+                          <ImageOff size={20} aria-hidden="true" />
+                          <span>{t("emoji_fav_unreadable")}</span>
+                        </div>
+                      ) : (
+                        <button
+                          className="emoji-fav-preview"
+                          title={name}
+                          onClick={() => handleSend(path, "image")}
+                        >
+                          <img
+                            src={convertFileSrc(path)}
+                            alt={name}
+                            loading="lazy"
+                            decoding="async"
+                            onError={() => {
+                              setUnreadableFavorites((prev) => new Set(prev).add(path));
+                            }}
+                          />
+                        </button>
+                      )}
                     </div>
                   );
                 })}
