@@ -82,6 +82,8 @@ type PreviewResizePayload = {
 const CARD_INSET_PX = 1;
 /** Card padding and border around rich content (see .compact-popover-portal). */
 const RICH_CARD_CHROME_PX = 26;
+/** Matches the 64px the card keeps above and below a media preview. */
+const RICH_SNAPSHOT_CHROME_HEIGHT_PX = 64;
 
 /** Short rich text gets a compact card; longer text uses the room there is. */
 const richCardWidth = (payload: { content?: string; maxWidth: number }) =>
@@ -244,7 +246,10 @@ const CompactPreviewWindow = () => {
         // fit instead of shrinking the whole image until the text is tiny.
         return getRichTextSnapshotDataUrl(htmlForSnapshot, {
             width: richCardWidth(payload) - RICH_CARD_CHROME_PX,
-            maxHeight: payload.maxHeight
+            // The space the card gives it (see the media max-height in
+            // compact-preview.css); a taller image was shrunk to fit,
+            // text and all.
+            maxHeight: payload.maxHeight - RICH_SNAPSHOT_CHROME_HEIGHT_PX
         });
     }, [payload]);
     const snapshotFailed = !!payload && snapshotFailedRequestId === payload.requestId;

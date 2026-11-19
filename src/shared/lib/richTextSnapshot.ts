@@ -16,7 +16,7 @@ import {
 
 const SNAPSHOT_CACHE_LIMIT = 120;
 const SNAPSHOT_CACHE_BYTE_LIMIT = 24 * 1024 * 1024;
-const SNAPSHOT_CACHE_VERSION = "v11";
+const SNAPSHOT_CACHE_VERSION = "v12";
 const snapshotCache = new Map<string, { dataUrl: string; bytes: number }>();
 let snapshotCacheBytes = 0;
 
@@ -455,6 +455,30 @@ export const getRichTextSnapshotDataUrl = (
   return result;
 };
 
+/**
+ * Lays the snapshot's markup out off screen, in a shadow root so its sheet
+ * stays contained, and returns its height; null where there is no layout.
+ */
+const measureSnapshotHeight = (markup: string, width: number): number | null => {
+  if (typeof document === "undefined" || !document.body) return null;
+  const host = document.createElement("div");
+  host.setAttribute("aria-hidden", "true");
+  host.style.cssText = `position:fixed;left:-100000px;top:0;width:${width}px;visibility:hidden;pointer-events:none;contain:layout style`;
+  try {
+    const shadow = host.attachShadow({ mode: "open" });
+    shadow.innerHTML = markup;
+    document.body.appendChild(host);
+    const root = shadow.firstElementChild as HTMLElement | null;
+    const height = root ? Math.ceil(root.getBoundingClientRect().height) : 0;
+    // A little slack for font differences between the page and the image.
+    return height > 0 ? height + 4 : null;
+  } catch {
+    return null;
+  } finally {
+    host.remove();
+  }
+};
+
 const buildRichTextSnapshotDataUrl = (
   html: string,
   options: SnapshotOptions
@@ -512,7 +536,6 @@ const buildRichTextSnapshotDataUrl = (
       return null;
     }
 
-    const height = Math.max(48, Math.min(maxHeight, normalized.estimatedHeight));
     const snapshotStyle = [
       "box-sizing:border-box",
       "margin:0",
@@ -532,14 +555,7 @@ const buildRichTextSnapshotDataUrl = (
     const xhtmlBodyHtml = toXhtmlCompatibleFragment(normalized.bodyHtml);
     const xmlSafeBodyHtml = toXmlSafeNamedEntities(xhtmlBodyHtml);
 
-    const svg = [
-      `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`,
-      `<foreignObject x="0" y="0" width="100%" height="100%">`,
-      `<div xmlns="http://www.w3.org/1999/xhtml" class="tiez-rich-snapshot-root${normalized.hasSourceStyles ? " has-source-styles" : ""}" style="`,
-      snapshotStyle,
-      '">',
-      xmlSafeBodyHtml,
-      `<style>
+    const snapshotSheet = `<style>
       * {
         box-sizing: border-box;
         font-size: inherit !important;
@@ -674,7 +690,31 @@ const buildRichTextSnapshotDataUrl = (
         text-underline-offset: 0.14em;
         text-decoration-skip-ink: auto;
       }
-    </style>`,
+    </style>`;
+
+    // Measured, not guessed: the line estimate assumed ~80 characters a line,
+    // so Chinese text (about 20 a line at card width) lost everything after
+    // its first lines. Images may still be loading, so keep the estimate as
+    // a floor when there are any.
+    const measuredHeight = measureSnapshotHeight(
+      `<div class="${normalized.hasSourceStyles ? "tiez-rich-snapshot-root has-source-styles" : "tiez-rich-snapshot-root"}" style="${snapshotStyle};height:auto">${normalized.bodyHtml}${snapshotSheet}</div>`,
+      width
+    );
+    const contentHeight = measuredHeight == null
+      ? normalized.estimatedHeight
+      : normalized.imageStats.total > 0
+        ? Math.max(measuredHeight, normalized.estimatedHeight)
+        : measuredHeight;
+    const height = Math.max(48, Math.min(maxHeight, contentHeight));
+
+    const svg = [
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`,
+      `<foreignObject x="0" y="0" width="100%" height="100%">`,
+      `<div xmlns="http://www.w3.org/1999/xhtml" class="tiez-rich-snapshot-root${normalized.hasSourceStyles ? " has-source-styles" : ""}" style="`,
+      snapshotStyle,
+      '">',
+      xmlSafeBodyHtml,
+      snapshotSheet,
       "</div>",
       "</foreignObject>",
       "</svg>"
