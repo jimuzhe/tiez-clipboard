@@ -4,7 +4,7 @@
     "windows": "1.0.0"
   },
   "beta": {
-    "macos": "1.0.0-rc.1",
-    "windows": "1.0.0-rc.1"
+    "macos": "1.0.0-rc.2",
+    "windows": "1.0.0-rc.2"
   }
 }
