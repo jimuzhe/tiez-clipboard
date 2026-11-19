@@ -2183,7 +2183,7 @@ const ClipboardItem = ({
                 }
                 const now = Date.now();
                 lastPasteTriggeredRef.current = now;
-                onCopy(false); // Right-click pastes plain text; a click keeps the format
+                onCopy(false); // The secondary paste; which button keeps the format is a setting (clickPaste.ts)
                 onSelect();
             }}
             onMouseEnter={(e) => {

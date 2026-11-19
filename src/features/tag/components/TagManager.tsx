@@ -23,6 +23,8 @@ interface TagManagerProps {
     theme: string;
     /** 隐藏隐私: sensitive entries are hidden here too, as in the list. */
     privacyProtection: boolean;
+    /** A click pastes with formatting, per the 「鼠标粘贴方式」 setting (as in the list). */
+    primaryPasteKeepsFormat?: boolean;
 }
 
 interface TagInfo {
@@ -30,7 +32,7 @@ interface TagInfo {
     count: number;
 }
 
-export default function TagManager({ t, theme, privacyProtection }: TagManagerProps) {
+export default function TagManager({ t, theme, privacyProtection, primaryPasteKeepsFormat = true }: TagManagerProps) {
     const TAG_MANAGER_VIEW_MODE_KEY = "tiez_tag_manager_view_mode";
     const TAG_MANAGER_SPLIT_MIN_WIDTH = 320;
     const [tags, setTags] = useState<TagInfo[]>([]);
@@ -298,7 +300,8 @@ export default function TagManager({ t, theme, privacyProtection }: TagManagerPr
                 contentType: type,
                 paste: true,
                 id,
-                deleteAfterUse: false
+                deleteAfterUse: false,
+                pasteWithFormat: primaryPasteKeepsFormat
             });
         } catch (err) { console.error(err); }
     };

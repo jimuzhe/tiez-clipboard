@@ -544,6 +544,7 @@ fn toggle_window_windows(app: &AppHandle) {
             IS_HIDDEN.store(false, Ordering::Relaxed);
             NAVIGATION_ENABLED.store(false, Ordering::SeqCst);
             NAVIGATION_MODE_ACTIVE.store(false, Ordering::SeqCst);
+            crate::global_state::SEARCH_TOP_HIT_ACTIVE.store(false, Ordering::SeqCst);
             crate::app::light_mode::on_window_hidden();
             return;
         }
@@ -802,6 +803,7 @@ fn toggle_window_macos(app_handle: &AppHandle) {
             CURRENT_DOCK.store(0, Ordering::Relaxed);
             NAVIGATION_ENABLED.store(false, Ordering::SeqCst);
             NAVIGATION_MODE_ACTIVE.store(false, Ordering::SeqCst);
+            crate::global_state::SEARCH_TOP_HIT_ACTIVE.store(false, Ordering::SeqCst);
             crate::app::light_mode::on_window_hidden();
             return;
         }
@@ -860,6 +862,7 @@ pub fn set_navigation_enabled(enabled: bool) -> Result<(), String> {
     NAVIGATION_ENABLED.store(enabled, Ordering::SeqCst);
     if !enabled {
         NAVIGATION_MODE_ACTIVE.store(false, Ordering::SeqCst);
+        crate::global_state::SEARCH_TOP_HIT_ACTIVE.store(false, Ordering::SeqCst);
     }
     Ok(())
 }
@@ -867,6 +870,12 @@ pub fn set_navigation_enabled(enabled: bool) -> Result<(), String> {
 #[tauri::command]
 pub fn set_navigation_mode(active: bool) -> Result<(), String> {
     NAVIGATION_MODE_ACTIVE.store(active, Ordering::SeqCst);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn set_search_top_hit(active: bool) -> Result<(), String> {
+    crate::global_state::SEARCH_TOP_HIT_ACTIVE.store(active, Ordering::SeqCst);
     Ok(())
 }
 
@@ -950,6 +959,7 @@ fn hide_window(app_handle: AppHandle, restore_focus: bool) -> Result<(), String>
         let _ = window.hide();
         NAVIGATION_ENABLED.store(false, Ordering::SeqCst);
         NAVIGATION_MODE_ACTIVE.store(false, Ordering::SeqCst);
+        crate::global_state::SEARCH_TOP_HIT_ACTIVE.store(false, Ordering::SeqCst);
         crate::app::light_mode::on_window_hidden();
         if restore_focus {
             let _ = restore_previous_app_focus(app_handle.clone());
