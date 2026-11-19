@@ -1,6 +1,14 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { toTauriLocalImageSrc } from "../lib/localImageSrc";
 import {
+  colorToCss,
+  compositeColor,
+  isReadableOn,
+  parseCssColor,
+  readableTextColor,
+  type Rgba
+} from "../lib/readableColor";
+import {
   isHtmlishTagText,
   isOfficeStyleDefinitionText,
   stripOfficePreviewNoise
@@ -587,60 +595,6 @@ const SHADOW_PREVIEW_STYLE = `
   }
 `;
 
-type Rgba = { r: number; g: number; b: number; a: number };
-
-const parseCssColor = (value: string): Rgba | null => {
-  // Theme tokens such as --text-primary are read raw, often as hex.
-  const hex = value.trim().match(/^#([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i);
-  if (hex) {
-    const digits = hex[1].length <= 4 ? [...hex[1]].map((d) => d + d).join("") : hex[1];
-    const channel = (index: number) => parseInt(digits.slice(index * 2, index * 2 + 2), 16);
-    return { r: channel(0), g: channel(1), b: channel(2), a: digits.length === 8 ? channel(3) / 255 : 1 };
-  }
-  const match = value.match(
-    /^rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)(?:\s*[,/]\s*([\d.]+))?\s*\)$/i
-  );
-  if (!match) return null;
-  return {
-    r: Number(match[1]),
-    g: Number(match[2]),
-    b: Number(match[3]),
-    a: match[4] == null ? 1 : Number(match[4])
-  };
-};
-
-const compositeColor = (foreground: Rgba, background: Rgba): Rgba => {
-  const alpha = foreground.a + background.a * (1 - foreground.a);
-  if (alpha <= 0) return { r: 0, g: 0, b: 0, a: 0 };
-  return {
-    r: (foreground.r * foreground.a + background.r * background.a * (1 - foreground.a)) / alpha,
-    g: (foreground.g * foreground.a + background.g * background.a * (1 - foreground.a)) / alpha,
-    b: (foreground.b * foreground.a + background.b * background.a * (1 - foreground.a)) / alpha,
-    a: alpha
-  };
-};
-
-const relativeLuminance = ({ r, g, b }: Rgba) => {
-  const linear = [r, g, b].map((channel) => {
-    const value = channel / 255;
-    return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
-  });
-  return linear[0] * 0.2126 + linear[1] * 0.7152 + linear[2] * 0.0722;
-};
-
-const contrastRatio = (left: Rgba, right: Rgba) => {
-  const light = Math.max(relativeLuminance(left), relativeLuminance(right));
-  const dark = Math.min(relativeLuminance(left), relativeLuminance(right));
-  return (light + 0.05) / (dark + 0.05);
-};
-
-const READABLE_PREVIEW_CONTRAST = 3;
-const DARK_READABLE_TEXT: Rgba = { r: 0, g: 0, b: 0, a: 1 };
-const LIGHT_READABLE_TEXT: Rgba = { r: 255, g: 255, b: 255, a: 1 };
-
-const colorToCss = ({ r, g, b }: Rgba) =>
-  `rgb(${Math.round(r)} ${Math.round(g)} ${Math.round(b)})`;
-
 const repairUnreadableSourceColors = (root: ShadowRoot, host: HTMLElement) => {
   const themedForeground = parseCssColor(
     getComputedStyle(host).getPropertyValue("--text-primary").trim()
@@ -692,19 +646,8 @@ const repairUnreadableSourceColors = (root: ShadowRoot, host: HTMLElement) => {
     const foreground = parseCssColor(getComputedStyle(element).color);
     if (!foreground) return;
     const background = effectiveBackground(element);
-    const opaqueForeground = compositeColor(foreground, background);
-    if (contrastRatio(opaqueForeground, background) >= READABLE_PREVIEW_CONTRAST) return;
-
-    // The theme's own text colour when it reads well here; else black/white.
-    const readable = themedForeground
-      && contrastRatio(themedForeground, background) >= READABLE_PREVIEW_CONTRAST
-      ? themedForeground
-      : [DARK_READABLE_TEXT, LIGHT_READABLE_TEXT].reduce((best, candidate) =>
-        contrastRatio(candidate, background) > contrastRatio(best, background)
-          ? candidate
-          : best
-      );
-    fixes.push([element, colorToCss(readable)]);
+    if (isReadableOn(foreground, background)) return;
+    fixes.push([element, colorToCss(readableTextColor(background, themedForeground))]);
   });
   for (const [element, color] of fixes) {
     element.setAttribute(COLOR_FIX_ATTR, element.style.getPropertyValue("color"));

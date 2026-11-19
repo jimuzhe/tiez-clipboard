@@ -78,3 +78,34 @@ export const noteCompactPreviewPointerMove = (
   gateHasOrigin = false;
   return true;
 };
+
+/**
+ * The payload last sent to the preview window. Tauri drops events sent before
+ * a window has registered its listener, so a preview window that is still
+ * loading (first hover, or after light mode rebuilt it) misses the send and
+ * shows an empty card. It announces itself when ready; the list then sends
+ * the remembered payload again.
+ */
+let lastPayload: { requestId: number; payload: unknown } | null = null;
+
+export const rememberCompactPreviewPayload = (requestId: number, payload: unknown) => {
+  lastPayload = { requestId, payload };
+};
+
+export const forgetCompactPreviewPayload = () => {
+  lastPayload = null;
+};
+
+/** The remembered payload, only while it still belongs to the pending request. */
+export const compactPreviewPayloadFor = <T>(requestId: number | null): T | null =>
+  requestId !== null && lastPayload?.requestId === requestId ? (lastPayload.payload as T) : null;
+
+/** Size the window is shown at when the preview hasn't reported its own yet. */
+export const compactPreviewFallbackSize = (bounds: {
+  maxWidth: number;
+  maxHeight: number;
+  minWidth: number;
+}) => ({
+  width: Math.min(bounds.maxWidth, Math.max(bounds.minWidth, 220)),
+  height: Math.min(bounds.maxHeight, 180),
+});

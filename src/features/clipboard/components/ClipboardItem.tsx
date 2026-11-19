@@ -72,9 +72,13 @@ import { stripRichStorageMarkers } from "../../../shared/lib/repairHtmlFragment"
 import { registerCompactPreviewControls } from "../lib/compactPreviewControls";
 import { isAnimatedGifSrc, isSpreadsheetLikeSource, richHtmlLooksTabular } from "../lib/richPreview";
 import {
+    compactPreviewFallbackSize,
+    compactPreviewPayloadFor,
+    forgetCompactPreviewPayload,
     isCompactPreviewHoverArmed,
     noteCompactPreviewHoverPoint,
     noteCompactPreviewPointerMove,
+    rememberCompactPreviewPayload,
 } from "../lib/compactPreviewControls";
 import { openPinStickerWindow } from "../lib/pinStickerControls";
 import { activateForInput } from "../../../shared/lib/focus";
@@ -191,6 +195,7 @@ const clearCompactPreviewPendingState = () => {
     compactPreviewPendingShow = false;
     compactPreviewPendingAnchor = null;
     compactPreviewPendingRequestId = null;
+    forgetCompactPreviewPayload();
 };
 
 const resolveCompactPreviewBounds = async (): Promise<CompactPreviewBounds> => {
@@ -460,6 +465,58 @@ const seekVideoPreviewFrame = (video: HTMLVideoElement | null) => {
     }
 };
 
+/**
+ * Show the pending preview at a default size if it hasn't reported its own
+ * size in time (a hidden web view may not run its measuring frame).
+ */
+const scheduleCompactPreviewFallback = (
+    requestId: number,
+    bounds: { maxWidth: number; maxHeight: number; minWidth: number }
+) => {
+    if (compactPreviewPendingTimer) {
+        clearTimeout(compactPreviewPendingTimer);
+    }
+    compactPreviewPendingTimer = setTimeout(async () => {
+        compactPreviewPendingTimer = null;
+        if (
+            !compactPreviewPendingShow ||
+            !compactPreviewWindow ||
+            !compactPreviewPendingAnchor ||
+            compactPreviewPendingRequestId !== requestId
+        ) {
+            compactPreviewLog("fallback timer canceled: pending state changed");
+            return;
+        }
+        // A preview that is still loading never got the payload; showing it
+        // now would show an empty card. It is re-sent (and this timer
+        // re-armed) when the preview announces itself ready.
+        if (!compactPreviewMounted) {
+            compactPreviewLog("fallback timer deferred: preview not mounted yet");
+            return;
+        }
+        const { width, height } = compactPreviewFallbackSize(bounds);
+        try {
+            compactPreviewLog("fallback timer place/show with default size");
+            await placeAndShowPendingCompactPreview(requestId, width, height, { keepPending: true });
+        } catch (fallbackErr) {
+            console.error("Failed to show compact preview window (fallback):", fallbackErr);
+            compactPreviewLog("fallback place/show failed", fallbackErr);
+        }
+    }, COMPACT_PREVIEW_FALLBACK_MS);
+};
+
+type CompactPreviewSentPayload = CompactPreviewBounds & { requestId: number };
+
+/** Give a preview window that just finished loading the payload it missed. */
+const resendPendingCompactPreview = () => {
+    const requestId = compactPreviewPendingRequestId;
+    const payload = compactPreviewPayloadFor<CompactPreviewSentPayload>(requestId);
+    if (!compactPreviewPendingShow || requestId === null || !payload) return;
+    compactPreviewLog("resend compact-preview-update after ready", { requestId });
+    void emit("compact-preview-update", payload).catch(() => {});
+    scheduleCompactPreviewFallback(requestId, payload);
+};
+
 const ensureCompactPreviewReadyListener = async (): Promise<void> => {
     if (!compactPreviewReadyListener) {
         compactPreviewReadyListener = listen("compact-preview-ready", () => {
@@ -467,6 +524,7 @@ const ensureCompactPreviewReadyListener = async (): Promise<void> => {
             compactPreviewLog("received compact-preview-ready");
             for (const resolve of compactPreviewReadyWaiters) resolve(true);
             compactPreviewReadyWaiters.clear();
+            resendPendingCompactPreview();
         }).then(() => undefined);
     }
     await compactPreviewReadyListener;
@@ -1356,6 +1414,7 @@ const ClipboardItem = ({
                 clipboardTagFontSize,
                 ...bounds
             };
+            rememberCompactPreviewPayload(requestId, previewPayload);
             await Promise.allSettled([
                 targetWindow.emit("compact-preview-update", previewPayload),
                 emit("compact-preview-update", previewPayload)
@@ -1374,32 +1433,7 @@ const ClipboardItem = ({
                 compactPreviewRetryTimers.push(retryTimer);
             }
             compactPreviewLog("emit compact-preview-update done");
-            if (compactPreviewPendingTimer) {
-                clearTimeout(compactPreviewPendingTimer);
-            }
-            compactPreviewPendingTimer = setTimeout(async () => {
-                if (
-                    !compactPreviewPendingShow ||
-                    !compactPreviewWindow ||
-                    !compactPreviewPendingAnchor ||
-                    compactPreviewPendingRequestId !== requestId
-                ) {
-                    compactPreviewLog("fallback timer canceled: pending state changed");
-                    return;
-                }
-                try {
-                    compactPreviewLog("fallback timer place/show with default size");
-                    await placeAndShowPendingCompactPreview(
-                        requestId,
-                        Math.min(bounds.maxWidth, Math.max(bounds.minWidth, 220)),
-                        Math.min(bounds.maxHeight, 180),
-                        { keepPending: true }
-                    );
-                } catch (fallbackErr) {
-                    console.error("Failed to show compact preview window (fallback):", fallbackErr);
-                    compactPreviewLog("fallback place/show failed", fallbackErr);
-                }
-            }, COMPACT_PREVIEW_FALLBACK_MS);
+            scheduleCompactPreviewFallback(requestId, bounds);
         };
 
         try {

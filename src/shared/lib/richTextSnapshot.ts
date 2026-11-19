@@ -1,5 +1,13 @@
 import { toTauriLocalImageSrc } from "./localImageSrc";
 import {
+  colorToCss,
+  compositeColor,
+  isReadableOn,
+  parseCssColor,
+  readableTextColor,
+  type Rgba
+} from "./readableColor";
+import {
   isHtmlishTagText,
   isOfficeStyleDefinitionText,
   stripOfficePreviewNoise,
@@ -8,7 +16,7 @@ import {
 
 const SNAPSHOT_CACHE_LIMIT = 120;
 const SNAPSHOT_CACHE_BYTE_LIMIT = 24 * 1024 * 1024;
-const SNAPSHOT_CACHE_VERSION = "v10";
+const SNAPSHOT_CACHE_VERSION = "v12";
 const snapshotCache = new Map<string, { dataUrl: string; bytes: number }>();
 let snapshotCacheBytes = 0;
 
@@ -68,7 +76,86 @@ const logSnapshotFailure = (
   console.warn("[RichTextSnapshot] generation failed", { reason, ...context });
 };
 
-const normalizeRichHtml = (html: string): {
+const WHITE: Rgba = { r: 255, g: 255, b: 255, a: 1 };
+const BLACK: Rgba = { r: 0, g: 0, b: 0, a: 1 };
+
+let colorProbe: CanvasRenderingContext2D | null | undefined;
+
+/** Any CSS colour (names, hsl(), …), resolved through a canvas; null if unknown. */
+const resolveCssColor = (value: string): Rgba | null => {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const direct = parseCssColor(trimmed);
+  if (direct) return direct;
+  if (/^(inherit|initial|unset|revert|currentcolor)$/i.test(trimmed)) return null;
+  if (colorProbe === undefined) {
+    try {
+      colorProbe = document.createElement("canvas").getContext("2d");
+    } catch {
+      colorProbe = null;
+    }
+  }
+  if (!colorProbe) return null;
+  // An invalid value leaves fillStyle unchanged.
+  const sentinel = "#010203";
+  colorProbe.fillStyle = sentinel;
+  colorProbe.fillStyle = trimmed;
+  const resolved = String(colorProbe.fillStyle);
+  return resolved === sentinel ? null : parseCssColor(resolved);
+};
+
+/**
+ * The snapshot is an image, so HtmlContent's readability pass cannot reach it:
+ * text copied from an app in dark mode kept its near-white colour and the
+ * card came out blank. Same rule here, from the inline colours the copy
+ * carries (rules in <style> blocks are not seen).
+ */
+const repairSnapshotTextColors = (
+  body: HTMLElement,
+  colors: { background: string; text: string },
+  hasSourceStyles: boolean
+) => {
+  const themedText = resolveCssColor(colors.text);
+  let card = resolveCssColor(colors.background) ?? WHITE;
+  if (card.a < 1) {
+    // A see-through card: assume the backdrop the theme's text was made for.
+    const textIsLight = themedText ? isReadableOn(themedText, BLACK) && !isReadableOn(themedText, WHITE) : false;
+    card = compositeColor(card, textIsLight ? BLACK : WHITE);
+  }
+
+  const walk = (element: Element, inherited: Rgba, background: Rgba) => {
+    const tag = element.tagName.toLowerCase();
+    if (tag === "style" || tag === "script") return;
+    const style = (element as HTMLElement).style as CSSStyleDeclaration | undefined;
+    let bg = background;
+    let fg = inherited;
+    if (hasSourceStyles && tag === "table") {
+      // The snapshot puts source-styled tables on white paper.
+      bg = WHITE;
+      fg = BLACK;
+    }
+    const ownBackground = resolveCssColor(style?.backgroundColor || element.getAttribute("bgcolor") || "");
+    if (ownBackground && ownBackground.a > 0) bg = compositeColor(ownBackground, bg);
+    const ownColor = resolveCssColor(
+      style?.color || (tag === "font" ? element.getAttribute("color") || "" : "")
+    );
+    if (ownColor) fg = ownColor;
+
+    const hasOwnText = Array.from(element.childNodes).some(
+      (node) => node.nodeType === Node.TEXT_NODE && (node.textContent || "").trim()
+    );
+    if (hasOwnText && style && !isReadableOn(fg, bg)) {
+      fg = readableTextColor(bg, themedText);
+      style.setProperty("color", colorToCss(fg), "important");
+    }
+    for (const child of Array.from(element.children)) walk(child, fg, bg);
+  };
+
+  const rootText = themedText ?? readableTextColor(card, null);
+  for (const child of Array.from(body.children)) walk(child, rootText, card);
+};
+
+const normalizeRichHtml = (html: string, colors?: { background: string; text: string }): {
   bodyHtml: string;
   estimatedHeight: number;
   hasSourceStyles: boolean;
@@ -186,6 +273,10 @@ const normalizeRichHtml = (html: string): {
     }
   });
 
+  // Same test as HtmlContent: styled tables keep their own look.
+  const hasSourceStyles = !!doc.body.querySelector("style, tr[style], th[style], td[style], [bgcolor]");
+  if (colors) repairSnapshotTextColors(doc.body, colors, hasSourceStyles);
+
   const bodyHtml = (doc.body.innerHTML || "").trim();
   if (!bodyHtml) return null;
 
@@ -222,9 +313,6 @@ const normalizeRichHtml = (html: string): {
       : hasEmbeddedMedia
         ? Math.max(120, Math.min(2200, roughTextLines * 20 + 72))
         : Math.max(52, Math.min(1800, roughTextLines * 20 + 20));
-
-  // Same test as HtmlContent: styled tables keep their own look.
-  const hasSourceStyles = !!doc.body.querySelector("style, tr[style], th[style], td[style], [bgcolor]");
 
   return { bodyHtml, estimatedHeight, imageStats, hasSourceStyles };
 };
@@ -367,6 +455,30 @@ export const getRichTextSnapshotDataUrl = (
   return result;
 };
 
+/**
+ * Lays the snapshot's markup out off screen, in a shadow root so its sheet
+ * stays contained, and returns its height; null where there is no layout.
+ */
+const measureSnapshotHeight = (markup: string, width: number): number | null => {
+  if (typeof document === "undefined" || !document.body) return null;
+  const host = document.createElement("div");
+  host.setAttribute("aria-hidden", "true");
+  host.style.cssText = `position:fixed;left:-100000px;top:0;width:${width}px;visibility:hidden;pointer-events:none;contain:layout style`;
+  try {
+    const shadow = host.attachShadow({ mode: "open" });
+    shadow.innerHTML = markup;
+    document.body.appendChild(host);
+    const root = shadow.firstElementChild as HTMLElement | null;
+    const height = root ? Math.ceil(root.getBoundingClientRect().height) : 0;
+    // A little slack for font differences between the page and the image.
+    return height > 0 ? height + 4 : null;
+  } catch {
+    return null;
+  } finally {
+    host.remove();
+  }
+};
+
 const buildRichTextSnapshotDataUrl = (
   html: string,
   options: SnapshotOptions
@@ -398,7 +510,7 @@ const buildRichTextSnapshotDataUrl = (
     const cached = snapshotCache.get(key);
     if (cached) return cached.dataUrl;
 
-    const normalized = normalizeRichHtml(sourceHtml);
+    const normalized = normalizeRichHtml(sourceHtml, { background: snapshotBackground, text: snapshotText });
     if (!normalized) {
       logSnapshotFailure("normalize_failed", {
         htmlLength: sourceHtml.length,
@@ -424,7 +536,6 @@ const buildRichTextSnapshotDataUrl = (
       return null;
     }
 
-    const height = Math.max(48, Math.min(maxHeight, normalized.estimatedHeight));
     const snapshotStyle = [
       "box-sizing:border-box",
       "margin:0",
@@ -444,14 +555,7 @@ const buildRichTextSnapshotDataUrl = (
     const xhtmlBodyHtml = toXhtmlCompatibleFragment(normalized.bodyHtml);
     const xmlSafeBodyHtml = toXmlSafeNamedEntities(xhtmlBodyHtml);
 
-    const svg = [
-      `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`,
-      `<foreignObject x="0" y="0" width="100%" height="100%">`,
-      `<div xmlns="http://www.w3.org/1999/xhtml" class="tiez-rich-snapshot-root${normalized.hasSourceStyles ? " has-source-styles" : ""}" style="`,
-      snapshotStyle,
-      '">',
-      xmlSafeBodyHtml,
-      `<style>
+    const snapshotSheet = `<style>
       * {
         box-sizing: border-box;
         font-size: inherit !important;
@@ -586,7 +690,31 @@ const buildRichTextSnapshotDataUrl = (
         text-underline-offset: 0.14em;
         text-decoration-skip-ink: auto;
       }
-    </style>`,
+    </style>`;
+
+    // Measured, not guessed: the line estimate assumed ~80 characters a line,
+    // so Chinese text (about 20 a line at card width) lost everything after
+    // its first lines. Images may still be loading, so keep the estimate as
+    // a floor when there are any.
+    const measuredHeight = measureSnapshotHeight(
+      `<div class="${normalized.hasSourceStyles ? "tiez-rich-snapshot-root has-source-styles" : "tiez-rich-snapshot-root"}" style="${snapshotStyle};height:auto">${normalized.bodyHtml}${snapshotSheet}</div>`,
+      width
+    );
+    const contentHeight = measuredHeight == null
+      ? normalized.estimatedHeight
+      : normalized.imageStats.total > 0
+        ? Math.max(measuredHeight, normalized.estimatedHeight)
+        : measuredHeight;
+    const height = Math.max(48, Math.min(maxHeight, contentHeight));
+
+    const svg = [
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`,
+      `<foreignObject x="0" y="0" width="100%" height="100%">`,
+      `<div xmlns="http://www.w3.org/1999/xhtml" class="tiez-rich-snapshot-root${normalized.hasSourceStyles ? " has-source-styles" : ""}" style="`,
+      snapshotStyle,
+      '">',
+      xmlSafeBodyHtml,
+      snapshotSheet,
       "</div>",
       "</foreignObject>",
       "</svg>"

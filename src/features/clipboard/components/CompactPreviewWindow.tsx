@@ -82,6 +82,8 @@ type PreviewResizePayload = {
 const CARD_INSET_PX = 1;
 /** Card padding and border around rich content (see .compact-popover-portal). */
 const RICH_CARD_CHROME_PX = 26;
+/** Matches the 64px the card keeps above and below a media preview. */
+const RICH_SNAPSHOT_CHROME_HEIGHT_PX = 64;
 
 /** Short rich text gets a compact card; longer text uses the room there is. */
 const richCardWidth = (payload: { content?: string; maxWidth: number }) =>
@@ -244,7 +246,10 @@ const CompactPreviewWindow = () => {
         // fit instead of shrinking the whole image until the text is tiny.
         return getRichTextSnapshotDataUrl(htmlForSnapshot, {
             width: richCardWidth(payload) - RICH_CARD_CHROME_PX,
-            maxHeight: payload.maxHeight
+            // The space the card gives it (see the media max-height in
+            // compact-preview.css); a taller image was shrunk to fit,
+            // text and all.
+            maxHeight: payload.maxHeight - RICH_SNAPSHOT_CHROME_HEIGHT_PX
         });
     }, [payload]);
     const snapshotFailed = !!payload && snapshotFailedRequestId === payload.requestId;
@@ -262,13 +267,17 @@ const CompactPreviewWindow = () => {
 
         void (async () => {
             try {
-                await Promise.allSettled([
+                // Listen first: an update sent before the listener exists is
+                // dropped. The list re-sends it once we announce ready below.
+                const windowSetup = Promise.allSettled([
                     getCurrentWindow().setFocusable(false),
                     getCurrentWindow().setIgnoreCursorEvents(true)
                 ]);
-                if (disposed) return;
 
                 stopUpdate = await listen<PreviewPayload>("compact-preview-update", (event) => {
+                    // A disposed listener (StrictMode remount) must not mark
+                    // the request as seen, or the live one skips it as a repeat.
+                    if (disposed) return;
                     const next = event.payload;
                     if (latestRequestIdRef.current === next.requestId) {
                         requestResizeRef.current?.();
@@ -291,8 +300,6 @@ const CompactPreviewWindow = () => {
                         hasHtml: !!next.htmlContent,
                         sourceApp: next.sourceApp
                     });
-
-                    if (disposed) return;
                     const peeked =
                         next.sourceAppIcon ||
                         peekSourceAppIcon(next.sourceAppPath) ||
@@ -331,6 +338,7 @@ const CompactPreviewWindow = () => {
                     return;
                 }
 
+                await windowSetup;
                 if (!disposed) {
                     await emitTo("main", "compact-preview-ready", true);
                     compactPreviewLog("compact preview listeners ready");
