@@ -339,10 +339,15 @@ const resolveDropPaths = (payload: unknown): string[] => {
   return [];
 };
 
+// The emoji list is loaded once per session. Without the cache every open
+// rendered the fallback set first and then rebuilt all 373 buttons when the
+// file arrived.
+let loadedEmojiGroups: EmojiGroup[] | null = null;
+
 const EmojiPanel = ({ t, language = "zh", favorites, setFavorites, activeTab, setActiveTab, saveSetting }: EmojiPanelProps) => {
   const [isDragging, setIsDragging] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
-  const [emojiGroups, setEmojiGroups] = useState<EmojiGroup[]>(FALLBACK_GROUPS);
+  const [emojiGroups, setEmojiGroups] = useState<EmojiGroup[]>(() => loadedEmojiGroups ?? FALLBACK_GROUPS);
 
   const flatEmoji = useMemo(() => emojiGroups.flatMap((g) => g.emojis), [emojiGroups]);
   const hasFavorites = favorites.length > 0;
@@ -596,6 +601,7 @@ const EmojiPanel = ({ t, language = "zh", favorites, setFavorites, activeTab, se
   };
 
   useEffect(() => {
+    if (loadedEmojiGroups) return;
     let alive = true;
     fetch("/emoji-data.json")
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error("Failed to load emoji data"))))
@@ -603,6 +609,7 @@ const EmojiPanel = ({ t, language = "zh", favorites, setFavorites, activeTab, se
         if (!alive) return;
         const groups = Array.isArray(data?.groups) ? data.groups.filter((g) => g && Array.isArray(g.emojis)) : [];
         if (groups.length > 0) {
+          loadedEmojiGroups = groups;
           setEmojiGroups(groups);
         }
       })
@@ -715,34 +722,27 @@ const EmojiPanel = ({ t, language = "zh", favorites, setFavorites, activeTab, se
       </div>
 
       <div className="emoji-content-wrapper">
-        <AnimatePresence mode="wait" initial={false}>
-          {activeTab === "emoji" ? (
-            <motion.div
-              key="emoji"
-              className="emoji-content"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.15 }}
-            >
+        {activeTab === "emoji" ? (
+            <div key="emoji" className="emoji-content emoji-tab-pane">
               {emojiGroups.map((group, groupIndex) => (
                 <div key={`${group.name}-${groupIndex}`} className="emoji-group">
                   <div className="emoji-group-title">{EMOJI_GROUP_LABEL_KEYS[group.name] ? t(EMOJI_GROUP_LABEL_KEYS[group.name]) : group.name}</div>
                   <div className="emoji-grid">
                     {group.emojis.map((emoji, emojiIndex) => {
                       const emojiTitle = getEmojiName(emoji, language === "tw" ? "zh-TW" : language, group.name);
+                      // Plain buttons: hover and press scale in CSS. A motion
+                      // component per emoji made opening the panel slow.
                       return (
-                        <motion.button
-                          key={`${group.name}-${groupIndex}-${emojiIndex}-${emoji}`}
+                        <button
+                          key={`${group.name}-${emojiIndex}-${emoji}`}
+                          type="button"
                           className="emoji-btn"
                           onClick={() => handleSend(emoji, "text")}
                           title={emojiTitle}
                           aria-label={emojiTitle}
-                          whileHover={{ scale: 1.15 }}
-                          whileTap={{ scale: 0.9 }}
                         >
                           {emoji}
-                        </motion.button>
+                        </button>
                       );
                     })}
                   </div>
@@ -751,15 +751,11 @@ const EmojiPanel = ({ t, language = "zh", favorites, setFavorites, activeTab, se
               {flatEmoji.length === 0 && (
                 <div className="emoji-empty">{t("emoji_empty")}</div>
               )}
-            </motion.div>
+            </div>
           ) : (
-            <motion.div
+            <div
               key="favorites"
-              className="emoji-fav-container"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.15 }}
+              className="emoji-fav-container emoji-tab-pane"
               onClick={() => setDeleteTarget(null)}
               onContextMenu={(e) => {
                 if ((e.target as HTMLElement).closest(".emoji-fav-card")) return;
@@ -780,16 +776,12 @@ const EmojiPanel = ({ t, language = "zh", favorites, setFavorites, activeTab, se
               }}
             >
               <div className="emoji-fav-grid">
-                {favorites.map((path, idx) => {
+                {favorites.map((path) => {
                   const name = path.split(/[/\\]/).pop() || path;
                   const isDeleteVisible = deleteTarget === path;
                   return (
-                    <motion.div
+                    <div
                       key={path}
-                      layout
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: idx * 0.01 }}
                       className="emoji-fav-card"
                       data-delete-visible={isDeleteVisible}
                       onContextMenu={(e) => {
@@ -816,21 +808,19 @@ const EmojiPanel = ({ t, language = "zh", favorites, setFavorites, activeTab, se
                         <img
                           src={convertFileSrc(path)}
                           alt={name}
+                          loading="lazy"
+                          decoding="async"
                           onError={(e) => {
                             e.currentTarget.onerror = null;
                             removeFavoritePath(path);
                           }}
                         />
                       </button>
-                    </motion.div>
+                    </div>
                   );
                 })}
 
-                <motion.div
-                  className="emoji-fav-card emoji-fav-add"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
+                <div className="emoji-fav-card emoji-fav-add">
                   <button
                     className="emoji-fav-add-btn"
                     onClick={(e) => {
@@ -843,7 +833,7 @@ const EmojiPanel = ({ t, language = "zh", favorites, setFavorites, activeTab, se
                       <Plus size={22} strokeWidth={2.5} />
                     </div>
                   </button>
-                </motion.div>
+                </div>
               </div>
 
               <div className="emoji-fav-footer">
@@ -870,9 +860,8 @@ const EmojiPanel = ({ t, language = "zh", favorites, setFavorites, activeTab, se
                   </motion.div>
                 )}
               </AnimatePresence>
-            </motion.div>
+            </div>
           )}
-        </AnimatePresence>
       </div>
     </div>
   );
