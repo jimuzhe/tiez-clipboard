@@ -120,7 +120,10 @@ const DetailNoteEditor = ({ item, t, actions, noteDraft, onNoteDraftChange }: Ed
   const rootRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const ignoreBlurRef = useRef(true);
-  const value = noteDraft ?? item.note ?? "";
+  // Own state, passed up only outside input method composition: writing the
+  // app-wide draft back into the textarea mid-composition broke it in WebKit.
+  const [value, setValue] = useState(noteDraft ?? item.note ?? "");
+  const composingRef = useRef(false);
 
   useEffect(() => {
     let alive = true;
@@ -144,7 +147,17 @@ const DetailNoteEditor = ({ item, t, actions, noteDraft, onNoteDraftChange }: Ed
         rows={3}
         aria-label={t("edit_note")}
         placeholder={getNotePlaceholder(t)}
-        onChange={(event) => onNoteDraftChange(event.target.value)}
+        onCompositionStart={() => { composingRef.current = true; }}
+        onCompositionEnd={(event) => {
+          composingRef.current = false;
+          const next = (event.target as HTMLTextAreaElement).value;
+          setValue(next);
+          onNoteDraftChange(next);
+        }}
+        onChange={(event) => {
+          setValue(event.target.value);
+          if (!composingRef.current) onNoteDraftChange(event.target.value);
+        }}
         onKeyDown={(event) => {
           if (event.nativeEvent.isComposing) return;
           if (event.key === "Escape") {
