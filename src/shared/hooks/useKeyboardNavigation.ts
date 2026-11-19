@@ -39,6 +39,10 @@ interface UseKeyboardNavigationOptions {
   /** Tab / Shift+Tab: moves to the next / previous category tab. */
   cycleCategory: (step: 1 | -1) => void;
   setSearch: (val: string) => void;
+  /** First search result: what Enter pastes before any row is picked. */
+  searchTopHitId: number | null;
+  /** Enter pastes like a left click; false when the user set that to plain text. */
+  primaryPasteKeepsFormat: boolean;
   /** Deletes an entry from the keyboard; false if it was refused or failed. */
   deleteItem: (item: ClipboardEntry) => Promise<boolean>;
 }
@@ -69,6 +73,8 @@ export const useKeyboardNavigation = ({
   copyWithoutPaste,
   cycleCategory,
   setSearch,
+  searchTopHitId,
+  primaryPasteKeepsFormat,
   deleteItem
 }: UseKeyboardNavigationOptions) => {
   const filteredHistoryRef = useRef(filteredHistory);
@@ -99,6 +105,10 @@ export const useKeyboardNavigation = ({
   arrowKeySelectionRef.current = arrowKeySelection;
   copyToClipboardRef.current = copyToClipboard;
   plainPasteHotkeyRef.current = plainPasteHotkey;
+  const searchTopHitIdRef = useRef(searchTopHitId);
+  searchTopHitIdRef.current = searchTopHitId;
+  const primaryPasteKeepsFormatRef = useRef(primaryPasteKeepsFormat);
+  primaryPasteKeepsFormatRef.current = primaryPasteKeepsFormat;
 
   useEffect(() => {
     selectedIndexRef.current = selectedIndex;
@@ -214,9 +224,9 @@ export const useKeyboardNavigation = ({
 
   // Shift+Enter: copy the selected entry and leave the window and the
   // selection as they are.
-  const copySelectedItem = async () => {
+  const copySelectedItem = async (explicitItem?: ClipboardEntry) => {
     if (copyInFlightRef.current) return;
-    const item = resolveSelectedItem(filteredHistoryRef.current);
+    const item = explicitItem ?? resolveSelectedItem(filteredHistoryRef.current);
     if (!item) return;
     copyInFlightRef.current = true;
     try {
@@ -234,6 +244,13 @@ export const useKeyboardNavigation = ({
     if (isEditable && !target.classList.contains("search-input")) return false;
     if (document.querySelector("[aria-modal='true']")) return false;
     return !target.closest("[role='dialog'], [role='menu'], [role='listbox']");
+  };
+
+  // The first search result while it is shown as selected (no row picked yet).
+  const searchTopHitItem = (): ClipboardEntry | undefined => {
+    const id = searchTopHitIdRef.current;
+    const first = filteredHistoryRef.current[0];
+    return id !== null && first?.id === id ? first : undefined;
   };
 
   const resetSelectionToTop = () => {
@@ -266,7 +283,8 @@ export const useKeyboardNavigation = ({
           id,
           content,
           content_type,
-          isRich,
+          // The plain-paste hotkey is always plain; Enter follows the left click.
+          isRich && primaryPasteKeepsFormatRef.current,
           is_pinned,
           tags || []
         );
@@ -283,6 +301,14 @@ export const useKeyboardNavigation = ({
     if (!isTauriRuntime()) return;
     invoke("set_navigation_mode", { active: isKeyboardMode }).catch(console.error);
   }, [isKeyboardMode]);
+
+  // The plain-paste hotkey is registered globally and never reaches keydown;
+  // the backend sends it here instead while a top hit is showing.
+  const topHitActive = searchTopHitId !== null;
+  useEffect(() => {
+    if (!isTauriRuntime()) return;
+    invoke("set_search_top_hit", { active: topHitActive }).catch(console.error);
+  }, [topHitActive]);
 
   useEffect(() => {
     if (!isTauriRuntime()) return;
@@ -303,8 +329,10 @@ export const useKeyboardNavigation = ({
       // A real keydown already means this window is receiving input; do not gate
       // on Tauri isVisible() (NSPanel can report false while the panel is key).
       if (e.defaultPrevented) return;
-      // Never steal IME / printable input from focused fields.
-      if (e.isComposing || e.key === "Process") return;
+      // Never steal IME / printable input from focused fields. WebKit sends the
+      // Enter that confirms a composition after compositionend, with
+      // isComposing already false; only keyCode 229 still marks it.
+      if (e.isComposing || e.key === "Process" || e.keyCode === 229) return;
 
       if (
         showSettingsRef.current ||
@@ -394,7 +422,9 @@ export const useKeyboardNavigation = ({
         lastNavigationKeyRef.current = { key: e.key, time: now };
 
         const maxIndex = Math.max(0, filteredHistoryRef.current.length - 1);
-        const current = isKeyboardModeRef.current ? selectedIndexRef.current : -1;
+        // The first search result already shows as selected: Down goes on from it.
+        const topHitShown = searchTopHitIdRef.current !== null;
+        const current = isKeyboardModeRef.current ? selectedIndexRef.current : topHitShown ? 0 : -1;
         const nextIndex = e.key === "ArrowDown"
           ? Math.min(current + 1, maxIndex)
           : Math.max(current <= 0 ? 0 : current - 1, 0);
@@ -405,15 +435,34 @@ export const useKeyboardNavigation = ({
       }
 
       const matchesPlainHotkey = matchesHotkey(e, plainPasteHotkeyRef.current);
+
+      // Enter right after a search pastes the first result, which is shown as
+      // selected. This doesn't turn keyboard mode on: on Windows that would
+      // hand Delete to the list while the user is still editing the search.
+      const topHitId = searchTopHitIdRef.current;
+      const isTopHitEnter =
+        isSearchInput && e.key === "Enter" && !e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey &&
+        !matchesPlainHotkey && !isKeyboardModeRef.current && topHitId !== null;
+      if (isTopHitEnter) {
+        const item = filteredHistoryRef.current[0];
+        if (!item || item.id !== topHitId) return;
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.repeat) return;
+        await pasteSelectedItem(true, item);
+        return;
+      }
+
+      const topHitItem = !isKeyboardModeRef.current && isSearchInput ? searchTopHitItem() : undefined;
       const isCopyEnter =
         e.key === "Enter" && e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey &&
-        !matchesPlainHotkey && isKeyboardModeRef.current;
+        !matchesPlainHotkey && (isKeyboardModeRef.current || topHitItem !== undefined);
       if (isCopyEnter) {
         e.preventDefault();
         e.stopPropagation();
-        // Windows' keyboard hook sends this as a "copy" navigation action.
-        if (usesNativeNavigation() || e.repeat) return;
-        await copySelectedItem();
+        // In keyboard mode Windows' keyboard hook sends this as a "copy" navigation action.
+        if ((isKeyboardModeRef.current && usesNativeNavigation()) || e.repeat) return;
+        await copySelectedItem(topHitItem);
         return;
       }
 
@@ -430,7 +479,7 @@ export const useKeyboardNavigation = ({
         e.stopPropagation();
 
         const history = filteredHistoryRef.current;
-        const item = resolveSelectedItem(history);
+        const item = (!isKeyboardModeRef.current && topHitItem) || resolveSelectedItem(history);
         if (!item) return;
 
         await pasteSelectedItem(isRich, item);
@@ -499,7 +548,8 @@ export const useKeyboardNavigation = ({
         lastNavigationKeyRef.current = { key: action, time: now };
 
         const maxIndex = Math.max(0, history.length - 1);
-        const nextIndex = isNavMode ? Math.min(currentIndex + 1, maxIndex) : 0;
+        const firstStep = searchTopHitIdRef.current !== null ? Math.min(1, maxIndex) : 0;
+        const nextIndex = isNavMode ? Math.min(currentIndex + 1, maxIndex) : firstStep;
         isKeyboardModeRef.current = true;
         applySelection(nextIndex);
       } else if (action === "enter") {
@@ -517,9 +567,9 @@ export const useKeyboardNavigation = ({
         await pasteSelectedItem(true, item);
       } else if (action === "plain") {
         // The plain text hotkey, sent by the backend because a registered
-        // hotkey never reaches this keydown handler.
-        if (!isNavMode) return;
-        const item = resolveSelectedItem(history);
+        // hotkey never reaches this keydown handler: the picked row, or the
+        // first search result while it shows as selected.
+        const item = isNavMode ? resolveSelectedItem(history) : searchTopHitItem();
         if (!item) return;
         await pasteSelectedItem(false, item);
       } else if (action === "copy") {

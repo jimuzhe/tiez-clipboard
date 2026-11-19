@@ -22,6 +22,8 @@ interface AppMainContentProps {
   t: (key: string) => string;
   theme: string;
   privacyProtection: boolean;
+  /** Whether a click pastes with formatting (「鼠标粘贴方式」). */
+  primaryPasteKeepsFormat: boolean;
   showSettings: boolean;
   showTagManager: boolean;
   tagManagerEnabled: boolean;
@@ -107,6 +109,7 @@ const AppMainContent = ({
   t,
   theme,
   privacyProtection,
+  primaryPasteKeepsFormat,
   showSettings,
   showTagManager,
   tagManagerEnabled,
@@ -171,7 +174,12 @@ const AppMainContent = ({
         animate={{ opacity: 1, x: 0 }}
         style={{ height: "100%", overflow: "hidden", boxSizing: "border-box", display: "flex", flexDirection: "column" }}
       >
-        <TagManager t={t} theme={theme} privacyProtection={privacyProtection} />
+        <TagManager
+          t={t}
+          theme={theme}
+          privacyProtection={privacyProtection}
+          primaryPasteKeepsFormat={primaryPasteKeepsFormat}
+        />
       </motion.div>
     );
   }

@@ -309,6 +309,15 @@ body.dark-mode.compact-preview.theme-macos #root {
   box-shadow: none;
 }
 
+/* Two-pane pages (settings, copy rules, tag manager): the sidebar shares the
+   window's background and the divider alone separates it. A fill of its own
+   (first the lighter panel colour, then a tint) made it read as a block
+   pasted into the window. */
+:root.theme-macos,
+body.theme-macos {
+  --pane-sidebar-background: transparent;
+}
+
 /* 「面板透明度」 with a background image: the slider sets how much of the image
    shows through what lies on top of it. 50 keeps the theme's own look; lower
    lets the image through the toolbar and the rows; higher makes the rows

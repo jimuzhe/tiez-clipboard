@@ -1,5 +1,6 @@
 
 import { memo, useState, useEffect, useCallback, useRef, type ReactNode } from "react";
+import type { ClickPasteMode } from "../../../shared/lib/clickPaste";
 import { invoke } from "@tauri-apps/api/core";
 import { emit, listen } from "@tauri-apps/api/event";
 import { getVersion } from "@tauri-apps/api/app";
@@ -20,7 +21,8 @@ import {
     type LucideIcon
 } from "lucide-react";
 import type { Locale } from "../../../shared/types";
-import { formatError } from "../../../shared/lib/errorMessage";
+import { failureText, formatError } from "../../../shared/lib/errorMessage";
+import { syncErrorText } from "../../../shared/lib/syncError";
 import type { DefaultAppsMap, InstalledAppOption, SettingsSubpage, CloudSyncContentPrefs } from "../../app/types";
 import type { AiProfile, AiProfileStatusMap, AppCleanupPolicy, EditableAiProfile } from "../types";
 import { resolveTaskProfile } from "../aiPresets";
@@ -84,6 +86,7 @@ interface SettingsPanelProps {
     deleteAfterPaste: boolean;
     moveToTopAfterPaste: boolean;
     clickCopyOnly: boolean;
+    clickPasteMode: ClickPasteMode;
     pasteMethod: string;
     setPasteMethod: (val: string) => void;
     registryWinVEnabled: boolean;
@@ -213,6 +216,7 @@ interface SettingsPanelProps {
     setDeleteAfterPaste: (val: boolean) => void;
     setMoveToTopAfterPaste: (val: boolean) => void;
     setClickCopyOnly: (val: boolean) => void;
+    setClickPasteMode: (val: ClickPasteMode) => void;
     saveAppSetting: (key: string, val: string) => void;
     setSequentialModeState: (val: boolean) => void;
     setIsRecordingSequential: (val: boolean) => void;
@@ -321,7 +325,7 @@ const NAV_GROUPS: { labelKey: string; ids: string[] }[] = [
 const SettingsPanel = (props: SettingsPanelProps) => {
     const {
         t, theme, nativePalette, nativeCustomColor, setNativePalette, language, colorMode, showAppBorder, setShowAppBorder, showSourceAppIcon, setShowSourceAppIcon, hideUnselectedItemActions, setHideUnselectedItemActions,
-        collapsedGroups, settingsSubpage, autoStart, elevatedAutostart, silentStart, persistent, persistentLimitEnabled, persistentLimit, deduplicate, captureFiles, captureRichText, richTextSnapshotPreview, deleteAfterPaste, moveToTopAfterPaste, clickCopyOnly, pasteMethod, setPasteMethod, registryWinVEnabled, setRegistryWinVEnabled,
+        collapsedGroups, settingsSubpage, autoStart, elevatedAutostart, silentStart, persistent, persistentLimitEnabled, persistentLimit, deduplicate, captureFiles, captureRichText, richTextSnapshotPreview, deleteAfterPaste, moveToTopAfterPaste, clickCopyOnly, clickPasteMode, pasteMethod, setPasteMethod, registryWinVEnabled, setRegistryWinVEnabled,
         sequentialMode, sequentialHotkey, isRecordingSequential,
         plainPasteHotkey, isRecordingPlain, searchHotkey, isRecordingSearch, quickPasteModifier, setQuickPasteModifier,
         privacyProtection, privacyProtectionKinds, setPrivacyProtectionKinds, privacyProtectionCustomRules, setPrivacyProtectionCustomRules, sensitiveMaskPrefixVisible, setSensitiveMaskPrefixVisible, sensitiveMaskSuffixVisible, setSensitiveMaskSuffixVisible, sensitiveMaskEmailDomain, setSensitiveMaskEmailDomain, cleanupRules, setCleanupRules, appCleanupPolicies, setAppCleanupPolicies, setShowSearchBox, searchBoxPinned, setSearchBoxPinned, scrollTopButtonEnabled, setScrollTopButtonEnabled, arrowKeySelection, setArrowKeySelection,
@@ -340,7 +344,7 @@ const SettingsPanel = (props: SettingsPanelProps) => {
         fileServerEnabled, fileServerPort, localIp, availableIps, setLocalIp, actualPort, fileTransferAccessToken, fileTransferLanKey, fileTransferAutoOpen, showAutoCloseHint, fileServerAutoClose, fileTransferAutoCopy, fileTransferPath,
         installedApps, appSettings, defaultApps, showAppSelector, dataPath,
 
-        toggleGroup, setSettingsSubpage, setAutoStart, setElevatedAutostart, setSilentStart, setPersistent, setPersistentLimitEnabled, setPersistentLimit, setDeduplicate, setCaptureFiles, setCaptureRichText, setRichTextSnapshotPreview, setDeleteAfterPaste, setMoveToTopAfterPaste, setClickCopyOnly, saveAppSetting,
+        toggleGroup, setSettingsSubpage, setAutoStart, setElevatedAutostart, setSilentStart, setPersistent, setPersistentLimitEnabled, setPersistentLimit, setDeduplicate, setCaptureFiles, setCaptureRichText, setRichTextSnapshotPreview, setDeleteAfterPaste, setMoveToTopAfterPaste, setClickCopyOnly, setClickPasteMode, saveAppSetting,
         setSequentialModeState, setIsRecordingSequential, updateSequentialHotkey,
         setIsRecordingPlain, updatePlainPasteHotkey,
         setIsRecordingSearch, updateSearchHotkey,
@@ -438,7 +442,7 @@ const SettingsPanel = (props: SettingsPanelProps) => {
             setCloudSyncStatus(status);
         } catch (err) {
             console.error("Cloud sync now failed:", err);
-            void emit("toast", `${t("sync_now_failed")}${String(err)}`);
+            void emit("toast", failureText(t("sync_now_failed"), syncErrorText(err, t)));
         } finally {
             setCloudSyncNowRunning(false);
         }
@@ -625,8 +629,10 @@ const SettingsPanel = (props: SettingsPanelProps) => {
                     setDeleteAfterPaste={setDeleteAfterPaste}
                     moveToTopAfterPaste={moveToTopAfterPaste}
                     clickCopyOnly={clickCopyOnly}
+                    clickPasteMode={clickPasteMode}
                     setMoveToTopAfterPaste={setMoveToTopAfterPaste}
                     setClickCopyOnly={setClickCopyOnly}
+                    setClickPasteMode={setClickPasteMode}
                     pasteMethod={pasteMethod}
                     setPasteMethod={setPasteMethod}
                     registryWinVEnabled={registryWinVEnabled}
@@ -948,7 +954,7 @@ const SettingsPanel = (props: SettingsPanelProps) => {
                 aria-current={active ? "page" : undefined}
                 onClick={onClick}
             >
-                <Icon className="settings-nav-icon" size={16} strokeWidth={1.75} aria-hidden="true" />
+                <Icon className="settings-nav-icon" size={18} strokeWidth={1.75} aria-hidden="true" />
                 <span className="settings-nav-label">{label}</span>
                 {trailing}
             </button>

@@ -366,6 +366,7 @@ pub fn try_enter_light_mode(app: &AppHandle) {
         WEBVIEW_LIGHT_MODE.store(true, Ordering::SeqCst);
         NAVIGATION_ENABLED.store(false, Ordering::SeqCst);
         NAVIGATION_MODE_ACTIVE.store(false, Ordering::SeqCst);
+        crate::global_state::SEARCH_TOP_HIT_ACTIVE.store(false, Ordering::SeqCst);
 
         // macOS can't destroy (see module docs); blank the page instead.
         #[cfg(target_os = "macos")]

@@ -131,6 +131,10 @@ pub fn set_window_focusable(window: &tauri::WebviewWindow, focusable: bool) {
 pub fn setup_clipboard_panel(window: &tauri::WebviewWindow) -> Result<(), String> {
     use tauri_nspanel::{CollectionBehavior, PanelLevel, StyleMask, WebviewWindowExt};
 
+    // Measure the system corner radius here, on the main thread, before the
+    // frontend asks for it (window_manager::macos_window_corner_radius).
+    let _ = crate::app::window_manager::macos_window_corner_radius();
+
     let panel = window
         .to_panel::<ClipboardPanel>()
         .map_err(|e| format!("to_panel failed: {e:?}"))?;

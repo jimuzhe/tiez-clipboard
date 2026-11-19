@@ -165,6 +165,7 @@ fn main() -> AppResult<()> {
             app::window_manager::disable_webview_browser_accelerators,
             app::window_manager::set_navigation_enabled,
             app::window_manager::set_navigation_mode,
+            app::window_manager::set_search_top_hit,
             app::hooks::set_recording_mode,
             services::content_handler::open_content,
             services::clipboard_ops::copy_to_clipboard,

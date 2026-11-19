@@ -122,4 +122,7 @@ pub static IS_HIDDEN: AtomicBool = AtomicBool::new(false);
 pub static IS_MOUSE_BUTTON_DOWN: AtomicBool = AtomicBool::new(false);
 pub static NAVIGATION_ENABLED: AtomicBool = AtomicBool::new(false);
 pub static NAVIGATION_MODE_ACTIVE: AtomicBool = AtomicBool::new(false);
+/// The first search result shows as selected (Enter would paste it) while
+/// keyboard mode is still off. The plain-paste hotkey then pastes that row.
+pub static SEARCH_TOP_HIT_ACTIVE: AtomicBool = AtomicBool::new(false);
 pub static IS_MAIN_WINDOW_FOCUSED: AtomicBool = AtomicBool::new(false);

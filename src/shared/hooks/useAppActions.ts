@@ -1,4 +1,5 @@
 import { useCallback, useRef } from "react";
+import { failureText } from "../lib/errorMessage";
 import { invoke } from "@tauri-apps/api/core";
 
 interface UseAppActionsOptions {
@@ -69,7 +70,7 @@ export const useAppActions = ({
           fetchHistory(true);
         } catch (err) {
           console.error("清空失败", err);
-          pushToast(t("clear_history_failed") + String(err), 4000);
+          pushToast(failureText(t("clear_history_failed"), err), 4000);
         }
         closeConfirm();
       }
@@ -87,7 +88,7 @@ export const useAppActions = ({
           await invoke("reset_settings");
           window.location.reload();
         } catch (err) {
-          const errorMsg = t("reset_failed") + (err?.toString() || "");
+          const errorMsg = failureText(t("reset_failed"), err);
           pushToast(errorMsg, 3000);
         }
         closeConfirm();
