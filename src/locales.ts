@@ -374,6 +374,11 @@ export const translations = {
         cloud_sync_received: "接收",
         cloud_sync_last_sync: "上次同步",
         cloud_sync_last_error: "最近错误",
+        sync_error_auth: "用户名或密码不对。坚果云等网盘要填「应用密码」，不是登录密码。",
+        sync_error_busy: "网盘暂时限流或不可用，稍后会自动重试。",
+        sync_error_full: "网盘空间已满，清理后会继续同步。",
+        sync_error_address: "同步地址不对，请检查地址和同步目录。",
+        sync_error_unreachable: "连不上同步服务器，请检查地址和网络。",
         cloud_sync_actions: "手动操作",
         cloud_sync_now: "立即同步",
 
@@ -927,6 +932,8 @@ export const translations = {
         ai_model_id: "模型标识",
         ai_check_connection: "检查连接",
         ai_check_failed: "连接失败：",
+        ai_failed: "AI 处理失败：",
+        ai_apply_failed: "替换原文失败：",
     },
     en: {
         // App Selector
@@ -1305,6 +1312,11 @@ export const translations = {
         cloud_sync_received: "Received",
         cloud_sync_last_sync: "Last Sync",
         cloud_sync_last_error: "Last Error",
+        sync_error_auth: "Wrong username or password. Some services, such as Nutstore, need an app password instead of your login password.",
+        sync_error_busy: "The service is busy or rate-limiting. Sync will retry on its own.",
+        sync_error_full: "The cloud storage is full. Sync continues once there is space.",
+        sync_error_address: "The sync address looks wrong. Check the address and the sync folder.",
+        sync_error_unreachable: "Can't reach the sync server. Check the address and your network.",
         cloud_sync_actions: "Actions",
         cloud_sync_now: "Sync Now",
 
@@ -1854,6 +1866,8 @@ export const translations = {
         ai_model_id: "Model ID",
         ai_check_connection: "Check Connection",
         ai_check_failed: "Connection failed: ",
+        ai_failed: "AI request failed: ",
+        ai_apply_failed: "Couldn't replace the original: ",
     },
     tw: {
         // App Selector
@@ -2227,6 +2241,11 @@ export const translations = {
         cloud_sync_received: "接收",
         cloud_sync_last_sync: "上次同步",
         cloud_sync_last_error: "最近錯誤",
+        sync_error_auth: "使用者名稱或密碼不對。堅果雲等網盤要填「應用密碼」，不是登入密碼。",
+        sync_error_busy: "網盤暫時限流或無法使用，稍後會自動重試。",
+        sync_error_full: "網盤空間已滿，清理後會繼續同步。",
+        sync_error_address: "同步位址不對，請檢查位址和同步目錄。",
+        sync_error_unreachable: "連不上同步伺服器，請檢查位址和網路。",
         cloud_sync_actions: "手動操作",
         cloud_sync_now: "立即同步",
 
@@ -2779,5 +2798,7 @@ export const translations = {
         ai_model_id: "模型標識",
         ai_check_connection: "檢查連線",
         ai_check_failed: "連線失敗：",
+        ai_failed: "AI 處理失敗：",
+        ai_apply_failed: "取代原文失敗：",
     }
 };

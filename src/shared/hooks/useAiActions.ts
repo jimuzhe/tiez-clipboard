@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { failureText } from "../lib/errorMessage";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { isTauriRuntime } from "../lib/tauriRuntime";
@@ -117,7 +118,7 @@ export const useAiActions = ({
           else delete next[id];
           return next;
         });
-        pushToast(err?.toString() || "AI processing failed", 5000);
+        pushToast(failureText(t("ai_failed"), err), 5000);
       } finally {
         pendingRef.current.delete(id);
         removedRef.current.delete(id);
@@ -155,7 +156,7 @@ export const useAiActions = ({
       } : entry));
       pushToast(t("ai_result_applied"), 1500);
     } catch (err) {
-      pushToast(err?.toString() || "AI apply failed", 5000);
+      pushToast(failureText(t("ai_apply_failed"), err), 5000);
     }
   }, [pushToast, setHistory, t]);
 
@@ -192,7 +193,7 @@ export const useAiActions = ({
       });
       pushToast(t("ai_copied"), 1500);
     } catch (err) {
-      pushToast(t("copy_failed") + (err?.toString() || ""), 3000);
+      pushToast(failureText(t("copy_failed"), err), 3000);
     }
   }, [pushToast, t]);
 

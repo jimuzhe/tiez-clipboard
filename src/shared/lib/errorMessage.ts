@@ -72,3 +72,21 @@ export const localizeErrorTags = (text: string, t?: Translate): string => {
 /** Text for a toast or status line describing `err`. */
 export const formatError = (err: unknown, t?: Translate, max = MAX_ERROR_CHARS): string =>
   tidyMessage(localizeErrorTags(errorToText(err), t), max);
+
+/** Remove backend error tags: next to a specific label the error kind adds nothing. */
+export const stripErrorTags = (text: string): string => text.replace(TAG_RE, "").replace(LEGACY_RE, "");
+
+/**
+ * Toast text for a failed action: "<what failed>：<why>".
+ * `label` is the translated "X failed" text, with or without its own closing
+ * punctuation. A detail that already opens with the label is shown alone, and
+ * a missing detail leaves just the label.
+ */
+export const failureText = (label: string, err: unknown, max = MAX_ERROR_CHARS): string => {
+  const what = label.trim().replace(/[:：。.\s]+$/u, "");
+  const why = tidyMessage(stripErrorTags(errorToText(err)), max);
+  if (!why) return label.trim().replace(/[:：\s]+$/u, "");
+  if (!what || why.startsWith(what)) return why;
+  const joiner = /[\u3400-\u9fff]/.test(what) ? "：" : ": ";
+  return `${what}${joiner}${why}`;
+};
