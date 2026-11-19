@@ -103,6 +103,8 @@ tauri_nspanel::tauri_panel! {
 
     panel_event!(ClipboardPanelEventHandler {
         window_did_resign_key(notification: &NSNotification) -> (),
+        window_should_close(window: &NSWindow) -> Bool,
+        window_should_zoom(window: &NSWindow, to_frame: &NSRect) -> Bool,
     })
 }
 
@@ -129,7 +131,7 @@ pub fn set_window_focusable(window: &tauri::WebviewWindow, focusable: bool) {
 /// See EcoPaste / tauri-nspanel fullscreen example.
 #[cfg(target_os = "macos")]
 pub fn setup_clipboard_panel(window: &tauri::WebviewWindow) -> Result<(), String> {
-    use tauri_nspanel::{CollectionBehavior, PanelLevel, StyleMask, WebviewWindowExt};
+    use tauri_nspanel::{CollectionBehavior, PanelLevel, WebviewWindowExt};
 
     // Measure the system corner radius here, on the main thread, before the
     // frontend asks for it (window_manager::macos_window_corner_radius).
@@ -144,7 +146,33 @@ pub fn setup_clipboard_panel(window: &tauri::WebviewWindow) -> Result<(), String
     // Keep NonactivatingPanel for fullscreen overlay, but preserve Resizable —
     // StyleMask::empty().nonactivating_panel() alone wiped the resize bit and
     // made the undecorated window edges undraggable.
-    panel.set_style_mask(StyleMask::empty().nonactivating_panel().resizable().into());
+    // Titled + closable + full-size content: AppKit draws its own close button
+    // (the same one every Mac app has, in the style of the running macOS) over
+    // a transparent title bar; the page still fills the whole window. The
+    // window is created titled (tauri.macos.conf.json): changing the titled bit
+    // here would make AppKit move the web view to a new frame view, which
+    // throws once the window has become a panel.
+    // tao still has style changes queued from creating the window; on a titled
+    // window, any style change after this conversion that touches the frame
+    // makes AppKit move the web view and WebKit throw. So the panel's own
+    // changes run after those (the main queue is first in, first out) and
+    // only add bits: NSWindowStyleMaskNonactivatingPanel (1 << 7).
+    let deferred_handle = window.app_handle().clone();
+    let block = block2::RcBlock::new(move || {
+        use tauri_nspanel::ManagerExt;
+        let Ok(panel) = deferred_handle.get_webview_panel("main") else {
+            return;
+        };
+        let ns_panel = panel.as_panel();
+        unsafe {
+            use objc2::msg_send;
+            let current: usize = msg_send![ns_panel, styleMask];
+            let _: () = msg_send![ns_panel, setStyleMask: current | (1usize << 7)];
+        }
+        configure_native_title_bar(ns_panel);
+    });
+    // SAFETY: the block only touches AppKit on the main queue it is added to.
+    unsafe { objc2_foundation::NSOperationQueue::mainQueue().addOperationWithBlock(&block) };
     // Keep visibility under our resign-key state machine. NSPanel defaults can
     // otherwise order the panel out when TieZ is activated/deactivated without
     // updating `clipboard_panel_visible`, leaving the next hotkey invocation in
@@ -222,6 +250,18 @@ pub fn setup_clipboard_panel(window: &tauri::WebviewWindow) -> Result<(), String
             });
         });
     });
+    // The close button hides the panel, like the hotkey or Esc.
+    let close_handle = window.app_handle().clone();
+    handler.window_should_close(move |_| {
+        let handle = close_handle.clone();
+        tauri::async_runtime::spawn(async move {
+            let _ = crate::app::window_manager::hide_window_cmd(handle);
+        });
+        objc2::runtime::Bool::NO
+    });
+    // A floating panel has no maximized state (double-clicking the title bar
+    // area would otherwise zoom it).
+    handler.window_should_zoom(|_, _| objc2::runtime::Bool::NO);
     panel.set_event_handler(Some(handler.as_ref()));
 
     eprintln!("[macos-overlay] main window converted to NSPanel");
@@ -230,6 +270,48 @@ pub fn setup_clipboard_panel(window: &tauri::WebviewWindow) -> Result<(), String
 
 #[cfg(target_os = "macos")]
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering as AtomicOrdering};
+
+/// Transparent, untitled title bar with only the close button: a floating
+/// panel can't be minimized or zoomed, so those buttons are hidden.
+#[cfg(target_os = "macos")]
+fn configure_native_title_bar(window: &objc2_app_kit::NSWindow) {
+    use objc2::msg_send;
+    use objc2::runtime::{AnyObject, Sel};
+    unsafe {
+        let _: () = msg_send![window, setTitlebarAppearsTransparent: true];
+        // NSWindowTitleHidden
+        let _: () = msg_send![window, setTitleVisibility: 1isize];
+        // NSTitlebarSeparatorStyleNone (macOS 11+)
+        let responds: bool = msg_send![window, respondsToSelector: Sel::register(c"setTitlebarSeparatorStyle:")];
+        if responds {
+            let _: () = msg_send![window, setTitlebarSeparatorStyle: 1isize];
+        }
+        // An empty compact toolbar: AppKit then centres the button in a 40pt
+        // bar (centre 19pt in, 20pt down on macOS 26/27), level with the
+        // header row, and keeps it there through every relayout.
+        let toolbar: *mut AnyObject = msg_send![objc2::class!(NSToolbar), alloc];
+        let id = objc2_foundation::NSString::from_str("tiez-title-bar");
+        let toolbar: *mut AnyObject = msg_send![toolbar, initWithIdentifier: &*id];
+        if !toolbar.is_null() {
+            let _: () = msg_send![toolbar, setShowsBaselineSeparator: false];
+            let _: () = msg_send![window, setToolbar: toolbar];
+            let _: () = msg_send![toolbar, release];
+            // NSWindowToolbarStyleUnifiedCompact (macOS 11+)
+            let responds: bool = msg_send![window, respondsToSelector: Sel::register(c"setToolbarStyle:")];
+            if responds {
+                let _: () = msg_send![window, setToolbarStyle: 4isize];
+            }
+        }
+        for kind in [1usize, 2usize] {
+            // NSWindowMiniaturizeButton, NSWindowZoomButton
+            let button: *mut AnyObject = msg_send![window, standardWindowButton: kind];
+            if !button.is_null() {
+                let _: () = msg_send![button, setHidden: true];
+            }
+        }
+    }
+}
+
 
 #[cfg(target_os = "macos")]
 fn clipboard_panel_visible() -> &'static AtomicBool {

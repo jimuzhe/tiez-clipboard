@@ -55,16 +55,6 @@ if (isMacPlatform && isTauriRuntime()) {
     .catch(() => {});
 }
 
-// macOS grays window buttons while the window is behind others; the header's
-// hide button does the same (layout.css, .traffic-light).
-if (isMacPlatform) {
-  const syncWindowActive = () =>
-    document.documentElement.classList.toggle("window-inactive", !document.hasFocus());
-  window.addEventListener("focus", syncWindowActive);
-  window.addEventListener("blur", syncWindowActive);
-  syncWindowActive();
-}
-
 const root = ReactDOM.createRoot(document.getElementById("root") as HTMLElement);
 root.render(
   <React.StrictMode>

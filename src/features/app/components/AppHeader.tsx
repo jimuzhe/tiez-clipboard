@@ -200,13 +200,10 @@ const AppHeader = ({
       <div className="header-top">
         <div className="header-leading">
           {isMac && (
-            <div className="mac-traffic-lights">
-              <button
-                className="traffic-light red"
-                title={t('hide')}
-                aria-label={t('hide')}
-                onClick={hideWindow}
-              />
+            // macOS draws its own close button here (macos_api/window.rs);
+            // this keeps its place so the header lays out around it.
+            <div className="mac-traffic-lights" aria-hidden="true">
+              <span className="traffic-light-space" />
             </div>
           )}
           {(showSettings || showTagManager || showEmojiPanel) && (
