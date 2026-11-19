@@ -58,9 +58,17 @@
   --scrollbar-thumb-hover-color: rgba(var(--native-accent-rgb), 0.45);
 }
 
+/* The macOS system theme is a solid window (glass is the Acrylic theme's), so
+   a palette keeps it solid too. The see-through window above is Mica's.
+   The html.platform-macos forms match macos.css's own window rules, which
+   otherwise kept dark mode at plain #1e1e1e without the palette's tint. */
 :root.theme-macos:is(.native-palette-sakura, .native-palette-color),
-:root body.theme-macos:is(.native-palette-sakura, .native-palette-color) {
+:root body.theme-macos:is(.native-palette-sakura, .native-palette-color),
+html.platform-macos.theme-macos:is(.native-palette-sakura, .native-palette-color),
+html.platform-macos body.theme-macos:is(.native-palette-sakura, .native-palette-color) {
   --native-shell-border-width: 0.5px;
+  --bg-window: rgb(var(--native-window));
+  --shell-background: var(--bg-window);
 }
 
 @media (prefers-color-scheme: dark) {
