@@ -923,6 +923,45 @@
   }
 }
 
+/* Narrow window: a 200px text field or picker beside its label squeezed the
+   label and its hint into a thin column (until the label column is about as
+   wide as the field) and cut addresses and paths short. It goes on its own
+   line under the label at full width, so every field starts and ends at the
+   same edges. Short fields (numbers, ports: --sm, --xs) stay beside their
+   label. The fixed field width above is more specific than the rule before,
+   so this one has to be as well. */
+@container settings (max-width: 460px) {
+  .settings-view .setting-item:not(.column) .search-input.settings-field:not(.settings-field--sm):not(.settings-field--xs),
+  .settings-view .setting-item:not(.column) .settings-picker-button {
+    flex: 0 0 100%;
+    width: 100%;
+  }
+}
+
+@container settings (max-width: 380px) {
+  .settings-view .setting-item.is-child {
+    padding-left: calc(var(--st-child-indent) / 2);
+  }
+
+  /* A short field (a number, a port) stays at the end of its row like a
+     switch, and the label and hint wrap beside it. Without this the long
+     hint pushed it onto its own line as a half-width box. The label keeps
+     enough room for a short name; below that the field still wraps. */
+  .settings-view .setting-item:not(.column) {
+    column-gap: var(--st-space-3);
+  }
+
+  .settings-view .setting-item:not(.column) > .item-label-group {
+    flex: 1 1 0;
+    min-width: 7em;
+  }
+
+  .settings-view .setting-item .search-input.settings-field--sm {
+    flex-basis: 72px;
+    width: 72px;
+  }
+}
+
 /* Secondary button used for every in-row action on the settings pages. */
 .settings-action-button {
   flex-shrink: 0;
