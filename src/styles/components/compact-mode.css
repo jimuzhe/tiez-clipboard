@@ -172,7 +172,8 @@ html.compact-show-time .history-item.compact .item-tags-container {
     position: absolute;
     bottom: 2px;
     left: 10px;
-    z-index: 5;
+    /* Above a pinned row's drag handle (20), which spans the left column. */
+    z-index: 21;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -329,6 +330,14 @@ html.compact-show-time .history-item.compact .item-tags-container {
 /* Hide the App Info (Source/Icon/Pin) on the left side */
 .history-item.compact .item-meta .app-info {
     display: none;
+}
+
+/* The normal-mode nudge (transform) would make this zero-height box the
+   handle's containing block, and its overflow would clip it: the handle
+   below must be positioned against the row. */
+.history-item.compact .item-meta-left {
+    transform: none;
+    overflow: visible;
 }
 
 /* Show Drag Handle in Compact Mode */
