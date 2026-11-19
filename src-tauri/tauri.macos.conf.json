@@ -15,5 +15,32 @@
         "Library/LaunchAgents/com.tiez.autostart.plist": "macos/com.tiez.autostart.plist"
       }
     }
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "TieZ",
+        "label": "main",
+        "width": 352,
+        "height": 380,
+        "minWidth": 250,
+        "minHeight": 300,
+        "resizable": true,
+        "fullscreen": false,
+        "transparent": true,
+        "backgroundColor": "#00000000",
+        "alwaysOnTop": false,
+        "decorations": true,
+        "devtools": false,
+        "skipTaskbar": true,
+        "visible": true,
+        "visibleOnAllWorkspaces": true,
+        "dragDropEnabled": false,
+        "acceptFirstMouse": true,
+        "focusable": true,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true
+      }
+    ]
   }
 }

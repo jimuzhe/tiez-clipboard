@@ -108,11 +108,15 @@ fn main() -> AppResult<()> {
     // calls show() on any window it has no saved state for, so the hidden
     // compact preview popped up the first time it was created; and restoring
     // "visible" would fight silent start. The app shows windows itself.
+    // Decorations come from the config, not from the last run: restoring them
+    // re-styles the window after it has become a panel (macOS), which makes
+    // WebKit throw now that the window has a title bar.
     let builder = builder.plugin(
         tauri_plugin_window_state::Builder::default()
             .with_state_flags(
                 tauri_plugin_window_state::StateFlags::all()
-                    - tauri_plugin_window_state::StateFlags::VISIBLE,
+                    - tauri_plugin_window_state::StateFlags::VISIBLE
+                    - tauri_plugin_window_state::StateFlags::DECORATIONS,
             )
             .with_filter(|label| label == "main")
             .build(),

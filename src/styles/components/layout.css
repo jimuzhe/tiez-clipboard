@@ -53,6 +53,12 @@ header {
   align-items: center;
 }
 
+/* Room for the native close button macOS draws over the header. */
+.traffic-light-space {
+  width: var(--traffic-size);
+  height: var(--traffic-size);
+}
+
 .windows-close-btn {
   flex: 0 0 auto;
   color: var(--text-secondary);
@@ -107,84 +113,15 @@ header {
   transform: scale(0.96);
 }
 
-.traffic-light {
-  width: var(--traffic-size);
-  height: var(--traffic-size);
-  border-radius: 50%;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  /* As on macOS: red while the window is active, gray behind other windows
-     (html.window-inactive, set in main.tsx). */
-  background-color: var(--traffic-red);
-  box-shadow: inset 0 0 0 0.5px rgba(var(--shadow-rgb), 0.18);
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background-color var(--duration-fast) ease;
-}
-
-html.window-inactive .traffic-light {
-  background-color: var(--traffic-inactive);
-  box-shadow: none;
-}
-
-/* macOS places window buttons as far from the left edge as from the top, and
-   the same for every theme: the header row is centred 15px below its top
-   padding, so the button's centre is that far in. This also keeps it off the
-   rounded corner when the window is narrow. */
+/* macOS draws its close button over the header (macos_api/window.rs): in a
+   compact toolbar its centre sits 19pt from the left edge for every theme.
+   The placeholder in the header takes the same spot. */
 html.platform-macos .header-top {
-  padding-left: calc(var(--layout-header-padding-y) + 15px - var(--traffic-size) / 2); /* design-ok: macOS window-button inset */
+  padding-left: calc(19px - var(--traffic-size) / 2); /* design-ok: native window-button position */
 }
 
 html.platform-macos .header-leading {
   padding-left: 0;
-}
-
-/* Emblems (symbols inside dots) - hidden by default */
-.traffic-light::before {
-  content: '';
-  font-size: 8px; /* design-ok: macOS traffic-light glyph size */
-  font-weight: 700;
-  color: var(--traffic-glyph);
-  opacity: 0;
-  transition: opacity var(--duration-fast) ease;
-  line-height: 1;
-}
-
-.mac-traffic-lights:hover .traffic-light::before {
-  opacity: 1;
-}
-
-/* Hover colors and emblems */
-.mac-traffic-lights:hover .traffic-light.red {
-  background-color: var(--traffic-red);
-  box-shadow: 0 0 2px color-mix(in srgb, var(--traffic-red) 40%, transparent);
-}
-.mac-traffic-lights:hover .traffic-light.red::before {
-  content: '×';
-  margin-top: -1px;
-}
-
-.mac-traffic-lights:hover .traffic-light.yellow {
-  background-color: var(--traffic-yellow);
-  box-shadow: 0 0 2px color-mix(in srgb, var(--traffic-yellow) 40%, transparent);
-}
-.mac-traffic-lights:hover .traffic-light.yellow::before {
-  content: '−';
-  font-size: 10px; /* design-ok: macOS traffic-light glyph size */
-  margin-top: -1px;
-}
-
-.mac-traffic-lights:hover .traffic-light.green {
-  background-color: var(--traffic-green);
-  box-shadow: 0 0 2px color-mix(in srgb, var(--traffic-green) 40%, transparent);
-}
-.mac-traffic-lights:hover .traffic-light.green::before {
-  content: '+';
-  font-size: 9px; /* design-ok: macOS traffic-light glyph size */
-  margin-top: -0.5px; /* design-ok: optical centring of the glyph */
 }
 
 .header-drag-region {
