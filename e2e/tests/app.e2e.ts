@@ -661,6 +661,49 @@ test('紧凑模式：列表条目使用紧凑布局，默认模式不使用', as
   await expect.poll(compactItems).toBeGreaterThan(0);
 });
 
+// The compact grip used to collapse to zero height, so a press there started
+// dragging the entry out to other apps instead of reordering.
+test('紧凑模式：拖动固定项的手柄可以调整顺序', async ({ app, browser }) => {
+  await app.open('/?compact=1');
+  await expect.poll(() => browser.evaluate(() => (window as any).__listenerCount('clipboard-updated'))).toBeGreaterThan(0);
+  const SECOND = { id: 95701, text: '第二条固定 E2E' };
+  await browser.evaluate(([id, text]: [number, string]) => {
+    (window as any).__pushItem({ id, content: text, preview: text, source_app: '备忘录', is_pinned: true, pinned_order: 2 });
+    return null;
+  }, [SECOND.id, SECOND.text]);
+  const pinnedOrder = () =>
+    browser.evaluate(() =>
+      [...document.querySelectorAll('.pinned-reorder [data-clipboard-item-id]')].map((e) => Number((e as HTMLElement).dataset.clipboardItemId)),
+    );
+  await expect.poll(pinnedOrder).toEqual([SECOND.id, SAMPLE.pinned.id]);
+
+  const geometry = () =>
+    browser.evaluate(([dragId, belowId]: number[]) => {
+      const handle = document.querySelector(`[data-clipboard-item-id="${dragId}"] .drag-handle`)!.getBoundingClientRect();
+      const below = document.querySelector(`[data-clipboard-item-id="${belowId}"]`)!.getBoundingClientRect();
+      const x = handle.left + handle.width / 2;
+      const y = handle.top + handle.height / 2;
+      return { x, y, height: handle.height, hit: !!document.elementFromPoint(x, y)?.closest('.drag-handle'), belowBottom: below.bottom };
+    }, [SECOND.id, SAMPLE.pinned.id]);
+  // Wait for the new row's entry animation to settle.
+  await expect.poll(async () => (await geometry()).hit).toBe(true);
+  const at = await geometry();
+  expect(at.height).toBeGreaterThan(10);
+
+  await resetCalls(browser);
+  await browser.mouse.move(at.x, at.y);
+  await browser.mouse.down();
+  for (let y = at.y; y <= at.belowBottom + 10; y += 8) await browser.mouse.move(at.x, y);
+  await browser.mouse.up();
+
+  await expect.poll(pinnedOrder).toEqual([SAMPLE.pinned.id, SECOND.id]);
+  await expect.poll(() => callsTo(browser, 'update_pinned_order')).toEqual([
+    expect.objectContaining({ args: { orders: [[SAMPLE.pinned.id, 2], [SECOND.id, 1]] } }),
+  ]);
+  expect(await callsTo(browser, 'start_native_drag')).toEqual([]);
+  expect(await callsTo(browser, 'copy_to_clipboard')).toEqual([]);
+});
+
 test('表情包视图：渲染表情网格', async ({ app, screen }) => {
   await app.open('/?view=emoji');
   await expect(screen.getByText('表情包')).toBeVisible();
