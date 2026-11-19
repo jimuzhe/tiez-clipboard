@@ -81,9 +81,96 @@ pub fn maybe_open_devtools(window: &WebviewWindow) {
 #[cfg(not(feature = "devtools"))]
 pub fn maybe_open_devtools(_window: &WebviewWindow) {}
 
+/// AppKit 26 (macOS 26), the first with NSGlassEffectView; window-vibrancy
+/// checks the same number before applying Liquid Glass.
+#[cfg(target_os = "macos")]
+pub fn macos_has_liquid_glass() -> bool {
+    unsafe { objc2_app_kit::NSAppKitVersionNumber >= 2685.0 }
+}
+
+/// The corner radius macOS gives a standard window: 16pt on macOS 26/27,
+/// about 10pt before. The 磨砂 panel stays borderless (a titled panel would
+/// change every theme's frame, and switching the Titled bit after `to_panel`
+/// aborts in WebKit), so its glass and CSS corners copy this radius instead.
+/// AppKit has no public API for it; read the private `_cornerRadius` of an
+/// undisplayed titled window, and fall back to 16pt if that ever goes away.
+/// Measured once on the main thread (`setup` warms it).
+#[cfg(target_os = "macos")]
+pub fn macos_window_corner_radius() -> f64 {
+    use std::sync::OnceLock;
+    const FALLBACK: f64 = 16.0;
+    static RADIUS: OnceLock<f64> = OnceLock::new();
+    if let Some(radius) = RADIUS.get() {
+        return *radius;
+    }
+    let Some(mtm) = objc2::MainThreadMarker::new() else {
+        return FALLBACK;
+    };
+    *RADIUS.get_or_init(|| probe_window_corner_radius(mtm).unwrap_or(FALLBACK))
+}
+
+#[cfg(target_os = "macos")]
+fn probe_window_corner_radius(mtm: objc2::MainThreadMarker) -> Option<f64> {
+    use objc2::{msg_send, sel, MainThreadOnly};
+    use objc2_app_kit::{NSBackingStoreType, NSWindow, NSWindowStyleMask};
+    use objc2_foundation::{NSObjectProtocol, NSPoint, NSRect, NSSize};
+
+    unsafe {
+        let window = NSWindow::initWithContentRect_styleMask_backing_defer(
+            NSWindow::alloc(mtm),
+            NSRect::new(NSPoint::new(0.0, 0.0), NSSize::new(200.0, 200.0)),
+            NSWindowStyleMask::Titled,
+            NSBackingStoreType::Buffered,
+            true,
+        );
+        window.setReleasedWhenClosed(false);
+        if !window.respondsToSelector(sel!(_cornerRadius)) {
+            return None;
+        }
+        let radius: f64 = msg_send![&*window, _cornerRadius];
+        (radius.is_finite() && radius > 0.0 && radius <= 40.0).then_some(radius)
+    }
+}
+
 /// AppKit view mutations must run together on the main thread. In particular,
 /// clearing off-thread can succeed while applying returns NotMainThread, leaving
 /// only the transparent webview. Keep the material attached across hide/show.
+/// The panel is a borderless transparent window. macOS draws its shadow for
+/// the window's outline, and that outline stays the full square: the glass
+/// view rounds only its own drawing. Behind the rounded glass that shows as a
+/// square frame with a grey wedge in each corner. Rounding the window's root
+/// layer gives the window itself the rounded outline; the shadow is then asked
+/// for again, now and once the web view has painted. (Asking for the shadow
+/// again without rounding the root layer changes nothing.)
+#[cfg(target_os = "macos")]
+fn round_macos_window_outline(window: &WebviewWindow, radius: f64) {
+    use objc2::msg_send;
+    use objc2::runtime::AnyObject;
+
+    fn apply(window: &WebviewWindow, radius: f64) {
+        let Ok(ptr) = window.ns_window() else { return };
+        unsafe {
+            let ns_window = &*(ptr as *const objc2_app_kit::NSWindow);
+            if let Some(content) = ns_window.contentView() {
+                content.setWantsLayer(true);
+                let layer: *mut AnyObject = msg_send![&*content, layer];
+                if !layer.is_null() {
+                    let _: () = msg_send![layer, setCornerRadius: radius];
+                    let _: () = msg_send![layer, setMasksToBounds: true];
+                }
+            }
+            ns_window.invalidateShadow();
+        }
+    }
+    apply(window, radius);
+    let later = window.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_millis(300));
+        let target = later.clone();
+        let _ = later.run_on_main_thread(move || apply(&target, radius));
+    });
+}
+
 #[cfg(target_os = "macos")]
 pub fn apply_macos_window_material(window: &WebviewWindow) -> tauri::Result<()> {
     let target = window.clone();
@@ -116,10 +203,15 @@ pub fn apply_macos_window_material(window: &WebviewWindow) -> tauri::Result<()> 
             // The library checks AppKit availability before creating the view.
             // Regular provides frosting; Clear is intentionally more transparent.
             let options = LiquidGlassOptions::new(NSGlassEffectViewStyle::Regular)
-                .radius(10.0)
+                // Same corners as a standard window on this macOS; the CSS
+                // shell uses the same number (get_platform_info).
+                .radius(macos_window_corner_radius())
                 .opaque(false);
             match apply_liquid_glass(&target, options) {
-                Ok(()) => return,
+                Ok(()) => {
+                    round_macos_window_outline(&target, macos_window_corner_radius());
+                    return;
+                }
                 Err(window_vibrancy::Error::UnsupportedPlatformVersion(_)) => {}
                 Err(error) => {
                     eprintln!("[window-material] glass failed, using Popover: {error}");
@@ -538,12 +630,14 @@ fn toggle_window_windows(app: &AppHandle) {
             WindowExt::release_modifier_keys();
             let _ = window.set_focusable(false);
             let _ = window.hide();
+            notify_main_window_hidden(app);
 
             let _ = restore_previous_app_focus(app.clone());
 
             IS_HIDDEN.store(false, Ordering::Relaxed);
             NAVIGATION_ENABLED.store(false, Ordering::SeqCst);
             NAVIGATION_MODE_ACTIVE.store(false, Ordering::SeqCst);
+            crate::global_state::SEARCH_TOP_HIT_ACTIVE.store(false, Ordering::SeqCst);
             crate::app::light_mode::on_window_hidden();
             return;
         }
@@ -796,12 +890,14 @@ fn toggle_window_macos(app_handle: &AppHandle) {
             if !crate::infrastructure::macos_api::window::hide_clipboard_panel(app_handle) {
                 let _ = window.hide();
             }
+            notify_main_window_hidden(app_handle);
             let _ = restore_previous_app_focus(app_handle.clone());
 
             IS_HIDDEN.store(false, Ordering::Relaxed);
             CURRENT_DOCK.store(0, Ordering::Relaxed);
             NAVIGATION_ENABLED.store(false, Ordering::SeqCst);
             NAVIGATION_MODE_ACTIVE.store(false, Ordering::SeqCst);
+            crate::global_state::SEARCH_TOP_HIT_ACTIVE.store(false, Ordering::SeqCst);
             crate::app::light_mode::on_window_hidden();
             return;
         }
@@ -860,6 +956,7 @@ pub fn set_navigation_enabled(enabled: bool) -> Result<(), String> {
     NAVIGATION_ENABLED.store(enabled, Ordering::SeqCst);
     if !enabled {
         NAVIGATION_MODE_ACTIVE.store(false, Ordering::SeqCst);
+        crate::global_state::SEARCH_TOP_HIT_ACTIVE.store(false, Ordering::SeqCst);
     }
     Ok(())
 }
@@ -867,6 +964,12 @@ pub fn set_navigation_enabled(enabled: bool) -> Result<(), String> {
 #[tauri::command]
 pub fn set_navigation_mode(active: bool) -> Result<(), String> {
     NAVIGATION_MODE_ACTIVE.store(active, Ordering::SeqCst);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn set_search_top_hit(active: bool) -> Result<(), String> {
+    crate::global_state::SEARCH_TOP_HIT_ACTIVE.store(active, Ordering::SeqCst);
     Ok(())
 }
 
@@ -926,6 +1029,13 @@ pub fn activate_app_focus(app_handle: AppHandle) -> Result<(), String> {
     activate_window_focus(app_handle)
 }
 
+/// Sent whenever the main window is hidden. The list hides revealed
+/// sensitive entries again, so the next opening never starts with a secret
+/// on screen.
+pub fn notify_main_window_hidden(app: &AppHandle) {
+    let _ = app.emit("clipboard-hidden", ());
+}
+
 fn hide_window(app_handle: AppHandle, restore_focus: bool) -> Result<(), String> {
     if let Some(window) = app_handle.get_webview_window("main") {
         let _ = app_handle.emit("force-hide-compact-preview", ());
@@ -948,8 +1058,10 @@ fn hide_window(app_handle: AppHandle, restore_focus: bool) -> Result<(), String>
         }
         #[cfg(not(target_os = "macos"))]
         let _ = window.hide();
+        notify_main_window_hidden(&app_handle);
         NAVIGATION_ENABLED.store(false, Ordering::SeqCst);
         NAVIGATION_MODE_ACTIVE.store(false, Ordering::SeqCst);
+        crate::global_state::SEARCH_TOP_HIT_ACTIVE.store(false, Ordering::SeqCst);
         crate::app::light_mode::on_window_hidden();
         if restore_focus {
             let _ = restore_previous_app_focus(app_handle.clone());

@@ -140,7 +140,7 @@ pub fn init(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     start_services(app, &settings, app_handle.clone());
 
     // 9. Tray Setup
-    setup_tray(app, settings.hide_tray_icon);
+    crate::app::tray::setup(app, settings.hide_tray_icon);
 
     // 10. Theme Initial Application
     apply_initial_theme(app);
@@ -2026,50 +2026,6 @@ fn init_analytics(app: &App, repo: &impl SettingsRepository) {
     }
 }
 
-fn setup_tray(app: &App, hide_tray: bool) {
-    use tauri::menu::{Menu, MenuItem};
-    use tauri::tray::{MouseButton, TrayIconBuilder, TrayIconEvent};
-
-    let show_i = MenuItem::with_id(app, "show", "打开窗口", true, None::<&str>).unwrap();
-    let quit_i = MenuItem::with_id(app, "quit", "退出应用", true, None::<&str>).unwrap();
-    let menu = Menu::with_items(app, &[&show_i, &quit_i]).unwrap();
-    let icon =
-        tauri::image::Image::from_bytes(include_bytes!("../../icons/tray-icon.png")).unwrap();
-
-    let mut tray_builder = TrayIconBuilder::with_id("main_tray")
-        .icon(icon)
-        .tooltip("TieZ")
-        .show_menu_on_left_click(false)
-        .menu(&menu)
-        .on_menu_event(|app, event| {
-            if event.id.as_ref() == "show" {
-                let _ = crate::app::window_manager::focus_clipboard_window(app.clone());
-            } else if event.id.as_ref() == "quit" {
-                crate::app::light_mode::request_app_exit(app);
-            }
-        })
-        .on_tray_icon_event(|tray, event| {
-            if let TrayIconEvent::Click {
-                button: MouseButton::Left,
-                ..
-            } = event
-            {
-                // Same intentional-open path as Dock reopen (make-key + LAST_SHOW).
-                let _ = crate::app::window_manager::focus_clipboard_window(tray.app_handle().clone());
-            }
-        });
-
-    #[cfg(target_os = "macos")]
-    {
-        tray_builder = tray_builder.icon_as_template(true);
-    }
-
-    let tray = tray_builder.build(app).expect("Failed to build tray");
-
-    let _ = tray.set_visible(!hide_tray);
-    app.manage(tray);
-}
-
 fn apply_initial_theme(app: &App) {
     let db_state = app.state::<DbState>();
     let theme = db_state
@@ -2156,7 +2112,8 @@ fn setup_taskbar_listener(_app: &App) {
 }
 
 fn plain_paste_goes_to_selection(app: &AppHandle) -> bool {
-    NAVIGATION_MODE_ACTIVE.load(Ordering::SeqCst)
+    (NAVIGATION_MODE_ACTIVE.load(Ordering::SeqCst)
+        || crate::global_state::SEARCH_TOP_HIT_ACTIVE.load(Ordering::SeqCst))
         && !IS_HIDDEN.load(Ordering::SeqCst)
         && app
             .get_webview_window("main")
@@ -2202,8 +2159,9 @@ pub fn handle_global_shortcut(
         } {
             if shortcut == &plain_s {
                 // A registered hotkey never reaches the window, so with an
-                // entry picked by Up/Down the window pastes that one;
-                // otherwise the newest entry is pasted.
+                // entry picked by Up/Down (or the first search result shown
+                // as selected) the window pastes that one; otherwise the
+                // newest entry is pasted.
                 if plain_paste_goes_to_selection(app) {
                     let _ = app.emit("navigation-action", "plain");
                 } else {
@@ -2281,6 +2239,7 @@ pub fn handle_window_event(window: &tauri::Window, event: &tauri::WindowEvent) {
             }
             #[cfg(not(target_os = "macos"))]
             let _ = window.hide();
+            crate::app::window_manager::notify_main_window_hidden(window.app_handle());
             IS_HIDDEN.store(false, Ordering::Relaxed);
             CURRENT_DOCK.store(0, Ordering::Relaxed);
             NAVIGATION_ENABLED.store(false, Ordering::SeqCst);
@@ -2386,6 +2345,7 @@ fn handle_blur(window: &tauri::Window) {
             if !is_blur_ignored() && !WINDOW_PINNED.load(Ordering::Relaxed) {
                 let _ = w.app_handle().emit("force-hide-compact-preview", ());
                 let _ = w.hide();
+                crate::app::window_manager::notify_main_window_hidden(w.app_handle());
                 NAVIGATION_ENABLED.store(false, Ordering::SeqCst);
                 release_modifier_keys();
                 let _ = restore_previous_app_focus(w.app_handle().clone());

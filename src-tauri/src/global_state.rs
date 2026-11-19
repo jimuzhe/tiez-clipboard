@@ -13,6 +13,10 @@ pub static IS_RECORDING: AtomicBool = AtomicBool::new(false);
 pub static IGNORE_BLUR: AtomicBool = AtomicBool::new(false);
 pub static WINDOW_PINNED: AtomicBool = AtomicBool::new(false);
 pub static CLIPBOARD_MONITOR_PAUSED: AtomicBool = AtomicBool::new(false);
+/// The user paused recording from the tray menu. Separate from
+/// CLIPBOARD_MONITOR_PAUSED, which hotkey recording sets and clears on its own.
+/// Not saved: a restart records again.
+pub static USER_RECORDING_PAUSED: AtomicBool = AtomicBool::new(false);
 
 static BLUR_GUARD_OWNERS: OnceLock<Mutex<HashSet<String>>> = OnceLock::new();
 
@@ -122,4 +126,7 @@ pub static IS_HIDDEN: AtomicBool = AtomicBool::new(false);
 pub static IS_MOUSE_BUTTON_DOWN: AtomicBool = AtomicBool::new(false);
 pub static NAVIGATION_ENABLED: AtomicBool = AtomicBool::new(false);
 pub static NAVIGATION_MODE_ACTIVE: AtomicBool = AtomicBool::new(false);
+/// The first search result shows as selected (Enter would paste it) while
+/// keyboard mode is still off. The plain-paste hotkey then pastes that row.
+pub static SEARCH_TOP_HIT_ACTIVE: AtomicBool = AtomicBool::new(false);
 pub static IS_MAIN_WINDOW_FOCUSED: AtomicBool = AtomicBool::new(false);

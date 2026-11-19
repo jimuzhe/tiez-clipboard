@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useCallback, useState, useDeferredValue } from "react";
+import { pasteKeepsFormat } from "./shared/lib/clickPaste";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import ToastContainer from "./shared/components/ToastContainer";
@@ -26,6 +27,7 @@ import { useClipboardActions } from "./shared/hooks/useClipboardActions";
 import { useWindowPinnedListener } from "./shared/hooks/useWindowPinnedListener";
 import { useCustomBackground } from "./shared/hooks/useCustomBackground";
 import { useToastListener } from "./shared/hooks/useToastListener";
+import { useTrayMenuEvents } from "./shared/hooks/useTrayMenuEvents";
 import { useAppBootstrap } from "./shared/hooks/useAppBootstrap";
 import { useAppActions } from "./shared/hooks/useAppActions";
 import { useNavigationSync } from "./shared/hooks/useNavigationSync";
@@ -61,6 +63,7 @@ import {
   noteCompactPreviewClipboardShown,
   warmupCompactPreviewWindow
 } from "./features/clipboard/lib/compactPreviewControls";
+import { searchTopHitId } from "./features/clipboard/lib/itemInteraction";
 import { isMacPlatform } from "./shared/lib/platform";
 import { isTauriRuntime } from "./shared/lib/tauriRuntime";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -68,6 +71,7 @@ import ClipboardDetailPane from "./features/clipboard/components/ClipboardDetail
 import { useSplitView } from "./features/app/hooks/useSplitView";
 import { notePointerPick } from "./shared/lib/pointerPick";
 import { useDetailPaneActions } from "./features/app/hooks/useDetailPaneActions";
+import { useRevealReset } from "./features/app/hooks/useRevealReset";
 import { usePaneWidth } from "./shared/hooks/usePaneWidth";
 import PaneDivider from "./shared/components/PaneDivider";
 import { quickPasteOrder } from "./shared/lib/quickPasteOrder";
@@ -220,6 +224,8 @@ const App = () => {
     setDeleteAfterPaste,
     moveToTopAfterPaste,
     clickCopyOnly,
+    clickPasteMode,
+    setClickPasteMode,
     setMoveToTopAfterPaste,
     setClickCopyOnly,
     privacyProtection,
@@ -670,6 +676,7 @@ const App = () => {
     setDeleteAfterPaste,
     setMoveToTopAfterPaste,
     setClickCopyOnly,
+    setClickPasteMode,
     setHideTrayIcon,
     setHideDockIcon,
     setEdgeDocking,
@@ -891,6 +898,8 @@ const App = () => {
     };
   }, [setTypeFilter]);
 
+  useRevealReset(setRevealedIds);
+
   useCustomBackground({ customBackground, customBackgroundOpacity, theme });
 
   useClipboardEvents({
@@ -910,6 +919,15 @@ const App = () => {
 
 
   useToastListener({ pushToast });
+
+  // Tray menu "Settings…": the window is already open, show the settings page.
+  const openSettingsFromTray = useCallback(() => {
+    setChatMode(false);
+    setShowTagManager(false);
+    setShowEmojiPanel(false);
+    setShowSettings(true);
+  }, [setChatMode, setShowTagManager, setShowEmojiPanel, setShowSettings]);
+  useTrayMenuEvents({ t, pushToast, openSettings: openSettingsFromTray });
 
   useSettingsPanelReset({ showSettings, setCollapsedGroups, setSettingsSubpage });
 
@@ -1016,7 +1034,9 @@ const App = () => {
     showTagManager: effectiveShowTagManager,
     chatMode,
     showEmojiPanel: effectiveShowEmojiPanel,
-    editingInline: editingTagsId !== null || editingNoteId !== null
+    editingInline: editingTagsId !== null || editingNoteId !== null,
+    dialogOpen: confirmDialog.show || isUpdateOpen,
+    searchInputRef
   });
 
   const { copyToClipboard, copyWithoutPaste, openContent, deleteEntry, deleteEntryById, togglePin, handleUpdateTags, handleUpdateNote } =
@@ -1041,6 +1061,15 @@ const App = () => {
     pushToast,
     fetchHistory
   });
+
+  // Rows and the detail pane say which action asked for the paste: primary
+  // (left click, the Paste button) or secondary (right click). Which of the
+  // two keeps the formatting is the user's setting.
+  const copyByButton = useCallback(
+    (id: number, content: string, contentType: string, primary = true, isPinned?: boolean, tags?: string[]) =>
+      copyToClipboard(id, content, contentType, pasteKeepsFormat(clickPasteMode, primary), isPinned, tags),
+    [copyToClipboard, clickPasteMode]
+  );
 
   const { handleAIAction, handleAISupplement, applyAIResult, discardAIResult, copyAIText, aiDetails } = useAiActions({
     history,
@@ -1129,7 +1158,7 @@ const App = () => {
   const detailActions = useDetailPaneActions({
     items: navigableHistory,
     focusDetailItem,
-    copyToClipboard,
+    copyToClipboard: copyByButton,
     openContent,
     togglePin,
     deleteEntry,
@@ -1179,6 +1208,17 @@ const App = () => {
     setShowSearchBox(true);
   }, [setTypeFilter, setShowSearchBox]);
 
+  // After a search, Enter pastes the first result; it shows as selected until
+  // the arrow keys or the mouse pick a row.
+  const topHitId = searchTopHitId({
+    searchFocused: searchIsFocused,
+    search,
+    listIsCurrent: deferredSearch === search && debouncedSearch === search,
+    isComposing,
+    isKeyboardMode,
+    firstItemId: navigableHistory[0]?.id ?? null
+  });
+
   const { selectItemByIndex } = useKeyboardNavigation({
     filteredHistory: navigableHistory,
     selectedIndex,
@@ -1200,6 +1240,8 @@ const App = () => {
     copyWithoutPaste,
     cycleCategory,
     setSearch,
+    searchTopHitId: topHitId,
+    primaryPasteKeepsFormat: pasteKeepsFormat(clickPasteMode, true),
     deleteItem: deleteFromKeyboard
   });
 
@@ -1209,6 +1251,7 @@ const App = () => {
     revealedIds,
     isKeyboardMode,
     selectedItemId,
+    searchTopHitId: topHitId,
     detailFocusedId: detailItem?.id ?? null,
     splitActive,
     noteDraft: editingNoteDraft,
@@ -1233,7 +1276,7 @@ const App = () => {
     aiEnabled,
     aiOptionsOpenId,
     setAiOptionsOpenId,
-    copyToClipboard,
+    copyToClipboard: copyByButton,
     selectItemByIndex,
     setRevealedIds,
     openContent,
@@ -1345,6 +1388,7 @@ const App = () => {
             t={t}
             theme={theme}
             privacyProtection={privacyProtection}
+            primaryPasteKeepsFormat={pasteKeepsFormat(clickPasteMode, true)}
             showSettings={showSettings}
             showTagManager={effectiveShowTagManager}
             tagManagerEnabled={tagManagerEnabled}

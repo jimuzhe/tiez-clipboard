@@ -39,6 +39,32 @@ if (isMacPlatform) {
   document.body.classList.add("platform-windows");
 }
 
+// macOS 26+ puts the 磨砂 theme on Liquid Glass, which gets its own layout
+// (themes/acrylic.css); the web view can't tell the macOS version itself.
+if (isMacPlatform && isTauriRuntime()) {
+  invoke<{ has_liquid_glass: boolean; window_corner_radius: number }>("get_platform_info")
+    .then(({ has_liquid_glass, window_corner_radius }) => {
+      if (!has_liquid_glass) return;
+      // The 磨砂 shell copies the system window corners (acrylic.css).
+      if (window_corner_radius > 0) {
+        document.documentElement.style.setProperty("--macos-window-radius", `${window_corner_radius}px`);
+      }
+      document.documentElement.classList.add("macos-liquid-glass");
+      document.body.classList.add("macos-liquid-glass");
+    })
+    .catch(() => {});
+}
+
+// macOS grays window buttons while the window is behind others; the header's
+// hide button does the same (layout.css, .traffic-light).
+if (isMacPlatform) {
+  const syncWindowActive = () =>
+    document.documentElement.classList.toggle("window-inactive", !document.hasFocus());
+  window.addEventListener("focus", syncWindowActive);
+  window.addEventListener("blur", syncWindowActive);
+  syncWindowActive();
+}
+
 const root = ReactDOM.createRoot(document.getElementById("root") as HTMLElement);
 root.render(
   <React.StrictMode>

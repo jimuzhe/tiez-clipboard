@@ -759,6 +759,7 @@ async fn handle_window_focus_for_paste(app_handle: &tauri::AppHandle) -> AppResu
             let _ = crate::infrastructure::macos_api::window::hide_clipboard_panel(app_handle);
             #[cfg(not(target_os = "macos"))]
             let _ = window.hide();
+            crate::app::window_manager::notify_main_window_hidden(app_handle);
             crate::IS_HIDDEN.store(false, std::sync::atomic::Ordering::Relaxed);
             crate::app::window_manager::release_modifier_keys();
         }
@@ -1379,6 +1380,7 @@ async fn perform_paste_action(
                 println!("[WARN] Clipboard window STOLE focus back, attempting manual hide...");
                 if let Some(window) = app_handle.get_webview_window("main") {
                     let _ = window.hide();
+                    crate::app::window_manager::notify_main_window_hidden(app_handle);
                     crate::IS_HIDDEN.store(false, std::sync::atomic::Ordering::Relaxed);
                     crate::app::window_manager::release_modifier_keys();
                 }
@@ -1438,6 +1440,7 @@ async fn hide_window_after_paste(app_handle: &tauri::AppHandle) {
         let _ = crate::infrastructure::macos_api::window::hide_clipboard_panel(app_handle);
         #[cfg(not(target_os = "macos"))]
         let _ = _window.hide();
+        crate::app::window_manager::notify_main_window_hidden(app_handle);
         crate::IS_HIDDEN.store(false, std::sync::atomic::Ordering::Relaxed);
         crate::NAVIGATION_ENABLED.store(false, Ordering::Relaxed); // Disable navigation like hide_window_cmd does
         crate::app::window_manager::release_modifier_keys();

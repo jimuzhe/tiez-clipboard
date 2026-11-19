@@ -144,7 +144,8 @@ body.theme-retro {
   --range-track-height: 8px;
   --range-thumb-size: 16px;
   --range-track-background: rgba(var(--accent-color-rgb), 0.1);
-  --range-track-border: 2px solid var(--border-dark);
+  --range-track-border-width: 2px;
+  --range-track-border: var(--range-track-border-width) solid var(--border-dark);
   --range-track-radius: 6px;
   --range-track-shadow: inset 2px 2px 0 rgba(0, 0, 0, 0.08);
   --range-thumb-border: 2px solid var(--border-dark);
@@ -231,6 +232,13 @@ body.theme-retro {
 
 .theme-retro .toggle::before {
   display: none;
+}
+
+/* The rocker's frame stays dark when it is on; only "ON" turns the accent
+   colour. The shared switch paints its track in the accent when checked,
+   which here showed as a blue ring around the paddles. */
+.theme-retro .switch input:checked + .toggle {
+  background: var(--border-dark);
 }
 
 .theme-retro .toggle > .left,

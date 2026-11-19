@@ -1,4 +1,5 @@
 import type { Dispatch, SetStateAction } from "react";
+import type { ClickPasteMode } from "../../shared/lib/clickPaste";
 import type { ClipboardEntry, Locale } from "../../shared/types";
 import type { AiProfile, AppCleanupPolicy } from "../settings/types";
 
@@ -109,6 +110,8 @@ export interface AppState {
   setDeleteAfterPaste: StateSetter<boolean>;
   moveToTopAfterPaste: boolean;
   clickCopyOnly: boolean;
+  clickPasteMode: ClickPasteMode;
+  setClickPasteMode: StateSetter<ClickPasteMode>;
   setMoveToTopAfterPaste: StateSetter<boolean>;
   setClickCopyOnly: StateSetter<boolean>;
   privacyProtection: boolean;

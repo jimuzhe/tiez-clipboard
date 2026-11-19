@@ -243,7 +243,8 @@ const DetailActionBar = ({
       icon: <ExternalLink size={14} />,
       onClick: () => closeAndRun(() => actions.open(item))
     },
-    ...(item.content_type === "image" ? [{
+    // A sticker floats on top unblurred: only once the image is revealed.
+    ...(item.content_type === "image" && !(canReveal && !isRevealed) ? [{
       id: "sticker",
       label: t("pin_sticker"),
       icon: <PictureInPicture2 size={14} />,

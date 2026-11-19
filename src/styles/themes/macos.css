@@ -308,3 +308,12 @@ body.dark-mode.compact-preview.theme-macos #root {
 .theme-macos .history-item.selected {
   box-shadow: none;
 }
+
+/* Two-pane pages (settings, copy rules, tag manager): the sidebar shares the
+   window's background and the divider alone separates it. A fill of its own
+   (first the lighter panel colour, then a tint) made it read as a block
+   pasted into the window. */
+:root.theme-macos,
+body.theme-macos {
+  --pane-sidebar-background: transparent;
+}
