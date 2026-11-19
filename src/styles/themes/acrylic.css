@@ -284,12 +284,6 @@ html.platform-macos body.dark-mode.theme-acrylic {
   -webkit-backdrop-filter: blur(12px);
 }
 
-/* Keep saved custom backgrounds available to other themes, but don't mix an
-   image backdrop with the native desktop material in this theme. */
-html.platform-macos body.has-custom-bg.theme-acrylic:not(.compact-preview) #root::after {
-  content: none;
-}
-
 body.compact-preview.theme-acrylic #root,
 body.theme-acrylic.compact-preview #root,
 body.dark-mode.compact-preview.theme-acrylic #root {

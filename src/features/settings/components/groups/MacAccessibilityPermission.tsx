@@ -103,7 +103,9 @@ const MacAccessibilityPermission = ({ t, LabelWithHint }: MacAccessibilityPermis
       {!checking && !granted && (
         <div className="settings-permission-steps">
           <div>{t("accessibility_permission_steps")}</div>
-          {binaryPath && (
+          {/* A dev build runs from the build folder, so it has to be added by hand. */}
+          {import.meta.env.DEV && <div>{t("accessibility_permission_dev_step")}</div>}
+          {import.meta.env.DEV && binaryPath && (
             <div className="settings-permission-binary">
               <span>{t("accessibility_permission_binary")}</span>
               <code>{binaryPath}</code>

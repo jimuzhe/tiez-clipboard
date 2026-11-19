@@ -65,6 +65,7 @@ import {
 } from "./features/clipboard/lib/compactPreviewControls";
 import { searchTopHitId } from "./features/clipboard/lib/itemInteraction";
 import { isMacPlatform } from "./shared/lib/platform";
+import { getHotkeyDisplayTokens } from "./shared/lib/hotkeyDisplay";
 import { isTauriRuntime } from "./shared/lib/tauriRuntime";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import ClipboardDetailPane from "./features/clipboard/components/ClipboardDetailPane";
@@ -1208,6 +1209,14 @@ const App = () => {
     setShowSearchBox(true);
   }, [setTypeFilter, setShowSearchBox]);
 
+  const clearTypeFilter = useCallback(() => setTypeFilter(null), [setTypeFilter]);
+  // Shown in the empty list, so a first-time user learns how to come back.
+  const openHotkeyLabel = useMemo(() => {
+    if (!hotkey || hotkey === t('not_set')) return "";
+    const mac = isMacPlatform();
+    return getHotkeyDisplayTokens(hotkey, { preferMacSymbols: mac }).map((token) => token.label).join(mac ? "" : " + ");
+  }, [hotkey, t]);
+
   // After a search, Enter pastes the first result; it shows as selected until
   // the arrow keys or the mouse pick a row.
   const topHitId = searchTopHitId({
@@ -1364,6 +1373,7 @@ const App = () => {
       />
 
       <AnnouncementSystem
+        closeLabel={t('close')}
         announcements={announcements}
         onDismiss={dismissAnnouncement}
       />
@@ -1406,6 +1416,9 @@ const App = () => {
             saveSetting={saveSetting}
             filteredHistory={filteredHistory}
             search={search}
+            typeFiltered={typeFilter !== null}
+            onClearTypeFilter={clearTypeFilter}
+            openHotkeyLabel={openHotkeyLabel}
             pinnedItems={pinnedItems}
             unpinnedItems={unpinnedItems}
             compactMode={compactMode}
@@ -1465,7 +1478,7 @@ const App = () => {
         message={confirmDialog.message}
         theme={theme}
         danger={confirmDialog.danger}
-        confirmLabel={t('confirm')}
+        confirmLabel={confirmDialog.confirmLabel ?? t('confirm')}
         cancelLabel={t('cancel')}
         onClose={closeConfirm}
         onConfirm={confirmDialog.onConfirm}

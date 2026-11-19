@@ -77,7 +77,7 @@ test('主窗口：顶栏入口、搜索框、分类 Tab 与样例记录都渲染
     await expect(screen.getByRole('button', name)).toBeVisible();
   }
   await expect(screen.getByRole('textbox', '搜索复制过的内容')).toBeVisible();
-  for (const tab of ['全部', '文字', '图片', '文件', 'URL', '代码', '视频', '带格式']) {
+  for (const tab of ['全部', '文字', '图片', '文件', '链接', '代码', '视频', '带格式']) {
     await expect(screen.getByRole('button', tab)).toBeVisible();
   }
   await expect(screen.getByRole('main').getByText(SAMPLE.chat.text)).toBeVisible();
@@ -104,16 +104,16 @@ test('搜索：关键词只保留匹配记录，无结果显示空状态，清�
   await expect(main.getByText(SAMPLE.chat.text)).toBeVisible();
 });
 
-test('分类 Tab：URL / 图片 只显示对应类型，切回全部恢复', async ({ app, screen }) => {
+test('分类 Tab：链接 / 图片 只显示对应类型，切回全部恢复', async ({ app, screen }) => {
   await app.open('/');
   const main = screen.getByRole('main');
 
   await expect(main.getByText(SAMPLE.chat.text)).toBeVisible();
 
-  await screen.getByRole('button', 'URL').tap();
+  await screen.getByRole('button', '链接').tap();
   await expect(main.getByText(SAMPLE.url.text).first()).toBeVisible();
   await expect(main.getByText(SAMPLE.chat.text)).toBeHidden();
-  await expect(screen.getByRole('button', 'URL')).toHaveAttribute('class', /\bactive\b/);
+  await expect(screen.getByRole('button', '链接')).toHaveAttribute('class', /\bactive\b/);
 
   await screen.getByRole('button', '图片').tap();
   await expect(main.getByText(SAMPLE.url.text)).toBeHidden();
@@ -246,9 +246,9 @@ test('键盘：Tab / Shift+Tab 切换分类，在搜索框里也能切且焦点�
   await expect(screen.getByRole('button', '文字')).toHaveAttribute('class', isActive);
   await expect(main.getByText(SAMPLE.url.text)).toBeHidden();
 
-  // 文字 → 图片 → 文件 → URL
+  // 文字 → 图片 → 文件 → 链接
   for (let i = 0; i < 3; i += 1) await browser.keyboard.press('Tab');
-  await expect(screen.getByRole('button', 'URL')).toHaveAttribute('class', isActive);
+  await expect(screen.getByRole('button', '链接')).toHaveAttribute('class', isActive);
   await expect(main.getByText(SAMPLE.url.text).first()).toBeVisible();
   await expect(main.getByText(SAMPLE.chat.text)).toBeHidden();
 
@@ -257,7 +257,7 @@ test('键盘：Tab / Shift+Tab 切换分类，在搜索框里也能切且焦点�
 
   await screen.getByRole('textbox', '搜索复制过的内容').tap();
   await browser.keyboard.press('Tab');
-  await expect(screen.getByRole('button', 'URL')).toHaveAttribute('class', isActive);
+  await expect(screen.getByRole('button', '链接')).toHaveAttribute('class', isActive);
   expect(await browser.evaluate(() => document.activeElement?.classList.contains('search-input') ?? false)).toBe(true);
 });
 
@@ -314,7 +314,7 @@ test('清空记录：取消不清空，确认才清空', async ({ app, screen, b
   expect(await callsTo(browser, 'clear_clipboard_history')).toEqual([]);
 
   await screen.getByRole('button', '清空记录').tap();
-  await screen.getByRole('button', '确认').tap();
+  await screen.getByRole('button', '清空').tap();
   await expect.poll(() => callsTo(browser, 'clear_clipboard_history')).toHaveLength(1);
 
   // Pinned and tagged records survive; the rest are gone.

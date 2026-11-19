@@ -17,6 +17,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import type { FileTransferContextMenu, FileTransferMessage } from "../types";
 import { copyPrivateText, isLocalTransferPath, resolveShareableDownloadUrl } from "../utils/transferHelpers";
 import { withNativeDialog } from "../../../shared/lib/focus";
+import { isMacPlatform } from "../../../shared/lib/platform";
 
 interface TransferContextMenuProps {
     contextMenu: FileTransferContextMenu | null;
@@ -236,7 +237,7 @@ export const TransferContextMenu = ({
                                 >
                                     <Folder size={16} />
                                     <span>
-                                        {t("show_in_finder")}
+                                        {t(isMacPlatform() ? "show_in_finder" : "show_in_explorer")}
                                     </span>
                                 </button>
                             )}

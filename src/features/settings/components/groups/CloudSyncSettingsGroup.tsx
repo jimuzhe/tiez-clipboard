@@ -250,7 +250,6 @@ const CloudSyncSettingsGroup = ({
                             value={cloudSyncWebdavUsername}
                             onChange={(e) => setCloudSyncWebdavUsername(e.target.value)}
                             onBlur={() => saveCloudSync("cloud_sync_webdav_username", cloudSyncWebdavUsername.trim())}
-                            placeholder="username"
                         />
                     </div>
 

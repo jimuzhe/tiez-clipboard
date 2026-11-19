@@ -41,6 +41,11 @@ interface AppMainContentProps {
   saveSetting: (key: string, val: string) => void;
   filteredHistory: ClipboardEntry[];
   search: string;
+  /** A content-type tab other than "All" is active. */
+  typeFiltered: boolean;
+  onClearTypeFilter: () => void;
+  /** How the open-window hotkey reads on this platform; empty if none is set. */
+  openHotkeyLabel: string;
   pinnedItems: ClipboardEntry[];
   unpinnedItems: ClipboardEntry[];
   compactMode: boolean;
@@ -122,6 +127,9 @@ const AppMainContent = ({
   saveSetting,
   filteredHistory,
   search,
+  typeFiltered,
+  onClearTypeFilter,
+  openHotkeyLabel,
   pinnedItems,
   unpinnedItems,
   compactMode,
@@ -228,6 +236,13 @@ const AppMainContent = ({
         <Clipboard size={40} opacity={0.2} style={{ marginBottom: "12px" }} />
         {search ? (
           <p>{t("no_records")}</p>
+        ) : typeFiltered ? (
+          <>
+            <p>{t("no_records_of_type")}</p>
+            <button type="button" className="settings-link-button" onClick={onClearTypeFilter}>
+              {t("clear_filter")}
+            </button>
+          </>
         ) : (
           <>
             <p
@@ -241,6 +256,11 @@ const AppMainContent = ({
               {t("empty_title")}
             </p>
             <p style={{ fontSize: 'var(--font-size-sm)', opacity: 0.6 }}>{t("empty_desc")}</p>
+            {openHotkeyLabel && (
+              <p style={{ fontSize: 'var(--font-size-sm)', opacity: 0.6 }}>
+                {t("empty_hotkey_hint").replace("{hotkey}", openHotkeyLabel)}
+              </p>
+            )}
           </>
         )}
       </div>

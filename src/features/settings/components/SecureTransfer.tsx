@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { emit } from "@tauri-apps/api/event";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { withNativeDialog } from "../../../shared/lib/focus";
@@ -44,6 +45,8 @@ export default function SecureTransfer({ t, collapsed, onToggle }: SecureTransfe
         importing ? "import_secure_transfer" : "export_secure_transfer",
         { path, password, acknowledgePlaintext: acknowledged }
       );
+      // The list reloads on this event, so the imported records show up at once.
+      if (importing) await emit("clipboard-changed").catch(console.error);
       setStatus(
         t(importing ? "secure_transfer_success_import" : "secure_transfer_success_export")
           .replace("{n}", String(result.transferred))

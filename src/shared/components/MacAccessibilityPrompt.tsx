@@ -6,6 +6,14 @@ import { isTauriRuntime } from "../lib/tauriRuntime";
 import { requestMacAccessibility } from "../lib/macAccessibility";
 import ConfirmDialog from "./ConfirmDialog";
 
+const POSTPONED_KEY = "tiez_accessibility_prompt_postponed";
+const wasPostponed = () => {
+  try { return localStorage.getItem(POSTPONED_KEY) === "1"; } catch { return false; }
+};
+const markPostponed = () => {
+  try { localStorage.setItem(POSTPONED_KEY, "1"); } catch { /* private mode: ask again next time */ }
+};
+
 export default function MacAccessibilityPrompt({ ready, theme, t, pushToast }: {
   ready: boolean;
   theme: string;
@@ -18,8 +26,10 @@ export default function MacAccessibilityPrompt({ ready, theme, t, pushToast }: {
     if (!ready || !isTauriRuntime() || !isMacPlatform()) return;
     let alive = true;
     let dispose: (() => void) | undefined;
+    // Ask at startup only until the user answers "Later" once. After that the
+    // prompt comes back only when a paste actually needs the permission.
     void invoke<boolean>("check_macos_permissions").then(granted => {
-      if (alive && !granted) setOpen(true);
+      if (alive && !granted && !wasPostponed()) setOpen(true);
     }).catch(console.error);
     void listen("accessibility-permission-required", () => {
       if (alive) setOpen(true);
@@ -67,6 +77,6 @@ export default function MacAccessibilityPrompt({ ready, theme, t, pushToast }: {
     confirmLabel={t("accessibility_go_authorize")}
     cancelLabel={t("accessibility_permission_later")}
     onConfirm={() => { void authorize(); }}
-    onClose={() => setOpen(false)}
+    onClose={() => { markPostponed(); setOpen(false); }}
   />;
 }
