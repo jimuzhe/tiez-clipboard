@@ -2239,6 +2239,7 @@ pub fn handle_window_event(window: &tauri::Window, event: &tauri::WindowEvent) {
             }
             #[cfg(not(target_os = "macos"))]
             let _ = window.hide();
+            crate::app::window_manager::notify_main_window_hidden(window.app_handle());
             IS_HIDDEN.store(false, Ordering::Relaxed);
             CURRENT_DOCK.store(0, Ordering::Relaxed);
             NAVIGATION_ENABLED.store(false, Ordering::SeqCst);
@@ -2344,6 +2345,7 @@ fn handle_blur(window: &tauri::Window) {
             if !is_blur_ignored() && !WINDOW_PINNED.load(Ordering::Relaxed) {
                 let _ = w.app_handle().emit("force-hide-compact-preview", ());
                 let _ = w.hide();
+                crate::app::window_manager::notify_main_window_hidden(w.app_handle());
                 NAVIGATION_ENABLED.store(false, Ordering::SeqCst);
                 release_modifier_keys();
                 let _ = restore_previous_app_focus(w.app_handle().clone());

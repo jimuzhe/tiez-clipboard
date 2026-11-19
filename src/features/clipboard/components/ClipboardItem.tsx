@@ -79,7 +79,7 @@ import {
 import { openPinStickerWindow } from "../lib/pinStickerControls";
 import { activateForInput } from "../../../shared/lib/focus";
 import { getNotePlaceholder, isMacPlatform, isWindowsPlatform } from "../../../shared/lib/platform";
-import { setupDragDataTransfer, createDragGhostBadge, shouldHideAfterExternalDrop, isShortenedForList, nativeDragPayload } from "../lib/dragDrop";
+import { setupDragDataTransfer, createDragGhostBadge, hiddenDragLabel, shouldHideAfterExternalDrop, isShortenedForList, nativeDragPayload } from "../lib/dragDrop";
 
 const COMPACT_PREVIEW_LABEL = "compact-preview";
 const COMPACT_PREVIEW_HOVER_DELAY_MS = 320;
@@ -845,6 +845,8 @@ const ClipboardItem = ({
         item.timestamp
     );
     const [videoCoverFailed, setVideoCoverFailed] = useState(false);
+    // A hidden sensitive file or video shows a bare card instead of its own.
+    const hidesFileCard = isSensitiveHidden && (item.content_type === "file" || item.content_type === "video");
     // Large GIF/WebP rows show a still first frame (see get_image_thumbnail)
     // and play only while hovered; the detail pane always plays them.
     const [playAnimation, setPlayAnimation] = useState(false);
@@ -2037,6 +2039,7 @@ const ClipboardItem = ({
 
                 const fullEntry = fullDragEntryRef.current?.id === item.id ? fullDragEntryRef.current : null;
                 const dragged = fullEntry ?? item;
+                const ghostHiddenLabel = isSensitiveHidden ? hiddenDragLabel(item, sensitivePreview, t) : undefined;
 
                 // A system drag instead of the web view's, which hands other
                 // apps no file for a file entry and dims its preview on macOS
@@ -2047,7 +2050,7 @@ const ClipboardItem = ({
                     e.preventDefault();
                     // macOS takes the preview in points (2x for Retina), Windows in pixels.
                     const scale = mac ? 2 : window.devicePixelRatio || 1;
-                    const badge = createDragGhostBadge(dragged, filePaths, theme, t, scale);
+                    const badge = createDragGhostBadge(dragged, filePaths, theme, t, scale, ghostHiddenLabel);
                     const request = {
                         ...nativePayload,
                         preview: badge.toDataURL("image/png").split(",")[1] ?? "",
@@ -2078,7 +2081,7 @@ const ClipboardItem = ({
 
                 // Set custom drag preview badge
                 try {
-                    const badge = createDragGhostBadge(item, filePaths, theme, t);
+                    const badge = createDragGhostBadge(item, filePaths, theme, t, 1, ghostHiddenLabel);
                     badge.style.left = `${Math.max(0, e.clientX - 24)}px`;
                     badge.style.top = `${Math.max(0, e.clientY - 20)}px`;
                     dragGhostRef.current?.remove();
@@ -2435,7 +2438,7 @@ const ClipboardItem = ({
                                                 <span>{t('open')}</span>
                                             </button>
 
-                                            {item.content_type === 'image' && (
+                                            {item.content_type === 'image' && !isSensitiveHidden && (
                                                 <button
                                                     type="button"
                                                     role="menuitem"
@@ -2547,7 +2550,7 @@ const ClipboardItem = ({
                                 >
                                     <ExternalLink size={12} />
                                 </button>
-                                {item.content_type === 'image' && (
+                                {item.content_type === 'image' && !isSensitiveHidden && (
                                     <button
                                         className="btn-icon"
                                         onClick={(e) => {
@@ -2638,7 +2641,7 @@ const ClipboardItem = ({
                 )
             }
             <div className={`content-preview-shell${overlayMetaInPreview ? ' has-overlay-meta' : ''}`}>
-                <div data-content-type={item.content_type} className={`content-preview ${item.content_type === 'rich_text' ? 'rich-text' : ''} ${item.content_type === 'file' ? 'file-preview' : ''} ${isSensitiveHidden ? 'sensitive-blur' : ''}`}>
+                <div data-content-type={item.content_type} className={`content-preview ${item.content_type === 'rich_text' ? 'rich-text' : ''} ${hidesFileCard || item.content_type === 'file' ? 'file-preview' : ''} ${isSensitiveHidden ? 'sensitive-blur' : ''}`}>
                 {item.content_type === "image" ? (
                     <div
                         className="image-preview-frame"
@@ -2670,6 +2673,16 @@ const ClipboardItem = ({
                                 SENSITIVE
                             </div>
                         )}
+                    </div>
+                ) : hidesFileCard ? (
+                    // No name, folder, path tooltip or cover until revealed.
+                    <div className="file-thumbnail-card">
+                        <div className="file-icon-wrapper">
+                            {item.content_type === "video" ? <Video size={24} /> : <File size={24} />}
+                        </div>
+                        <div className="file-info-wrapper">
+                            <div className="file-name">SENSITIVE</div>
+                        </div>
                     </div>
                 ) : item.content_type === "video" ? (
                     <div className="video-thumbnail-card">

@@ -167,6 +167,20 @@ const drawDragIcon = (ctx: CanvasRenderingContext2D, type: string, centerY: numb
   ctx.restore();
 };
 
+/**
+ * Drag preview label of a hidden sensitive entry: the masked text the list
+ * shows, never the entry's own text, file name or path.
+ */
+export const hiddenDragLabel = (
+  item: ClipboardEntry,
+  maskedText: string,
+  t: (key: string) => string
+): string => {
+  if (item.content_type === "image") return t("image");
+  if (item.content_type === "file" || item.content_type === "video") return "SENSITIVE";
+  return maskedText || "SENSITIVE";
+};
+
 /** A transparent bitmap keeps the native drag preview free of a DOM backdrop. */
 export const createDragGhostBadge = (
   item: ClipboardEntry,
@@ -174,10 +188,14 @@ export const createDragGhostBadge = (
   theme: string,
   t: (key: string) => string,
   /** Pixels per point: 2 for a crisp native (Retina) drag image. */
-  scale = 1
+  scale = 1,
+  /** Shown instead of the entry's content (see hiddenDragLabel). */
+  hiddenLabel?: string
 ): HTMLCanvasElement => {
   let labelText = "";
-  if (item.content_type === "file") {
+  if (hiddenLabel !== undefined) {
+    labelText = hiddenLabel;
+  } else if (item.content_type === "file") {
     const paths = filePaths.length > 0 ? filePaths : [item.content];
     const valid = paths.map((p) => p.trim()).filter(Boolean);
     if (valid.length > 1) {
