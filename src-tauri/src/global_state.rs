@@ -13,6 +13,10 @@ pub static IS_RECORDING: AtomicBool = AtomicBool::new(false);
 pub static IGNORE_BLUR: AtomicBool = AtomicBool::new(false);
 pub static WINDOW_PINNED: AtomicBool = AtomicBool::new(false);
 pub static CLIPBOARD_MONITOR_PAUSED: AtomicBool = AtomicBool::new(false);
+/// The user paused recording from the tray menu. Separate from
+/// CLIPBOARD_MONITOR_PAUSED, which hotkey recording sets and clears on its own.
+/// Not saved: a restart records again.
+pub static USER_RECORDING_PAUSED: AtomicBool = AtomicBool::new(false);
 
 static BLUR_GUARD_OWNERS: OnceLock<Mutex<HashSet<String>>> = OnceLock::new();
 

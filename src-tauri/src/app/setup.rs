@@ -140,7 +140,7 @@ pub fn init(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     start_services(app, &settings, app_handle.clone());
 
     // 9. Tray Setup
-    setup_tray(app, settings.hide_tray_icon);
+    crate::app::tray::setup(app, settings.hide_tray_icon);
 
     // 10. Theme Initial Application
     apply_initial_theme(app);
@@ -2024,50 +2024,6 @@ fn init_analytics(app: &App, repo: &impl SettingsRepository) {
             ));
         });
     }
-}
-
-fn setup_tray(app: &App, hide_tray: bool) {
-    use tauri::menu::{Menu, MenuItem};
-    use tauri::tray::{MouseButton, TrayIconBuilder, TrayIconEvent};
-
-    let show_i = MenuItem::with_id(app, "show", "打开窗口", true, None::<&str>).unwrap();
-    let quit_i = MenuItem::with_id(app, "quit", "退出应用", true, None::<&str>).unwrap();
-    let menu = Menu::with_items(app, &[&show_i, &quit_i]).unwrap();
-    let icon =
-        tauri::image::Image::from_bytes(include_bytes!("../../icons/tray-icon.png")).unwrap();
-
-    let mut tray_builder = TrayIconBuilder::with_id("main_tray")
-        .icon(icon)
-        .tooltip("TieZ")
-        .show_menu_on_left_click(false)
-        .menu(&menu)
-        .on_menu_event(|app, event| {
-            if event.id.as_ref() == "show" {
-                let _ = crate::app::window_manager::focus_clipboard_window(app.clone());
-            } else if event.id.as_ref() == "quit" {
-                crate::app::light_mode::request_app_exit(app);
-            }
-        })
-        .on_tray_icon_event(|tray, event| {
-            if let TrayIconEvent::Click {
-                button: MouseButton::Left,
-                ..
-            } = event
-            {
-                // Same intentional-open path as Dock reopen (make-key + LAST_SHOW).
-                let _ = crate::app::window_manager::focus_clipboard_window(tray.app_handle().clone());
-            }
-        });
-
-    #[cfg(target_os = "macos")]
-    {
-        tray_builder = tray_builder.icon_as_template(true);
-    }
-
-    let tray = tray_builder.build(app).expect("Failed to build tray");
-
-    let _ = tray.set_visible(!hide_tray);
-    app.manage(tray);
 }
 
 fn apply_initial_theme(app: &App) {
