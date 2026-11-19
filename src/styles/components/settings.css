@@ -923,19 +923,22 @@
   }
 }
 
-/* Narrow window: a text field or picker beside its label left ~200px for an
-   address or a path and lined up with nothing. It goes on its own line under
-   the label at full width, so every field starts and ends at the same edges.
-   Short fields (numbers, ports: --sm, --xs) still fit beside their label.
-   The fixed field width above is more specific than the rule before, so this
-   one has to be as well. */
-@container settings (max-width: 380px) {
+/* Narrow window: a 200px text field or picker beside its label squeezed the
+   label and its hint into a thin column (until the label column is about as
+   wide as the field) and cut addresses and paths short. It goes on its own
+   line under the label at full width, so every field starts and ends at the
+   same edges. Short fields (numbers, ports: --sm, --xs) stay beside their
+   label. The fixed field width above is more specific than the rule before,
+   so this one has to be as well. */
+@container settings (max-width: 460px) {
   .settings-view .setting-item:not(.column) .search-input.settings-field:not(.settings-field--sm):not(.settings-field--xs),
   .settings-view .setting-item:not(.column) .settings-picker-button {
     flex: 0 0 100%;
     width: 100%;
   }
+}
 
+@container settings (max-width: 380px) {
   .settings-view .setting-item.is-child {
     padding-left: calc(var(--st-child-indent) / 2);
   }
