@@ -144,7 +144,8 @@ body.theme-retro {
   --range-track-height: 8px;
   --range-thumb-size: 16px;
   --range-track-background: rgba(var(--accent-color-rgb), 0.1);
-  --range-track-border: 2px solid var(--border-dark);
+  --range-track-border-width: 2px;
+  --range-track-border: var(--range-track-border-width) solid var(--border-dark);
   --range-track-radius: 6px;
   --range-track-shadow: inset 2px 2px 0 rgba(0, 0, 0, 0.08);
   --range-thumb-border: 2px solid var(--border-dark);
