@@ -829,8 +829,13 @@ const ClipboardItem = ({
     const noteInputRef = useRef<HTMLTextAreaElement>(null);
     const ignoreNoteBlurRef = useRef(false);
     const [localTagInput, setLocalTagInput] = useState(tagInput);
+    // The note text lives in the textarea's own state. The app-wide draft only
+    // carries it across a switch to the detail pane; writing that draft back
+    // into the textarea on every keystroke broke input method composition in
+    // WebKit (the pinyin letters were committed as text).
     const [localNoteInput, setLocalNoteInput] = useState(item.note || "");
-    const noteInput = noteDraft ?? localNoteInput;
+    const noteInput = localNoteInput;
+    const noteComposingRef = useRef(false);
     const [localAiOptionsOpen, setLocalAiOptionsOpen] = useState(!!aiOptionsOpen);
     const [snapshotFailed, setSnapshotFailed] = useState(false);
     const [richImageFallbackFailed, setRichImageFallbackFailed] = useState(false);
@@ -1505,7 +1510,7 @@ const ClipboardItem = ({
         // Opening the editor remounts the footer and may briefly steal focus on
         // the macOS NSPanel — ignore that spurious blur so the editor stays open.
         ignoreNoteBlurRef.current = true;
-        setLocalNoteInput(item.note || "");
+        setLocalNoteInput(noteDraft ?? item.note ?? "");
         const focusTimer = window.setTimeout(() => {
             activateForInput()
                 .catch(console.error)
@@ -1842,9 +1847,18 @@ const ClipboardItem = ({
                         placeholder={compactMode ? `${t('add_note')}…` : getNotePlaceholder(t)}
                         rows={2}
                         onMouseDown={(e) => e.stopPropagation()}
+                        onCompositionStart={() => {
+                            noteComposingRef.current = true;
+                        }}
+                        onCompositionEnd={(e) => {
+                            noteComposingRef.current = false;
+                            const value = (e.target as HTMLTextAreaElement).value;
+                            setLocalNoteInput(value);
+                            onNoteDraftChange?.(value);
+                        }}
                         onChange={(e) => {
                             setLocalNoteInput(e.target.value);
-                            onNoteDraftChange?.(e.target.value);
+                            if (!noteComposingRef.current) onNoteDraftChange?.(e.target.value);
                         }}
                         onKeyDown={(e) => {
                             if (e.key === 'Escape') {
