@@ -16,7 +16,7 @@ jobs:
         include:
           - platform: macos-15-intel
             display_name: Intel
-          - platform: macos-14
+          - platform: macos-15
             display_name: Apple Silicon
 
     runs-on: ${{ matrix.platform }}
