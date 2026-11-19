@@ -16,6 +16,8 @@ interface UseClipboardItemRendererOptions {
   revealedIds: Set<number>;
   isKeyboardMode: boolean;
   selectedItemId: number | null;
+  /** First search result, shown as selected until a row is picked. */
+  searchTopHitId: number | null;
   /** Entry shown in the wide layout's detail pane, if any. */
   detailFocusedId: number | null;
   splitActive: boolean;
@@ -78,6 +80,7 @@ export const useClipboardItemRenderer = ({
   revealedIds,
   isKeyboardMode,
   selectedItemId,
+  searchTopHitId,
   detailFocusedId,
   splitActive,
   noteDraft,
@@ -136,7 +139,7 @@ export const useClipboardItemRenderer = ({
           key={item.id}
           item={item}
           navigationIndex={index}
-          isSelected={isKeyboardSelectedItem(item.id, selectedItemId, isKeyboardMode)}
+          isSelected={isKeyboardSelectedItem(item.id, selectedItemId, isKeyboardMode) || item.id === searchTopHitId}
           isDetailFocused={detailFocusedId === item.id}
           windowPinned={isWindowPinned}
           isSensitiveHidden={!!isSensitiveHidden}
@@ -249,6 +252,7 @@ export const useClipboardItemRenderer = ({
       privacyProtection,
       revealedIds,
       selectedItemId,
+      searchTopHitId,
       detailFocusedId,
       splitActive,
       noteDraft,

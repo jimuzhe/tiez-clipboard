@@ -2,9 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } fr
 import type { ClipboardEntry } from "../../../shared/types";
 import { useWideWindow } from "../../../shared/hooks/useWideWindow";
 import { useKeyboardOwnsList } from "./useKeyboardOwnsList";
+import { createPointerAim } from "../../../shared/lib/pointerAim";
 
 const ITEM_ID_PREFIX = "clipboard-item-";
-/** How long the pointer must rest on a row before the pane switches to it. */
+/** How long a pointer heading for the pane must rest on a row before the pane switches to it. */
 const HOVER_DWELL_MS = 100;
 
 interface UseSplitViewOptions {
@@ -25,6 +26,7 @@ export const useSplitView = ({ enabled, listVisible, items, selectedItemId, isKe
   const isWide = useWideWindow();
   const [focusedId, setFocusedId] = useState<number | null>(null);
   const dwellRef = useRef<{ id: number | null; timer: number }>({ id: null, timer: 0 });
+  const aimRef = useRef(createPointerAim());
   // A pointer resting on the list doesn't take the selection back while the
   // arrow keys drive it.
   const notePointer = useKeyboardOwnsList(isKeyboardMode, selectedItemId);
@@ -66,17 +68,21 @@ export const useSplitView = ({ enabled, listVisible, items, selectedItemId, isKe
 
   // The row under a moving pointer becomes the selection, so the arrow keys
   // go on from there and only one row is ever marked (with arrow-key selection
-  // off, the pointer only picks the pane's entry). Beside the pane it waits
-  // until the pointer rests on a row: sweeping diagonally over other rows on
-  // the way to the pane's action bar must not retarget it. One delegated
-  // listener on the list column.
+  // off, the pointer only picks the pane's entry). Moving up and down the list
+  // selects at once. Only a pointer heading right, toward the pane, waits until
+  // it rests on a row: sweeping diagonally over other rows on the way to the
+  // pane's action bar must not retarget it. One delegated listener on the
+  // list column.
   const handleListMouseMove = useCallback((event: MouseEvent<HTMLElement>) => {
+    const towardPane = aimRef.current.note(event.clientX, event.clientY);
     if (!notePointer(event.screenX, event.screenY)) return;
     const row = (event.target as HTMLElement).closest?.(`[id^="${ITEM_ID_PREFIX}"]`);
     if (!row) return;
     const id = Number(row.id.slice(ITEM_ID_PREFIX.length));
     const dwell = dwellRef.current;
-    if (!Number.isFinite(id) || dwell.id === id) return;
+    if (!Number.isFinite(id)) return;
+    // Already waiting on this row, and still on the way to the pane.
+    if (dwell.id === id && towardPane) return;
     window.clearTimeout(dwell.timer);
     dwell.id = null;
     if (id === latestRef.current.current) return;
@@ -87,7 +93,7 @@ export const useSplitView = ({ enabled, listVisible, items, selectedItemId, isKe
       if (select && index >= 0) select(index, id);
       else setFocusedId(id);
     };
-    if (!active) {
+    if (!active || !towardPane) {
       pick();
       return;
     }
@@ -99,6 +105,7 @@ export const useSplitView = ({ enabled, listVisible, items, selectedItemId, isKe
     const dwell = dwellRef.current;
     window.clearTimeout(dwell.timer);
     dwell.id = null;
+    aimRef.current.reset();
   }, []);
 
   const detailItem = useMemo(() => {

@@ -229,8 +229,9 @@ const AppHeader = ({
           {/* Pin Button */}
           <button
             className={`btn-icon header-pin-btn ${isWindowPinned ? 'active' : ''}`}
-            title={t('pin')}
-            aria-label={t('pin')}
+            title={t(isWindowPinned ? 'keep_window_open_on' : 'keep_window_open')}
+            aria-label={t('keep_window_open')}
+            aria-pressed={isWindowPinned}
             onClick={() => {
               const newVal = !isWindowPinned;
               setIsWindowPinned(newVal);

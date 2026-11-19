@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { DEFAULT_CLICK_PASTE_MODE, type ClickPasteMode } from "../../../shared/lib/clickPaste";
 import { DEFAULT_THEME } from "../../../shared/config/themes";
 import type { ClipboardEntry, Locale } from "../../../shared/types";
 import type {
@@ -61,6 +62,7 @@ export const useAppState = (): AppState => {
   const [deleteAfterPaste, setDeleteAfterPaste] = useState(false);
   const [moveToTopAfterPaste, setMoveToTopAfterPaste] = useState(false);
   const [clickCopyOnly, setClickCopyOnly] = useState(false);
+  const [clickPasteMode, setClickPasteMode] = useState<ClickPasteMode>(DEFAULT_CLICK_PASTE_MODE);
   const [privacyProtection, setPrivacyProtection] = useState(false);
   const [privacyProtectionKinds, setPrivacyProtectionKinds] = useState<string[]>([
     "phone",
@@ -251,6 +253,8 @@ export const useAppState = (): AppState => {
     setDeleteAfterPaste,
     moveToTopAfterPaste,
     clickCopyOnly,
+    clickPasteMode,
+    setClickPasteMode,
     setMoveToTopAfterPaste,
     setClickCopyOnly,
     privacyProtection,

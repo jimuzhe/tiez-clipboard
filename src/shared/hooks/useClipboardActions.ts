@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { failureText } from "../lib/errorMessage";
 import { invoke } from "@tauri-apps/api/core";
 import type { Dispatch, RefObject, SetStateAction } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
@@ -99,7 +100,7 @@ export const useClipboardActions = ({
       } catch (err) {
         // The backend event opens the actionable permission dialog.
         if (String(err).includes("accessibility_permission_required")) return;
-        const errorMsg = t("copy_failed") + (err?.toString() || "");
+        const errorMsg = failureText(t("copy_failed"), err);
         pushToast(errorMsg, 3000);
       }
     },
@@ -122,7 +123,7 @@ export const useClipboardActions = ({
         });
         pushToast(t("copied_to_clipboard"), 1500);
       } catch (err) {
-        pushToast(t("copy_failed") + (err?.toString() || ""), 3000);
+        pushToast(failureText(t("copy_failed"), err), 3000);
       }
     },
     [pushToast, t]
@@ -139,7 +140,7 @@ export const useClipboardActions = ({
       } catch (err) {
         const errorMsg = String(err).includes("file_missing")
           ? t("open_file_missing")
-          : t("open_failed") + (err?.toString() || "");
+          : failureText(t("open_failed"), err);
         pushToast(errorMsg, 3000);
       }
     },
@@ -153,7 +154,7 @@ export const useClipboardActions = ({
         setHistory((prev) => prev.filter((item) => item.id !== id));
         return true;
       } catch (err) {
-        const errorMsg = t("delete_failed") + ": " + (err?.toString() || "");
+        const errorMsg = failureText(t("delete_failed"), err);
         pushToast(errorMsg, 3000);
         return false;
       }
@@ -191,7 +192,7 @@ export const useClipboardActions = ({
         );
       } catch (err) {
         const errorMsg =
-          (currentPinned ? t("unpin_failed") : t("pin_failed")) + ": " + (err?.toString() || "");
+          failureText(currentPinned ? t("unpin_failed") : t("pin_failed"), err);
         pushToast(errorMsg, 3000);
       }
     },
@@ -213,7 +214,7 @@ export const useClipboardActions = ({
         }, 0);
       } catch (err) {
         console.error("更新标签失败", err);
-        pushToast(t("save_tags_failed") + String(err), 4000);
+        pushToast(failureText(t("save_tags_failed"), err), 4000);
       }
     },
     [pushToast, setHistory, t, virtualListRef]
@@ -234,7 +235,7 @@ export const useClipboardActions = ({
         }, 0);
       } catch (err) {
         console.error("更新备注失败", err);
-        pushToast(t("save_note_failed") + String(err), 4000);
+        pushToast(failureText(t("save_note_failed"), err), 4000);
       }
     },
     [pushToast, setHistory, t, virtualListRef]

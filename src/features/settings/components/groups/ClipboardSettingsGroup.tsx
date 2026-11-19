@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { normalizeClickPasteMode, type ClickPasteMode } from "../../../../shared/lib/clickPaste";
 import type { ComponentType, KeyboardEvent as ReactKeyboardEvent, ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { ask } from "@tauri-apps/plugin-dialog";
@@ -49,8 +50,10 @@ interface ClipboardSettingsGroupProps {
     setDeleteAfterPaste: (val: boolean) => void;
     moveToTopAfterPaste: boolean;
     clickCopyOnly: boolean;
+    clickPasteMode: ClickPasteMode;
     setMoveToTopAfterPaste: (val: boolean) => void;
     setClickCopyOnly: (val: boolean) => void;
+    setClickPasteMode: (val: ClickPasteMode) => void;
     pasteMethod: string;
     setPasteMethod: (val: string) => void;
     registryWinVEnabled: boolean;
@@ -345,6 +348,29 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
                             <div className="toggle"><div className="left" /><div className="right" /></div>
                         </label>
                     </div>
+                    {/* Only matters once formats are kept: without them every paste is plain. */}
+                    {props.captureRichText && (
+                        <div className="setting-item is-child">
+                            <props.LabelWithHint
+                                label={props.t('click_paste_mode')}
+                                hint={props.t('click_paste_mode_hint')}
+                                hintKey="click_paste_mode"
+                            />
+                            <select
+                                className="search-input settings-field"
+                                aria-label={props.t('click_paste_mode')}
+                                value={props.clickPasteMode}
+                                onChange={(e) => {
+                                    const val = normalizeClickPasteMode(e.target.value);
+                                    props.setClickPasteMode(val);
+                                    props.saveAppSetting('click_paste_mode', val);
+                                }}
+                            >
+                                <option value="left_rich">{props.t('click_paste_mode_left_rich')}</option>
+                                <option value="left_plain">{props.t('click_paste_mode_left_plain')}</option>
+                            </select>
+                        </div>
+                    )}
                     <div className="setting-item">
                         <props.LabelWithHint
                             label={props.t('rich_text_snapshot_preview')}
@@ -472,7 +498,7 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
                                             if (changed) {
                                                 const confirmed = await withNativeDialog(() => ask(
                                                     props.t('restart_explorer_confirm'),
-                                                    { title: props.t('restart_explorer_title'), kind: 'warning' }
+                                                    { title: props.t('restart_explorer_title'), kind: 'warning', okLabel: props.t('restart_explorer_action'), cancelLabel: props.t('cancel') }
                                                 ), "settings:restart-explorer");
                                                 if (confirmed) {
                                                     await invoke("restart_explorer");
@@ -676,7 +702,9 @@ const ClipboardSettingsGroup = (props: ClipboardSettingsGroupProps) => {
                                                     props.t('game_mode_admin_required'),
                                                     {
                                                         title: props.t('admin_required'),
-                                                        kind: 'warning'
+                                                        kind: 'warning',
+                                                        okLabel: props.t('restart_as_admin'),
+                                                        cancelLabel: props.t('cancel')
                                                     }
                                                 ), "settings:game-mode-admin");
 

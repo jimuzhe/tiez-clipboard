@@ -79,7 +79,7 @@ const SyncSettingsGroup = ({
                 {mqttEnabled && (
                     <span
                         className={`settings-status-dot is-${mqttStatus}`}
-                        title={mqttStatus === 'connected' ? "Connected" : mqttStatus === 'connecting' ? "Connecting..." : "Disconnected"}
+                        title={t(`mqtt_status_${mqttStatus}`)}
                     />
                 )}
             </div>
@@ -106,6 +106,8 @@ const SyncSettingsGroup = ({
                 <div className="setting-item">
                     <div className="item-label-group">
                         <span className="item-label">{t('enable_sync')}</span>
+                        {/* The header dot alone doesn't say what its colour means. */}
+                        {mqttEnabled && <span className="item-desc">{t(`mqtt_status_${mqttStatus}`)}</span>}
                     </div>
                     <SettingSwitch
                         checked={mqttEnabled}
@@ -206,7 +208,7 @@ const SyncSettingsGroup = ({
                                 className="search-input settings-field"
                                 value={mqttUser}
                                 onChange={e => { setMqttUser(e.target.value); saveMqtt('mqtt_username', e.target.value); }}
-                                placeholder="Optional"
+                                placeholder={t('optional_placeholder')}
                             />
                         </div>
                         <div className="setting-item">
@@ -216,7 +218,7 @@ const SyncSettingsGroup = ({
                                 type="password"
                                 value={mqttPass}
                                 onChange={e => { setMqttPass(e.target.value); saveMqtt('mqtt_password', e.target.value); }}
-                                placeholder="Optional"
+                                placeholder={t('optional_placeholder')}
                             />
                         </div>
                         <div className="setting-item">

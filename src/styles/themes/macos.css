@@ -309,6 +309,39 @@ body.dark-mode.compact-preview.theme-macos #root {
   box-shadow: none;
 }
 
+/* Two-pane pages (settings, copy rules, tag manager): the sidebar shares the
+   window's background and the divider alone separates it. A fill of its own
+   (first the lighter panel colour, then a tint) made it read as a block
+   pasted into the window. */
+:root.theme-macos,
+body.theme-macos {
+  --pane-sidebar-background: transparent;
+}
+
+/* 「面板透明度」 with a background image: the slider sets how much of the image
+   shows through what lies on top of it. 50 keeps the theme's own look; lower
+   lets the image through the toolbar and the rows; higher makes the rows
+   solid. Without an image there is nothing behind these surfaces to show, so
+   the setting is offered only together with one (AppearanceSettingsGroup).
+   Menus, dialogs and fields keep their own fills: they must stay readable
+   over any picture. */
+body.has-custom-bg.theme-macos {
+  --bg-toolbar: rgba(246, 246, 246, clamp(0, var(--surface-opacity-scale), 1));
+  --layout-item-background: rgba(255, 255, 255, clamp(0, calc(0.75 * var(--surface-opacity-scale)), 1));
+}
+
+@media (prefers-color-scheme: dark) {
+  body.has-custom-bg.theme-macos:not(.light-mode) {
+    --bg-toolbar: rgba(30, 30, 30, clamp(0, var(--surface-opacity-scale), 1));
+    --layout-item-background: rgba(255, 255, 255, clamp(0, calc(0.06 * var(--surface-opacity-scale)), 0.12));
+  }
+}
+
+body.has-custom-bg.dark-mode.theme-macos {
+  --bg-toolbar: rgba(30, 30, 30, clamp(0, var(--surface-opacity-scale), 1));
+  --layout-item-background: rgba(255, 255, 255, clamp(0, calc(0.06 * var(--surface-opacity-scale)), 0.12));
+}
+
 /* Lighter controls: every control used to carry a border and a fill, so the
    frames outweighed the content they frame. Buttons are bare icons until
    hovered, states are a tint, and the row's small text is lighter. */

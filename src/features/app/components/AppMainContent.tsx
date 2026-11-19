@@ -22,6 +22,8 @@ interface AppMainContentProps {
   t: (key: string) => string;
   theme: string;
   privacyProtection: boolean;
+  /** Whether a click pastes with formatting (「鼠标粘贴方式」). */
+  primaryPasteKeepsFormat: boolean;
   showSettings: boolean;
   showTagManager: boolean;
   tagManagerEnabled: boolean;
@@ -39,6 +41,11 @@ interface AppMainContentProps {
   saveSetting: (key: string, val: string) => void;
   filteredHistory: ClipboardEntry[];
   search: string;
+  /** A content-type tab other than "All" is active. */
+  typeFiltered: boolean;
+  onClearTypeFilter: () => void;
+  /** How the open-window hotkey reads on this platform; empty if none is set. */
+  openHotkeyLabel: string;
   pinnedItems: ClipboardEntry[];
   unpinnedItems: ClipboardEntry[];
   compactMode: boolean;
@@ -102,6 +109,7 @@ const AppMainContent = ({
   t,
   theme,
   privacyProtection,
+  primaryPasteKeepsFormat,
   showSettings,
   showTagManager,
   tagManagerEnabled,
@@ -119,6 +127,9 @@ const AppMainContent = ({
   saveSetting,
   filteredHistory,
   search,
+  typeFiltered,
+  onClearTypeFilter,
+  openHotkeyLabel,
   pinnedItems,
   unpinnedItems,
   compactMode,
@@ -163,7 +174,12 @@ const AppMainContent = ({
         animate={{ opacity: 1, x: 0 }}
         style={{ height: "100%", overflow: "hidden", boxSizing: "border-box", display: "flex", flexDirection: "column" }}
       >
-        <TagManager t={t} theme={theme} privacyProtection={privacyProtection} />
+        <TagManager
+          t={t}
+          theme={theme}
+          privacyProtection={privacyProtection}
+          primaryPasteKeepsFormat={primaryPasteKeepsFormat}
+        />
       </motion.div>
     );
   }
@@ -220,6 +236,13 @@ const AppMainContent = ({
         <Clipboard size={40} opacity={0.2} style={{ marginBottom: "12px" }} />
         {search ? (
           <p>{t("no_records")}</p>
+        ) : typeFiltered ? (
+          <>
+            <p>{t("no_records_of_type")}</p>
+            <button type="button" className="settings-link-button" onClick={onClearTypeFilter}>
+              {t("clear_filter")}
+            </button>
+          </>
         ) : (
           <>
             <p
@@ -233,6 +256,11 @@ const AppMainContent = ({
               {t("empty_title")}
             </p>
             <p style={{ fontSize: 'var(--font-size-sm)', opacity: 0.6 }}>{t("empty_desc")}</p>
+            {openHotkeyLabel && (
+              <p style={{ fontSize: 'var(--font-size-sm)', opacity: 0.6 }}>
+                {t("empty_hotkey_hint").replace("{hotkey}", openHotkeyLabel)}
+              </p>
+            )}
           </>
         )}
       </div>

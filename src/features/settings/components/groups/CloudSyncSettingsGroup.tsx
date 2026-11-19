@@ -8,7 +8,7 @@ import {
     buildWebdavConfigQrPayload,
     isWebdavConfigQrReady,
 } from "../../utils/configQr";
-import { formatError } from "../../../../shared/lib/errorMessage";
+import { syncErrorText } from "../../../../shared/lib/syncError";
 import E2eKeyPanel from "./E2eKeyPanel";
 
 export interface CloudSyncStatusPayload {
@@ -250,7 +250,6 @@ const CloudSyncSettingsGroup = ({
                             value={cloudSyncWebdavUsername}
                             onChange={(e) => setCloudSyncWebdavUsername(e.target.value)}
                             onBlur={() => saveCloudSync("cloud_sync_webdav_username", cloudSyncWebdavUsername.trim())}
-                            placeholder="username"
                         />
                     </div>
 
@@ -371,7 +370,7 @@ const CloudSyncSettingsGroup = ({
                         </div>
                         {status.last_error && (
                             <div className="settings-panel-meta is-error">
-                                {t("cloud_sync_last_error")}: {status.last_error === "e2e_mismatch" ? t("e2e_mismatch") : formatError(status.last_error, t)}
+                                {t("cloud_sync_last_error")}: {status.last_error === "e2e_mismatch" ? t("e2e_mismatch") : syncErrorText(status.last_error, t)}
                             </div>
                         )}
                     </div>

@@ -89,6 +89,9 @@ html.platform-macos .emoji-fav-container::-webkit-scrollbar {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  /* Groups scrolled out of view skip layout and paint. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 240px;
 }
 
 .emoji-group-title {
@@ -118,7 +121,12 @@ html.platform-macos .emoji-fav-container::-webkit-scrollbar {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all var(--duration-fast) ease;
+  transition:
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease,
+    box-shadow var(--duration-fast) ease,
+    transform var(--duration-fast) ease,
+    scale var(--duration-fast) ease;
 }
 
 .emoji-btn:hover {
@@ -126,6 +134,21 @@ html.platform-macos .emoji-fav-container::-webkit-scrollbar {
   border-color: var(--button-hover-border-color);
   box-shadow: var(--button-hover-shadow);
   transform: var(--button-hover-transform);
+  scale: 1.15;
+}
+
+.emoji-btn:active {
+  scale: 0.9;
+}
+
+/* Switching between Emoji and Favorites: a short fade, no wait for the old tab. */
+.emoji-tab-pane {
+  animation: emoji-tab-in var(--duration-fast) ease-out;
+}
+
+@keyframes emoji-tab-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
 }
 
 /* Favorites Grid - Clean Grid */
@@ -194,6 +217,15 @@ html.platform-macos .emoji-fav-container::-webkit-scrollbar {
   justify-content: center;
   overflow: hidden;
   border-radius: var(--button-radius);
+}
+
+/* A favorite that can't be shown keeps its card until the user removes it. */
+.emoji-fav-unreadable {
+  flex-direction: column;
+  gap: 4px;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  cursor: default;
 }
 
 .emoji-fav-preview img {
@@ -310,5 +342,14 @@ html.platform-macos .emoji-fav-container::-webkit-scrollbar {
   .emoji-fav-card,
   .emoji-fav-remove {
     transition: none;
+  }
+
+  .emoji-tab-pane {
+    animation: none;
+  }
+
+  .emoji-btn:hover,
+  .emoji-btn:active {
+    scale: none;
   }
 }

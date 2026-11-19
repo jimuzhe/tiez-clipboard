@@ -108,19 +108,38 @@ header {
 }
 
 .traffic-light {
-  width: 12px;
-  height: 12px;
+  width: var(--traffic-size);
+  height: var(--traffic-size);
   border-radius: 50%;
   border: none;
   padding: 0;
   cursor: pointer;
-  background-color: var(--line-strong);
-  opacity: 0.6;
+  /* As on macOS: red while the window is active, gray behind other windows
+     (html.window-inactive, set in main.tsx). */
+  background-color: var(--traffic-red);
+  box-shadow: inset 0 0 0 0.5px rgba(var(--shadow-rgb), 0.18);
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all var(--duration-base) ease;
+  transition: background-color var(--duration-fast) ease;
+}
+
+html.window-inactive .traffic-light {
+  background-color: var(--traffic-inactive);
+  box-shadow: none;
+}
+
+/* macOS places window buttons as far from the left edge as from the top, and
+   the same for every theme: the header row is centred 15px below its top
+   padding, so the button's centre is that far in. This also keeps it off the
+   rounded corner when the window is narrow. */
+html.platform-macos .header-top {
+  padding-left: calc(var(--layout-header-padding-y) + 15px - var(--traffic-size) / 2); /* design-ok: macOS window-button inset */
+}
+
+html.platform-macos .header-leading {
+  padding-left: 0;
 }
 
 /* Emblems (symbols inside dots) - hidden by default */
@@ -132,10 +151,6 @@ header {
   opacity: 0;
   transition: opacity var(--duration-fast) ease;
   line-height: 1;
-}
-
-.mac-traffic-lights:hover .traffic-light {
-  opacity: 1;
 }
 
 .mac-traffic-lights:hover .traffic-light::before {
@@ -591,6 +606,8 @@ select.search-input option {
 .main-content.settings-mode:has(.advanced-workbench),
 .main-content.settings-mode:has(.settings-wide),
 .main-content.tag-manager-mode {
+  /* The sidebar runs from the header to the window's bottom edge. */
+  padding-top: 0;
   padding-bottom: 0;
 }
 

@@ -1,5 +1,5 @@
 import ColorSwatchSelector from "../ColorSwatchSelector";
-import { NATIVE_PALETTES, getCustomPaletteColor, normalizeCustomColor } from "../../../../shared/config/nativePalettes";
+import { NATIVE_PALETTES, getCustomPaletteColor, normalizeCustomColor, normalizeNativePalette } from "../../../../shared/config/nativePalettes";
 import { useEffect, useState, type ComponentType, type ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { ask, open, message } from "@tauri-apps/plugin-dialog";
@@ -12,7 +12,8 @@ import {
     normalizeThemeId,
     supportsCustomBackground,
     supportsNativePalette,
-    supportsSurfaceOpacity
+    supportsSurfaceOpacity,
+    MACOS_THEME_ID
 } from "../../../../shared/config/themes";
 import { isWindowsPlatform } from "../../../../shared/lib/platform";
 import type { Locale } from "../../../../shared/types";
@@ -124,9 +125,15 @@ const AppearanceSettingsGroup = ({
     const showCustomBackgroundControls = selectedInstalledTheme
         ? selectedInstalledTheme.supportsCustomBackground
         : supportsCustomBackground(theme);
+    // The 系统 theme has no see-through window material: there the setting only
+    // decides how much of a background image shows, so it needs one to act on.
+    // A 配色 other than the default does read it (native-palette.css), so it
+    // stays reachable there even without an image.
+    const usesNativePalette = normalizeNativePalette(nativePalette) !== "default";
     const showSurfaceOpacityControls = selectedInstalledTheme
         ? selectedInstalledTheme.supportsSurfaceOpacity
-        : supportsSurfaceOpacity(theme);
+        : supportsSurfaceOpacity(theme) &&
+          (theme !== MACOS_THEME_ID || Boolean(customBackground) || usesNativePalette);
 
     useEffect(() => {
         let disposed = false;

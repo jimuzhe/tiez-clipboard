@@ -62,15 +62,15 @@ export const LabelWithHint = memo(({ label, hint, hintKey }: {
                         </button>
                     )}
                 </div>
-                {/* A one-line hint stays visible; a longer one waits behind the ? button,
-                    summary included, so clicking it doesn't add a second line under a first. */}
-                {summary && !details && <span className="item-desc">{summary}</span>}
+                {/* The first line is always visible: it says what the setting does or
+                    costs. The ? button only opens the rest. */}
+                {summary && <span className="item-desc">{summary}</span>}
             </div>
             {/* A sibling of the label column, not inside it: the row wraps it onto
                 its own full-width line instead of squeezing it beside the control. */}
             {details && open && (
                 <div className="setting-hint-panel">
-                    {typeof hint === "string" ? <span className="hint">{flowSentences(hint)}</span> : details}
+                    {typeof details === "string" ? <span className="hint">{flowSentences(details)}</span> : details}
                 </div>
             )}
         </>

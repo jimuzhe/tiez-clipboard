@@ -355,7 +355,9 @@ pub fn start_clipboard_monitor(app_handle: AppHandle) {
         let mut monitor_state = state_lock.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
 
         // 1. Check for pause
-        if crate::CLIPBOARD_MONITOR_PAUSED.load(std::sync::atomic::Ordering::Relaxed) {
+        if crate::CLIPBOARD_MONITOR_PAUSED.load(std::sync::atomic::Ordering::Relaxed)
+            || crate::global_state::USER_RECORDING_PAUSED.load(std::sync::atomic::Ordering::Relaxed)
+        {
             return;
         }
         // TieZ put the user's previous clipboard back (transient paste).
