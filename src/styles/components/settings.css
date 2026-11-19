@@ -923,6 +923,24 @@
   }
 }
 
+/* Narrow window: a text field or picker beside its label left ~200px for an
+   address or a path and lined up with nothing. It goes on its own line under
+   the label at full width, so every field starts and ends at the same edges.
+   Short fields (numbers, ports: --sm, --xs) still fit beside their label.
+   The fixed field width above is more specific than the rule before, so this
+   one has to be as well. */
+@container settings (max-width: 380px) {
+  .settings-view .setting-item:not(.column) .search-input.settings-field:not(.settings-field--sm):not(.settings-field--xs),
+  .settings-view .setting-item:not(.column) .settings-picker-button {
+    flex: 0 0 100%;
+    width: 100%;
+  }
+
+  .settings-view .setting-item.is-child {
+    padding-left: calc(var(--st-child-indent) / 2);
+  }
+}
+
 /* Secondary button used for every in-row action on the settings pages. */
 .settings-action-button {
   flex-shrink: 0;
