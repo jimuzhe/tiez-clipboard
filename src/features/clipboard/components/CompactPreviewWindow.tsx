@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useRef } from "react";
-import { emit, emitTo, listen } from "@tauri-apps/api/event";
+import { emit, listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { motion } from "framer-motion";
 import {
@@ -329,8 +329,10 @@ const CompactPreviewWindow = () => {
                     return;
                 }
 
+                // Broadcast, not emitTo("main"): emit_to is refused for this
+                // window in release builds, so the list never heard "ready".
                 stopReadyQuery = await listen("compact-preview-ready-query", () => {
-                    void emitTo("main", "compact-preview-ready", true);
+                    void emit("compact-preview-ready", true).catch(() => {});
                 });
                 if (disposed) {
                     stopReadyQuery();
@@ -340,7 +342,7 @@ const CompactPreviewWindow = () => {
 
                 await windowSetup;
                 if (!disposed) {
-                    await emitTo("main", "compact-preview-ready", true);
+                    await emit("compact-preview-ready", true);
                     compactPreviewLog("compact preview listeners ready");
                 }
             } catch (err) {
@@ -559,8 +561,8 @@ const calculateStandardCardDimensions = (
     };
 };
 
-        const updateSize = () => {
-            raf = window.requestAnimationFrame(() => {
+        const measure = () => {
+            {
                 const container = containerRef.current;
                 if (!container) {
                     compactPreviewLog("skip measure: container missing");
@@ -635,17 +637,33 @@ const calculateStandardCardDimensions = (
                     width: width + 2 * CARD_INSET_PX,
                     height: height + 2 * CARD_INSET_PX
                 };
-                emit("compact-preview-resize", windowSize).catch(() => {});
-                emitTo("main", "compact-preview-resize", windowSize).catch((err) => {
+                emit("compact-preview-resize", windowSize).catch((err) => {
                     console.error(err);
                     compactPreviewLog("emit compact-preview-resize failed", err);
                 });
+            }
+        };
+
+        // The window is still hidden when a new entry arrives, and a hidden
+        // web view runs no animation frames: measuring only in one meant the
+        // window was first shown at a default size, then jumped to its own.
+        // Measure right away while hidden, so it opens at the right size.
+        const updateSize = () => {
+            if (raf) cancelAnimationFrame(raf);
+            raf = 0;
+            if (document.visibilityState === "hidden") {
+                measure();
+                return;
+            }
+            raf = window.requestAnimationFrame(() => {
+                raf = 0;
+                measure();
             });
         };
 
         requestResizeRef.current = updateSize;
         compactPreviewLog("resize effect start", { contentType: payload.contentType });
-        updateSize();
+        measure();
         const observer = new ResizeObserver(updateSize);
         if (containerRef.current) observer.observe(containerRef.current);
         if (contentRef.current) observer.observe(contentRef.current);

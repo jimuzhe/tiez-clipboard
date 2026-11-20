@@ -67,7 +67,11 @@ body.compact-preview .compact-popover-portal,
     /* Shared popover defaults to 320px; drive width from JS instead. */
     width: var(--preview-card-width, max-content);
     min-width: 0;
-    max-width: min(540px, 80vw);
+    /* Not relative to the window (vw): the card is measured while the hidden
+       window still has the previous card's size, so a vw limit wrapped the
+       text differently and the window changed size again once shown. The
+       list already caps the width to the screen (maxWidth). */
+    max-width: 540px;
 }
 
 /* Keep compact preview visually single-layer. */
