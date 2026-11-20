@@ -89,6 +89,8 @@ const COMPACT_PREVIEW_LABEL = "compact-preview";
 const COMPACT_PREVIEW_HOVER_DELAY_MS = 320;
 const COMPACT_PREVIEW_READY_TIMEOUT_MS = 400;
 const COMPACT_PREVIEW_FALLBACK_MS = 220;
+/** How long a fallback waits for a loading preview to say it is ready. */
+const COMPACT_PREVIEW_READY_GRACE_MS = 600;
 const RICH_IMAGE_FALLBACK_PREFIX = "<!--TIEZ_RICH_IMAGE:";
 const RICH_IMAGE_FALLBACK_SUFFIX = "-->";
 const STANDALONE_COLOR_RE = /^(#(?:[0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})|(?:rgb|hsl)a?\(\s*[^)]+\s*\))$/i;
@@ -471,7 +473,8 @@ const seekVideoPreviewFrame = (video: HTMLVideoElement | null) => {
  */
 const scheduleCompactPreviewFallback = (
     requestId: number,
-    bounds: { maxWidth: number; maxHeight: number; minWidth: number }
+    bounds: { maxWidth: number; maxHeight: number; minWidth: number },
+    waitedForReady = false
 ) => {
     if (compactPreviewPendingTimer) {
         clearTimeout(compactPreviewPendingTimer);
@@ -490,8 +493,15 @@ const scheduleCompactPreviewFallback = (
         // A preview that is still loading never got the payload; showing it
         // now would show an empty card. It is re-sent (and this timer
         // re-armed) when the preview announces itself ready.
-        if (!compactPreviewMounted) {
+        // If it never does, show it after one more wait rather than never:
+        // a hidden web view may not measure, so this timer is what shows it.
+        if (!compactPreviewMounted && !waitedForReady) {
             compactPreviewLog("fallback timer deferred: preview not mounted yet");
+            compactPreviewPendingTimer = setTimeout(() => {
+                compactPreviewPendingTimer = null;
+                if (compactPreviewPendingRequestId !== requestId) return;
+                scheduleCompactPreviewFallback(requestId, bounds, true);
+            }, COMPACT_PREVIEW_READY_GRACE_MS);
             return;
         }
         const { width, height } = compactPreviewFallbackSize(bounds);
